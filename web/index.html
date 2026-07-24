@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assistente clienti AI — Pannello</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23141B33'/%3E%3Cpath d='M9 11h14v8H15l-3.5 3.2V19H9z' fill='none' stroke='%23B8892E' stroke-width='1.8'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<style>
+.doc-progress-bar-bg {
+  width:100%;height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px;
+}
+.doc-progress-bar-fill {
+  height:100%;background:var(--sage);border-radius:4px;transition:width .4s ease;
+}
+.doc-progress-text {
+  font:500 .75rem/1.3 "IBM Plex Mono",monospace;color:var(--muted);margin:6px 0 0;
+}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-row">
+        <span class="sidebar-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="9" fill="#1B2547"/><path d="M9 11h14v8H15l-3.5 3.2V19H9z" stroke="#B8892E" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </span>
+        <div class="sidebar-brand-text">
+          <span class="sidebar-brand-eyebrow">Pannello</span>
+          <span class="sidebar-brand-name" id="business-name">Trattoria Da Mario</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Sezioni del pannello">
+      <button class="nav-item active" type="button" data-view="panoramica">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
+        </span>
+        Panoramica <span class="nav-badge" data-notification-badge="panoramica" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="assistente">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5h16v10H9l-4 4v-4H4v-10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </span>
+        Assistente <span class="nav-badge" data-notification-badge="assistente" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="recensioni">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.66 5.4 5.96.87-4.31 4.2 1.02 5.93L12 17l-5.33 2.9 1.02-5.93-4.31-4.2 5.96-.87L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </span>
+        Recensioni <span class="nav-badge" data-notification-badge="recensioni" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="prenotazioni">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5v3M17 3.5v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Prenotazioni <span class="nav-badge" data-notification-badge="prenotazioni" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="report">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        Report <span class="nav-badge" data-notification-badge="report" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="documenti">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v16H7V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 9h4M10 13h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        Documenti <span class="nav-badge" data-notification-badge="documenti" hidden></span>
+      </button>
+    </nav>
+
+    <div class="sidebar-cta">
+      <span class="sidebar-cta-title">Interessato per la tua attività?</span>
+      <p class="sidebar-cta-sub">Questa demo gira sullo stesso sistema che collegheremmo ai tuoi canali reali.</p>
+    </div>
+  </aside>
+
+  <!-- ============ CONTENUTO ============ -->
+  <div class="main">
+
+    <header class="topbar">
+      <span class="topbar-title" id="topbar-title">Panoramica</span>
+      <div class="topbar-right">
+        <span class="topbar-meta" id="topbar-date"></span>
+        <span class="status-pill"><span class="status-pill-dot" aria-hidden="true"></span>Assistente attivo</span>
+      </div>
+    </header>
+
+    <!-- ---------- VISTA: PANORAMICA ---------- -->
+    <section class="view" data-view-panel="panoramica">
+
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <span class="kpi-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16v12H4V6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+          <span class="kpi-value" id="stat-totale">0</span>
+          <span class="kpi-label">messaggi ricevuti oggi</span>
+        </div>
+        <div class="kpi-card" id="kpi-ai-card">
+          <span class="kpi-icon icon-sage" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 4a3 3 0 0 0-3 3v.2A3 3 0 0 0 4.5 10a3 3 0 0 0 1 5.6A3 3 0 0 0 8 20a3 3 0 0 0 4-2.6M9 4a3 3 0 0 1 3 2.6M9 4v13.4M15 4a3 3 0 0 1 3 3v.2a3 3 0 0 1 1.5 2.8 3 3 0 0 1-1 5.6A3 3 0 0 1 16 20a3 3 0 0 1-4-2.6M15 4v13.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="kpi-value" id="stat-ai">0</span>
+          <span class="kpi-label">gestiti dall'assistente</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon icon-amber" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8.5" r="3.2" stroke="currentColor" stroke-width="1.8"/><path d="M5 20c0-3.6 3.1-6.2 7-6.2s7 2.6 7 6.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+          <span class="kpi-value" id="stat-umano">0</span>
+          <span class="kpi-label">girati a un umano</span>
+        </div>
+      </div>
+
+      <div class="panorama-grid">
+
+        <div class="dash-card priority-card" id="priority-section">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Richiede la tua attenzione</span>
+          </div>
+          <ul class="priority-list" id="priority-list"></ul>
+        </div>
+
+        <div class="dash-card activity-card">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Attività recente</span>
+            <span class="dash-card-meta" id="ticket-date"></span>
+          </div>
+          <ul class="ticket-list" id="ticket-list">
+            <li class="ticket-empty" id="ticket-empty">Nessun messaggio ancora — prova l'assistente dal menu a sinistra.</li>
+          </ul>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: ASSISTENTE ---------- -->
+    <section class="view view-hidden" data-view-panel="assistente">
+      <p class="view-intro">Scrivi come farebbe un cliente vero — puoi anche scegliere un esempio qui sotto.</p>
+
+      <div class="chat-window">
+        <div class="chat-header">
+          <div class="chat-avatar" id="chat-avatar" aria-hidden="true">A</div>
+          <div class="chat-header-text">
+            <span class="chat-name" id="chat-business-name">Trattoria Da Mario</span>
+            <span class="chat-status" id="chat-status">online</span>
+          </div>
+        </div>
+
+        <div class="chat-body" id="chat-body">
+          <div class="chat-day-divider"><span>Oggi</span></div>
+          <div class="chat-instructions"><strong>Istruzioni per te:</strong> interagisci con l'assistente AI come farebbe un cliente. L'assistente imparerà dalle risposte e migliorerà nel tempo.</div>
+          <div class="bubble bubble-in">
+            <p>Ciao! Sono qui per aiutarti a gestire le comunicazioni. Come posso esserti utile oggi?</p>
+          </div>
+        </div>
+
+        <div class="chat-suggestions" id="chat-suggestions">
+          <button class="suggestion-chip" type="button">Siete aperti domenica sera?</button>
+          <button class="suggestion-chip" type="button">Avete un tavolo per 4 persone domani?</button>
+          <button class="suggestion-chip" type="button">Ho un'allergia seria al glutine, cosa posso mangiare?</button>
+          <button class="suggestion-chip" type="button">Vorrei prenotare per 15 persone, è un compleanno</button>
+        </div>
+
+        <form class="chat-input-row" id="chat-form">
+          <input
+            type="text"
+            id="chat-input"
+            placeholder="Scrivi un messaggio…"
+            autocomplete="off"
+            aria-label="Scrivi un messaggio come farebbe un cliente"
+          >
+          <button type="submit" class="send-button" aria-label="Invia messaggio">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 11L21 3L13 21L11 13L3 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: PRENOTAZIONI ---------- -->
+    <section class="view view-hidden" data-view-panel="prenotazioni">
+      <p class="view-intro">Gestisci prenotazioni e disponibilità: quello che l'assistente salva da WhatsApp finisce qui, insieme alle prenotazioni inserite a mano.</p>
+
+      <div class="booking-layout">
+        <div class="dash-card booking-calendar-card">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Calendario</span>
+            <span class="dash-card-meta" id="booking-count">0 prenotazioni</span>
+          </div>
+          <div id="booking-calendar"></div>
+        </div>
+
+        <div class="booking-side">
+          <div class="dash-card booking-day-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title">Prenotazioni del giorno</span>
+              <span class="dash-card-meta" id="booking-day-label"></span>
+            </div>
+            <div class="booking-day-list" id="booking-day-list"></div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title">Semaforo disponibilità</span>
+              <span class="dash-card-title">Disponibilita per ora</span>
+              <span class="dash-card-meta" id="availability-date"></span>
+            </div>
+            <div class="availability-list" id="availability-list"></div>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title">Prenotazione manuale</span>
+            </div>
+            <form class="booking-form" id="booking-form">
+              <input class="doc-config-input" id="booking-name" type="text" placeholder="Nome cliente" required>
+              <input class="doc-config-input" id="booking-phone" type="tel" placeholder="Telefono">
+              <input class="doc-config-input" id="booking-date" type="date" required>
+              <input class="doc-config-input" id="booking-time" type="time" step="900" required>
+              <input class="doc-config-input" id="booking-seats" type="number" min="1" max="50" placeholder="Coperti" required>
+              <select class="doc-config-input" id="booking-status">
+                <option value="Confermato">Confermato</option>
+                <option value="In attesa">In attesa</option>
+                <option value="Richiede intervento">Richiede intervento</option>
+              </select>
+              <textarea class="doc-query-input booking-note" id="booking-note" rows="2" placeholder="Note (opzionale)"></textarea>
+              <button type="submit" class="review-analyze">Aggiungi prenotazione</button>
+            </form>
+            <p class="doc-config-status" id="booking-status-text"></p>
+          </div>
+
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <span class="dash-card-title">Posti disponibili per ora</span>
+            </div>
+            <p class="booking-settings-help">Imposta 0 per chiudere un'ora. Ogni valore e indipendente.</p>
+            <div class="booking-settings-grid" id="booking-settings-grid"></div>
+            <div class="booking-settings-actions">
+              <button type="button" class="report-refresh" id="capacity-save">Salva disponibilita</button>
+            </div>
+            <p class="doc-config-status" id="capacity-status"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="booking-modal" id="booking-modal" hidden>
+      <div class="booking-modal-backdrop" data-booking-close></div>
+      <section class="booking-modal-panel" role="dialog" aria-modal="true" aria-labelledby="booking-modal-title">
+        <div class="booking-modal-header">
+          <div>
+            <span class="booking-modal-kicker">Dettaglio prenotazione</span>
+            <h2 id="booking-modal-title">Cliente</h2>
+          </div>
+          <button type="button" class="booking-modal-close" data-booking-close aria-label="Chiudi dettaglio">&times;</button>
+        </div>
+        <div class="booking-modal-grid">
+          <div><span>Data</span><strong id="booking-detail-date"></strong></div>
+          <div><span>Ora</span><strong id="booking-detail-time"></strong></div>
+          <div><span>Coperti</span><strong id="booking-detail-seats"></strong></div>
+          <div><span>Stato</span><strong id="booking-detail-status"></strong></div>
+          <div><span>Telefono</span><strong id="booking-detail-phone"></strong></div>
+          <div><span>Origine</span><strong id="booking-detail-origin"></strong></div>
+        </div>
+        <div class="booking-detail-note">
+          <span>Note</span>
+          <p id="booking-detail-note"></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ---------- VISTA: RECENSIONI ---------- -->
+    <section class="view view-hidden" data-view-panel="recensioni">
+      <p class="view-intro">Incolla il testo di una recensione ricevuta: l'assistente valuta il tono e prepara una bozza di risposta.</p>
+
+      <div class="recensioni-grid">
+        <div class="dash-card review-card">
+          <textarea class="review-textarea" id="review-text" rows="3" placeholder="Incolla qui il testo di una recensione…"></textarea>
+          <div class="review-meta">
+            <input type="text" class="review-author" id="review-author" placeholder="Autore (opzionale)">
+            <select class="review-stars" id="review-stars">
+              <option value="">Valutazione</option>
+              <option value="5">★★★★★</option>
+              <option value="4">★★★★☆</option>
+              <option value="3">★★★☆☆</option>
+              <option value="2">★★☆☆☆</option>
+              <option value="1">★☆☆☆☆</option>
+            </select>
+            <button type="button" class="review-analyze" id="review-analyze">Analizza e genera bozza</button>
+          </div>
+          <div class="review-draft" id="review-draft" hidden>
+            <div class="review-draft-header">
+              <span class="review-draft-title">Bozza risposta</span>
+              <span class="review-draft-sentiment" id="review-draft-sentiment"></span>
+            </div>
+            <p class="review-draft-text" id="review-draft-text"></p>
+            <div class="review-draft-footer">
+              <span class="review-draft-cat" id="review-draft-cat"></span>
+              <button type="button" class="review-copy" id="review-copy">Copia testo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="trends-card">
+          <span class="trends-title">Top Trends</span>
+          <ul class="trend-list" id="trend-list">
+            <li class="trend-item"><div class="trend-body"><span class="trend-label" style="color:var(--sidebar-text)">Caricamento trend…</span></div></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: REPORT ---------- -->
+    <section class="view view-hidden" data-view-panel="report">
+
+      <div class="dash-card chart-card" id="chart-section" hidden>
+        <div class="dash-card-header">
+          <span class="dash-card-title">Messaggi: andamento ultimi 7 giorni</span>
+        </div>
+        <div class="chart-legend">
+          <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--accent)"></span>Ricevuti</span>
+          <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--sage)"></span>Gestiti da AI</span>
+        </div>
+        <div class="chart-svg-wrap" id="chart-svg-wrap"></div>
+      </div>
+
+      <div class="insights-grid" id="insights-grid" hidden>
+        <div class="insight-card insights-card">
+          <div class="insight-card-header">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3v.2A3 3 0 0 0 4.5 10a3 3 0 0 0 1 5.6A3 3 0 0 0 8 20a3 3 0 0 0 4-2.6M9 4a3 3 0 0 1 3 2.6M9 4v13.4M15 4a3 3 0 0 1 3 3v.2a3 3 0 0 1 1.5 2.8 3 3 0 0 1-1 5.6A3 3 0 0 1 16 20a3 3 0 0 1-4-2.6M15 4v13.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Insights principali
+          </div>
+          <ul class="insight-list" id="insights-list"></ul>
+        </div>
+        <div class="insight-card suggestions-card">
+          <div class="insight-card-header">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.35.5.9.5 1.4V16h6v-.7c0-.5 0-1.05.5-1.4A6 6 0 0 0 12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Suggerimenti operativi
+          </div>
+          <ul class="insight-list" id="suggestions-list"></ul>
+        </div>
+      </div>
+
+      <div class="dash-card report-card" id="report-section" hidden>
+        <div class="dash-card-header">
+          <span class="dash-card-title">Report giornaliero</span>
+          <span class="dash-card-meta" id="report-date"></span>
+        </div>
+        <div class="report-stats">
+          <div class="report-stat">
+            <span class="report-stat-value" id="report-totale">0</span>
+            <span class="report-stat-label">messaggi</span>
+          </div>
+          <div class="report-stat">
+            <span class="report-stat-value" id="report-ai">0</span>
+            <span class="report-stat-label">gestiti AI</span>
+          </div>
+          <div class="report-stat">
+            <span class="report-stat-value" id="report-umano">0</span>
+            <span class="report-stat-label">girati a umano</span>
+          </div>
+        </div>
+        <div class="report-body" id="report-body">
+          <p class="report-body-text" id="report-analisi"></p>
+        </div>
+        <div class="report-suggestions" id="report-suggestions" hidden>
+          <span class="report-suggestions-title">Suggerimenti</span>
+          <ul class="report-suggestions-list" id="report-suggestions-list"></ul>
+        </div>
+        <div class="report-footer">
+          <span class="report-timestamp" id="report-timestamp"></span>
+          <button type="button" class="report-refresh" id="report-refresh" aria-label="Rigenera report">
+            Rigenera
+          </button>
+        </div>
+      </div>
+      <p class="report-empty-hint" id="report-empty-hint">Nessun report ancora generato per oggi.</p>
+    </section>
+
+    <!-- ---------- VISTA: DOCUMENTI ---------- -->
+    <section class="view view-hidden" data-view-panel="documenti">
+      <p class="view-intro">Carica menu, lista allergeni o carta vini: l'assistente userà questi contenuti per rispondere alle domande operative dei clienti.</p>
+
+      <div class="dash-card" id="doc-status-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Stato knowledge base</span>
+        </div>
+        <p class="doc-status-text" id="doc-conteggio">Caricamento…</p>
+        <div class="doc-library" id="doc-library"></div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Carica documento</span>
+        </div>
+        <input class="doc-file-input" id="doc-file" type="file" accept=".txt,.md,.csv,.json,.pdf,.png,.jpg,.jpeg,.webp, text/plain, application/pdf, image/png, image/jpeg, image/webp">
+        <p class="doc-file-hint">Formati supportati: TXT, MD, CSV, JSON, PDF, PNG, JPG e WEBP. Massimo 20 MB.</p>
+        <textarea class="doc-query-input" id="doc-carica-testo" rows="3" placeholder="Incolla qui menu, lista allergeni, carta vini o offerte del giorno..."></textarea>
+        <div class="doc-query-row">
+          <input type="text" class="doc-config-input" id="doc-carica-nome" placeholder="Nome del testo (es. menu_estate.txt)" style="flex:1;margin-bottom:0">
+          <button type="button" class="review-analyze" id="doc-carica-btn">Salva documento</button>
+        </div>
+        <p class="doc-config-status" id="doc-carica-status"></p>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Chiedi ai documenti</span>
+        </div>
+        <textarea class="doc-query-input" id="doc-query" rows="3" placeholder="Es. «Avete opzioni senza glutine?» oppure «Quanto costa la fiorentina?»"></textarea>
+        <div class="doc-query-row">
+          <button type="button" class="review-analyze" id="doc-chiedi-btn">Chiedi</button>
+        </div>
+        <div class="doc-risposta" id="doc-risposta" hidden>
+          <div class="doc-risposta-text" id="doc-risposta-text"></div>
+          <div class="doc-fonti" id="doc-fonti" hidden>
+            <span class="doc-fonti-title">Fonti</span>
+            <ul class="doc-fonti-list" id="doc-fonti-list"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

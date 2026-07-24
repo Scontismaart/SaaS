@@ -1,0 +1,16 @@
+crewai>=1.15,<2
+fastapi>=0.110,<1
+uvicorn>=0.30,<1
+python-dotenv>=1.0,<2
+pyairtable>=2.3,<3
+apscheduler>=3.10,<4
+sentence-transformers>=5.6,<6
+rapidocr-onnxruntime>=1.4,<2
+pymupdf>=1.24,<2
+chromadb>=1.1,<2
+pypdf>=6.14,<7
+python-multipart>=0.0.9,<1
+cryptography>=43,<44
+google-api-python-client>=2.140,<3
+google-auth-httplib2>=0.2,<1
+google-auth-oauthlib>=1.2,<2

@@ -1,5 +1,6 @@
 ﻿data/chroma/
 .env
+Supabase-credentials.txt
 __pycache__/
 *.pyc
 *.pyo

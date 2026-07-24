@@ -1,0 +1,35 @@
+from dataclasses import dataclass, field
+from typing import Optional
+from uuid import UUID
+
+
+@dataclass
+class AppConfig:
+    app_secret: str
+    encryption_key: str
+    postgres_dsn: str
+    verify_token: str
+    max_retry_attempts: int = 5
+
+
+@dataclass
+class TenantConfig:
+    organization_id: UUID
+    phone_number_id: str
+    waba_id: str
+    access_token: str
+    business_profile: dict = field(default_factory=dict)
+
+
+async def load_tenant_config(org_id: UUID, app_config: AppConfig, repo) -> TenantConfig:
+    from cryptography.fernet import Fernet
+    row = await repo.get_tenant_config(org_id)
+    cipher = Fernet(app_config.encryption_key.encode())
+    decrypted = cipher.decrypt(row["access_token"].encode()).decode()
+    return TenantConfig(
+        organization_id=org_id,
+        phone_number_id=row["phone_number_id"],
+        waba_id=row["waba_id"],
+        access_token=decrypted,
+        business_profile=row.get("business_profile", {}),
+    )

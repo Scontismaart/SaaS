@@ -63,6 +63,7 @@ from src.models.schemas import (
 from src.core.auth.dependencies import require_ruolo, close_http_client
 from src.core.db.repository import CoreRepository
 from src.core.auth.audit import audit_log
+from src.core.billing.routes import router as billing_router
 
 
 @asynccontextmanager
@@ -87,6 +88,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="WhatsApp AI Responder - Demo API", lifespan=lifespan)
+
+app.include_router(billing_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -122,7 +125,7 @@ def _rate_limit_check(key: str, now: float) -> bool:
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    if request.url.path in ("/api/health", "/webhooks/whatsapp"):
+    if request.url.path in ("/api/health", "/webhooks/whatsapp", "/api/billing/webhook"):
         return await call_next(request)
     now = time.time()
 

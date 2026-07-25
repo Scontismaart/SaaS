@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from src.core.auth.dependencies import require_ruolo
+from src.core.auth.audit import audit_log
 from src.core.billing.plans import PLANS
 from src.core.billing.webhook_handler import handle_stripe_webhook
 
@@ -74,6 +75,15 @@ async def create_checkout_session(
         payment_method_collection="if_required",
     )
 
+    try:
+        await audit_log(repo, organization_id=org_id,
+                        action="billing.checkout_session_created",
+                        auth_user_id=user.get("auth_user_id"),
+                        target_table="organizations", target_id=str(org_id),
+                        details={"plan": req.plan, "session_id": session.id})
+    except Exception as e:
+        logger.warning("Audit log failed: %s", e)
+
     return {"url": session.url}
 
 
@@ -99,6 +109,14 @@ async def create_portal_session(
         customer=customer_id,
         return_url=return_url,
     )
+
+    try:
+        await audit_log(repo, organization_id=org_id,
+                        action="billing.portal_session_created",
+                        auth_user_id=user.get("auth_user_id"),
+                        target_table="organizations", target_id=str(org_id))
+    except Exception as e:
+        logger.warning("Audit log failed: %s", e)
 
     return {"url": session.url}
 
@@ -170,4 +188,13 @@ async def billing_webhook(request: Request):
     result = await handle_stripe_webhook(event.to_dict_recursive(), repo)
     if result is None:
         return {"status": "ignored"}
+    if result.get("action"):
+        try:
+            await audit_log(repo,
+                            organization_id=result.get("organization_id"),
+                            action=f"billing.webhook.{result['action']}",
+                            details={"stripe_event_id": event.get("id"),
+                                     "stripe_event_type": event.get("type")})
+        except Exception as e:
+            logger.warning("Audit log failed: %s", e)
     return result

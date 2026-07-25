@@ -61,7 +61,7 @@ async def _handle_checkout_completed(data: dict, repo) -> dict | None:
         return None
 
     if not await repo.process_stripe_event(data.get("id", ""), org_id):
-        return {"action": "duplicate", "status": "skipped"}
+        return {"action": "duplicate", "status": "skipped", "organization_id": org_id}
 
     now = datetime.now(timezone.utc)
     trial_days = int(os.getenv("STRIPE_TRIAL_DAYS", "7"))
@@ -74,7 +74,7 @@ async def _handle_checkout_completed(data: dict, repo) -> dict | None:
         "current_period_start": now,
         "current_period_end": now + timedelta(days=trial_days),
     })
-    return {"action": "subscription_created", "status": "trialing"}
+    return {"action": "subscription_created", "status": "trialing", "organization_id": org_id}
 
 
 async def _lookup_org_by_customer(customer_id: str, repo) -> dict | None:
@@ -90,7 +90,7 @@ async def _handle_invoice_paid(data: dict, repo) -> dict | None:
         return None
 
     if not await repo.process_stripe_event(data.get("id", ""), org["id"]):
-        return {"action": "duplicate", "status": "skipped"}
+        return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     period_start = datetime.fromtimestamp(data.get("period_start", 0), tz=timezone.utc)
     period_end = datetime.fromtimestamp(data.get("period_end", 0), tz=timezone.utc)
@@ -108,7 +108,7 @@ async def _handle_invoice_paid(data: dict, repo) -> dict | None:
     if plan_slug:
         await repo.update_plan_limits(org["id"], plan_slug)
 
-    return {"action": "subscription_activated", "status": "active"}
+    return {"action": "subscription_activated", "status": "active", "organization_id": org["id"]}
 
 
 async def _handle_payment_failed(data: dict, repo) -> dict | None:
@@ -118,10 +118,10 @@ async def _handle_payment_failed(data: dict, repo) -> dict | None:
         return None
 
     if not await repo.process_stripe_event(data.get("id", ""), org["id"]):
-        return {"action": "duplicate", "status": "skipped"}
+        return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     await repo.set_subscription_status(org["id"], "past_due")
-    return {"action": "payment_failed", "status": "past_due"}
+    return {"action": "payment_failed", "status": "past_due", "organization_id": org["id"]}
 
 
 async def _handle_subscription_updated(data: dict, repo) -> dict | None:
@@ -131,7 +131,7 @@ async def _handle_subscription_updated(data: dict, repo) -> dict | None:
         return None
 
     if not await repo.process_stripe_event(data.get("id", ""), org["id"]):
-        return {"action": "duplicate", "status": "skipped"}
+        return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     plan_slug = _resolve_plan_from_subscription(data)
     if plan_slug:
@@ -153,7 +153,7 @@ async def _handle_subscription_updated(data: dict, repo) -> dict | None:
             datetime.fromtimestamp(period_end, tz=timezone.utc),
         )
 
-    return {"action": "subscription_updated", "plan": plan_slug}
+    return {"action": "subscription_updated", "plan": plan_slug, "organization_id": org["id"]}
 
 
 async def _handle_subscription_deleted(data: dict, repo) -> dict | None:
@@ -163,7 +163,7 @@ async def _handle_subscription_deleted(data: dict, repo) -> dict | None:
         return None
 
     if not await repo.process_stripe_event(data.get("id", ""), org["id"]):
-        return {"action": "duplicate", "status": "skipped"}
+        return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     await repo.set_subscription_status(org["id"], "canceled")
-    return {"action": "subscription_deleted", "status": "canceled"}
+    return {"action": "subscription_deleted", "status": "canceled", "organization_id": org["id"]}

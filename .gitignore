@@ -1,5 +1,9 @@
 ﻿data/chroma/
+data/*.json
+data/gmail_tokens/
 .env
+.env.local
+.env.production
 Supabase-credentials.txt
 __pycache__/
 *.pyc
@@ -7,3 +11,10 @@ __pycache__/
 .pytest_cache/
 .vscode/
 .worktrees/
+*.token
+credentials.json
+service-account*.json
+*.pem
+*.key
+Thumbs.db
+.DS_Store

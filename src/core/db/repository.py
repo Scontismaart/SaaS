@@ -1,5 +1,7 @@
 import json
 import uuid
+import asyncpg
+from datetime import datetime
 
 
 class CoreRepository:
@@ -257,3 +259,145 @@ class CoreRepository:
                 WHERE up.auth_user_id = $1 AND om.organization_id = $2::uuid
             """, auth_user_id, organization_id)
             return dict(row) if row else None
+
+    # ── Billing ──────────────────────────────────────────────────
+
+    async def get_organization_billing(self, organization_id: uuid.UUID | str) -> dict:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT stripe_customer_id, subscription_id, subscription_status,
+                       plan, messages_used_this_period, messages_limit,
+                       users_limit, whatsapp_numbers_limit,
+                       current_period_start, current_period_end,
+                       trial_start, trial_end
+                FROM organizations WHERE id = $1
+            """, organization_id)
+            if row is None:
+                raise ValueError(f"Organization {organization_id} not found")
+            return dict(row)
+
+    async def update_organization_billing(
+        self, organization_id: uuid.UUID | str, data: dict
+    ) -> dict:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        sets = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(data))
+        values = list(data.values())
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"""UPDATE organizations SET {sets}
+                    WHERE id = $1
+                    RETURNING stripe_customer_id, subscription_id, subscription_status,
+                              plan, messages_used_this_period, messages_limit,
+                              users_limit, whatsapp_numbers_limit,
+                              current_period_start, current_period_end,
+                              trial_start, trial_end""",
+                organization_id,
+                *values,
+            )
+            return dict(row)
+
+    async def set_subscription_status(
+        self, organization_id: uuid.UUID | str, status: str
+    ) -> None:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE organizations SET subscription_status = $1 WHERE id = $2",
+                status,
+                organization_id,
+            )
+
+    async def increment_message_usage(
+        self, organization_id: uuid.UUID | str
+    ) -> int:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE organizations
+                   SET messages_used_this_period = messages_used_this_period + 1
+                   WHERE id = $1
+                   RETURNING messages_used_this_period""",
+                organization_id,
+            )
+            return row["messages_used_this_period"]
+
+    async def reset_message_usage(
+        self,
+        organization_id: uuid.UUID | str,
+        period_start: datetime,
+        period_end: datetime,
+    ) -> None:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                """UPDATE organizations
+                   SET messages_used_this_period = 0,
+                       current_period_start = $1,
+                       current_period_end = $2
+                   WHERE id = $3""",
+                period_start,
+                period_end,
+                organization_id,
+            )
+
+    async def process_stripe_event(
+        self, event_id: str, organization_id: uuid.UUID | str
+    ) -> bool:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            try:
+                await conn.execute(
+                    "INSERT INTO processed_stripe_events (event_id) VALUES ($1)",
+                    event_id,
+                )
+                return True
+            except asyncpg.exceptions.UniqueViolationError:
+                return False
+
+    async def update_plan_limits(
+        self, organization_id: uuid.UUID | str, plan_slug: str
+    ) -> dict:
+        from src.core.billing.plans import get_plan
+        plan = get_plan(plan_slug)
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE organizations
+                   SET plan = $1,
+                       messages_limit = $2,
+                       users_limit = $3,
+                       whatsapp_numbers_limit = $4
+                   WHERE id = $5
+                   RETURNING stripe_customer_id, subscription_id, subscription_status,
+                             plan, messages_used_this_period, messages_limit,
+                             users_limit, whatsapp_numbers_limit,
+                             current_period_start, current_period_end,
+                             trial_start, trial_end""",
+                plan_slug,
+                plan.messages_limit,
+                plan.users_limit,
+                plan.whatsapp_numbers_limit,
+                organization_id,
+            )
+            return dict(row)
+
+    async def get_organization_by_stripe_customer(
+        self, stripe_customer_id: str
+    ) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT id, stripe_customer_id, subscription_status, plan "
+                "FROM organizations WHERE stripe_customer_id = $1",
+                stripe_customer_id,
+            )
+            if row is None:
+                return None
+            return dict(row)

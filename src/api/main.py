@@ -30,6 +30,7 @@ from src.core.prenotazioni import (
 )
 from src.core.scheduler import (
     imposta_fonte_dati,
+    imposta_pool,
     avvia_scheduler,
     ferma_scheduler,
     get_report_cache,
@@ -78,6 +79,7 @@ async def lifespan(app: FastAPI):
         app.state.pool = None
     init_email_store()
     _imposta_fonte_dati_per_scheduler()
+    imposta_pool(app.state.pool)
     avvia_scheduler()
     yield
     ferma_scheduler()

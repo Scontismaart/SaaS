@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -14,11 +15,18 @@ def _ottieni_storico_ref():
 
 
 _ottieni_storico = _ottieni_storico_ref
+_pool_ref = lambda: (_ for _ in ()).throw(RuntimeError("pool non impostato. Chiama imposta_pool()."))
+_pool = _pool_ref
 
 
 def imposta_fonte_dati(callback):
     global _ottieni_storico
     _ottieni_storico = callback
+
+
+def imposta_pool(pool):
+    global _pool
+    _pool = lambda: pool
 
 
 def get_report_cache(data: str) -> ReportOutput | None:
@@ -39,6 +47,17 @@ def genera_e_caching():
     print(f"[scheduler] Report per {oggi} generato e cachato.")
 
 
+def _run_retention():
+    pool = _pool()
+    asyncio.run(_retention_job(pool))
+
+
+async def _retention_job(pool):
+    from src.core.retention_job import run_retention
+
+    await run_retention(pool)
+
+
 def avvia_scheduler():
     global _scheduler
     if _scheduler is not None:
@@ -52,8 +71,15 @@ def avvia_scheduler():
         name="Genera report di fine giornata",
         replace_existing=True,
     )
+    _scheduler.add_job(
+        _run_retention,
+        CronTrigger(hour=3, minute=0),
+        id="retention_giornaliero",
+        name="Data retention — soft-delete e purge",
+        replace_existing=True,
+    )
     _scheduler.start()
-    print("[scheduler] Avviato — job giornaliero alle 20:00.")
+    print("[scheduler] Avviato — report alle 20:00, retention alle 03:00.")
 
 
 def ferma_scheduler():

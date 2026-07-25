@@ -115,7 +115,7 @@ class Repository:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT * FROM contacts
-                WHERE organization_id = $1 AND phone_number = $2
+                WHERE organization_id = $1 AND phone_number = $2 AND deleted_at IS NULL
             """, org_id, phone)
             return dict(row) if row else None
 
@@ -196,6 +196,7 @@ class Repository:
                     WHERE id IN (
                         SELECT id FROM messages
                         WHERE direction = 'inbound' AND status = 'received_pending_ai'
+                        AND deleted_at IS NULL
                         ORDER BY created_at
                         LIMIT $1
                         FOR UPDATE SKIP LOCKED
@@ -277,6 +278,49 @@ class Repository:
                 RETURNING *
             """, str(timeout_minutes))
             return [dict(r) for r in msgs] + [dict(r) for r in attempts]
+
+    async def soft_delete_message(self, message_id: uuid.UUID) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute("UPDATE messages SET deleted_at = NOW() WHERE id = $1", message_id)
+
+    async def soft_delete_conversation(self, conversation_id: uuid.UUID) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute("UPDATE conversations SET deleted_at = NOW() WHERE id = $1", conversation_id)
+
+    async def soft_delete_contact(self, contact_id: uuid.UUID) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute("UPDATE contacts SET deleted_at = NOW() WHERE id = $1", contact_id)
+
+    async def delete_expired_messages(self, retention_days: int = 60) -> int:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute("""
+                UPDATE messages SET deleted_at = NOW()
+                WHERE deleted_at IS NULL
+                AND created_at < NOW() - ($1 || ' days')::INTERVAL
+            """, str(retention_days))
+            return int(result.split()[-1]) if result else 0
+
+    async def purge_soft_deleted_messages(self, grace_days: int = 30) -> int:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute("""
+                DELETE FROM messages
+                WHERE deleted_at IS NOT NULL
+                AND deleted_at < NOW() - ($1 || ' days')::INTERVAL
+            """, str(grace_days))
+            return int(result.split()[-1]) if result else 0
+
+    async def cleanup_empty_conversations(self) -> int:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute("""
+                UPDATE conversations SET deleted_at = NOW()
+                WHERE deleted_at IS NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM messages
+                    WHERE messages.conversation_id = conversations.id
+                    AND messages.deleted_at IS NULL
+                )
+            """)
+            return int(result.split()[-1]) if result else 0
 
     async def check_message_usage(self, org_id: uuid.UUID) -> dict | None:
         async with self.pool.acquire() as conn:

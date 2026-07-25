@@ -64,7 +64,8 @@ async def reset_db(pg_pool):
                 booking_settings, bookings,
                 contact_consent_log, message_delivery_attempts,
                 messages, conversations, contacts, whatsapp_templates,
-                whatsapp_accounts, organizations
+                whatsapp_accounts, organizations,
+                processed_stripe_events
             CASCADE
         """)
 

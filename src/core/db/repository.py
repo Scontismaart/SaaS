@@ -354,8 +354,9 @@ class CoreRepository:
         async with self.pool.acquire() as conn:
             try:
                 await conn.execute(
-                    "INSERT INTO processed_stripe_events (event_id) VALUES ($1)",
+                    "INSERT INTO processed_stripe_events (event_id, organization_id) VALUES ($1, $2)",
                     event_id,
+                    organization_id,
                 )
                 return True
             except asyncpg.exceptions.UniqueViolationError:

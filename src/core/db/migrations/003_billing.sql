@@ -23,9 +23,12 @@ BEGIN
     END IF;
 END $$;
 
+DROP TABLE IF EXISTS processed_stripe_events;
 CREATE TABLE IF NOT EXISTS processed_stripe_events (
-    event_id TEXT PRIMARY KEY,
-    processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    event_id TEXT NOT NULL,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (event_id, organization_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_org_stripe_customer ON organizations(stripe_customer_id);

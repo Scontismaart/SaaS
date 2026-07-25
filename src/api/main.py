@@ -282,7 +282,7 @@ async def salva_impostazioni_prenotazioni(impostazioni: ImpostazioniDisponibilit
 
 
 @app.post("/api/recensione", response_model=RispostaRecensioneOutput)
-def ricevi_recensione(recensione: RecensioneInput):
+def ricevi_recensione(recensione: RecensioneInput, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     try:
         output = genera_risposta_recensione(
             testo=recensione.testo,
@@ -472,7 +472,7 @@ def indicizza_documenti(user: dict = Depends(require_ruolo("owner", "manager")))
 
 
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)
-def chiedi_documenti(domanda: DomandaInput):
+def chiedi_documenti(domanda: DomandaInput, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     return rispondi(domanda.domanda, k=domanda.k)
 
 

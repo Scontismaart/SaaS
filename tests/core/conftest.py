@@ -15,6 +15,30 @@ async def pg_pool(postgres_container):
     dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
     pool = await asyncpg.create_pool(dsn=dsn, min_size=2, max_size=10)
     async with pool.acquire() as conn:
+        # Stub dello schema auth di Supabase (auth.users): su Supabase reale
+        # esiste gia', qui su Postgres vanilla no. Serve solo perche'
+        # 002_auth_tables.sql referenzia auth.users(id) per la FK e il
+        # trigger trg_sync_auth_user.
+        await conn.execute("""
+            CREATE SCHEMA IF NOT EXISTS auth;
+            CREATE TABLE IF NOT EXISTS auth.users (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                email TEXT
+            );
+            -- Stub delle funzioni Supabase usate dalle RLS policy.
+            -- In test non c'e' un JWT reale nella sessione Postgres, quindi
+            -- restituiscono valori neutri (NULL / oggetto vuoto): sufficiente
+            -- perche' le policy vengano create senza errore; il
+            -- comportamento delle policy stesse va verificato separatamente
+            -- (su Supabase reale, dove auth.uid()/auth.jwt() sono popolate
+            -- dal JWT della sessione).
+            CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+                SELECT NULL::uuid
+            $$ LANGUAGE sql STABLE;
+            CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb AS $$
+                SELECT '{}'::jsonb
+            $$ LANGUAGE sql STABLE;
+        """)
         with open("src/whatsapp/schema.sql") as f:
             await conn.execute(f.read())
         with open("src/core/db/schema.sql") as f:

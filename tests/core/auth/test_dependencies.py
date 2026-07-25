@@ -41,49 +41,56 @@ class TestGetCurrentUser:
         assert exc.value.status_code == 403
 
 
+def _fake_request(repo=None):
+    class FakeRequest:
+        app = type("App", (), {"state": type("State", (), {"repo": repo})()})()
+    return FakeRequest()
+
+
 class TestGetOrganizationContext:
     async def test_api_key_returns_as_is(self):
         user = {"source": "api_key", "ruolo": "service_role"}
         result = await get_organization_context(
+            request=_fake_request(),
             current_user=user,
             x_organization_id="org-123",
-            repo=AsyncMock(),
         )
         assert result["organization_id"] == "org-123"
         assert result["source"] == "api_key"
 
     async def test_no_org_id_returns_unchanged(self):
-        user = {"source": "jwt", "auth_user_id": "auth|123", "ruolo": None}
+        user = {"source": "jwt", "auth_user_id": str(uuid.uuid4()), "ruolo": None}
         result = await get_organization_context(
+            request=_fake_request(),
             current_user=user,
             x_organization_id=None,
-            repo=AsyncMock(),
         )
-        assert result["organization_id"] is None
+        assert result == user
 
     async def test_valid_membership_returns_role(self):
         org_id = str(uuid.uuid4())
+        auth_user_id = str(uuid.uuid4())
         mock_repo = AsyncMock()
         mock_repo.get_membership_by_auth.return_value = {"ruolo": "manager", "organization_id": org_id, "user_id": str(uuid.uuid4())}
-        user = {"source": "jwt", "auth_user_id": "auth|123", "ruolo": None}
+        user = {"source": "jwt", "auth_user_id": auth_user_id, "ruolo": None}
         result = await get_organization_context(
+            request=_fake_request(repo=mock_repo),
             current_user=user,
             x_organization_id=org_id,
-            repo=mock_repo,
         )
         assert result["ruolo"] == "manager"
         assert result["organization_id"] == org_id
-        mock_repo.get_membership_by_auth.assert_awaited_once_with("auth|123", org_id)
+        mock_repo.get_membership_by_auth.assert_awaited_once_with(auth_user_id, org_id)
 
     async def test_no_membership_raises_403(self):
         mock_repo = AsyncMock()
         mock_repo.get_membership_by_auth.return_value = None
-        user = {"source": "jwt", "auth_user_id": "auth|456", "ruolo": None}
+        user = {"source": "jwt", "auth_user_id": str(uuid.uuid4()), "ruolo": None}
         with pytest.raises(HTTPException) as exc:
             await get_organization_context(
+                request=_fake_request(repo=mock_repo),
                 current_user=user,
                 x_organization_id=str(uuid.uuid4()),
-                repo=mock_repo,
             )
         assert exc.value.status_code == 403
 

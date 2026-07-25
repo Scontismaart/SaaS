@@ -22,20 +22,22 @@ async def test_audit_log_creates_entry(repo, sample_org):
 async def test_audit_log_with_user(repo, sample_org, pg_pool):
     from src.core.auth.audit import audit_log
 
+    auth_user_id = uuid.uuid4()
     async with pg_pool.acquire() as conn:
-        await conn.execute("""
-            INSERT INTO user_profiles (id, auth_user_id, email)
-            VALUES ($1, $2, 'test@test.com')
-        """, uuid.uuid4(), "auth|test123")
+        # Insert into auth.users - trigger auto-creates user_profiles
+        await conn.execute(
+            "INSERT INTO auth.users (id, email) VALUES ($1, 'test@test.com')",
+            auth_user_id,
+        )
         up_row = await conn.fetchrow(
-            "SELECT id FROM user_profiles WHERE auth_user_id = $1", "auth|test123"
+            "SELECT id FROM user_profiles WHERE auth_user_id = $1", auth_user_id
         )
 
     entry = await audit_log(
         repo=repo,
         organization_id=str(sample_org["id"]),
         user_id=str(up_row["id"]),
-        auth_user_id="auth|test123",
+        auth_user_id=str(auth_user_id),
         action="prenotazione_eliminata",
         target_table="bookings",
         target_id=str(uuid.uuid4()),

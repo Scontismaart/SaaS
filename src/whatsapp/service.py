@@ -39,7 +39,12 @@ class WhatsAppService:
         category: str,
         meta_client,
         tenant_config: TenantConfig,
+        idempotency_key: str | None = None,
     ) -> dict:
+        if idempotency_key:
+            existing = await self.repo.check_idempotency(str(org_id), idempotency_key)
+            if existing:
+                return existing
         usage = await self.repo.check_message_usage(org_id)
         if usage and usage["messages_limit"] is not None:
             if usage["messages_used_this_period"] >= usage["messages_limit"]:
@@ -65,7 +70,13 @@ class WhatsAppService:
             content=payload,
             content_text=payload.get("text", {}).get("body", ""),
             status="queued",
+            idempotency_key=idempotency_key,
         )
+        if idempotency_key and str(msg["id"]) != str(msg_id):
+            # Race genuina: un'altra richiesta con la stessa idempotency_key
+            # ha vinto l'insert tra il pre-check e qui. Il messaggio esiste
+            # gia' (o e' in corso): non tentare un secondo invio.
+            return msg
         result = await self.attempt_delivery(
             message_id=msg_id,
             phone_number_id=tenant_config.phone_number_id,

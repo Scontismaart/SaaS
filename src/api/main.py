@@ -65,6 +65,7 @@ from src.core.db.repository import CoreRepository
 from src.core.auth.audit import audit_log
 from src.core.billing.routes import router as billing_router
 from src.core.gdpr.routes import router as gdpr_router
+from src.core.inbox.routes import router as inbox_router
 
 
 @asynccontextmanager
@@ -93,6 +94,7 @@ app = FastAPI(title="WhatsApp AI Responder - Demo API", lifespan=lifespan)
 
 app.include_router(billing_router)
 app.include_router(gdpr_router)
+app.include_router(inbox_router)
 
 app.add_middleware(
     CORSMiddleware,

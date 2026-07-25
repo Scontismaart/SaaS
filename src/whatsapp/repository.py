@@ -120,8 +120,30 @@ class Repository:
             return dict(row) if row else None
 
     async def upsert_message(self, id, organization_id, conversation_id, wam_id, direction,
-                              message_type, content, content_text, status, handling_type=None):
+                              message_type, content, content_text, status, handling_type=None,
+                              idempotency_key=None):
         async with self.pool.acquire() as conn:
+            if idempotency_key:
+                # Dedup su (organization_id, idempotency_key): protegge da
+                # ri-sottomissioni involontarie dello stesso reply manuale
+                # (es. doppio click, retry client dopo timeout apparente).
+                row = await conn.fetchrow("""
+                    INSERT INTO messages (id, organization_id, conversation_id, wam_id,
+                                          direction, message_type, content, content_text,
+                                          status, handling_type, idempotency_key)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
+                    ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+                        DO NOTHING
+                    RETURNING *
+                """, id, organization_id, conversation_id, wam_id, direction, message_type,
+                    json.dumps(content), content_text, status, handling_type, idempotency_key)
+                if row:
+                    return dict(row)
+                row = await conn.fetchrow(
+                    "SELECT * FROM messages WHERE organization_id = $1 AND idempotency_key = $2",
+                    organization_id, idempotency_key,
+                )
+                return dict(row)
             row = await conn.fetchrow("""
                 INSERT INTO messages (id, organization_id, conversation_id, wam_id,
                                       direction, message_type, content, content_text, status, handling_type)
@@ -364,6 +386,135 @@ class Repository:
             """, uuid.uuid4(), organization_id, name, language, category, status,
                 json.dumps(components))
             return dict(row)
+
+    # ── HITL: Ticket State Machine ──────────────────────────────
+
+    async def list_tickets(self, org_id: str, status: str | None = None) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            if status:
+                rows = await conn.fetch(
+                    """SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email
+                       FROM conversations c
+                       LEFT JOIN user_profiles u ON u.id = c.assigned_to
+                       WHERE c.organization_id = $1::uuid AND c.ticket_status = $2 AND c.deleted_at IS NULL
+                       ORDER BY c.pending_staff_at ASC NULLS LAST, c.claimed_at ASC NULLS LAST, c.created_at ASC""",
+                    org_id, status
+                )
+            else:
+                rows = await conn.fetch(
+                    """SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email
+                       FROM conversations c
+                       LEFT JOIN user_profiles u ON u.id = c.assigned_to
+                       WHERE c.organization_id = $1::uuid AND c.deleted_at IS NULL
+                       ORDER BY c.pending_staff_at ASC NULLS LAST, c.claimed_at ASC NULLS LAST, c.created_at ASC""",
+                    org_id
+                )
+            return [dict(r) for r in rows]
+
+    async def get_conversation(self, conversation_id: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
+                          ct.phone_number AS phone_number
+                   FROM conversations c
+                   LEFT JOIN user_profiles u ON u.id = c.assigned_to
+                   LEFT JOIN contacts ct ON ct.id = c.contact_id
+                   WHERE c.id = $1::uuid AND c.deleted_at IS NULL""",
+                conversation_id
+            )
+            return dict(row) if row else None
+
+    async def escalate_to_human(self, conversation_id: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE conversations
+                   SET ticket_status = 'PENDING_STAFF',
+                       pending_staff_at = NOW(),
+                       updated_at = NOW(),
+                       version = version + 1
+                   WHERE id = $1::uuid
+                     AND ticket_status NOT IN ('PENDING_STAFF', 'CLAIMED', 'RESOLVED')
+                     AND deleted_at IS NULL
+                   RETURNING *""",
+                conversation_id
+            )
+            return dict(row) if row else None
+
+    async def claim_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE conversations
+                   SET ticket_status = 'CLAIMED',
+                       assigned_to = $2::uuid,
+                       claimed_at = NOW(),
+                       updated_at = NOW(),
+                       version = version + 1
+                   WHERE id = $1::uuid
+                     AND version = $3
+                     AND ticket_status = 'PENDING_STAFF'
+                     AND deleted_at IS NULL
+                   RETURNING *""",
+                conversation_id, staff_user_id, expected_version
+            )
+            return dict(row) if row else None
+
+    async def release_ticket(self, conversation_id: str, staff_user_id: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE conversations
+                   SET ticket_status = 'PENDING_STAFF',
+                       assigned_to = NULL,
+                       claimed_at = NULL,
+                       updated_at = NOW(),
+                       version = version + 1
+                   WHERE id = $1::uuid
+                     AND assigned_to = $2::uuid
+                     AND ticket_status = 'CLAIMED'
+                     AND deleted_at IS NULL
+                   RETURNING *""",
+                conversation_id, staff_user_id
+            )
+            return dict(row) if row else None
+
+    async def resolve_ticket(self, conversation_id: str, staff_user_id: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE conversations
+                   SET ticket_status = 'RESOLVED',
+                       assigned_to = NULL,
+                       resolved_at = NOW(),
+                       updated_at = NOW(),
+                       version = version + 1
+                   WHERE id = $1::uuid
+                     AND assigned_to = $2::uuid
+                     AND ticket_status = 'CLAIMED'
+                     AND deleted_at IS NULL
+                   RETURNING *""",
+                conversation_id, staff_user_id
+            )
+            return dict(row) if row else None
+
+    async def set_conversation_ai_active(self, conversation_id: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE conversations
+                   SET ticket_status = 'AI_ACTIVE',
+                       assigned_to = NULL,
+                       updated_at = NOW(),
+                       version = version + 1
+                   WHERE id = $1::uuid AND deleted_at IS NULL
+                   RETURNING *""",
+                conversation_id
+            )
+            return dict(row) if row else None
+
+    async def check_idempotency(self, org_id: str, idempotency_key: str) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM messages WHERE organization_id = $1::uuid AND idempotency_key = $2",
+                org_id, idempotency_key
+            )
+            return dict(row) if row else None
 
     async def update_template_status(self, name=None, language=None, status=None, reason=None, organization_id=None):
         async with self.pool.acquire() as conn:

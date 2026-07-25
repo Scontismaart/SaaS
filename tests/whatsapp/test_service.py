@@ -172,3 +172,42 @@ class TestWhatsAppService:
             tenant_config=MagicMock(),
         )
         mock_repo.increment_message_usage.assert_called_once()
+
+    async def test_idempotency_key_precheck_skips_send(self, app_config, mock_repo, mock_meta_client):
+        """Task 6: se l'idempotency_key esiste gia', non si tenta un secondo
+        invio (niente chiamata a Meta), si ritorna il messaggio esistente."""
+        existing = {"id": uuid.uuid4(), "status": "sent"}
+        mock_repo.check_idempotency = AsyncMock(return_value=existing)
+        service = WhatsAppService(app_config, mock_repo)
+        result = await service.send_whatsapp_message(
+            org_id=uuid.uuid4(),
+            to_number="391234567890",
+            payload={"type": "text", "text": {"body": "Ciao!"}},
+            category="service",
+            meta_client=mock_meta_client,
+            tenant_config=MagicMock(),
+            idempotency_key="reply-key-001",
+        )
+        assert result == existing
+        mock_meta_client.send_message.assert_not_called()
+        mock_repo.upsert_message.assert_not_called()
+
+    async def test_idempotency_key_race_after_precheck_skips_delivery(self, app_config, mock_repo, mock_meta_client):
+        """Race genuina: il pre-check non trova nulla, ma upsert_message
+        ritorna una riga con id diverso da quello appena generato (un'altra
+        richiesta ha vinto l'insert nel frattempo) -> niente doppio invio."""
+        mock_repo.check_idempotency = AsyncMock(return_value=None)
+        winner_row = {"id": uuid.uuid4(), "status": "sent"}
+        mock_repo.upsert_message = AsyncMock(return_value=winner_row)
+        service = WhatsAppService(app_config, mock_repo)
+        result = await service.send_whatsapp_message(
+            org_id=uuid.uuid4(),
+            to_number="391234567890",
+            payload={"type": "text", "text": {"body": "Ciao!"}},
+            category="service",
+            meta_client=mock_meta_client,
+            tenant_config=MagicMock(),
+            idempotency_key="reply-key-002",
+        )
+        assert result == winner_row
+        mock_meta_client.send_message.assert_not_called()

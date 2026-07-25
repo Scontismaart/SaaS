@@ -436,6 +436,17 @@ class CoreRepository:
             )
             return [dict(r) for r in rows]
 
+    async def get_organization_owners(self, org_id: str) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT up.id, up.email, up.nome
+                   FROM user_profiles up
+                   JOIN organization_memberships om ON om.user_id = up.id
+                   WHERE om.organization_id = $1::uuid AND om.ruolo = 'owner'""",
+                org_id
+            )
+            return [dict(r) for r in rows]
+
     async def delete_organization(self, organization_id: uuid.UUID | str) -> None:
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)

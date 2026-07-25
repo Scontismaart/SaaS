@@ -66,6 +66,9 @@ from src.core.auth.audit import audit_log
 from src.core.billing.routes import router as billing_router
 from src.core.gdpr.routes import router as gdpr_router
 from src.core.inbox.routes import router as inbox_router
+from src.whatsapp.repository import Repository as WhatsAppRepository
+from src.whatsapp.router import create_router as create_whatsapp_router
+from src.whatsapp.config import AppConfig as WhatsAppAppConfig
 
 
 @asynccontextmanager
@@ -76,9 +79,31 @@ async def lifespan(app: FastAPI):
         pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5)
         app.state.repo = CoreRepository(pool=pool)
         app.state.pool = pool
+
+        # Webhook WhatsApp reale: prima non era mai montato, quindi Meta non
+        # poteva raggiungere l'app in nessun deploy. Serve il pool (per
+        # persistere contatti/conversazioni/messaggi in arrivo), quindi lo
+        # registriamo qui a runtime invece che a import time del modulo.
+        wrepo = WhatsAppRepository(pool=pool)
+        app.state.wrepo = wrepo
+        whatsapp_app_config = WhatsAppAppConfig(
+            app_secret=os.getenv("META_APP_SECRET", ""),
+            encryption_key=os.getenv("ENCRYPTION_KEY", ""),
+            postgres_dsn=dsn,
+            verify_token=os.getenv("META_VERIFY_TOKEN", ""),
+        )
+        if whatsapp_app_config.app_secret and whatsapp_app_config.verify_token:
+            whatsapp_router = create_whatsapp_router(whatsapp_app_config, wrepo)
+            app.include_router(whatsapp_router)
+        else:
+            print(
+                "[startup] META_APP_SECRET o META_VERIFY_TOKEN non configurati: "
+                "webhook WhatsApp NON montato. Impostali in .env per riceverli."
+            )
     else:
         app.state.repo = None
         app.state.pool = None
+        app.state.wrepo = None
     init_email_store()
     _imposta_fonte_dati_per_scheduler()
     imposta_pool(app.state.pool)

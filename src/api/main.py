@@ -37,8 +37,7 @@ from src.core.scheduler import (
 )
 from src.core.crew_runner_report import genera_report as genera_report_completo
 from src.core.crew_runner_review import genera_risposta_recensione
-from src.core.email_sources.gmail_api import recupera_nuove_email
-from src.core.email_config_store import salva_config, carica_config, elenca_config, elimina_config, inizializza as init_email_store
+from src.core.email_config_store import carica_config, elenca_config, elimina_config, inizializza as init_email_store
 from src.core.documenti.vector_store import aggiungi, conteggio, elenco_fonti, elimina_documento
 from src.core.documenti.extractor import estrai_testo
 from src.core.documenti.qa_agent import rispondi
@@ -367,23 +366,6 @@ def stato_report(user: dict = Depends(require_ruolo("owner", "manager", "staff")
     return {"disponibile": report is not None, "id": f"report-{oggi}" if report else None}
 
 
-@app.post("/api/email/configura-gmail")
-async def configura_gmail(request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
-    from src.core.gmail_token_store import authorize_new_account
-
-    cs_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "client_secret.json")
-    if not os.path.exists(cs_path):
-        raise HTTPException(status_code=500, detail="client_secret.json non trovato in data/.")
-    try:
-        email, _creds = authorize_new_account(cs_path)
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Autorizzazione Gmail fallita: {e}")
-
-    salva_config(email)
-    await _audit(request, user, "email_gmail_configurata", target_table="email_configs", details={"indirizzo": email})
-    return {"detail": f"Account {email} autorizzato con successo.", "indirizzo": email}
-
-
 @app.get("/api/email/config")
 def elenca_configurazioni(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     return {"configurazioni": elenca_config()}
@@ -399,79 +381,12 @@ async def rimuovi_configurazione(indirizzo: str, request: Request, user: dict = 
 
 @app.post("/api/email/test")
 def test_email(user: dict = Depends(require_ruolo("owner", "manager"))):
-    configs = carica_config()
-    if not configs:
-        return {"detail": "Nessuna configurazione email Gmail trovata. Usa POST /api/email/configura-gmail.", "trovate": 0}
-    cfg = configs[0]
-    try:
-        email = recupera_nuove_email(indirizzo_forzato=cfg["indirizzo"])
-        return {
-            "detail": f"Connessione OK per {cfg['indirizzo']}: {len(email)} nuove email trovate.",
-            "indirizzo": cfg["indirizzo"],
-            "trovate": len(email),
-        }
-    except Exception as e:
-        return {"detail": f"Errore: {e}", "trovate": 0}
-
-
-@app.post("/api/email/check-now")
-def check_email_ora(user: dict = Depends(require_ruolo("owner", "manager"))):
-    from src.core.email_config_store import carica_config
-
-    configs = carica_config()
-    if configs:
-        totale_globale = 0
-        totale_email = 0
-        for cfg in configs:
-            try:
-                email = recupera_nuove_email(indirizzo_forzato=cfg["indirizzo"])
-            except Exception as e:
-                print(f"[check-now] Errore per {cfg['indirizzo']}: {e}")
-                continue
-            if not email:
-                continue
-            totale_email += len(email)
-            for e in email:
-                testo = e.corpo_testo
-                if not testo:
-                    continue
-                chunks = chunk_testo(testo)
-                metadati = [{"fonte": e.oggetto, "tipo": "email"}] * len(chunks)
-                totale_globale += aggiungi(chunks, metadati)
-        return {"detail": f"Indicizzati {totale_globale} chunk da {totale_email} email.", "trovate": totale_email, "indicizzate": totale_globale}
-
-    return {"detail": "Nessuna configurazione email Gmail. Usa POST /api/email/configura-gmail.", "trovate": 0, "indicizzate": 0}
+    return {"detail": "Integrazione email rimossa. Funzionalita' deprecata.", "trovate": 0}
 
 
 @app.post("/api/documenti/indicizza")
 def indicizza_documenti(user: dict = Depends(require_ruolo("owner", "manager"))):
-    from src.core.documenti.chunking import chunk_testo
-    from src.core.documenti.vector_store import aggiungi
-
-    configs = carica_config()
-    if not configs:
-        return {"detail": "Nessuna configurazione email Gmail. Usa POST /api/email/configura-gmail.", "trovate": 0, "indicizzate": 0}
-
-    totale_globale = 0
-    totale_email = 0
-    for cfg in configs:
-        try:
-            email = recupera_nuove_email(indirizzo_forzato=cfg["indirizzo"])
-        except Exception as e:
-            print(f"[indicizza] Errore per {cfg['indirizzo']}: {e}")
-            continue
-        if not email:
-            continue
-        totale_email += len(email)
-        for e in email:
-            testo = e.corpo_testo
-            if not testo:
-                continue
-            chunks = chunk_testo(testo)
-            metadati = [{"fonte": e.oggetto, "tipo": "email"}] * len(chunks)
-            totale_globale += aggiungi(chunks, metadati)
-
-    return {"detail": f"Indicizzati {totale_globale} chunk da {totale_email} email.", "trovate": totale_email, "indicizzate": totale_globale}
+    return {"detail": "Indicizzazione email rimossa. Funzionalita' deprecata.", "trovate": 0, "indicizzate": 0}
 
 
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)
@@ -489,44 +404,7 @@ def elenco_documenti(user: dict = Depends(require_ruolo("owner", "manager", "sta
     return {"documenti": elenco_fonti()}
 
 
-# ── reindex ─────────────────────────────────────────────────────────
-_REINDEX_THREADS: dict[str, threading.Thread] = {}
-_REINDEX_PROGRESS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "reindex_progress")
 
-
-def _reindex_progress_file(tid: str) -> str:
-    return os.path.join(_REINDEX_PROGRESS_DIR, f"{tid}.json")
-
-
-@app.post("/api/documenti/reindicizza")
-def reindicizza_documenti(user: dict = Depends(require_ruolo("owner", "manager"))):
-    from src.api.reindex_worker import run_reindex
-
-    tid = uuid.uuid4().hex[:12]
-    t = threading.Thread(target=run_reindex, args=(tid,), daemon=True)
-    t.start()
-    _REINDEX_THREADS[tid] = t
-    return {"task_id": tid, "detail": "Re-indicizzazione avviata in background."}
-
-
-@app.get("/api/documenti/reindicizza/stato/{task_id}")
-def stato_reindicizzazione(task_id: str, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    t = _REINDEX_THREADS.get(task_id)
-    alive = t is not None and t.is_alive()
-    progress_file = _reindex_progress_file(task_id)
-
-    if os.path.exists(progress_file):
-        with open(progress_file) as f:
-            data = json.load(f)
-        if not alive and data.get("status") not in ("done", "error"):
-            data["status"] = "error"
-            data["errore"] = "Thread di re-indicizzazione terminato inaspettatamente."
-            data["progress"] = "Terminato inaspettatamente."
-        return data
-    elif alive:
-        return {"status": "processing", "progress": "Avvio in corso...", "risultato": None, "errore": None}
-    else:
-        raise HTTPException(status_code=404, detail="Task non trovato.")
 
 
 @app.post("/api/documenti/carica")

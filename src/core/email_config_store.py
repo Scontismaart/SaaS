@@ -49,8 +49,6 @@ def elimina_config(indirizzo: str) -> bool:
     if len(nuovi) == len(configs):
         return False
     _salva_tutti(nuovi)
-    from src.core.gmail_token_store import delete_credentials
-    delete_credentials(indirizzo)
     return True
 
 

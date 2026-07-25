@@ -247,6 +247,24 @@ class Repository:
             """, str(timeout_minutes))
             return [dict(r) for r in msgs] + [dict(r) for r in attempts]
 
+    async def check_message_usage(self, org_id: uuid.UUID) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT messages_used_this_period, messages_limit
+                FROM organizations WHERE id = $1
+            """, org_id)
+            return dict(row) if row else None
+
+    async def increment_message_usage(self, org_id: uuid.UUID) -> int:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE organizations
+                SET messages_used_this_period = messages_used_this_period + 1
+                WHERE id = $1
+                RETURNING messages_used_this_period
+            """, org_id)
+            return row["messages_used_this_period"] if row else 0
+
     async def upsert_template(self, organization_id, name, language, category, status, components):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""

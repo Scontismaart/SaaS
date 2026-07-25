@@ -24,6 +24,9 @@ class WhatsAppService:
     class MessageBlockedByOptOut(Exception):
         pass
 
+    class MessageUsageExceeded(Exception):
+        pass
+
     def __init__(self, app_config: AppConfig, repo):
         self.app_config = app_config
         self.repo = repo
@@ -37,6 +40,13 @@ class WhatsAppService:
         meta_client,
         tenant_config: TenantConfig,
     ) -> dict:
+        usage = await self.repo.check_message_usage(org_id)
+        if usage and usage["messages_limit"] is not None:
+            if usage["messages_used_this_period"] >= usage["messages_limit"]:
+                raise self.MessageUsageExceeded(
+                    f"Message limit reached for organization {org_id}: "
+                    f"{usage['messages_used_this_period']}/{usage['messages_limit']}"
+                )
         prefs = await self.repo.get_contact_prefs(org_id, to_number)
         if prefs and prefs.get("marketing_opt_out") and category == "marketing":
             raise self.MessageBlockedByOptOut(
@@ -63,6 +73,8 @@ class WhatsAppService:
             payload=payload,
             meta_client=meta_client,
         )
+        if result:
+            await self.repo.increment_message_usage(org_id)
         return result
 
     async def attempt_delivery(

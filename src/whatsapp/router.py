@@ -112,6 +112,7 @@ async def _handle_inbound_message(repo, org_id, msg, contacts):
         content_text=msg.text.body if msg.text else None,
         status="received_pending_ai",
     )
+    await repo.increment_message_usage(org_id)
 
 
 async def _handle_template_status_update(repo, value, entry_id=None):

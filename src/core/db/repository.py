@@ -403,3 +403,49 @@ class CoreRepository:
             if row is None:
                 return None
             return dict(row)
+
+    # ── GDPR ─────────────────────────────────────────────────────
+
+    async def get_contacts_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM contacts WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
+                organization_id,
+            )
+            return [dict(r) for r in rows]
+
+    async def get_conversations_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM conversations WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
+                organization_id,
+            )
+            return [dict(r) for r in rows]
+
+    async def get_messages_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM messages WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
+                organization_id,
+            )
+            return [dict(r) for r in rows]
+
+    async def delete_organization(self, organization_id: uuid.UUID | str) -> None:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            await conn.execute("DELETE FROM audit_log WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM messages WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM conversations WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM contacts WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM bookings WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM reviews WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM email_configs WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM documents WHERE organization_id = $1", organization_id)
+            await conn.execute("DELETE FROM organizations WHERE id = $1", organization_id)

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import uuid
+from src.core.security_logger import security_audit
 from src.whatsapp.config import AppConfig
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class InboundProcessor:
                 triggering_message_id=msg["id"],
                 matched_text=text,
             )
+            security_audit("consent_opt_out", contact_id=str(contact["id"]), organization_id=str(org_id))
             await self.repo.update_message_status(msg["id"], "handled")
             return
 

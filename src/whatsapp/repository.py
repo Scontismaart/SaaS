@@ -232,7 +232,20 @@ class Repository:
                 VALUES ($1, $2, $3, $4, $5, $6)
                 RETURNING *
             """, uuid.uuid4(), contact_id, event_type, method, triggering_message_id, matched_text)
+            new_status = "granted" if event_type == "opt_in" else "withdrawn"
+            await conn.execute("""
+                UPDATE contacts SET consent_status = $1, consent_updated_at = NOW()
+                WHERE id = $2
+            """, new_status, contact_id)
             return dict(row)
+
+    async def get_contact_consent(self, contact_id) -> str | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT consent_status FROM contacts WHERE id = $1 AND deleted_at IS NULL",
+                contact_id,
+            )
+            return row["consent_status"] if row else None
 
     async def insert_delivery_attempt(self, message_id, next_retry_at):
         async with self.pool.acquire() as conn:

@@ -19,6 +19,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/004_gdpr.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/005_gdpr_consent.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

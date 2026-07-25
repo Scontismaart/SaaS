@@ -72,7 +72,7 @@ async def create_checkout_session(
         cancel_url=req.cancel_url,
         client_reference_id=str(org_id),
         subscription_data={"trial_period_days": trial_days},
-        payment_method_collection="if_required",
+        payment_method_collection="required",
     )
 
     try:

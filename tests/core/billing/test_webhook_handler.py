@@ -177,6 +177,87 @@ async def test_handle_unknown_event_does_nothing(repo, sample_org):
     assert result is None
 
 
+async def test_subscription_updated_same_period_does_not_reset_usage(repo, sample_org):
+    """Fix C: subscription.updated con lo stesso current_period_start (es.
+    cambio metodo pagamento, toggle cancel_at_period_end) non deve azzerare
+    la quota messaggi gia' usata nel ciclo corrente."""
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+
+    fixed_start = datetime.now(timezone.utc).replace(microsecond=0)
+    fixed_end = fixed_start.replace(year=fixed_start.year + (1 if fixed_start.month == 12 else 0))
+
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test_guard",
+        "plan": "starter",
+        "messages_limit": 500,
+        "current_period_start": fixed_start,
+        "current_period_end": fixed_end,
+    })
+    await repo.increment_message_usage(sample_org["id"])
+    await repo.increment_message_usage(sample_org["id"])
+    await repo.increment_message_usage(sample_org["id"])
+
+    def make_event(evt_id):
+        return {
+            "id": evt_id,
+            "type": "customer.subscription.updated",
+            "data": {
+                "object": {
+                    "id": "sub_guard_001",
+                    "customer": "cus_test_guard",
+                    "status": "active",
+                    "items": {"data": [{"price": {"id": ""}, "plan": {"product": "prod_starter"}}]},
+                    "current_period_start": fixed_start.timestamp(),
+                    "current_period_end": fixed_end.timestamp(),
+                }
+            },
+        }
+
+    # Prima chiamata: stesso periodo di quello gia' salvato -> nessun reset.
+    await handle_stripe_webhook(make_event("evt_guard_001"), repo)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["messages_used_this_period"] == 3
+
+    # Seconda chiamata (evento diverso, stesso periodo) -> ancora nessun reset.
+    await handle_stripe_webhook(make_event("evt_guard_002"), repo)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["messages_used_this_period"] == 3
+
+
+async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
+    """Fix B: due eventi DIVERSI (evt id diversi) che referenziano lo stesso
+    oggetto Stripe (stessa subscription) devono essere processati entrambi,
+    non deduplicati per errore sull'id dell'oggetto annidato."""
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test_dedup",
+        "subscription_status": "active",
+    })
+
+    event1 = {
+        "id": "evt_dedup_AAA",
+        "type": "invoice.payment_failed",
+        "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
+    }
+    result1 = await handle_stripe_webhook(event1, repo)
+    assert result1["action"] == "payment_failed"
+
+    # Stesso oggetto annidato (stesso "in_same_object"), ma evento Stripe
+    # diverso: deve essere processato di nuovo, non scartato come duplicato.
+    event2 = {
+        "id": "evt_dedup_BBB",
+        "type": "invoice.payment_failed",
+        "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
+    }
+    result2 = await handle_stripe_webhook(event2, repo)
+    assert result2["action"] == "payment_failed"  # non "duplicate"
+
+    # Vero retry dello STESSO evento -> quello si' va deduplicato.
+    result3 = await handle_stripe_webhook(event1, repo)
+    assert result3["action"] == "duplicate"
+
+
 async def test_handle_checkout_completed_without_subscription(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     event = {

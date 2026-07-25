@@ -1,5 +1,8 @@
 import json
+import os
 import uuid
+
+from cryptography.fernet import Fernet
 
 STATUS_RANK = {
     "queued": 0,
@@ -57,6 +60,34 @@ class Repository:
                 LIMIT 1
             """, org_id)
             return dict(row) if row else None
+
+    @staticmethod
+    def encrypt_token(plaintext: str) -> str:
+        key = os.environ.get("ENCRYPTION_KEY")
+        if not key:
+            raise RuntimeError("ENCRYPTION_KEY not set")
+        return Fernet(key.encode()).encrypt(plaintext.encode()).decode()
+
+    async def save_tenant_config(self, org_id, phone_number_id: str, waba_id: str, access_token: str):
+        encrypted = self.encrypt_token(access_token)
+        async with self.pool.acquire() as conn:
+            existing = await conn.fetchrow(
+                "SELECT id FROM whatsapp_accounts WHERE organization_id = $1", org_id
+            )
+            if existing:
+                row = await conn.fetchrow("""
+                    UPDATE whatsapp_accounts
+                    SET phone_number_id = $2, waba_id = $3, access_token = $4, updated_at = NOW()
+                    WHERE organization_id = $1
+                    RETURNING *
+                """, org_id, phone_number_id, waba_id, encrypted)
+            else:
+                row = await conn.fetchrow("""
+                    INSERT INTO whatsapp_accounts (id, organization_id, phone_number_id, waba_id, access_token)
+                    VALUES ($1, $2, $3, $4, $5)
+                    RETURNING *
+                """, uuid.uuid4(), org_id, phone_number_id, waba_id, encrypted)
+            return dict(row)
 
     async def get_or_create_contact(self, org_id, phone):
         async with self.pool.acquire() as conn:

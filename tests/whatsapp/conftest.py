@@ -21,6 +21,12 @@ async def pg_pool(postgres_container):
     await pool.close()
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _set_env():
+    import os
+    os.environ.setdefault("ENCRYPTION_KEY", "C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=")
+
+
 @pytest.fixture(autouse=True)
 async def reset_db(pg_pool):
     async with pg_pool.acquire() as conn:
@@ -157,7 +163,7 @@ def app_config():
     from src.whatsapp.config import AppConfig
     return AppConfig(
         app_secret="test_app_secret_123",
-        encryption_key="dGhpcyBpcyBhIHRlc3Qga2V5IGZvciBmZXJuZXQ=",
+        encryption_key="C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=",
         postgres_dsn="postgresql://test:test@localhost:5432/test",
         verify_token="test_verify_token",
         max_retry_attempts=5,

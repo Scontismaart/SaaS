@@ -1,6 +1,9 @@
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 from uuid import UUID
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,10 +25,14 @@ class TenantConfig:
 
 
 async def load_tenant_config(org_id: UUID, app_config: AppConfig, repo) -> TenantConfig:
-    from cryptography.fernet import Fernet
+    from cryptography.fernet import Fernet, InvalidToken
     row = await repo.get_tenant_config(org_id)
-    cipher = Fernet(app_config.encryption_key.encode())
-    decrypted = cipher.decrypt(row["access_token"].encode()).decode()
+    try:
+        cipher = Fernet(app_config.encryption_key.encode())
+        decrypted = cipher.decrypt(row["access_token"].encode()).decode()
+    except InvalidToken:
+        logger.error("INVALID_TOKEN: encryption_key may have been rotated. org_id=%s", org_id)
+        raise
     return TenantConfig(
         organization_id=org_id,
         phone_number_id=row["phone_number_id"],

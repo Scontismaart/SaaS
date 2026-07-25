@@ -395,7 +395,8 @@ class CoreRepository:
     ) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT id, stripe_customer_id, subscription_status, plan "
+                "SELECT id, stripe_customer_id, subscription_status, plan, "
+                "current_period_start "
                 "FROM organizations WHERE stripe_customer_id = $1",
                 stripe_customer_id,
             )

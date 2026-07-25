@@ -267,3 +267,36 @@ async def test_reconstruct_payload_for_retry(repo: Repository, pg_pool):
     payload = await repo.reconstruct_payload_for_retry(msg["id"])
     assert payload is not None
     assert payload["content"] == content
+
+
+@pytest.mark.asyncio
+async def test_save_tenant_config_encrypts_token(repo: Repository, pg_pool):
+    import os
+    from cryptography.fernet import Fernet
+    key = os.environ.get("ENCRYPTION_KEY")
+    if not key:
+        pytest.skip("ENCRYPTION_KEY not set")
+    cipher = Fernet(key.encode())
+    raw_token = "EAAxRealTestToken123"
+    org_id = uuid.uuid4()
+    async with pg_pool.acquire() as conn:
+        await conn.execute("INSERT INTO organizations (id, name) VALUES ($1, 'Test Org')", org_id)
+    await repo.save_tenant_config(org_id, "12345", "waba_1", raw_token)
+    row = await repo.get_tenant_config(org_id)
+    assert row["access_token"] != raw_token
+    decrypted = cipher.decrypt(row["access_token"].encode()).decode()
+    assert decrypted == raw_token
+
+
+@pytest.mark.asyncio
+async def test_encryption_key_rotation_handles_invalid_token(repo: Repository, pg_pool):
+    from cryptography.fernet import Fernet, InvalidToken
+    raw = "EAAxRotationTest"
+    org_id = uuid.uuid4()
+    async with pg_pool.acquire() as conn:
+        await conn.execute("INSERT INTO organizations (id, name) VALUES ($1, 'Test Org')", org_id)
+    await repo.save_tenant_config(org_id, "12345", "waba_2", raw)
+    row = await repo.get_tenant_config(org_id)
+    new_key = Fernet.generate_key().decode()
+    with pytest.raises(InvalidToken):
+        Fernet(new_key.encode()).decrypt(row["access_token"].encode())

@@ -13,19 +13,20 @@ class CoreRepository:
     async def create_booking(self, organization_id, nome_cliente, data, ora, coperti,
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
                              richiede_intervento=False, id_conversazione=None,
-                             contact_id=None):
+                             contact_id=None, richiede_deposito=False,
+                             completata_at=None):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 INSERT INTO bookings (id, organization_id, contact_id,
                                       nome_cliente, telefono, data, ora, coperti,
                                       note, stato, origine, richiede_intervento,
-                                      id_conversazione)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                                      id_conversazione, richiede_deposito, completata_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
                 RETURNING *
             """, uuid.uuid4(), organization_id, contact_id,
             nome_cliente, telefono, data, ora, coperti,
             note, stato, origine, richiede_intervento,
-            id_conversazione)
+            id_conversazione, richiede_deposito, completata_at)
             return dict(row)
 
     async def get_booking(self, organization_id, booking_id):
@@ -58,6 +59,85 @@ class CoreRepository:
                 RETURNING *
             """, organization_id, booking_id, stato)
             return dict(row) if row else None
+
+    async def update_booking_payment(self, organization_id, booking_id,
+                                      payment_status, session_id=None):
+        async with self.pool.acquire() as conn:
+            if session_id:
+                row = await conn.fetchrow("""
+                    UPDATE bookings SET payment_status = $3, payment_link = $4,
+                        payment_link_created_at = NOW(), updated_at = NOW()
+                    WHERE organization_id = $1 AND id = $2
+                    RETURNING *
+                """, organization_id, booking_id, payment_status, session_id)
+            else:
+                row = await conn.fetchrow("""
+                    UPDATE bookings SET payment_status = $3, updated_at = NOW()
+                    WHERE organization_id = $1 AND id = $2
+                    RETURNING *
+                """, organization_id, booking_id, payment_status)
+            return dict(row) if row else None
+
+    async def list_bookings_by_stato(self, organization_id, stato):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM bookings WHERE organization_id = $1 AND stato = $2 ORDER BY data, ora",
+                organization_id, stato,
+            )
+            return [dict(r) for r in rows]
+
+    async def list_bookings_for_reminder(self, organization_id, target_date):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT * FROM bookings
+                WHERE organization_id = $1 AND data = $2
+                  AND stato = 'confermata' AND reminder_status = 'none'
+                ORDER BY ora
+            """, organization_id, target_date)
+            return [dict(r) for r in rows]
+
+    async def update_booking_reminder_status(self, organization_id, booking_id,
+                                              reminder_status, responded_at=None):
+        async with self.pool.acquire() as conn:
+            if responded_at:
+                row = await conn.fetchrow("""
+                    UPDATE bookings SET reminder_status = $3,
+                        reminder_responded_at = $4, updated_at = NOW()
+                    WHERE organization_id = $1 AND id = $2
+                    RETURNING *
+                """, organization_id, booking_id, reminder_status, responded_at)
+            else:
+                row = await conn.fetchrow("""
+                    UPDATE bookings SET reminder_status = $3, updated_at = NOW()
+                    WHERE organization_id = $1 AND id = $2
+                    RETURNING *
+                """, organization_id, booking_id, reminder_status)
+            return dict(row) if row else None
+
+    async def list_bookings_da_verificare(self, organization_id, target_date):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT * FROM bookings
+                WHERE organization_id = $1 AND data = $2
+                  AND stato = 'confermata'
+                  AND completata_at IS NULL AND no_show_at IS NULL
+                ORDER BY ora
+            """, organization_id, target_date)
+            return [dict(r) for r in rows]
+
+    async def upsert_booking_settings_config(self, organization_id, config):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                INSERT INTO booking_settings (id, organization_id, config)
+                VALUES ($1, $2, $3::jsonb)
+                ON CONFLICT (organization_id) DO UPDATE
+                    SET config = $3::jsonb, updated_at = NOW()
+                RETURNING *
+            """, uuid.uuid4(), organization_id, json.dumps(config))
+            result = dict(row)
+            if isinstance(result.get("config"), str):
+                result["config"] = json.loads(result["config"])
+            return result
 
     # ── Booking settings ─────────────────────────────────────
 

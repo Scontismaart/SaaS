@@ -55,6 +55,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/006_hitl.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/007_booking_standalone.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

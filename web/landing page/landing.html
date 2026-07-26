@@ -30,8 +30,51 @@
     }
   </script>
   <style>
-    body { font-family: 'Inter', sans-serif; background: #1A1A1E; color: #F5F0EB; }
+    * { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #1A1A1E;
+      color: #F5F0EB;
+    }
     h1, h2, h3, h4, .font-serif { font-family: 'Fraunces', serif; }
+
+    /* ── Grain overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
+    }
+
+    /* ── Orb gradient animation ── */
+    .orb {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(123, 168, 143, 0.12), transparent 70%);
+      animation: orb-drift 25s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .orb-two {
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle at 70% 70%, rgba(245, 240, 235, 0.04), transparent 70%);
+      animation: orb-drift 30s ease-in-out infinite reverse;
+    }
+    @keyframes orb-drift {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(60px, -40px) scale(1.08); }
+      50% { transform: translate(-30px, 60px) scale(0.95); }
+      75% { transform: translate(40px, 20px) scale(1.03); }
+    }
+
+    /* ── Chat bubble base ── */
     .chat-bubble-left {
       position: relative;
       background: rgba(123, 168, 143, 0.15);
@@ -42,21 +85,81 @@
       background: rgba(245, 240, 235, 0.08);
       border-radius: 18px 18px 4px 18px;
     }
+
+    /* ── Chat mockup float ── */
+    .mockup-float {
+      animation: mockup-float 5s ease-in-out infinite;
+    }
+    @keyframes mockup-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* ── Typing indicator ── */
+    .typing-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(123, 168, 143, 0.5);
+      animation: typing-bounce 1.4s ease-in-out infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes typing-bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    /* ── Feature card hover ── */
+    .feature-card {
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+                  box-shadow 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(123, 168, 143, 0.08);
+    }
+
+    /* ── Navbar scroll border ── */
+    .nav-scrolled {
+      border-bottom: 1px solid rgba(245, 240, 235, 0.06);
+    }
+
+    /* ── Section gradient overlays ── */
+    .section-gradient-features {
+      background: linear-gradient(180deg, #1A1A1E 0%, #222120 50%, #1A1A1E 100%);
+    }
+    .section-gradient-social {
+      background: linear-gradient(180deg, #222120 0%, #1A1A1E 100%);
+    }
+    .section-gradient-how {
+      background: linear-gradient(180deg, #1A1A1E 0%, #222120 100%);
+    }
+
+    /* ── Custom easing ── */
+    .ease-out-expo { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+
+    /* ── Number counter ── */
+    .counter-value { will-change: contents; }
   </style>
 </head>
 <body class="antialiased">
 
   <!-- NAVBAR -->
-  <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-carbone/80">
+  <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-carbone/80 transition-all duration-300 ease-out-expo">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <span class="font-serif text-2xl font-semibold tracking-tight text-avorio">Sempre</span>
-      <a href="#" class="inline-block bg-salvia text-carbone px-5 py-2.5 rounded-full text-sm font-semibold hover:scale-105 transition-all">Prova gratis 7 giorni</a>
+      <a href="#" class="inline-block bg-salvia text-carbone px-5 py-2.5 rounded-full text-sm font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-lg hover:shadow-salvia/20">Prova gratis 7 giorni</a>
     </div>
   </nav>
 
   <!-- HERO -->
-  <section class="min-h-[90dvh] flex items-center pt-16">
-    <div class="max-w-7xl mx-auto px-6 w-full">
+  <section class="relative min-h-[90dvh] flex items-center pt-16 overflow-hidden">
+    <div class="orb absolute -top-40 -right-40"></div>
+    <div class="orb-two absolute -bottom-40 -left-40"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(123,168,143,0.03),transparent_60%)]"></div>
+    <div class="max-w-7xl mx-auto px-6 w-full relative z-10">
       <div class="grid md:grid-cols-2 gap-12 items-center">
         <div class="space-y-6" data-aos="fade-up" data-aos-duration="1000">
           <h1 class="font-serif text-5xl md:text-7xl font-bold leading-tight">
@@ -66,10 +169,10 @@
           <p class="text-lg md:text-xl text-avorio/70 max-w-xl leading-relaxed">
             Sempre risponde ai tuoi clienti su WhatsApp in tempo reale, gestisce prenotazioni e recensioni, e ti avvisa solo quando serve davvero. L'assistente instancabile per ristoranti, saloni e attività locali.
           </p>
-          <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
+          <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-xl hover:shadow-salvia/25">Inizia la prova gratuita &rarr;</a>
         </div>
         <div class="hidden md:flex justify-center" data-aos="fade-left" data-aos-delay="300">
-          <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4 shadow-2xl shadow-salvia/5">
+          <div class="mockup-float w-80 rounded-3xl border border-salvia/20 bg-carbone/60 backdrop-blur-sm p-4 shadow-2xl shadow-salvia/5">
             <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
               <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
                 <i data-lucide="message-circle" class="w-4 h-4 text-salvia" aria-hidden="true"></i>
@@ -86,6 +189,12 @@
               <div class="chat-bubble-right p-3 max-w-[85%] ml-auto">
                 <p class="text-sm text-avorio/90">Buongiorno! Le confermo che abbiamo disponibilità per 4 alle 20:00. Posso procedere con la prenotazione?</p>
               </div>
+              <div class="flex items-center gap-1 pl-2 pt-1">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="text-xs text-avorio/40 ml-2">Sta scrivendo...</span>
+              </div>
               <div class="chat-bubble-left p-3 max-w-[75%]">
                 <p class="text-sm text-avorio/90">Perfetto, confermo! Grazie.</p>
               </div>
@@ -94,7 +203,7 @@
         </div>
       </div>
       <div class="flex md:hidden justify-center mt-8" data-aos="fade-up" data-aos-delay="400">
-        <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4 shadow-2xl shadow-salvia/5">
+        <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone/60 backdrop-blur-sm p-4 shadow-2xl shadow-salvia/5">
           <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
             <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
               <i data-lucide="message-circle" class="w-4 h-4 text-salvia" aria-hidden="true"></i>
@@ -111,6 +220,12 @@
             <div class="chat-bubble-right p-3 max-w-[85%] ml-auto">
               <p class="text-sm text-avorio/90">Buongiorno! Le confermo che abbiamo disponibilità per 4 alle 20:00. Posso procedere con la prenotazione?</p>
             </div>
+            <div class="flex items-center gap-1 pl-2 pt-1">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="text-xs text-avorio/40 ml-2">Sta scrivendo...</span>
+            </div>
             <div class="chat-bubble-left p-3 max-w-[75%]">
               <p class="text-sm text-avorio/90">Perfetto, confermo! Grazie.</p>
             </div>
@@ -120,9 +235,10 @@
     </div>
   </section>
 
-  <!-- PROBLEMA -->
-  <section class="py-24 md:py-32">
-    <div class="max-w-2xl mx-auto px-6 text-center" data-aos="fade-up">
+  <!-- PROBLEMA (carbone puro — pausa visiva) -->
+  <section class="relative py-24 md:py-32 overflow-hidden">
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(123,168,143,0.02),transparent_50%)]"></div>
+    <div class="max-w-2xl mx-auto px-6 text-center relative z-10" data-aos="fade-up">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-8 leading-tight">
         Ogni cliente che aspetta,<br />&egrave; un cliente che se ne va.
       </h2>
@@ -142,27 +258,27 @@
     </div>
   </section>
 
-  <!-- KILLER FEATURE -->
-  <section class="py-24 md:py-32">
+  <!-- FEATURE (gradiente caldo) -->
+  <section class="section-gradient-features py-24 md:py-32">
     <div class="max-w-6xl mx-auto px-6">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold text-center mb-16" data-aos="fade-up">Tutto quello che serve.<br />Niente di pi&ugrave;.</h2>
       <div class="grid md:grid-cols-2 gap-12 md:gap-16">
-        <div data-aos="fade-up">
+        <div class="feature-card p-6 -m-6 rounded-2xl" data-aos="fade-up">
           <i data-lucide="message-circle" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Risposte WhatsApp in tempo reale</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Mentre sei in servizio, Sempre risponde ai clienti su WhatsApp. Veloce, preciso, in italiano.</p>
         </div>
-        <div data-aos="fade-up" data-aos-delay="100">
+        <div class="feature-card p-6 -m-6 rounded-2xl" data-aos="fade-up" data-aos-delay="100">
           <i data-lucide="calendar-check" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Prenotazioni automatiche</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Legge il calendario, controlla la disponibilit&agrave; e conferma. Il cliente vede subito se c'&egrave; posto.</p>
         </div>
-        <div data-aos="fade-up" data-aos-delay="200">
+        <div class="feature-card p-6 -m-6 rounded-2xl" data-aos="fade-up" data-aos-delay="200">
           <i data-lucide="eye" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Allerta umana intelligente</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Se la richiesta &egrave; delicata o fuori copione, ti gira solo quella. Il resto lo gestisce lui.</p>
         </div>
-        <div data-aos="fade-up" data-aos-delay="300">
+        <div class="feature-card p-6 -m-6 rounded-2xl" data-aos="fade-up" data-aos-delay="300">
           <i data-lucide="file-text" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Report serale automatico</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Ogni sera, un riepilogo di messaggi, prenotazioni, recensioni e suggerimenti. Pronto quando arrivi.</p>
@@ -171,8 +287,8 @@
     </div>
   </section>
 
-  <!-- COME FUNZIONA -->
-  <section class="py-24 md:py-32">
+  <!-- COME FUNZIONA (gradiente inverso) -->
+  <section class="section-gradient-how py-24 md:py-32">
     <div class="max-w-6xl mx-auto px-6">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold text-center mb-16" data-aos="fade-up">Come funziona</h2>
       <div class="grid md:grid-cols-3 gap-12 md:gap-16">
@@ -202,7 +318,7 @@
   </section>
 
   <!-- PROVA SOCIALE -->
-  <section class="py-24 md:py-32 bg-social">
+  <section class="section-gradient-social py-24 md:py-32">
     <div class="max-w-6xl mx-auto px-6 text-center">
       <div class="flex justify-center gap-8 flex-wrap mb-16 uppercase tracking-widest text-sm text-avorio/50 font-medium">
         <span>Ristorazione</span>
@@ -216,15 +332,15 @@
       <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-16 sr-only">Numeri e testimonianze</h2>
       <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-16" data-aos="fade-up">
         <div>
-          <p class="font-serif text-6xl text-salvia font-bold">500+</p>
+          <p class="counter-value font-serif text-6xl text-salvia font-bold" data-target="500" data-suffix="+">0+</p>
           <p class="text-avorio/60 text-lg">attivit&agrave; usano Sempre</p>
         </div>
         <div>
-          <p class="font-serif text-6xl text-salvia font-bold">10.000+</p>
+          <p class="counter-value font-serif text-6xl text-salvia font-bold" data-target="10000" data-suffix="+">0+</p>
           <p class="text-avorio/60 text-lg">conversazioni gestite al giorno</p>
         </div>
       </div>
-      <div class="relative max-w-2xl mx-auto" data-aos="fade-up">
+      <div class="relative max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="200">
         <span class="absolute -top-12 -left-4 font-serif text-8xl text-salvia/10 select-none pointer-events-none leading-none" aria-hidden="true">&ldquo;</span>
         <div class="relative z-10">
           <p class="text-xl italic text-avorio/80 leading-relaxed mb-4">&ldquo;Non ho pi&ugrave; perso una prenotazione da quando uso Sempre.&rdquo;</p>
@@ -234,12 +350,12 @@
     </div>
   </section>
 
-  <!-- CTA FINALE -->
+  <!-- CTA FINALE (carbone puro) -->
   <section class="py-32 md:py-40 text-center">
     <div class="max-w-3xl mx-auto px-6" data-aos="fade-up">
       <h2 class="font-serif text-4xl md:text-5xl font-semibold mb-6 text-balance">Pronto a non perdere pi&ugrave; un cliente?</h2>
       <p class="text-lg md:text-xl text-avorio/60 mb-10 leading-relaxed">Prova Sempre gratis per 7 giorni. Nessuna carta di credito. Attivazione in 5 minuti.</p>
-      <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
+      <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-xl hover:shadow-salvia/25">Inizia la prova gratuita &rarr;</a>
       <p class="text-sm text-avorio/40 mt-6">Funziona con WhatsApp Business. Assistenza inclusa.</p>
     </div>
   </section>
@@ -257,11 +373,46 @@
     </div>
   </footer>
 
-  <!-- AOS + Lucide init -->
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script>
-    AOS.init({ duration: 800, once: true, disable: 'mobile' });
+    AOS.init({ duration: 800, once: true, disable: 'mobile', easing: 'ease-out-cubic' });
     lucide.createIcons({ strokeWidth: 1.5 });
+
+    // ── Navbar scroll border ──
+    const nav = document.getElementById('navbar');
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          nav.classList.toggle('nav-scrolled', window.scrollY > 20);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    });
+
+    // ── Number counter animation ──
+    const counters = document.querySelectorAll('.counter-value');
+    const counterObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        const el = entry.target;
+        const target = parseInt(el.dataset.target);
+        const suffix = el.dataset.suffix || '';
+        let current = 0;
+        const step = Math.max(1, Math.floor(target / 60));
+        const interval = setInterval(() => {
+          current += step;
+          if (current >= target) {
+            current = target;
+            clearInterval(interval);
+          }
+          el.textContent = current.toLocaleString('it-IT') + suffix;
+        }, 20);
+        counterObserver.unobserve(el);
+      });
+    }, { threshold: 0.5 });
+    counters.forEach(c => counterObserver.observe(c));
   </script>
 </body>
 </html>

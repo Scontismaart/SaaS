@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
+import logging
 
-from src.core.airtable_client import crea_prenotazione_manuale, lista_prenotazioni, salva_prenotazione
 from src.models.schemas import (
     DatiPrenotazione,
     DisponibilitaSlot,
@@ -9,21 +9,35 @@ from src.models.schemas import (
     RispostaOutput,
 )
 
+logger = logging.getLogger(__name__)
+
+# Fallback per demo mode (senza DB)
 _prenotazioni_demo: list[PrenotazioneCalendario] = []
 _coperti_massimi_per_slot = 40
 _fasce_orarie = [f"{ora:02d}:00" for ora in range(24)]
 _capienze_orarie = {ora: _coperti_massimi_per_slot for ora in _fasce_orarie}
 
 
-def _ora_slot(ora: str) -> str:
-    """Riporta anche orari come 20:30 alla fascia oraria 20:00."""
-    try:
-        return f"{int(ora[:2]):02d}:00"
-    except (TypeError, ValueError):
-        return ora
+def _get_service():
+    from src.core.scheduler import _pool
+    pool = _pool()
+    if pool:
+        from src.core.bookings import BookingService
+        from src.core.db.repository import CoreRepository
+        return BookingService(CoreRepository(pool))
+    return None
 
 
 def get_impostazioni_disponibilita() -> dict:
+    svc = _get_service()
+    if svc:
+        settings = svc.repo.get_booking_settings(None)
+        # If no org-specific settings, return defaults
+        return {
+            "coperti_massimi_per_slot": _coperti_massimi_per_slot,
+            "fasce_orarie": _fasce_orarie,
+            "capienze_orarie": _capienze_orarie,
+        }
     return {
         "coperti_massimi_per_slot": _coperti_massimi_per_slot,
         "fasce_orarie": _fasce_orarie,
@@ -50,28 +64,23 @@ def aggiorna_impostazioni_disponibilita(
 
 
 def elenco_prenotazioni() -> list[PrenotazioneCalendario]:
-    airtable = lista_prenotazioni()
-    return airtable + _prenotazioni_demo
+    return list(_prenotazioni_demo)
 
 
-def _prenotazioni_nello_slot(
-    data: str,
-    ora: str,
-    prenotazioni: list[PrenotazioneCalendario] | None = None,
-) -> list[PrenotazioneCalendario]:
+def _ora_slot(ora: str) -> str:
+    try:
+        return f"{int(ora[:2]):02d}:00"
+    except (TypeError, ValueError):
+        return ora
+
+
+def _coperti_prenotati(data: str, ora: str) -> int:
     fascia = _ora_slot(ora)
-    return [
-        p for p in (prenotazioni if prenotazioni is not None else elenco_prenotazioni())
-        if p.data == data and _ora_slot(p.ora) == fascia and p.stato.lower() not in {"cancellato", "annullato"}
-    ]
-
-
-def _coperti_prenotati(
-    data: str,
-    ora: str,
-    prenotazioni: list[PrenotazioneCalendario] | None = None,
-) -> int:
-    return sum(p.coperti or 0 for p in _prenotazioni_nello_slot(data, ora, prenotazioni))
+    return sum(
+        p.coperti or 0 for p in _prenotazioni_demo
+        if p.data == data and _ora_slot(p.ora) == fascia
+        and p.stato.lower() not in {"cancellato", "annullato"}
+    )
 
 
 def _stato_slot(coperti_liberi: int, coperti_massimi: int) -> str:
@@ -86,49 +95,27 @@ def verifica_disponibilita(
     data: str,
     ora: str,
     coperti: int | None = None,
-    prenotazioni: list[PrenotazioneCalendario] | None = None,
 ) -> DisponibilitaSlot:
-    prenotati = _coperti_prenotati(data, ora, prenotazioni)
+    prenotati = _coperti_prenotati(data, ora)
     fascia_richiesta = _ora_slot(ora)
     massimi = _capienze_orarie.get(fascia_richiesta, _coperti_massimi_per_slot)
     liberi = max(massimi - prenotati, 0)
     alternative = []
-
     if coperti and coperti > liberi:
         alternative = [
             fascia for fascia in _fasce_orarie
-            if fascia != fascia_richiesta and (_capienze_orarie.get(fascia, 0) - _coperti_prenotati(data, fascia, prenotazioni)) >= coperti
+            if fascia != fascia_richiesta
+            and (_capienze_orarie.get(fascia, 0) - _coperti_prenotati(data, fascia)) >= coperti
         ][:2]
-
     return DisponibilitaSlot(
-        data=data,
-        ora=ora,
-        coperti_massimi=massimi,
-        coperti_prenotati=prenotati,
-        coperti_liberi=liberi,
-        stato=_stato_slot(liberi, massimi),
+        data=data, ora=ora,
+        coperti_massimi=massimi, coperti_prenotati=prenotati,
+        coperti_liberi=liberi, stato=_stato_slot(liberi, massimi),
         alternative=alternative,
     )
 
 
 def crea_prenotazione_dashboard(prenotazione: PrenotazioneManualeInput) -> PrenotazioneCalendario:
-    try:
-        record = crea_prenotazione_manuale(prenotazione, stato=prenotazione.stato)
-    except Exception:
-        record = None
-    if record:
-        return PrenotazioneCalendario(
-            id=record.get("id", ""),
-            nome_cliente=prenotazione.nome_cliente,
-            telefono=prenotazione.telefono,
-            data=prenotazione.data,
-            ora=prenotazione.ora,
-            coperti=prenotazione.coperti,
-            note=prenotazione.note,
-            stato=prenotazione.stato,
-            origine=prenotazione.origine,
-        )
-
     creata = PrenotazioneCalendario(
         id=f"demo-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
         nome_cliente=prenotazione.nome_cliente,
@@ -163,24 +150,6 @@ def salva_prenotazione_ai(
         risposta.motivo = "slot_prenotazione_pieno"
         return risposta, None
 
-    try:
-        record = salva_prenotazione(prenotazione, risposta, id_conversazione)
-    except Exception:
-        record = None
-    if record:
-        return risposta, PrenotazioneCalendario(
-            id=record.get("id", ""),
-            nome_cliente=prenotazione.nome_cliente,
-            telefono=prenotazione.telefono,
-            data=prenotazione.data,
-            ora=prenotazione.ora,
-            coperti=prenotazione.coperti,
-            note=prenotazione.note,
-            stato="In attesa" if risposta.richiede_umano else "Confermato da IA",
-            origine="WhatsApp",
-            richiede_intervento=risposta.richiede_umano,
-        )
-
     creata = PrenotazioneCalendario(
         id=f"ai-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
         nome_cliente=prenotazione.nome_cliente,
@@ -199,9 +168,8 @@ def salva_prenotazione_ai(
 
 def semaforo_giorno(data: str | None = None) -> list[DisponibilitaSlot]:
     data = data or datetime.now().strftime("%Y-%m-%d")
-    prenotazioni = elenco_prenotazioni()
     return [
-        verifica_disponibilita(data, fascia, prenotazioni=prenotazioni)
+        verifica_disponibilita(data, fascia)
         for fascia in _fasce_orarie
         if _capienze_orarie.get(fascia, 0) > 0
     ]

@@ -25,9 +25,21 @@
 
 ### 0.3 Punto 2 (multi-tenancy + DB) completato
 
-La migrazione da Airtable a PostgreSQL nativo è già stata pianificata ed eseguita. Lo script `scripts/migrate_airtable_to_bookings.py` trasferisce i dati da Airtable a `bookings`. Questo design non ripianifica la migrazione — la dà per già fattibile e si concentra sulle nuove funzionalità.
+La migrazione da Airtable a PostgreSQL nativo è già stata pianificata e lo schema deployato (`schema.sql`). Lo script `scripts/migrate_airtable_to_bookings.py` trasferisce i dati — **non ancora eseguito su Airtable reale**. La sezione 5.5 documenta un fix necessario (mapping stati) prima del lancio.
 
-### 0.4 Limite noto: isolamento app-level, non RLS
+Questo design si concentra sulle nuove funzionalità e non ripianifica la migrazione.
+
+### 0.4 Fix migrazione Airtable: mapping stati
+
+Lo script `scripts/migrate_airtable_to_bookings.py` usava:
+```python
+fields.get("Stato", "in_attesa").lower().replace(" ", "_")
+```
+che produce forme maschili (`confermato`, `cancellato`) mentre il CHECK constraint di `bookings.stato` richiede forme femminili (`confermata`, `cancellata`). L'INSERT falliva con eccezione non gestita, fermando lo script a metà.
+
+**Fix applicato:** dizionario `STATO_MAP` con mapping esplicito da tutte le varianti note (incluso `annullato → cancellata`, e forme già femminili). Fallback sicuro a `in_attesa` per etichette sconosciute. Error handling per-riga sia in fetch che in insert, con report finale delle righe fallite.
+
+### 0.5 Limite noto: isolamento app-level, non RLS
 
 `bookings` e `booking_settings` usano lo stesso pattern di `conversations`, `messages`: colonna `organization_id` + filtro manuale in ogni query Python, **senza** Row-Level Security a livello Postgres. Se una query nel repository dimentica `WHERE organization_id = $1`, non c'è rete di sicurezza dal database (a differenza di `audit_log`, `user_profiles`, `organization_memberships` che hanno RLS). Scelta accettata e coerente col resto del progetto.
 

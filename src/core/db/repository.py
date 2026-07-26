@@ -1,7 +1,7 @@
 import json
 import uuid
 import asyncpg
-from datetime import datetime
+from datetime import date, datetime, time
 
 
 class CoreRepository:
@@ -15,6 +15,11 @@ class CoreRepository:
                              richiede_intervento=False, id_conversazione=None,
                              contact_id=None, richiede_deposito=False,
                              completata_at=None):
+        if isinstance(data, str):
+            data = date.fromisoformat(data)
+        if isinstance(ora, str):
+            ore, minuti = ora.split(":")
+            ora = time(int(ore), int(minuti))
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 INSERT INTO bookings (id, organization_id, contact_id,
@@ -38,6 +43,8 @@ class CoreRepository:
             return dict(row) if row else None
 
     async def list_bookings(self, organization_id, data=None):
+        if data is not None and isinstance(data, str):
+            data = date.fromisoformat(data)
         async with self.pool.acquire() as conn:
             if data is not None:
                 rows = await conn.fetch(

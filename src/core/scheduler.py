@@ -58,6 +58,67 @@ async def _retention_job(pool):
     await run_retention(pool)
 
 
+def _run_reminder_check():
+    pool = _pool()
+    asyncio.run(_reminder_check_job(pool))
+
+
+async def _reminder_check_job(pool):
+    from src.core.bookings import BookingService
+    from src.core.bookings.reminder_job import send_reminders_for_org
+    from src.whatsapp.repository import Repository as WhatsAppRepository
+    from src.whatsapp.service import WhatsAppService
+    from src.core.db.repository import CoreRepository
+    orgs = await pool.fetch("""
+        SELECT id FROM organizations
+        WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
+    """)
+    for org in orgs:
+        wrepo = WhatsAppRepository(pool)
+        core_repo = CoreRepository(pool)
+        whatsapp = WhatsAppService(None, wrepo)
+        service = BookingService(core_repo, whatsapp, None)
+        await send_reminders_for_org(service, org["id"])
+
+
+def _run_reminder_timeout():
+    pool = _pool()
+    asyncio.run(_reminder_timeout_job(pool))
+
+
+async def _reminder_timeout_job(pool):
+    from src.core.bookings import BookingService
+    from src.core.bookings.reminder_job import check_timeouts_for_org
+    from src.core.db.repository import CoreRepository
+    orgs = await pool.fetch("""
+        SELECT id FROM organizations
+        WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
+    """)
+    for org in orgs:
+        core_repo = CoreRepository(pool)
+        service = BookingService(core_repo)
+        await check_timeouts_for_org(service, org["id"])
+
+
+def _run_no_show_check():
+    pool = _pool()
+    asyncio.run(_no_show_check_job(pool))
+
+
+async def _no_show_check_job(pool):
+    from src.core.bookings import BookingService
+    from src.core.bookings.no_show_job import mark_da_verificare_for_org
+    from src.core.db.repository import CoreRepository
+    orgs = await pool.fetch("""
+        SELECT id FROM organizations
+        WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
+    """)
+    for org in orgs:
+        core_repo = CoreRepository(pool)
+        service = BookingService(core_repo)
+        await mark_da_verificare_for_org(service, org["id"])
+
+
 def avvia_scheduler():
     global _scheduler
     if _scheduler is not None:
@@ -78,8 +139,29 @@ def avvia_scheduler():
         name="Data retention — soft-delete e purge",
         replace_existing=True,
     )
+    _scheduler.add_job(
+        _run_reminder_check,
+        CronTrigger(minute="*/30"),
+        id="booking_reminder_send",
+        name="Invia reminder prenotazioni 24h prima",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        _run_reminder_timeout,
+        CronTrigger(minute="*/30"),
+        id="booking_reminder_timeout",
+        name="Flagga reminder senza risposta dopo 12h",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        _run_no_show_check,
+        CronTrigger(hour=23, minute=30),
+        id="booking_no_show",
+        name="Marca da_verificare prenotazioni non completate",
+        replace_existing=True,
+    )
     _scheduler.start()
-    print("[scheduler] Avviato — report alle 20:00, retention alle 03:00.")
+    print("[scheduler] Avviato — report alle 20:00, retention alle 03:00, booking reminders every 30min, no-show alle 23:30.")
 
 
 def ferma_scheduler():

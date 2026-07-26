@@ -54,11 +54,27 @@ async def handle_stripe_webhook(event: dict, repo) -> dict | None:
 
 
 async def _handle_checkout_completed(data: dict, repo, event_id: str) -> dict | None:
+    mode = data.get("mode")
+
+    if mode == "payment":
+        metadata = data.get("metadata") or {}
+        booking_id = metadata.get("booking_id")
+        org_id = metadata.get("organization_id")
+        if booking_id and org_id:
+            if not await repo.process_stripe_event(event_id, org_id):
+                return {"action": "duplicate", "status": "skipped", "organization_id": org_id}
+            await repo.update_booking_payment(
+                org_id, booking_id, "paid",
+                session_id=data.get("id"),
+            )
+            return {"action": "deposit_paid", "booking_id": booking_id, "organization_id": org_id}
+        return None
+
     org_id = data.get("client_reference_id")
     subscription_id = data.get("subscription")
     customer_id = data.get("customer")
 
-    if not org_id or not subscription_id or data.get("mode") != "subscription":
+    if not org_id or not subscription_id or mode != "subscription":
         return None
 
     if not await repo.process_stripe_event(event_id, org_id):

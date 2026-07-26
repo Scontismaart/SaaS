@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sempre — Il tuo assistente clienti su WhatsApp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            carbone: '#1A1A1E',
+            avorio: '#F5F0EB',
+            salvia: '#7BA88F',
+            social: '#222120',
+          },
+          fontFamily: {
+            serif: ['Fraunces', 'Georgia', 'serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #1A1A1E; color: #F5F0EB; }
+    h1, h2, h3, h4, .font-serif { font-family: 'Fraunces', serif; }
+    .chat-bubble-left {
+      position: relative;
+      background: rgba(123, 168, 143, 0.15);
+      border-radius: 18px 18px 18px 4px;
+    }
+    .chat-bubble-right {
+      position: relative;
+      background: rgba(245, 240, 235, 0.08);
+      border-radius: 18px 18px 4px 18px;
+    }
+  </style>
+</head>
+<body class="antialiased">
+
+  <!-- ═══ NAVBAR ═══ -->
+  <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-carbone/80">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <span class="font-serif text-2xl font-semibold tracking-tight text-avorio">Sempre</span>
+      <a href="#" class="inline-block bg-salvia text-carbone px-5 py-2.5 rounded-full text-sm font-semibold hover:scale-105 transition-all">Prova gratis 7 giorni</a>
+    </div>
+  </nav>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="min-h-[90dvh] flex items-center pt-16">
+    <div class="max-w-7xl mx-auto px-6 w-full">
+      <div class="grid md:grid-cols-2 gap-12 items-center">
+        <!-- Left: text + CTA -->
+        <div class="space-y-6" data-aos="fade-up" data-aos-duration="1000">
+          <h1 class="font-serif text-5xl md:text-7xl font-bold leading-tight">
+            Risposte immediate su WhatsApp.<br />
+            <span class="text-salvia">Mentre tu lavori.</span>
+          </h1>
+          <p class="text-lg md:text-xl text-avorio/70 max-w-xl leading-relaxed">
+            Sempre risponde ai tuoi clienti su WhatsApp in tempo reale, gestisce prenotazioni e recensioni, e ti avvisa solo quando serve davvero. L'assistente instancabile per ristoranti, saloni e attività locali.
+          </p>
+          <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
+        </div>
+        <!-- Right: mockup chat (desktop) -->
+        <div class="hidden md:flex justify-center" data-aos="fade-left" data-aos-delay="300">
+          <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4 shadow-2xl shadow-salvia/5">
+            <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
+              <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
+                <i data-lucide="message-circle" class="w-4 h-4 text-salvia"></i>
+              </div>
+              <div>
+                <p class="text-sm font-medium text-avorio">Sempre</p>
+                <p class="text-xs text-avorio/50">Online</p>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <div class="chat-bubble-left p-3 max-w-[80%]">
+                <p class="text-sm text-avorio/90">Buongiorno, avete un tavolo per stasera alle 20:00 per 4 persone?</p>
+              </div>
+              <div class="chat-bubble-right p-3 max-w-[85%] ml-auto">
+                <p class="text-sm text-avorio/90">Buongiorno! Le confermo che abbiamo disponibilità per 4 alle 20:00. Posso procedere con la prenotazione?</p>
+              </div>
+              <div class="chat-bubble-left p-3 max-w-[75%]">
+                <p class="text-sm text-avorio/90">Perfetto, confermo! Grazie.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Mobile mockup (below CTA) -->
+      <div class="flex md:hidden justify-center mt-8" data-aos="fade-up" data-aos-delay="400">
+        <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4">
+          <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
+            <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
+              <i data-lucide="message-circle" class="w-4 h-4 text-salvia"></i>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-avorio">Sempre</p>
+              <p class="text-xs text-avorio/50">Online</p>
+            </div>
+          </div>
+          <div class="space-y-3">
+            <div class="chat-bubble-left p-3 max-w-[80%]">
+              <p class="text-sm text-avorio/90">Buongiorno, avete un tavolo per stasera alle 20:00 per 4 persone?</p>
+            </div>
+            <div class="chat-bubble-right p-3 max-w-[85%] ml-auto">
+              <p class="text-sm text-avorio/90">Buongiorno! Le confermo che abbiamo disponibilità per 4 alle 20:00. Posso procedere con la prenotazione?</p>
+            </div>
+            <div class="chat-bubble-left p-3 max-w-[75%]">
+              <p class="text-sm text-avorio/90">Perfetto, confermo! Grazie.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PROBLEMA ═══ -->
+  <section class="py-24 md:py-32">
+    <div class="max-w-2xl mx-auto px-6 text-center" data-aos="fade-up">
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-8 leading-tight">
+        Ogni cliente che aspetta,<br />&egrave; un cliente che se ne va.
+      </h2>
+      <p class="text-xl text-avorio/70 leading-relaxed mb-12">
+        Un messaggio su WhatsApp senza risposta, una recensione ignorata, una prenotazione persa. Mentre sei in sala, in negozio o nello studio, il telefono squilla.
+      </p>
+      <div class="flex items-center justify-center gap-4 mb-16">
+        <span class="font-serif text-7xl md:text-8xl font-bold text-salvia leading-none">78%</span>
+        <p class="text-left text-sm text-avorio/60 max-w-xs leading-relaxed">
+          dei clienti si aspetta una risposta entro 60 minuti su WhatsApp.<br />
+          <span class="text-avorio/40">&mdash; Meta, 2024</span>
+        </p>
+      </div>
+      <p class="text-xl font-semibold text-avorio leading-relaxed pt-12 border-t border-avorio/10">
+        Con <span class="text-salvia">Sempre</span>, non devi pi&ugrave; scegliere tra servire chi hai davanti e rispondere a chi ti scrive.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ KILLER FEATURE ═══ -->
+  <section class="py-24 md:py-32">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold text-center mb-16" data-aos="fade-up">Tutto quello che serve.<br />Niente di pi&ugrave;.</h2>
+      <div class="grid md:grid-cols-2 gap-12 md:gap-16">
+        <div data-aos="fade-up">
+          <i data-lucide="message-circle" class="w-8 h-8 text-salvia mb-4"></i>
+          <h3 class="font-serif text-2xl mb-2">Risposte WhatsApp in tempo reale</h3>
+          <p class="text-avorio/60 text-lg leading-relaxed">Mentre sei in servizio, Sempre risponde ai clienti su WhatsApp. Veloce, preciso, in italiano.</p>
+        </div>
+        <div data-aos="fade-up" data-aos-delay="100">
+          <i data-lucide="calendar-check" class="w-8 h-8 text-salvia mb-4"></i>
+          <h3 class="font-serif text-2xl mb-2">Prenotazioni automatiche</h3>
+          <p class="text-avorio/60 text-lg leading-relaxed">Legge il calendario, controlla la disponibilit&agrave; e conferma. Il cliente vede subito se c'&egrave; posto.</p>
+        </div>
+        <div data-aos="fade-up" data-aos-delay="200">
+          <i data-lucide="eye" class="w-8 h-8 text-salvia mb-4"></i>
+          <h3 class="font-serif text-2xl mb-2">Allerta umana intelligente</h3>
+          <p class="text-avorio/60 text-lg leading-relaxed">Se la richiesta &egrave; delicata o fuori copione, ti gira solo quella. Il resto lo gestisce lui.</p>
+        </div>
+        <div data-aos="fade-up" data-aos-delay="300">
+          <i data-lucide="file-text" class="w-8 h-8 text-salvia mb-4"></i>
+          <h3 class="font-serif text-2xl mb-2">Report serale automatico</h3>
+          <p class="text-avorio/60 text-lg leading-relaxed">Ogni sera, un riepilogo di messaggi, prenotazioni, recensioni e suggerimenti. Pronto quando arrivi.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ COME FUNZIONA ═══ -->
+  <section class="py-24 md:py-32">
+    <div class="max-w-6xl mx-auto px-6">
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold text-center mb-16" data-aos="fade-up">Come funziona</h2>
+      <div class="grid md:grid-cols-3 gap-12 md:gap-16">
+        <div class="relative" data-aos="fade-up">
+          <span class="absolute -top-8 -left-4 font-serif text-9xl font-bold text-salvia/10 select-none pointer-events-none leading-none">1</span>
+          <div class="relative z-10">
+            <h3 class="font-serif text-2xl mb-3">Colleghi</h3>
+            <p class="text-avorio/60 text-lg leading-relaxed">Colleghi Sempre al tuo account WhatsApp Business in 2 click. Nessun cavo, nessun tecnico.</p>
+          </div>
+        </div>
+        <div class="relative" data-aos="fade-up" data-aos-delay="100">
+          <span class="absolute -top-8 -left-4 font-serif text-9xl font-bold text-salvia/10 select-none pointer-events-none leading-none">2</span>
+          <div class="relative z-10">
+            <h3 class="font-serif text-2xl mb-3">Personalizzi</h3>
+            <p class="text-avorio/60 text-lg leading-relaxed">Carichi menu, listini, orari e regole. Lui impara e comincia a rispondere.</p>
+          </div>
+        </div>
+        <div class="relative" data-aos="fade-up" data-aos-delay="200">
+          <span class="absolute -top-8 -left-4 font-serif text-9xl font-bold text-salvia/10 select-none pointer-events-none leading-none">3</span>
+          <div class="relative z-10">
+            <h3 class="font-serif text-2xl mb-3">Lavori</h3>
+            <p class="text-avorio/60 text-lg leading-relaxed">Sempre gestisce i messaggi, le prenotazioni e le recensioni. Tu fai quello che sai fare meglio.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ PROVA SOCIALE ═══ -->
+  <section class="py-24 md:py-32 bg-social">
+    <div class="max-w-6xl mx-auto px-6 text-center">
+      <div class="flex justify-center gap-8 flex-wrap mb-16 uppercase tracking-widest text-sm text-avorio/50 font-medium">
+        <span>Ristorazione</span>
+        <span class="text-avorio/20">&middot;</span>
+        <span>Bellezza</span>
+        <span class="text-avorio/20">&middot;</span>
+        <span>Salute</span>
+        <span class="text-avorio/20">&middot;</span>
+        <span>Servizi</span>
+      </div>
+      <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-16" data-aos="fade-up">
+        <div>
+          <p class="font-serif text-6xl text-salvia font-bold">500+</p>
+          <p class="text-avorio/60 text-lg">attivit&agrave; usano Sempre</p>
+        </div>
+        <div>
+          <p class="font-serif text-6xl text-salvia font-bold">10.000+</p>
+          <p class="text-avorio/60 text-lg">conversazioni gestite al giorno</p>
+        </div>
+      </div>
+      <div class="relative max-w-2xl mx-auto" data-aos="fade-up">
+        <span class="absolute -top-12 -left-4 font-serif text-8xl text-salvia/10 select-none pointer-events-none leading-none">&ldquo;</span>
+        <div class="relative z-10">
+          <p class="text-xl italic text-avorio/80 leading-relaxed mb-4">&ldquo;Non ho pi&ugrave; perso una prenotazione da quando uso Sempre.&rdquo;</p>
+          <p class="text-sm text-avorio/50">Marco Rossi, Ristorante Al Portico</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ CTA FINALE ═══ -->
+  <section class="py-32 md:py-40 text-center">
+    <div class="max-w-3xl mx-auto px-6" data-aos="fade-up">
+      <h2 class="font-serif text-4xl md:text-5xl font-semibold mb-6 text-balance">Pronto a non perdere pi&ugrave; un cliente?</h2>
+      <p class="text-lg md:text-xl text-avorio/60 mb-10 leading-relaxed">Prova Sempre gratis per 7 giorni. Nessuna carta di credito. Attivazione in 5 minuti.</p>
+      <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
+      <p class="text-sm text-avorio/40 mt-6">Funziona con WhatsApp Business. Assistenza inclusa.</p>
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="border-t border-avorio/10 py-8">
+    <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex gap-6 text-sm text-avorio/40">
+        <a href="#" class="hover:text-avorio/70 transition-colors">Privacy</a>
+        <a href="#" class="hover:text-avorio/70 transition-colors">Termini</a>
+        <a href="#" class="hover:text-avorio/70 transition-colors">Chi siamo</a>
+        <a href="#" class="hover:text-avorio/70 transition-colors">Contatti</a>
+      </div>
+      <p class="text-sm text-avorio/30">Sempre &mdash; &copy; 2026</p>
+    </div>
+  </footer>
+
+  <!-- AOS + Lucide init -->
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>
+    AOS.init({ duration: 800, once: true, disable: 'mobile' });
+    lucide.createIcons();
+  </script>
+</body>
+</html>

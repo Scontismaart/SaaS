@@ -28,10 +28,11 @@ def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> Pro
 
 
 class InboundProcessor:
-    def __init__(self, app_config: AppConfig, repo, service):
+    def __init__(self, app_config: AppConfig, repo, service, booking_service=None):
         self.app_config = app_config
         self.repo = repo
         self.service = service
+        self.booking_service = booking_service
 
     async def process_next_batch(self):
         await self.repo.reap_stale_claims()
@@ -61,6 +62,15 @@ class InboundProcessor:
             security_audit("consent_opt_out", contact_id=str(contact["id"]), organization_id=str(org_id))
             await self.repo.update_message_status(msg["id"], "handled")
             return
+
+        # Pipeline: opt-out (GDPR) -> reminder reply -> fast_path -> AI responder
+        if self.booking_service:
+            booking_reply = await self.booking_service.handle_reminder_reply(
+                org_id, content.get("from", ""), text
+            )
+            if booking_reply:
+                await self.repo.update_message_status(msg["id"], "handled")
+                return
 
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
         business_profile_raw = getattr(tenant_config, "business_profile", None) or {}

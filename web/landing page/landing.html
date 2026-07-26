@@ -16,10 +16,11 @@
       theme: {
         extend: {
           colors: {
-            carbone: '#1A1A1E',
+            carbone: '#1C1A18',
             avorio: '#F5F0EB',
             salvia: '#7BA88F',
-            social: '#222120',
+            ambra: '#D4854A',
+            social: '#252220',
           },
           fontFamily: {
             serif: ['Fraunces', 'Georgia', 'serif'],
@@ -33,7 +34,7 @@
     * { scroll-behavior: smooth; }
     body {
       font-family: 'Inter', sans-serif;
-      background: #1A1A1E;
+      background: #1C1A18;
       color: #F5F0EB;
     }
     h1, h2, h3, h4, .font-serif { font-family: 'Fraunces', serif; }
@@ -57,7 +58,7 @@
       width: 600px;
       height: 600px;
       border-radius: 50%;
-      background: radial-gradient(circle at 30% 30%, rgba(123, 168, 143, 0.12), transparent 70%);
+      background: radial-gradient(circle at 30% 30%, rgba(212, 133, 74, 0.12), transparent 70%);
       animation: orb-drift 25s ease-in-out infinite;
       pointer-events: none;
     }
@@ -118,7 +119,7 @@
     }
     .feature-card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 12px 40px rgba(123, 168, 143, 0.08);
+      box-shadow: 0 12px 40px rgba(212, 133, 74, 0.1);
     }
 
     /* ── Navbar scroll border ── */
@@ -128,13 +129,13 @@
 
     /* ── Section gradient overlays ── */
     .section-gradient-features {
-      background: linear-gradient(180deg, #1A1A1E 0%, #222120 50%, #1A1A1E 100%);
+      background: linear-gradient(180deg, #1C1A18 0%, #252220 50%, #1C1A18 100%);
     }
     .section-gradient-social {
-      background: linear-gradient(180deg, #222120 0%, #1A1A1E 100%);
+      background: linear-gradient(180deg, #252220 0%, #1C1A18 100%);
     }
     .section-gradient-how {
-      background: linear-gradient(180deg, #1A1A1E 0%, #222120 100%);
+      background: linear-gradient(180deg, #1C1A18 0%, #252220 100%);
     }
 
     /* ── Custom easing ── */
@@ -150,7 +151,7 @@
   <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-carbone/80 transition-all duration-300 ease-out-expo">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <span class="font-serif text-2xl font-semibold tracking-tight text-avorio">Sempre</span>
-      <a href="#" class="inline-block bg-salvia text-carbone px-5 py-2.5 rounded-full text-sm font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-lg hover:shadow-salvia/20">Prova gratis 7 giorni</a>
+      <a href="#" class="inline-block bg-[#D4854A] text-carbone px-5 py-2.5 rounded-full text-sm font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-lg hover:shadow-[#D4854A]/20">Prova gratis 7 giorni</a>
     </div>
   </nav>
 
@@ -158,21 +159,21 @@
   <section class="relative min-h-[90dvh] flex items-center pt-16 overflow-hidden">
     <div class="orb absolute -top-40 -right-40"></div>
     <div class="orb-two absolute -bottom-40 -left-40"></div>
-    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(123,168,143,0.03),transparent_60%)]"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(212,133,74,0.04),transparent_60%)]"></div>
     <div class="max-w-7xl mx-auto px-6 w-full relative z-10">
       <div class="grid md:grid-cols-2 gap-12 items-center">
         <div class="space-y-6" data-aos="fade-up" data-aos-duration="1000">
           <h1 class="font-serif text-5xl md:text-7xl font-bold leading-tight">
             Risposte immediate su WhatsApp.<br />
-            <span class="text-salvia">Mentre tu lavori.</span>
+            <span class="text-[#D4854A]">Mentre tu lavori.</span>
           </h1>
           <p class="text-lg md:text-xl text-avorio/70 max-w-xl leading-relaxed">
             Sempre risponde ai tuoi clienti su WhatsApp in tempo reale, gestisce prenotazioni e recensioni, e ti avvisa solo quando serve davvero. L'assistente instancabile per ristoranti, saloni e attività locali.
           </p>
-          <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-xl hover:shadow-salvia/25">Inizia la prova gratuita &rarr;</a>
+          <a href="#" class="inline-block bg-[#D4854A] text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-xl hover:shadow-[#D4854A]/25">Inizia la prova gratuita &rarr;</a>
         </div>
         <div class="hidden md:flex justify-center" data-aos="fade-left" data-aos-delay="300">
-          <div class="mockup-float w-80 rounded-3xl border border-salvia/20 bg-carbone/60 backdrop-blur-sm p-4 shadow-2xl shadow-salvia/5">
+          <div class="mockup-float w-80 rounded-3xl border border-[#D4854A]/20 bg-carbone/60 backdrop-blur-sm p-4 shadow-2xl shadow-[#D4854A]/5">
             <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
               <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
                 <i data-lucide="message-circle" class="w-4 h-4 text-salvia" aria-hidden="true"></i>
@@ -203,7 +204,7 @@
         </div>
       </div>
       <div class="flex md:hidden justify-center mt-8" data-aos="fade-up" data-aos-delay="400">
-        <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone/60 backdrop-blur-sm p-4 shadow-2xl shadow-salvia/5">
+        <div class="w-80 rounded-3xl border border-[#D4854A]/20 bg-carbone/60 backdrop-blur-sm p-4 shadow-2xl shadow-[#D4854A]/5">
           <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
             <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
               <i data-lucide="message-circle" class="w-4 h-4 text-salvia" aria-hidden="true"></i>
@@ -237,7 +238,7 @@
 
   <!-- PROBLEMA (carbone puro — pausa visiva) -->
   <section class="relative py-24 md:py-32 overflow-hidden">
-    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(123,168,143,0.02),transparent_50%)]"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(212,133,74,0.03),transparent_50%)]"></div>
     <div class="max-w-2xl mx-auto px-6 text-center relative z-10" data-aos="fade-up">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-8 leading-tight">
         Ogni cliente che aspetta,<br />&egrave; un cliente che se ne va.
@@ -253,7 +254,7 @@
         </p>
       </div>
       <p class="text-xl font-semibold text-avorio leading-relaxed pt-12 border-t border-avorio/10">
-        Con <span class="text-salvia">Sempre</span>, non devi pi&ugrave; scegliere tra servire chi hai davanti e rispondere a chi ti scrive.
+        Con <span class="text-[#D4854A]">Sempre</span>, non devi pi&ugrave; scegliere tra servire chi hai davanti e rispondere a chi ti scrive.
       </p>
     </div>
   </section>
@@ -355,7 +356,7 @@
     <div class="max-w-3xl mx-auto px-6" data-aos="fade-up">
       <h2 class="font-serif text-4xl md:text-5xl font-semibold mb-6 text-balance">Pronto a non perdere pi&ugrave; un cliente?</h2>
       <p class="text-lg md:text-xl text-avorio/60 mb-10 leading-relaxed">Prova Sempre gratis per 7 giorni. Nessuna carta di credito. Attivazione in 5 minuti.</p>
-      <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-xl hover:shadow-salvia/25">Inizia la prova gratuita &rarr;</a>
+      <a href="#" class="inline-block bg-[#D4854A] text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all duration-300 ease-out-expo hover:shadow-xl hover:shadow-[#D4854A]/25">Inizia la prova gratuita &rarr;</a>
       <p class="text-sm text-avorio/40 mt-6">Funziona con WhatsApp Business. Assistenza inclusa.</p>
     </div>
   </section>

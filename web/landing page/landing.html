@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Sempre — il tuo assistente clienti su WhatsApp. Risponde in tempo reale, gestisce prenotazioni e recensioni. Prova gratis 7 giorni." />
   <title>Sempre — Il tuo assistente clienti su WhatsApp</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@0.468.0"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -45,7 +46,7 @@
 </head>
 <body class="antialiased">
 
-  <!-- ═══ NAVBAR ═══ -->
+  <!-- NAVBAR -->
   <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-carbone/80">
     <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
       <span class="font-serif text-2xl font-semibold tracking-tight text-avorio">Sempre</span>
@@ -53,11 +54,10 @@
     </div>
   </nav>
 
-  <!-- ═══ HERO ═══ -->
+  <!-- HERO -->
   <section class="min-h-[90dvh] flex items-center pt-16">
     <div class="max-w-7xl mx-auto px-6 w-full">
       <div class="grid md:grid-cols-2 gap-12 items-center">
-        <!-- Left: text + CTA -->
         <div class="space-y-6" data-aos="fade-up" data-aos-duration="1000">
           <h1 class="font-serif text-5xl md:text-7xl font-bold leading-tight">
             Risposte immediate su WhatsApp.<br />
@@ -68,12 +68,11 @@
           </p>
           <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
         </div>
-        <!-- Right: mockup chat (desktop) -->
         <div class="hidden md:flex justify-center" data-aos="fade-left" data-aos-delay="300">
           <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4 shadow-2xl shadow-salvia/5">
             <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
               <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
-                <i data-lucide="message-circle" class="w-4 h-4 text-salvia"></i>
+                <i data-lucide="message-circle" class="w-4 h-4 text-salvia" aria-hidden="true"></i>
               </div>
               <div>
                 <p class="text-sm font-medium text-avorio">Sempre</p>
@@ -94,12 +93,11 @@
           </div>
         </div>
       </div>
-      <!-- Mobile mockup (below CTA) -->
       <div class="flex md:hidden justify-center mt-8" data-aos="fade-up" data-aos-delay="400">
-        <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4">
+        <div class="w-80 rounded-3xl border border-salvia/20 bg-carbone p-4 shadow-2xl shadow-salvia/5">
           <div class="flex items-center gap-3 pb-3 border-b border-avorio/10 mb-4">
             <div class="w-8 h-8 rounded-full bg-salvia/20 flex items-center justify-center">
-              <i data-lucide="message-circle" class="w-4 h-4 text-salvia"></i>
+              <i data-lucide="message-circle" class="w-4 h-4 text-salvia" aria-hidden="true"></i>
             </div>
             <div>
               <p class="text-sm font-medium text-avorio">Sempre</p>
@@ -122,7 +120,7 @@
     </div>
   </section>
 
-  <!-- ═══ PROBLEMA ═══ -->
+  <!-- PROBLEMA -->
   <section class="py-24 md:py-32">
     <div class="max-w-2xl mx-auto px-6 text-center" data-aos="fade-up">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-8 leading-tight">
@@ -144,28 +142,28 @@
     </div>
   </section>
 
-  <!-- ═══ KILLER FEATURE ═══ -->
+  <!-- KILLER FEATURE -->
   <section class="py-24 md:py-32">
     <div class="max-w-6xl mx-auto px-6">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold text-center mb-16" data-aos="fade-up">Tutto quello che serve.<br />Niente di pi&ugrave;.</h2>
       <div class="grid md:grid-cols-2 gap-12 md:gap-16">
         <div data-aos="fade-up">
-          <i data-lucide="message-circle" class="w-8 h-8 text-salvia mb-4"></i>
+          <i data-lucide="message-circle" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Risposte WhatsApp in tempo reale</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Mentre sei in servizio, Sempre risponde ai clienti su WhatsApp. Veloce, preciso, in italiano.</p>
         </div>
         <div data-aos="fade-up" data-aos-delay="100">
-          <i data-lucide="calendar-check" class="w-8 h-8 text-salvia mb-4"></i>
+          <i data-lucide="calendar-check" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Prenotazioni automatiche</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Legge il calendario, controlla la disponibilit&agrave; e conferma. Il cliente vede subito se c'&egrave; posto.</p>
         </div>
         <div data-aos="fade-up" data-aos-delay="200">
-          <i data-lucide="eye" class="w-8 h-8 text-salvia mb-4"></i>
+          <i data-lucide="eye" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Allerta umana intelligente</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Se la richiesta &egrave; delicata o fuori copione, ti gira solo quella. Il resto lo gestisce lui.</p>
         </div>
         <div data-aos="fade-up" data-aos-delay="300">
-          <i data-lucide="file-text" class="w-8 h-8 text-salvia mb-4"></i>
+          <i data-lucide="file-text" class="w-8 h-8 text-salvia mb-4" aria-hidden="true"></i>
           <h3 class="font-serif text-2xl mb-2">Report serale automatico</h3>
           <p class="text-avorio/60 text-lg leading-relaxed">Ogni sera, un riepilogo di messaggi, prenotazioni, recensioni e suggerimenti. Pronto quando arrivi.</p>
         </div>
@@ -173,7 +171,7 @@
     </div>
   </section>
 
-  <!-- ═══ COME FUNZIONA ═══ -->
+  <!-- COME FUNZIONA -->
   <section class="py-24 md:py-32">
     <div class="max-w-6xl mx-auto px-6">
       <h2 class="font-serif text-3xl md:text-4xl font-semibold text-center mb-16" data-aos="fade-up">Come funziona</h2>
@@ -203,7 +201,7 @@
     </div>
   </section>
 
-  <!-- ═══ PROVA SOCIALE ═══ -->
+  <!-- PROVA SOCIALE -->
   <section class="py-24 md:py-32 bg-social">
     <div class="max-w-6xl mx-auto px-6 text-center">
       <div class="flex justify-center gap-8 flex-wrap mb-16 uppercase tracking-widest text-sm text-avorio/50 font-medium">
@@ -215,6 +213,7 @@
         <span class="text-avorio/20">&middot;</span>
         <span>Servizi</span>
       </div>
+      <h2 class="font-serif text-3xl md:text-4xl font-semibold mb-16 sr-only">Numeri e testimonianze</h2>
       <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-16" data-aos="fade-up">
         <div>
           <p class="font-serif text-6xl text-salvia font-bold">500+</p>
@@ -226,7 +225,7 @@
         </div>
       </div>
       <div class="relative max-w-2xl mx-auto" data-aos="fade-up">
-        <span class="absolute -top-12 -left-4 font-serif text-8xl text-salvia/10 select-none pointer-events-none leading-none">&ldquo;</span>
+        <span class="absolute -top-12 -left-4 font-serif text-8xl text-salvia/10 select-none pointer-events-none leading-none" aria-hidden="true">&ldquo;</span>
         <div class="relative z-10">
           <p class="text-xl italic text-avorio/80 leading-relaxed mb-4">&ldquo;Non ho pi&ugrave; perso una prenotazione da quando uso Sempre.&rdquo;</p>
           <p class="text-sm text-avorio/50">Marco Rossi, Ristorante Al Portico</p>
@@ -235,7 +234,7 @@
     </div>
   </section>
 
-  <!-- ═══ CTA FINALE ═══ -->
+  <!-- CTA FINALE -->
   <section class="py-32 md:py-40 text-center">
     <div class="max-w-3xl mx-auto px-6" data-aos="fade-up">
       <h2 class="font-serif text-4xl md:text-5xl font-semibold mb-6 text-balance">Pronto a non perdere pi&ugrave; un cliente?</h2>
@@ -245,12 +244,12 @@
     </div>
   </section>
 
-  <!-- ═══ FOOTER ═══ -->
+  <!-- FOOTER -->
   <footer class="border-t border-avorio/10 py-8">
     <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex gap-6 text-sm text-avorio/40">
         <a href="#" class="hover:text-avorio/70 transition-colors">Privacy</a>
-        <a href="#" class="hover:text-avorio/70 transition-colors">Termini</a>
+        <a href="#" class="hover:text-avorio/70 transition-colors">Termini di servizio</a>
         <a href="#" class="hover:text-avorio/70 transition-colors">Chi siamo</a>
         <a href="#" class="hover:text-avorio/70 transition-colors">Contatti</a>
       </div>
@@ -262,7 +261,7 @@
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script>
     AOS.init({ duration: 800, once: true, disable: 'mobile' });
-    lucide.createIcons();
+    lucide.createIcons({ strokeWidth: 1.5 });
   </script>
 </body>
 </html>

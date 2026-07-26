@@ -14,7 +14,7 @@ class CoreRepository:
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
                              richiede_intervento=False, id_conversazione=None,
                              contact_id=None, richiede_deposito=False,
-                             completata_at=None):
+                             completata_at=None, tipo_evento=""):
         if isinstance(data, str):
             data = date.fromisoformat(data)
         if isinstance(ora, str):
@@ -25,13 +25,14 @@ class CoreRepository:
                 INSERT INTO bookings (id, organization_id, contact_id,
                                       nome_cliente, telefono, data, ora, coperti,
                                       note, stato, origine, richiede_intervento,
-                                      id_conversazione, richiede_deposito, completata_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                                      id_conversazione, richiede_deposito, completata_at,
+                                      tipo_evento)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
                 RETURNING *
             """, uuid.uuid4(), organization_id, contact_id,
             nome_cliente, telefono, data, ora, coperti,
             note, stato, origine, richiede_intervento,
-            id_conversazione, richiede_deposito, completata_at)
+            id_conversazione, richiede_deposito, completata_at, tipo_evento)
             return dict(row)
 
     async def get_booking(self, organization_id, booking_id):
@@ -161,6 +162,8 @@ class CoreRepository:
                 result["fasce_orarie"] = json.loads(result["fasce_orarie"])
             if isinstance(result.get("capienze_orarie"), str):
                 result["capienze_orarie"] = json.loads(result["capienze_orarie"])
+            if isinstance(result.get("config"), str):
+                result["config"] = json.loads(result["config"])
             return result
 
     # ── Reviews ───────────────────────────────────────────────

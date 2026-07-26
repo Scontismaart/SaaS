@@ -111,10 +111,14 @@ class BookingService:
         disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
         if coperti > disp.coperti_liberi:
             raise ValueError(f"slot pieno per {coperti} coperti alle {ora}")
+        richiede_dep = await self._valuta_richiede_deposito(
+            org_id, coperti=coperti, tipo_evento=tipo_evento, ora=ora, data=data
+        )
         return await self.repo.create_booking(
             organization_id=org_id, nome_cliente=nome_cliente,
             telefono=telefono, data=data, ora=ora, coperti=coperti,
-            note=note, stato="in_attesa", origine=origine,
+            note=note, tipo_evento=tipo_evento, stato="in_attesa", origine=origine,
+            richiede_deposito=richiede_dep,
         )
 
     async def _get_booking_or_raise(self, org_id, booking_id):
@@ -153,6 +157,24 @@ class BookingService:
         updated = await self.repo.update_booking_status(org_id, booking_id, "confermata")
         msg = f"La tua prenotazione del {b['data']} alle {b['ora']} per {b['coperti']} persone e' confermata!"
         await self._send_whatsapp(org_id, b["telefono"], msg)
+        if b.get("richiede_deposito"):
+            cfg = await self._get_deposito_config(org_id)
+            importo = (cfg or {}).get("importo_default", 10.0)
+            valuta = (cfg or {}).get("valuta", "EUR")
+            try:
+                link = await self._genera_payment_link(org_id, booking_id, importo, valuta)
+                async with self.repo.pool.acquire() as conn:
+                    await conn.execute("""
+                        UPDATE bookings SET payment_link = $3,
+                            payment_link_created_at = NOW(), payment_status = 'pending'
+                        WHERE organization_id = $1 AND id = $2
+                    """, org_id, booking_id, link)
+                updated["payment_link"] = link
+                updated["payment_status"] = "pending"
+                await self._send_whatsapp(org_id, b["telefono"],
+                    f"Per confermare, versa il deposito di {valuta} {importo:.2f}: {link}")
+            except Exception as e:
+                logger.error("Failed to generate payment link for booking %s: %s", booking_id, e)
         return updated
 
     async def reject(self, org_id, booking_id, motivo=""):

@@ -4,7 +4,7 @@ import asyncio
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from src.core.auth.dependencies import require_ruolo
+from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.audit import audit_log
 from src.core.billing.plans import PLANS
 from src.core.billing.webhook_handler import handle_stripe_webhook
@@ -37,6 +37,7 @@ async def create_checkout_session(
     req: CheckoutSessionRequest,
     request: Request,
     user: dict = Depends(require_ruolo("owner")),
+    _mfa: dict = Depends(require_mfa()),
 ):
     repo = getattr(request.app.state, "repo", None)
     if repo is None:
@@ -62,7 +63,7 @@ async def create_checkout_session(
     if not plan.stripe_price_id:
         raise HTTPException(status_code=503, detail=f"Stripe price ID not configured for plan: {req.plan}")
 
-    trial_days = int(os.getenv("STRIPE_TRIAL_DAYS", "7"))
+    trial_days = request.app.state.billing_config.stripe_trial_days
     session = await _stripe_call(
         st.checkout.Session.create,
         customer=customer_id,
@@ -91,6 +92,7 @@ async def create_checkout_session(
 async def create_portal_session(
     request: Request,
     user: dict = Depends(require_ruolo("owner")),
+    _mfa: dict = Depends(require_mfa()),
 ):
     repo = getattr(request.app.state, "repo", None)
     if repo is None:
@@ -185,7 +187,8 @@ async def billing_webhook(request: Request):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
-    result = await handle_stripe_webhook(event.to_dict_recursive(), repo)
+    trial_days = request.app.state.billing_config.stripe_trial_days
+    result = await handle_stripe_webhook(event.to_dict_recursive(), repo, trial_days)
     if result is None:
         return {"status": "ignored"}
     if result.get("action"):

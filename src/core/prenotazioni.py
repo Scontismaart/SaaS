@@ -2,11 +2,9 @@ from datetime import datetime, timedelta
 import logging
 
 from src.models.schemas import (
-    DatiPrenotazione,
     DisponibilitaSlot,
     PrenotazioneCalendario,
     PrenotazioneManualeInput,
-    RispostaOutput,
 )
 
 logger = logging.getLogger(__name__)
@@ -18,26 +16,7 @@ _fasce_orarie = [f"{ora:02d}:00" for ora in range(24)]
 _capienze_orarie = {ora: _coperti_massimi_per_slot for ora in _fasce_orarie}
 
 
-def _get_service():
-    from src.core.scheduler import _pool
-    pool = _pool()
-    if pool:
-        from src.core.bookings import BookingService
-        from src.core.db.repository import CoreRepository
-        return BookingService(CoreRepository(pool))
-    return None
-
-
 def get_impostazioni_disponibilita() -> dict:
-    svc = _get_service()
-    if svc:
-        settings = svc.repo.get_booking_settings(None)
-        # If no org-specific settings, return defaults
-        return {
-            "coperti_massimi_per_slot": _coperti_massimi_per_slot,
-            "fasce_orarie": _fasce_orarie,
-            "capienze_orarie": _capienze_orarie,
-        }
     return {
         "coperti_massimi_per_slot": _coperti_massimi_per_slot,
         "fasce_orarie": _fasce_orarie,
@@ -129,41 +108,6 @@ def crea_prenotazione_dashboard(prenotazione: PrenotazioneManualeInput) -> Preno
     )
     _prenotazioni_demo.append(creata)
     return creata
-
-
-def salva_prenotazione_ai(
-    prenotazione: DatiPrenotazione,
-    risposta: RispostaOutput,
-    id_conversazione: str,
-) -> tuple[RispostaOutput, PrenotazioneCalendario | None]:
-    if not prenotazione.data or not prenotazione.ora or not prenotazione.coperti:
-        return risposta, None
-
-    disponibilita = verifica_disponibilita(prenotazione.data, prenotazione.ora, prenotazione.coperti)
-    if prenotazione.coperti > disponibilita.coperti_liberi:
-        alternative = " o ".join(disponibilita.alternative)
-        proposta = f" Ti andrebbe bene alle {alternative}?" if alternative else " Posso chiedere allo staff una fascia alternativa."
-        risposta.risposta = (
-            f"Mi dispiace, alle {prenotazione.ora} siamo al completo per {prenotazione.coperti} persone."
-            f"{proposta}"
-        )
-        risposta.motivo = "slot_prenotazione_pieno"
-        return risposta, None
-
-    creata = PrenotazioneCalendario(
-        id=f"ai-{datetime.now().strftime('%Y%m%d%H%M%S%f')}",
-        nome_cliente=prenotazione.nome_cliente,
-        telefono=prenotazione.telefono,
-        data=prenotazione.data,
-        ora=prenotazione.ora,
-        coperti=prenotazione.coperti,
-        note=prenotazione.note,
-        stato="In attesa" if risposta.richiede_umano else "Confermato da IA",
-        origine="WhatsApp",
-        richiede_intervento=risposta.richiede_umano,
-    )
-    _prenotazioni_demo.append(creata)
-    return risposta, creata
 
 
 def semaforo_giorno(data: str | None = None) -> list[DisponibilitaSlot]:

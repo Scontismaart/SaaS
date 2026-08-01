@@ -1,13 +1,36 @@
+import os
+
+os.environ.setdefault("TC_HOST", "localhost")
+
 import asyncio
 import asyncpg
 import pytest
-from testcontainers.postgres import PostgresContainer
 
+CI = os.getenv("CI")
 
-@pytest.fixture(scope="session")
-def postgres_container():
-    with PostgresContainer("postgres:16") as pg:
-        yield pg
+if CI:
+    _dsn = (
+        f"postgresql://{os.getenv('PGUSER','postgres')}"
+        f":{os.getenv('PGPASSWORD','test')}"
+        f"@{os.getenv('PGHOST','localhost')}"
+        f":{os.getenv('PGPORT','5432')}"
+        f"/{os.getenv('PGDATABASE','test')}"
+    )
+
+    @pytest.fixture(scope="session")
+    def postgres_container():
+        class _FakeContainer:
+            @staticmethod
+            def get_connection_url():
+                return _dsn
+        return _FakeContainer()
+else:
+    from testcontainers.postgres import PostgresContainer
+
+    @pytest.fixture(scope="session")
+    def postgres_container():
+        with PostgresContainer("postgres:16") as pg:
+            yield pg
 
 
 @pytest.fixture
@@ -21,13 +44,72 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/005_gdpr_consent.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/010_dead_letter.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/012_reply_guard.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/013_webhook_idempotency.sql") as f:
+            await conn.execute(f.read())
+        # Core tables necessari per 014_contact_fk_strategy (bookings, reviews, booking_settings)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS bookings (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                contact_id UUID REFERENCES contacts(id),
+                nome_cliente TEXT NOT NULL,
+                telefono TEXT NOT NULL DEFAULT '',
+                data DATE NOT NULL,
+                ora TIME NOT NULL,
+                coperti INT CHECK (coperti > 0),
+                note TEXT NOT NULL DEFAULT '',
+                stato TEXT NOT NULL DEFAULT 'in_attesa'
+                    CHECK (stato IN ('in_attesa','confermata','cancellata','no_show','completata')),
+                origine TEXT NOT NULL DEFAULT 'Dashboard',
+                richiede_intervento BOOLEAN NOT NULL DEFAULT FALSE,
+                id_conversazione TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS booking_settings (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id) UNIQUE,
+                slot_minutes INT NOT NULL DEFAULT 60,
+                fasce_orarie JSONB,
+                capienze_orarie JSONB,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+            CREATE TABLE IF NOT EXISTS reviews (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL REFERENCES organizations(id),
+                contact_id UUID REFERENCES contacts(id),
+                testo TEXT NOT NULL,
+                valutazione_stelle INT CHECK (valutazione_stelle BETWEEN 1 AND 5),
+                fonte TEXT NOT NULL DEFAULT 'manuale',
+                autore TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+        """)
+        with open("src/core/db/migrations/014_contact_fk_strategy.sql") as f:
+            await conn.execute(f.read())
+        for ddl in [
+            "CREATE TABLE IF NOT EXISTS documents (id UUID PRIMARY KEY, organization_id UUID)",
+            "CREATE TABLE IF NOT EXISTS document_chunks (id UUID PRIMARY KEY, document_id UUID, organization_id UUID)",
+            "CREATE TABLE IF NOT EXISTS email_configs (id UUID PRIMARY KEY, organization_id UUID UNIQUE)",
+            "CREATE TABLE IF NOT EXISTS usage_events (id UUID PRIMARY KEY, organization_id UUID)",
+            "CREATE TABLE IF NOT EXISTS event_log (id UUID PRIMARY KEY, organization_id UUID)",
+            "CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, organization_id UUID, created_at TIMESTAMPTZ DEFAULT NOW())",
+        ]:
+            await conn.execute(ddl)
+        with open("src/core/db/migrations/015_org_fk_strategy.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/016_org_timezone.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 
 
 @pytest.fixture(autouse=True, scope="session")
 def _set_env():
-    import os
     os.environ.setdefault("ENCRYPTION_KEY", "C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=")
 
 
@@ -38,7 +120,9 @@ async def reset_db(pg_pool):
             TRUNCATE TABLE
                 contact_consent_log, message_delivery_attempts,
                 messages, conversations, contacts, whatsapp_templates,
-                whatsapp_accounts, organizations
+                whatsapp_accounts, organizations,
+                reviews, bookings, booking_settings,
+                webhook_idempotency
             CASCADE
         """)
 
@@ -168,7 +252,7 @@ def app_config():
     return AppConfig(
         app_secret="test_app_secret_123",
         encryption_key="C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=",
-        postgres_dsn="postgresql://test:test@localhost:5432/test",
+        postgres_dsn="postgresql://test:[REDACTED]@localhost:5432/test",
         verify_token="test_verify_token",
         max_retry_attempts=5,
     )

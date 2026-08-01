@@ -2,7 +2,7 @@ import uuid
 import pytest
 from datetime import datetime, timezone
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("reset_db")]
 
 
 async def test_get_organization_billing_defaults(repo, sample_org):

@@ -3,6 +3,7 @@ import json
 import time
 import threading
 import uuid
+import asyncpg
 from collections import defaultdict
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -15,6 +16,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.core.notifications.email_service import start_worker, stop_worker as stop_email_worker
 from src.core.crew_runner import genera_risposta
 from src.core.priorita import calcola_priorita, calcola_priorita_recensione
 from src.core.conversation_store import store as conv_store
@@ -24,10 +26,10 @@ from src.core.prenotazioni import (
     elenco_prenotazioni,
     get_impostazioni_disponibilita,
     prossimi_giorni_semaforo,
-    salva_prenotazione_ai,
     semaforo_giorno,
     verifica_disponibilita,
 )
+
 from src.core.scheduler import (
     imposta_fonte_dati,
     imposta_pool,
@@ -43,6 +45,13 @@ from src.core.documenti.vector_store import aggiungi, conteggio, elenco_fonti, e
 from src.core.documenti.extractor import estrai_testo
 from src.core.documenti.qa_agent import rispondi
 from src.core.documenti.chunking import chunk_testo
+from src.core.onboarding import (
+    generate_preview,
+    get_active_profile,
+    get_active_profile_record,
+    list_verticals,
+    save_profile,
+)
 from src.models.business_profile import PROFILI_DEMO
 from src.models.schemas import (
     CaricaDocumentoInput,
@@ -59,11 +68,25 @@ from src.models.schemas import (
     DisponibilitaSlot,
     PrenotazioneCalendario,
     ReportOutput,
+    OnboardingProfileInput,
+    PreviewInput,
 )
-from src.core.auth.dependencies import require_ruolo, close_http_client
+import sentry_sdk as _sentry_sdk
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    _sentry_sdk.init(
+        dsn=_sentry_dsn,
+        traces_sample_rate=0.1,
+        profiles_sample_rate=0.1,
+    )
+
+from src.core.auth.dependencies import get_repo, require_ruolo, close_http_client
 from src.core.db.repository import CoreRepository
+from src.core.calendar import GoogleCalendarService
+from src.core.calendar.routes import router as calendar_router
 from src.core.auth.audit import audit_log
 from src.core.billing.routes import router as billing_router
+from src.core.billing.config import BillingConfig
 from src.core.gdpr.routes import router as gdpr_router
 from src.core.inbox.routes import router as inbox_router
 from src.core.bookings.routes import router as bookings_router
@@ -74,40 +97,76 @@ from src.whatsapp.config import AppConfig as WhatsAppAppConfig
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Config globale — settato incondizionatamente, prima di qualsiasi
+    # dipendenza dal DB, cosi' e' disponibile anche in modalita' demo
+    # (DATABASE_URL assente o DB irraggiungibile).
+    app.state.billing_config = BillingConfig(
+        stripe_trial_days=int(os.getenv("STRIPE_TRIAL_DAYS", "7")),
+    )
+    start_worker()
     dsn = os.getenv("DATABASE_URL")
     if dsn:
         import asyncpg
-        pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5)
-        app.state.repo = CoreRepository(pool=pool)
-        app.state.pool = pool
+        try:
+            pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5)
+            app.state.repo = CoreRepository(pool=pool)
+            app.state.pool = pool
+            print("[startup] Database pool created successfully.")
 
-        # Webhook WhatsApp reale: prima non era mai montato, quindi Meta non
-        # poteva raggiungere l'app in nessun deploy. Serve il pool (per
-        # persistere contatti/conversazioni/messaggi in arrivo), quindi lo
-        # registriamo qui a runtime invece che a import time del modulo.
-        wrepo = WhatsAppRepository(pool=pool)
-        app.state.wrepo = wrepo
-        whatsapp_app_config = WhatsAppAppConfig(
-            app_secret=os.getenv("META_APP_SECRET", ""),
-            encryption_key=os.getenv("ENCRYPTION_KEY", ""),
-            postgres_dsn=dsn,
-            verify_token=os.getenv("META_VERIFY_TOKEN", ""),
-        )
-        if whatsapp_app_config.app_secret and whatsapp_app_config.verify_token:
-            whatsapp_router = create_whatsapp_router(whatsapp_app_config, wrepo)
-            app.include_router(whatsapp_router)
-        else:
-            print(
-                "[startup] META_APP_SECRET o META_VERIFY_TOKEN non configurati: "
-                "webhook WhatsApp NON montato. Impostali in .env per riceverli."
+            # Webhook WhatsApp reale: prima non era mai montato, quindi Meta non
+            # poteva raggiungere l'app in nessun deploy. Serve il pool (per
+            # persistere contatti/conversazioni/messaggi in arrivo), quindi lo
+            # registriamo qui a runtime invece che a import time del modulo.
+            wrepo = WhatsAppRepository(pool=pool)
+            app.state.wrepo = wrepo
+            whatsapp_app_config = WhatsAppAppConfig(
+                app_secret=os.getenv("META_APP_SECRET", ""),
+                encryption_key=os.getenv("ENCRYPTION_KEY", ""),
+                postgres_dsn=dsn,
+                verify_token=os.getenv("META_VERIFY_TOKEN", ""),
             )
+            if whatsapp_app_config.app_secret and whatsapp_app_config.verify_token:
+                whatsapp_router = create_whatsapp_router(whatsapp_app_config, wrepo)
+                app.include_router(whatsapp_router)
+            else:
+                print(
+                    "[startup] META_APP_SECRET o META_VERIFY_TOKEN non configurati: "
+                    "webhook WhatsApp NON montato. Impostali in .env per riceverli."
+                )
+
+            from src.core.bookings import BookingService
+            from src.whatsapp.service import WhatsAppService
+            wservice = WhatsAppService(app_config=whatsapp_app_config, repo=wrepo)
+            calendar_service = GoogleCalendarService(
+                repo=CoreRepository(pool=pool),
+                encryption_key=os.getenv("ENCRYPTION_KEY", ""),
+            )
+            app.state.calendar_service = calendar_service
+            app.state.booking_service = BookingService(
+                repo=CoreRepository(pool=pool),
+                whatsapp_service=wservice,
+                app_config=whatsapp_app_config,
+                calendar_service=calendar_service,
+            )
+        except Exception as e:
+            print(f"[startup] Database connection failed: {e}. Running without pool.")
+            app.state.repo = None
+            app.state.pool = None
+            app.state.wrepo = None
+            from src.core.bookings import BookingService
+            app.state.booking_service = BookingService(
+                repo=CoreRepository(pool=None),
+                whatsapp_service=None, app_config=None,
+            )
+            init_email_store()
+            _imposta_fonte_dati_per_scheduler()
     else:
         app.state.repo = None
         app.state.pool = None
         app.state.wrepo = None
         from src.core.bookings import BookingService
         app.state.booking_service = BookingService(
-            repo=CoreRepository(pool=pool),
+            repo=CoreRepository(pool=None),
             whatsapp_service=None, app_config=None,
         )
         init_email_store()
@@ -116,6 +175,7 @@ async def lifespan(app: FastAPI):
     avvia_scheduler()
     yield
     ferma_scheduler()
+    stop_email_worker()
     if app.state.pool:
         await app.state.pool.close()
     await close_http_client()
@@ -127,10 +187,19 @@ app.include_router(billing_router)
 app.include_router(gdpr_router)
 app.include_router(inbox_router)
 app.include_router(bookings_router)
+app.include_router(calendar_router)
 
+cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
+allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]
+if not allow_origins:
+    raise RuntimeError(
+        "CORS_ORIGINS e' impostata ma vuota dopo il parsing. "
+        "Imposta una lista di origini valide separate da virgola, "
+        "o rimuovi la variabile per usare il default locale."
+    )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:5173").split(","),
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Authorization", "X-Organization-Id", "X-API-Key", "Content-Type"],
@@ -147,17 +216,35 @@ app.add_middleware(
 # "Futuro" nel design doc (docs/superpowers/specs/2026-07-24-auth-authorization-design.md).
 RATE_LIMIT_LIMIT = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+LLM_GLOBAL_RATE_LIMIT = int(os.getenv("LLM_GLOBAL_RATE_LIMIT", "200"))
+LLM_GLOBAL_RATE_WINDOW = int(os.getenv("LLM_GLOBAL_RATE_WINDOW_SECONDS", "60"))
+LLM_ROUTES = {"/api/messaggio", "/api/recensione", "/api/documenti/chiedi"}
 rate_windows: dict[str, list[float]] = defaultdict(list)
 
 
-def _rate_limit_check(key: str, now: float) -> bool:
-    """True se key ha superato il limite nella finestra corrente."""
+def _rate_limit_check(key: str, now: float, limit: int | None = None,
+                       window_seconds: int | None = None) -> bool:
+    """True se key ha superato il limite nella finestra corrente.
+    Se limit/window_seconds sono None, usa i valori globali."""
+    if limit is None:
+        limit = RATE_LIMIT_LIMIT
+    if window_seconds is None:
+        window_seconds = RATE_LIMIT_WINDOW
     window = rate_windows[key]
-    window[:] = [t for t in window if t > now - RATE_LIMIT_WINDOW]
-    if len(window) >= RATE_LIMIT_LIMIT:
+    window[:] = [t for t in window if t > now - window_seconds]
+    if len(window) >= limit:
         return True
     window.append(now)
     return False
+
+
+@app.middleware("http")
+async def trace_id_middleware(request: Request, call_next):
+    trace_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+    request.state.trace_id = trace_id
+    response = await call_next(request)
+    response.headers["X-Trace-ID"] = trace_id
+    return response
 
 
 @app.middleware("http")
@@ -182,6 +269,16 @@ async def rate_limit_middleware(request: Request, call_next):
             status_code=429,
             content={"detail": "Rate limit superato per l'utente. Riprova tra poco."},
         )
+
+    # Audit 3.3: cap aggregato su TUTTE le chiamate LLM, indipendentemente
+    # dal tenant/utente — protegge il budget OpenRouter condiviso da un
+    # "noisy neighbor" fatto di molti tenant piccoli.
+    if request.url.path in LLM_ROUTES:
+        if _rate_limit_check("llm:global", now, LLM_GLOBAL_RATE_LIMIT, LLM_GLOBAL_RATE_WINDOW):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Limite globale chiamate AI raggiunto. Riprova tra poco."},
+            )
 
     return await call_next(request)
 
@@ -225,7 +322,7 @@ def _imposta_fonte_dati_per_scheduler():
 
 @app.post("/api/messaggio", response_model=RispostaOutput)
 def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_mario"):
-    profilo = PROFILI_DEMO.get(profilo_id)
+    profilo = get_active_profile() or PROFILI_DEMO.get(profilo_id)
     if profilo is None:
         raise HTTPException(status_code=404, detail=f"Profilo '{profilo_id}' non trovato")
 
@@ -239,15 +336,24 @@ def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_
     conv_store.aggiungi(messaggio.id_conversazione, messaggio.testo, risposta.risposta)
 
     prenotazione_salvata = None
-    if risposta.categoria == "prenotazione" and risposta.prenotazione:
+    pren = risposta.prenotazione
+    if pren and pren.data and pren.ora and pren.coperti:
+        from src.core.prenotazioni import crea_prenotazione_dashboard
+        from src.models.schemas import PrenotazioneManualeInput
         try:
-            risposta, prenotazione_salvata = salva_prenotazione_ai(
-                risposta.prenotazione,
-                risposta,
-                messaggio.id_conversazione,
+            demo_input = PrenotazioneManualeInput(
+                nome_cliente=pren.nome_cliente or "Cliente",
+                telefono=pren.telefono or "",
+                data=pren.data,
+                ora=pren.ora,
+                coperti=pren.coperti,
+                note=pren.note,
+                stato="In attesa" if risposta.richiede_umano else "Confermato da IA",
+                origine="WhatsApp",
             )
-        except Exception:
-            pass
+            prenotazione_salvata = crea_prenotazione_dashboard(demo_input)
+        except Exception as e:
+            print(f"[demo] Booking save failed: {e}")
 
     _storico_eventi.append(
         EventoDashboard(
@@ -267,6 +373,32 @@ def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_
         )
     )
     return risposta
+
+
+@app.get("/api/onboarding/verticali")
+def onboarding_verticali(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    return {"verticali": list_verticals()}
+
+
+@app.get("/api/onboarding/profilo")
+def onboarding_profilo(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    return {"profilo": get_active_profile_record()}
+
+
+@app.post("/api/onboarding/profilo")
+def onboarding_salva_profilo(
+    profilo: OnboardingProfileInput,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    return {"profilo": save_profile(profilo)}
+
+
+@app.post("/api/onboarding/preview", response_model=RispostaOutput)
+def onboarding_preview(
+    richiesta: PreviewInput,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    return generate_preview(richiesta)
 
 
 @app.get("/api/prenotazioni", response_model=list[PrenotazioneCalendario])
@@ -322,18 +454,60 @@ async def salva_impostazioni_prenotazioni(impostazioni: ImpostazioniDisponibilit
 
 
 @app.post("/api/recensione", response_model=RispostaRecensioneOutput)
-def ricevi_recensione(recensione: RecensioneInput, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+async def ricevi_recensione(recensione: RecensioneInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    import asyncio
     try:
-        output = genera_risposta_recensione(
-            testo=recensione.testo,
-            stelle=recensione.valutazione_stelle,
-            autore=recensione.autore,
+        output = await asyncio.to_thread(
+            lambda: genera_risposta_recensione(
+                testo=recensione.testo,
+                stelle=recensione.valutazione_stelle,
+                autore=recensione.autore,
+            )
         )
     except Exception as e:
         raise HTTPException(
             status_code=502,
             detail=f"Errore nella generazione della bozza risposta: {e}",
         )
+
+    stato = "bozza_generata"
+    review_id = str(uuid.uuid4())
+    org_id = user.get("organization_id")
+
+    if org_id:
+        repo = get_repo(request)
+        try:
+            review = await repo.create_review(
+                organization_id=org_id,
+                testo=recensione.testo,
+                valutazione_stelle=recensione.valutazione_stelle,
+                fonte=recensione.fonte,
+                autore=recensione.autore,
+                external_id=recensione.external_id,
+                bozza_risposta=output.bozza_risposta,
+                sentiment=output.sentiment,
+                categoria=output.categoria,
+                richiede_revisione_urgente=output.richiede_revisione_urgente,
+                stato=stato,
+            )
+            review_id = str(review["id"])
+        except asyncpg.UniqueViolationError:
+            # external_id gia' presente per questa org: non e' un errore,
+            # e' il dedup che doveva funzionare. Riusiamo la riga esistente
+            # invece di restituire un id fittizio mai salvato.
+            esistente = await repo.get_review_by_external_id(org_id, recensione.external_id)
+            if esistente is None:
+                print(f"[recensione] Conflitto univoco senza riga trovata org={org_id} external_id={recensione.external_id}")
+                raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
+            review_id = str(esistente["id"])
+            stato = esistente["stato"]
+        except Exception as e:
+            # Prima era "except Exception: pass": errore ingoiato senza log,
+            # id fittizio (uuid locale) mai persistito restituito al chiamante,
+            # che poi falliva silenziosamente su /approva. Ora logghiamo e
+            # segnaliamo l'errore invece di mentire sul successo.
+            print(f"[recensione] Persistenza fallita org={org_id} external_id={recensione.external_id}: {e}")
+            raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
 
     _storico_eventi.append(
         EventoDashboard(
@@ -343,8 +517,6 @@ def ricevi_recensione(recensione: RecensioneInput, user: dict = Depends(require_
             priorita=calcola_priorita_recensione(recensione.valutazione_stelle, output),
             testo_originale=recensione.testo,
             risposta_ai=output.bozza_risposta,
-            # La bozza e' stata generata dall'AI: l'eventuale revisione urgente
-            # resta indicata nei dettagli e nella priorita, non come escalation.
             gestito_da_ai=True,
             dettagli={
                 "sentiment": output.sentiment,
@@ -358,7 +530,15 @@ def ricevi_recensione(recensione: RecensioneInput, user: dict = Depends(require_
         )
     )
 
-    return output
+    return RispostaRecensioneOutput(
+        id=review_id,
+        stato=stato,
+        bozza_risposta=output.bozza_risposta,
+        sentiment=output.sentiment,
+        richiede_revisione_urgente=output.richiede_revisione_urgente,
+        motivo=output.motivo,
+        categoria=output.categoria,
+    )
 
 
 @app.get("/api/dashboard", response_model=list[EventoDashboard])
@@ -442,9 +622,6 @@ def elenco_documenti(user: dict = Depends(require_ruolo("owner", "manager", "sta
     return {"documenti": elenco_fonti()}
 
 
-
-
-
 @app.post("/api/documenti/carica")
 def carica_documento(doc: CaricaDocumentoInput, user: dict = Depends(require_ruolo("owner", "manager"))):
     if not doc.testo.strip():
@@ -490,9 +667,35 @@ async def elimina_documento_api(documento_id: str, request: Request, user: dict 
 
 
 @app.get("/api/health")
-def health_check():
-    return {
-        "status": "ok",
+async def health_check(request: Request):
+    """Health check profondo: verifica che il DB sia effettivamente
+    raggiungibile, non solo che il processo sia vivo. Se il DB e' giu',
+    ritorna 503 cosi' un orchestratore (Docker/Kubernetes) puo' rilevare
+    che il container non e' pronto a servire traffico."""
+    checks: dict[str, str] = {}
+    healthy = True
+
+    pool = getattr(request.app.state, "pool", None)
+    if pool is None:
+        checks["database"] = "non configurato (DATABASE_URL assente)"
+    else:
+        try:
+            async with pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            checks["database"] = "ok"
+        except Exception as e:
+            checks["database"] = f"errore: {e}"
+            healthy = False
+
+    checks["openrouter_key_presente"] = "ok" if os.getenv("OPENROUTER_API_KEY") else "mancante"
+    if not os.getenv("OPENROUTER_API_KEY"):
+        healthy = False
+
+    payload = {
+        "status": "ok" if healthy else "degraded",
         "modello_configurato": os.getenv("OPENROUTER_MODEL", "non impostato"),
-        "chiave_presente": bool(os.getenv("OPENROUTER_API_KEY")),
+        "checks": checks,
     }
+    if not healthy:
+        return JSONResponse(status_code=503, content=payload)
+    return payload

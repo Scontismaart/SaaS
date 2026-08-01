@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
+
 
 @pytest.mark.asyncio
 async def test_record_and_query_usage(repo, sample_org):

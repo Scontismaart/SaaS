@@ -121,41 +121,49 @@ class Repository:
 
     async def upsert_message(self, id, organization_id, conversation_id, wam_id, direction,
                               message_type, content, content_text, status, handling_type=None,
-                              idempotency_key=None):
-        async with self.pool.acquire() as conn:
-            if idempotency_key:
-                # Dedup su (organization_id, idempotency_key): protegge da
-                # ri-sottomissioni involontarie dello stesso reply manuale
-                # (es. doppio click, retry client dopo timeout apparente).
-                row = await conn.fetchrow("""
-                    INSERT INTO messages (id, organization_id, conversation_id, wam_id,
-                                          direction, message_type, content, content_text,
-                                          status, handling_type, idempotency_key)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
-                    ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
-                        DO NOTHING
-                    RETURNING *
-                """, id, organization_id, conversation_id, wam_id, direction, message_type,
-                    json.dumps(content), content_text, status, handling_type, idempotency_key)
-                if row:
-                    return dict(row)
-                row = await conn.fetchrow(
-                    "SELECT * FROM messages WHERE organization_id = $1 AND idempotency_key = $2",
-                    organization_id, idempotency_key,
-                )
-                return dict(row)
+                              idempotency_key=None, conn=None):
+        if conn is None:
+            async with self.pool.acquire() as conn:
+                return await self._upsert_message(conn, id, organization_id, conversation_id,
+                    wam_id, direction, message_type, content, content_text, status,
+                    handling_type, idempotency_key)
+        return await self._upsert_message(conn, id, organization_id, conversation_id,
+            wam_id, direction, message_type, content, content_text, status,
+            handling_type, idempotency_key)
+
+    async def _upsert_message(self, conn, id, organization_id, conversation_id, wam_id, direction,
+                               message_type, content, content_text, status, handling_type=None,
+                               idempotency_key=None):
+        if idempotency_key:
             row = await conn.fetchrow("""
                 INSERT INTO messages (id, organization_id, conversation_id, wam_id,
-                                      direction, message_type, content, content_text, status, handling_type)
-                VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)
-                ON CONFLICT (wam_id) WHERE wam_id IS NOT NULL DO NOTHING
+                                      direction, message_type, content, content_text,
+                                      status, handling_type, idempotency_key)
+                VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
+                ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
+                    DO NOTHING
                 RETURNING *
             """, id, organization_id, conversation_id, wam_id, direction, message_type,
-                json.dumps(content), content_text, status, handling_type)
+                json.dumps(content), content_text, status, handling_type, idempotency_key)
             if row:
                 return dict(row)
-            row = await conn.fetchrow("SELECT * FROM messages WHERE wam_id = $1", wam_id)
+            row = await conn.fetchrow(
+                "SELECT * FROM messages WHERE organization_id = $1 AND idempotency_key = $2",
+                organization_id, idempotency_key,
+            )
             return dict(row)
+        row = await conn.fetchrow("""
+            INSERT INTO messages (id, organization_id, conversation_id, wam_id,
+                                  direction, message_type, content, content_text, status, handling_type)
+            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)
+            ON CONFLICT (wam_id) WHERE wam_id IS NOT NULL DO NOTHING
+            RETURNING *
+        """, id, organization_id, conversation_id, wam_id, direction, message_type,
+            json.dumps(content), content_text, status, handling_type)
+        if row:
+            return dict(row)
+        row = await conn.fetchrow("SELECT * FROM messages WHERE wam_id = $1", wam_id)
+        return dict(row)
 
     async def update_message_status(self, message_id, new_status, wam_id=None, error_code=None,
                                       error_title=None, error_details=None, biz_opaque_callback_data=None):
@@ -214,11 +222,12 @@ class Repository:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 rows = await conn.fetch("""
-                    UPDATE messages SET status = 'processing', claimed_at = NOW()
+                    UPDATE messages SET status = 'processing', claimed_at = NOW(),
+                        heartbeat_at = NOW()
                     WHERE id IN (
                         SELECT id FROM messages
                         WHERE direction = 'inbound' AND status = 'received_pending_ai'
-                        AND deleted_at IS NULL
+                        AND deleted_at IS NULL AND replied_at IS NULL
                         ORDER BY created_at
                         LIMIT $1
                         FOR UPDATE SKIP LOCKED
@@ -226,6 +235,27 @@ class Repository:
                     RETURNING *
                 """, limit)
                 return [dict(r) for r in rows]
+
+    async def try_mark_replied(self, message_id):
+        """Atomically marks a message as replied+handled. Returns the updated
+        row if this call won the race, or None if another worker already marked
+        it. Call BEFORE sending the WhatsApp reply so only one worker proceeds."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE messages SET replied_at = NOW(), status = 'handled',
+                    updated_at = NOW()
+                WHERE id = $1 AND replied_at IS NULL
+                RETURNING *
+            """, message_id)
+            return dict(row) if row else None
+
+    async def update_heartbeat(self, message_id):
+        """Periodic heartbeat — tells the reaper this claim is still alive."""
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE messages SET heartbeat_at = NOW() WHERE id = $1",
+                message_id,
+            )
 
     async def claim_delivery_attempts(self, limit=10):
         async with self.pool.acquire() as conn:
@@ -300,11 +330,39 @@ class Repository:
                 result["content"] = json.loads(result["content"])
             return result
 
-    async def reap_stale_claims(self, timeout_minutes=5):
+    async def reap_stale_claims(self, timeout_minutes=15, dead_letter_threshold=3):
+        """Libera i claim rimasti bloccati oltre timeout_minutes.
+
+        Per i messaggi usa heartbeat_at invece di claimed_at: un worker che
+        sta ancora girando (aggiornamento heartbeat periodico) non viene
+        considerato stale anche se ha superato il timeout. Se heartbeat_at
+        e' NULL (record creato prima della migrazione 012) cade sul
+        claimed_at come backward compat.
+
+        Se un messaggio e' gia' stato reclamato dead_letter_threshold volte
+        consecutive, viene marcato 'dead' invece di essere rimesso in coda
+        all'infinito (audit 4.2)."""
         async with self.pool.acquire() as conn:
+            dead = await conn.fetch("""
+                UPDATE messages SET status = 'dead', claimed_at = NULL
+                WHERE status = 'processing'
+                AND (
+                    (heartbeat_at IS NOT NULL AND heartbeat_at < NOW() - ($1 || ' minutes')::INTERVAL)
+                    OR
+                    (heartbeat_at IS NULL AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL)
+                )
+                AND dead_letter_count >= $2
+                RETURNING *
+            """, str(timeout_minutes), dead_letter_threshold)
             msgs = await conn.fetch("""
-                UPDATE messages SET status = 'received_pending_ai', claimed_at = NULL
-                WHERE status = 'processing' AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL
+                UPDATE messages SET status = 'received_pending_ai', claimed_at = NULL,
+                    heartbeat_at = NULL, dead_letter_count = dead_letter_count + 1
+                WHERE status = 'processing'
+                AND (
+                    (heartbeat_at IS NOT NULL AND heartbeat_at < NOW() - ($1 || ' minutes')::INTERVAL)
+                    OR
+                    (heartbeat_at IS NULL AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL)
+                )
                 RETURNING *
             """, str(timeout_minutes))
             attempts = await conn.fetch("""
@@ -312,7 +370,7 @@ class Repository:
                 WHERE status = 'processing' AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL
                 RETURNING *
             """, str(timeout_minutes))
-            return [dict(r) for r in msgs] + [dict(r) for r in attempts]
+            return [dict(r) for r in dead] + [dict(r) for r in msgs] + [dict(r) for r in attempts]
 
     async def soft_delete_message(self, message_id: uuid.UUID) -> None:
         async with self.pool.acquire() as conn:
@@ -365,15 +423,20 @@ class Repository:
             """, org_id)
             return dict(row) if row else None
 
-    async def increment_message_usage(self, org_id: uuid.UUID) -> int:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE organizations
-                SET messages_used_this_period = messages_used_this_period + 1
-                WHERE id = $1
-                RETURNING messages_used_this_period
-            """, org_id)
-            return row["messages_used_this_period"] if row else 0
+    async def increment_message_usage(self, org_id: uuid.UUID, conn=None) -> int:
+        if conn is None:
+            async with self.pool.acquire() as conn:
+                return await self._increment_message_usage(conn, org_id)
+        return await self._increment_message_usage(conn, org_id)
+
+    async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int:
+        row = await conn.fetchrow("""
+            UPDATE organizations
+            SET messages_used_this_period = messages_used_this_period + 1
+            WHERE id = $1
+            RETURNING messages_used_this_period
+        """, org_id)
+        return row["messages_used_this_period"] if row else 0
 
     async def upsert_template(self, organization_id, name, language, category, status, components):
         async with self.pool.acquire() as conn:

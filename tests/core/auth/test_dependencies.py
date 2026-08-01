@@ -13,10 +13,9 @@ from src.core.auth.dependencies import (
 
 
 class TestGetToken:
-    async def test_no_token_raises_401(self):
-        with pytest.raises(HTTPException) as exc:
-            await get_token(authorization=None, x_api_key=None)
-        assert exc.value.status_code == 401
+    async def test_no_token_returns_none(self):
+        result = await get_token(authorization=None, x_api_key=None)
+        assert result is None
 
     async def test_bearer_token_extracted(self):
         result = await get_token(authorization="Bearer my.jwt.token", x_api_key=None)
@@ -28,16 +27,33 @@ class TestGetToken:
 
 
 class TestGetCurrentUser:
+    async def test_no_token_in_demo_returns_anonymous(self, monkeypatch):
+        monkeypatch.setenv("DEMO_MODE", "true")
+        result = await get_current_user(request=_fake_request(repo=object()), token=None)
+        assert result == {
+            "auth_user_id": None,
+            "organization_id": None,
+            "ruolo": None,
+            "source": "anonymous",
+        }
+
+    async def test_no_token_without_demo_raises_401(self, monkeypatch):
+        monkeypatch.delenv("DEMO_MODE", raising=False)
+        monkeypatch.setattr("src.core.auth.dependencies.ENV_LOADED", True)
+        with pytest.raises(HTTPException) as exc:
+            await get_current_user(request=_fake_request(repo=None), token=None)
+        assert exc.value.status_code == 401
+
     async def test_valid_api_key_returns_service_role(self, monkeypatch):
         monkeypatch.setenv("API_KEY_SERVICE", "sk-test-key")
-        result = await get_current_user(token="apikey:sk-test-key")
+        result = await get_current_user(request=_fake_request(), token="apikey:sk-test-key")
         assert result["ruolo"] == "service_role"
         assert result["source"] == "api_key"
 
     async def test_invalid_api_key_raises_403(self, monkeypatch):
         monkeypatch.setenv("API_KEY_SERVICE", "sk-real-key")
         with pytest.raises(HTTPException) as exc:
-            await get_current_user(token="apikey:sk-wrong-key")
+            await get_current_user(request=_fake_request(), token="apikey:sk-wrong-key")
         assert exc.value.status_code == 403
 
 

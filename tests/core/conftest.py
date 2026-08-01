@@ -1,13 +1,36 @@
+import os
+
+os.environ.setdefault("TC_HOST", "localhost")
+
 import asyncpg
 import pytest
 import uuid
-from testcontainers.postgres import PostgresContainer
 
+CI = os.getenv("CI")
 
-@pytest.fixture(scope="session")
-def postgres_container():
-    with PostgresContainer(image="pgvector/pgvector:0.7.4-pg16") as pg:
-        yield pg
+if CI:
+    _dsn = (
+        f"postgresql://{os.getenv('PGUSER','postgres')}"
+        f":{os.getenv('PGPASSWORD','test')}"
+        f"@{os.getenv('PGHOST','localhost')}"
+        f":{os.getenv('PGPORT','5432')}"
+        f"/{os.getenv('PGDATABASE','test')}"
+    )
+
+    @pytest.fixture(scope="session")
+    def postgres_container():
+        class _FakeContainer:
+            @staticmethod
+            def get_connection_url():
+                return _dsn
+        return _FakeContainer()
+else:
+    from testcontainers.postgres import PostgresContainer
+
+    @pytest.fixture(scope="session")
+    def postgres_container():
+        with PostgresContainer(image="pgvector/pgvector:0.7.4-pg16") as pg:
+            yield pg
 
 
 @pytest.fixture
@@ -15,23 +38,12 @@ async def pg_pool(postgres_container):
     dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
     pool = await asyncpg.create_pool(dsn=dsn, min_size=2, max_size=10)
     async with pool.acquire() as conn:
-        # Stub dello schema auth di Supabase (auth.users): su Supabase reale
-        # esiste gia', qui su Postgres vanilla no. Serve solo perche'
-        # 002_auth_tables.sql referenzia auth.users(id) per la FK e il
-        # trigger trg_sync_auth_user.
         await conn.execute("""
             CREATE SCHEMA IF NOT EXISTS auth;
             CREATE TABLE IF NOT EXISTS auth.users (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 email TEXT
             );
-            -- Stub delle funzioni Supabase usate dalle RLS policy.
-            -- In test non c'e' un JWT reale nella sessione Postgres, quindi
-            -- restituiscono valori neutri (NULL / oggetto vuoto): sufficiente
-            -- perche' le policy vengano create senza errore; il
-            -- comportamento delle policy stesse va verificato separatamente
-            -- (su Supabase reale, dove auth.uid()/auth.jwt() sono popolate
-            -- dal JWT della sessione).
             CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
                 SELECT NULL::uuid
             $$ LANGUAGE sql STABLE;
@@ -57,11 +69,44 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/007_booking_standalone.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/010_dead_letter.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/012_reply_guard.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/013_webhook_idempotency.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/014_contact_fk_strategy.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/015_org_fk_strategy.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/016_org_timezone.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/017_advisor_followup.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/018_advisor_followup_2.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/019_google_calendar_credentials.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/020_add_google_event_id.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/021_oauth_nonces.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/022_reviews_ext.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/023_fix_review_priority_trigger.sql") as f:
+            await conn.execute(f.read())
+        # 024 e' opzionale (hnsw index): se pgvector non supporta hnsw,
+        # ignoriamo l'errore senza bloccare i test.
+        try:
+            with open("src/core/db/migrations/024_hnsw_index.sql") as f:
+                await conn.execute(f.read())
+        except asyncpg.UndefinedObjectError:
+            pass
     yield pool
     await pool.close()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 async def reset_db(pg_pool):
     async with pg_pool.acquire() as conn:
         await conn.execute("""
@@ -73,7 +118,10 @@ async def reset_db(pg_pool):
                 contact_consent_log, message_delivery_attempts,
                 messages, conversations, contacts, whatsapp_templates,
                 whatsapp_accounts, organizations,
-                processed_stripe_events
+                processed_stripe_events,
+                webhook_idempotency,
+                google_calendar_credentials,
+                oauth_nonces
             CASCADE
         """)
 

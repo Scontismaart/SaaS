@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
 
 @pytest.mark.asyncio
 async def test_message_event_triggers_event_log(repo, sample_org, sample_contact):

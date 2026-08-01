@@ -4,6 +4,8 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import MagicMock
 
+pytestmark = pytest.mark.usefixtures("reset_db")
+
 
 API_KEY = "test-inbox-api-key"
 

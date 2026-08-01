@@ -4,6 +4,13 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS vector;
 
+-- ATTENZIONE (audit 1.8): qualsiasi CREATE VIEW futura in questo schema
+-- (es. per dashboard/analytics) DEVE usare WITH (security_invoker = true),
+-- altrimenti la vista bypassa RLS ed espone dati cross-tenant a chi la
+-- interroga con permessi propri invece che con quelli del creatore.
+-- Esempio corretto: CREATE VIEW nome AS SELECT ... ; poi
+-- ALTER VIEW nome SET (security_invoker = true);
+
 -- ============================================================
 -- 1. BOOKINGS (sostituisce Airtable + _prenotazioni_demo)
 -- ============================================================
@@ -83,8 +90,9 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_chunks_org_doc ON document_chunks(organization_id, document_id);
-CREATE INDEX IF NOT EXISTS idx_chunks_org_embedding ON document_chunks
-    USING hnsw (embedding vector_cosine_ops);
+-- idx_chunks_org_embedding spostato in 024_hnsw_index.sql
+-- (separato per evitare fallimento della creazione pool test
+-- su Docker dove pgvector potrebbe non supportare hnsw).
 
 -- Trigger: garantisce coerenza organization_id tra chunk e documento
 CREATE OR REPLACE FUNCTION check_chunk_org_consistency() RETURNS trigger AS $$

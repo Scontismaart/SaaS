@@ -9,7 +9,7 @@ from src.core.inbox.schemas import (
 from src.whatsapp.repository import Repository as WhatsAppRepository
 from src.whatsapp.service import WhatsAppService
 from src.whatsapp.config import AppConfig, load_tenant_config
-from src.core.notifications.email_service import send_escalation_notification
+from src.core.notifications.email_service import enqueue_escalation
 
 router = APIRouter(prefix="/api/inbox", tags=["inbox"])
 

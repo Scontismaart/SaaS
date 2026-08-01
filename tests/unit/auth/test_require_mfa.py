@@ -118,6 +118,9 @@ class TestSensitivePathList:
             "/api/billing/create-portal-session",
             "/api/gdpr/export",
             "/api/gdpr/delete",
+            "/api/calendar/auth",
+            "/api/calendar/disconnect",
+            "/api/calendar/settings",
         })
 
     def test_consistent_paths_cover_all_tier1_operations(self):

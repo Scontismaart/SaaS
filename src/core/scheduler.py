@@ -218,7 +218,7 @@ def avvia_scheduler():
     )
     _scheduler.add_job(
         _run_calendar_sync,
-        CronTrigger(minute="*/60"),
+        CronTrigger(minute=0),
         id="calendar_sync",
         name="Riconciliazione eventi Google Calendar",
         replace_existing=True,

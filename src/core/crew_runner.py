@@ -9,6 +9,7 @@ moduli a monte.
 """
 
 from src.agents.responder_agent import crea_crew
+from src.core.llm_config import LLM_CONCURRENCY_SEM
 from src.models.schemas import MessaggioInput, ProfiloAttivita, RispostaOutput
 
 
@@ -37,9 +38,14 @@ def genera_risposta(messaggio: MessaggioInput, profilo: ProfiloAttivita, cronolo
 
 async def genera_risposta_async(messaggio: MessaggioInput, profilo: ProfiloAttivita) -> RispostaOutput:
     """Versione asincrona di genera_risposta per essere usata da route
-    FastAPI che girano in un event loop già attivo."""
+    FastAPI che girano in un event loop già attivo.
+
+    Audit 3.3: limitata dal semaforo globale LLM_CONCURRENCY_SEM per non
+    saturare il rate-limit/budget condiviso su OpenRouter quando piu'
+    tenant generano risposte in parallelo."""
     crew = crea_crew(profilo, messaggio)
-    risultato = await crew.kickoff_async()
+    async with LLM_CONCURRENCY_SEM:
+        risultato = await crew.kickoff_async()
 
     output = risultato.pydantic
     if output is None or not isinstance(output, RispostaOutput):

@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
 
 @pytest.mark.asyncio
 async def test_create_document_and_add_chunks(repo, sample_org):

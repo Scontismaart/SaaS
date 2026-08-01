@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
+
 
 @pytest.mark.asyncio
 async def test_add_and_list_email_configs(repo, sample_org):

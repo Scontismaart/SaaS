@@ -2,6 +2,7 @@ from datetime import date, time
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
 
 @pytest.mark.asyncio
 async def test_create_and_get_booking(repo, sample_org):

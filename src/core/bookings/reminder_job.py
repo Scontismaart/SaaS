@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone, date
+from zoneinfo import ZoneInfo
 import logging
 
 logger = logging.getLogger(__name__)
@@ -6,8 +7,9 @@ logger = logging.getLogger(__name__)
 TIMEOUT_HOURS = 12
 
 
-async def send_reminders_for_org(service, org_id):
-    tomorrow = date.today() + timedelta(days=1)
+async def send_reminders_for_org(service, org_id, org_timezone: str = "Europe/Rome"):
+    tz = ZoneInfo(org_timezone)
+    tomorrow = datetime.now(tz).date() + timedelta(days=1)
     bookings = await service.repo.list_bookings_for_reminder(org_id, tomorrow)
     sent = []
     for b in bookings:
@@ -28,7 +30,8 @@ async def send_reminders_for_org(service, org_id):
     return sent
 
 
-async def check_timeouts_for_org(service, org_id):
+async def check_timeouts_for_org(service, org_id, org_timezone: str = "Europe/Rome"):
+    tz = ZoneInfo(org_timezone)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=TIMEOUT_HOURS)
     async with service.repo.pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -37,7 +40,7 @@ async def check_timeouts_for_org(service, org_id):
               AND reminder_status = 'sent'
               AND reminder_sent_at <= $2
               AND data >= $3::date
-        """, org_id, cutoff, date.today())
+        """, org_id, cutoff, datetime.now(tz).date())
     flagged = []
     for b in rows:
         try:

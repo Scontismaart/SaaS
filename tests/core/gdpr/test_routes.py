@@ -3,6 +3,8 @@ import uuid
 import pytest
 import pytest_asyncio
 import httpx
+
+pytestmark = pytest.mark.usefixtures("reset_db")
 from unittest.mock import MagicMock
 
 API_KEY = "test-gdpr-api-key-12345"

@@ -1,3 +1,3 @@
-from src.core.bookings.service import BookingService
+from src.core.bookings.service import BookingService, SlotPienoError
 
-__all__ = ["BookingService"]
+__all__ = ["BookingService", "SlotPienoError"]

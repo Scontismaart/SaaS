@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, field_validator
 
 from src.core.auth.audit import audit_log
-from src.core.auth.dependencies import require_ruolo
+from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.db.repository import CoreRepository
 
 logger = logging.getLogger(__name__)
@@ -165,6 +165,7 @@ async def update_consent_prefs(
 async def gdpr_export(
     request: Request,
     user: dict = Depends(require_ruolo("owner")),
+    _mfa: dict = Depends(require_mfa()),
 ):
     repo: CoreRepository = request.app.state.repo
     org_id = user["organization_id"]
@@ -196,6 +197,7 @@ async def gdpr_download(token: str):
 async def gdpr_delete(
     request: Request,
     user: dict = Depends(require_ruolo("owner")),
+    _mfa: dict = Depends(require_mfa()),
 ):
     from src.core.gdpr.propagation import propagate_hard_delete
 

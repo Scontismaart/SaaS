@@ -169,25 +169,154 @@ class CoreRepository:
     # ── Reviews ───────────────────────────────────────────────
 
     async def create_review(self, organization_id, testo,
-                             valutazione_stelle=None, fonte="manuale", autore="",
-                             contact_id=None):
+                             valutazione_stelle=None, fonte="manuale",
+                             autore="", contact_id=None,
+                             external_id=None, bozza_risposta="",
+                             sentiment="", categoria="",
+                             richiede_revisione_urgente=False,
+                             stato="nuova"):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 INSERT INTO reviews (id, organization_id, contact_id, testo,
-                                     valutazione_stelle, fonte, autore)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                                     valutazione_stelle, fonte, autore,
+                                     external_id, bozza_risposta, sentiment,
+                                     categoria, richiede_revisione_urgente, stato)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 RETURNING *
             """, uuid.uuid4(), organization_id, contact_id, testo,
-            valutazione_stelle, fonte, autore)
+            valutazione_stelle, fonte, autore,
+            external_id, bozza_risposta, sentiment,
+            categoria, richiede_revisione_urgente, stato)
             return dict(row)
 
-    async def list_reviews(self, organization_id):
+    async def get_review(self, organization_id, review_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM reviews WHERE organization_id = $1 AND id = $2",
+                organization_id, review_id,
+            )
+            return dict(row) if row else None
+
+    async def get_review_by_external_id(self, organization_id, external_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM reviews WHERE organization_id = $1 AND external_id = $2",
+                organization_id, external_id,
+            )
+            return dict(row) if row else None
+
+    async def list_reviews(self, organization_id, stato=None, fonte=None,
+                           page=1, limit=20):
+        clauses = ["organization_id = $1"]
+        args = [organization_id]
+        idx = 2
+        if stato:
+            clauses.append(f"stato = ${idx}")
+            args.append(stato)
+            idx += 1
+        if fonte:
+            clauses.append(f"fonte = ${idx}")
+            args.append(fonte)
+            idx += 1
+        where = " AND ".join(clauses)
+        offset = (page - 1) * limit
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM reviews WHERE organization_id = $1 ORDER BY created_at DESC",
-                organization_id,
+                f"SELECT * FROM reviews WHERE {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
+                *args, limit, offset,
             )
             return [dict(r) for r in rows]
+
+    # Whitelist esplicita: i nomi colonna finiscono interpolati nella query,
+    # mai fidarsi di **kwargs arbitrari anche se oggi chiamato solo internamente.
+    _CAMPI_REVIEW_AGGIORNABILI = frozenset({
+        "bozza_risposta", "sentiment", "categoria",
+        "richiede_revisione_urgente", "stato", "external_id",
+        "published_at", "is_anonymized",
+    })
+
+    async def update_review(self, organization_id, review_id, **kwargs):
+        if not kwargs:
+            return None
+        campi_non_ammessi = set(kwargs) - self._CAMPI_REVIEW_AGGIORNABILI
+        if campi_non_ammessi:
+            raise ValueError(f"Campi non aggiornabili: {sorted(campi_non_ammessi)}")
+        sets = ", ".join(f"{k} = ${i + 3}" for i, k in enumerate(kwargs))
+        values = list(kwargs.values())
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                f"UPDATE reviews SET {sets} WHERE organization_id = $1 AND id = $2 RETURNING *",
+                organization_id, review_id, *values,
+            )
+            return dict(row) if row else None
+
+    async def approve_review(self, organization_id, review_id):
+        # FOR UPDATE blocca solo dentro una transazione esplicita: senza
+        # conn.transaction() il lock si rilascia subito dopo la SELECT
+        # (autocommit) e non protegge dal doppio click concorrente.
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    "SELECT * FROM reviews WHERE organization_id = $1 AND id = $2 FOR UPDATE",
+                    organization_id, review_id,
+                )
+                if row is None:
+                    return None
+                review = dict(row)
+                if review["stato"] == "pubblicata":
+                    return review
+                updated = await conn.fetchrow(
+                    "UPDATE reviews SET stato = 'approvata' WHERE organization_id = $1 AND id = $2 RETURNING *",
+                    organization_id, review_id,
+                )
+                return dict(updated)
+
+    async def get_review_analytics(self, organization_id, giorni=90):
+        from datetime import datetime, timedelta
+        cutoff = datetime.utcnow() - timedelta(days=giorni)
+        async with self.pool.acquire() as conn:
+            sentiment_trend = await conn.fetch("""
+                SELECT DATE(created_at) AS giorno,
+                       sentiment,
+                       COUNT(*) AS cnt
+                FROM reviews
+                WHERE organization_id = $1
+                  AND created_at >= $2
+                  AND is_anonymized = FALSE
+                GROUP BY giorno, sentiment
+                ORDER BY giorno
+            """, organization_id, cutoff)
+            star_dist = await conn.fetch("""
+                SELECT valutazione_stelle, COUNT(*) AS cnt
+                FROM reviews
+                WHERE organization_id = $1
+                  AND created_at >= $2
+                GROUP BY valutazione_stelle
+                ORDER BY valutazione_stelle
+            """, organization_id, cutoff)
+            cat_dist = await conn.fetch("""
+                SELECT categoria, COUNT(*) AS cnt
+                FROM reviews
+                WHERE organization_id = $1
+                  AND created_at >= $2
+                  AND categoria != ''
+                GROUP BY categoria
+                ORDER BY cnt DESC
+            """, organization_id, cutoff)
+            fonte_dist = await conn.fetch("""
+                SELECT fonte, COUNT(*) AS cnt
+                FROM reviews
+                WHERE organization_id = $1
+                  AND created_at >= $2
+                GROUP BY fonte
+                ORDER BY cnt DESC
+            """, organization_id, cutoff)
+            return {
+                "sentiment_trend": [dict(r) for r in sentiment_trend],
+                "star_distribution": [dict(r) for r in star_dist],
+                "category_distribution": [dict(r) for r in cat_dist],
+                "source_distribution": [dict(r) for r in fonte_dist],
+            }
 
     async def upsert_booking_settings(self, organization_id, fasce_orarie,
                                        capienze_orarie, slot_minutes=60):
@@ -452,6 +581,23 @@ class CoreRepository:
             except asyncpg.exceptions.UniqueViolationError:
                 return False
 
+    async def process_stripe_event_in_tx(
+        self, conn, event_id: str, organization_id: uuid.UUID | str
+    ) -> bool:
+        """Like process_stripe_event but uses an existing connection/transaction
+        so the dedup INSERT and the billing effect run atomically together."""
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        try:
+            await conn.execute(
+                "INSERT INTO processed_stripe_events (event_id, organization_id) VALUES ($1, $2)",
+                event_id,
+                organization_id,
+            )
+            return True
+        except asyncpg.exceptions.UniqueViolationError:
+            return False
+
     async def update_plan_limits(
         self, organization_id: uuid.UUID | str, plan_slug: str
     ) -> dict:
@@ -541,12 +687,4 @@ class CoreRepository:
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)
         async with self.pool.acquire() as conn:
-            await conn.execute("DELETE FROM audit_log WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM messages WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM conversations WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM contacts WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM bookings WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM reviews WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM email_configs WHERE organization_id = $1", organization_id)
-            await conn.execute("DELETE FROM documents WHERE organization_id = $1", organization_id)
             await conn.execute("DELETE FROM organizations WHERE id = $1", organization_id)

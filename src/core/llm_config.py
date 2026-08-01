@@ -10,6 +10,7 @@ basta prefissare il model id con "openrouter/" e passare la
 chiave API tramite variabile d'ambiente.
 """
 
+import asyncio
 import os
 from crewai import LLM
 
@@ -23,6 +24,14 @@ MODELLO_DEFAULT = os.getenv(
 
 # Numero di tentativi in caso di errore/rate limit del modello free.
 MAX_RETRY = int(os.getenv("LLM_MAX_RETRY", "3"))
+
+# Audit 3.3: senza un limite di concorrenza, un tenant (o piu' tenant
+# insieme) puo' saturare il budget/rate-limit condiviso su OpenRouter.
+# Semaforo globale asyncio: usato solo nel percorso async reale
+# (genera_risposta_async, il flusso WhatsApp che scala col volume di
+# messaggi). I percorsi sync (crew_runner_review.py, crew_runner_report.py)
+# sono a basso volume (dashboard/scheduler) e non lo usano.
+LLM_CONCURRENCY_SEM = asyncio.Semaphore(int(os.getenv("LLM_MAX_CONCURRENT", "3")))
 
 
 def crea_llm(model: str | None = None, temperature: float = 0.4) -> LLM:

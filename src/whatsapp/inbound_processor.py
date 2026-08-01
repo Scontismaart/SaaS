@@ -1,29 +1,38 @@
 import asyncio
 import logging
 import uuid
+from pydantic import ValidationError
 from src.core.security_logger import security_audit
 from src.whatsapp.config import AppConfig, load_tenant_config
 from src.core.crew_runner import genera_risposta_async
-from src.core.notifications.email_service import send_escalation_notification
-from src.models.schemas import MessaggioInput, CanaleMessaggio, ProfiloAttivita
+from src.core.bookings import SlotPienoError
+from src.core.notifications.email_service import enqueue_escalation
+from src.models.schemas import (
+    MessaggioInput, CanaleMessaggio, ProfiloAttivita, WhatsAppBusinessProfile,
+)
 
 logger = logging.getLogger(__name__)
 
+HEARTBEAT_INTERVAL = 30
+
 
 def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
-    """Adatta il business_profile grezzo (JSONB, forma non ancora
-    standardizzata: manca un onboarding UI che ne fissi lo schema) al
-    modello ProfiloAttivita richiesto dall'agente AI. Best-effort con
-    fallback sicuri: da rivedere quando l'onboarding definira' la forma
-    reale dei dati salvati per organizzazione."""
     raw = raw or {}
+    try:
+        validated = WhatsAppBusinessProfile.model_validate(raw)
+    except ValidationError as e:
+        logger.error("business_profile validation failed", extra={
+            "errors": e.errors(),
+            "raw": raw,
+        })
+        validated = WhatsAppBusinessProfile()
     return ProfiloAttivita(
-        nome=raw.get("nome") or raw.get("name") or fallback_name,
-        tipo_attivita=raw.get("tipo_attivita") or raw.get("type") or "attivita commerciale",
-        tono=raw.get("tono") or raw.get("tone") or "cordiale e professionale",
-        orari=raw.get("orari") or raw.get("hours") or "",
-        servizi_principali=raw.get("servizi_principali") or raw.get("services") or [],
-        note_speciali=raw.get("note_speciali") or raw.get("notes") or [],
+        nome=validated.nome or fallback_name,
+        tipo_attivita=validated.tipo_attivita or "attivita commerciale",
+        tono=validated.tono or "cordiale e professionale",
+        orari=validated.orari or "",
+        servizi_principali=validated.servizi_principali or [],
+        note_speciali=validated.note_speciali or [],
     )
 
 
@@ -43,6 +52,14 @@ class InboundProcessor:
             except Exception as e:
                 logger.error("Error processing message %s: %s", msg["id"], e)
 
+    async def _heartbeat_loop(self, msg_id):
+        try:
+            while True:
+                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                await self.repo.update_heartbeat(msg_id)
+        except asyncio.CancelledError:
+            pass
+
     async def _process_one(self, msg: dict):
         org_id = msg["organization_id"]
         text = msg.get("content_text", "")
@@ -60,16 +77,15 @@ class InboundProcessor:
                 matched_text=text,
             )
             security_audit("consent_opt_out", contact_id=str(contact["id"]), organization_id=str(org_id))
-            await self.repo.update_message_status(msg["id"], "handled")
+            await self.repo.try_mark_replied(msg["id"])
             return
 
-        # Pipeline: opt-out (GDPR) -> reminder reply -> fast_path -> AI responder
         if self.booking_service:
             booking_reply = await self.booking_service.handle_reminder_reply(
                 org_id, content.get("from", ""), text
             )
             if booking_reply:
-                await self.repo.update_message_status(msg["id"], "handled")
+                await self.repo.try_mark_replied(msg["id"])
                 return
 
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
@@ -77,8 +93,8 @@ class InboundProcessor:
 
         fast_reply = await self.service.fast_path_match(text, business_profile_raw)
         if fast_reply:
-            await self._send_ai_reply(org_id, msg, content, tenant_config, fast_reply)
-            await self.repo.update_message_status(msg["id"], "handled")
+            if await self.repo.try_mark_replied(msg["id"]):
+                await self._send_ai_reply(org_id, msg, content, tenant_config, fast_reply)
             return
 
         profilo = _profile_from_dict(business_profile_raw)
@@ -87,29 +103,60 @@ class InboundProcessor:
             canale=CanaleMessaggio.WHATSAPP,
             id_conversazione=str(msg.get("conversation_id", "")),
         )
-        risposta = await genera_risposta_async(messaggio, profilo)
+
+        heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
+        try:
+            risposta = await genera_risposta_async(messaggio, profilo)
+        finally:
+            heartbeat_task.cancel()
+
+        pren = risposta.prenotazione
+        if pren and pren.data and pren.ora and pren.coperti:
+            if self.booking_service:
+                try:
+                    created = await self.booking_service.create_booking(
+                        org_id=org_id,
+                        nome_cliente=pren.nome_cliente or "Cliente WhatsApp",
+                        telefono=pren.telefono or content.get("from", ""),
+                        data=pren.data,
+                        ora=pren.ora,
+                        coperti=pren.coperti,
+                        note=pren.note,
+                        origine="WhatsApp",
+                        richiede_intervento=risposta.richiede_umano,
+                        id_conversazione=str(msg.get("conversation_id", "")),
+                    )
+                    logger.info("Booking %s created from AI response for org %s", created["id"], org_id)
+                except SlotPienoError as e:
+                    if e.alternative:
+                        alt_text = " o ".join(e.alternative)
+                        risposta.risposta += (
+                            f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone."
+                            f" Ti andrebbe bene alle {alt_text}?"
+                        )
+                    else:
+                        risposta.risposta += (
+                            f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone."
+                            f" Posso chiedere allo staff una fascia alternativa."
+                        )
+                    risposta.motivo = "slot_prenotazione_pieno"
+                except Exception as e:
+                    logger.error("Booking creation from AI failed for org %s: %s", org_id, e)
 
         if risposta.richiede_umano:
             conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
             if conv:
-                contact_name = content.get("from", "cliente")
-                try:
-                    await send_escalation_notification(
-                        org_id=str(org_id),
-                        conversation_id=str(msg["conversation_id"]),
-                        contact_name=contact_name,
-                        pool=self.repo.pool,
-                    )
-                except Exception as e:
-                    # La notifica non deve mai bloccare l'escalation: il ticket
-                    # e' comunque in PENDING_STAFF e visibile in inbox anche
-                    # se l'email non parte (es. SMTP non configurato).
-                    logger.error("Escalation email failed for conversation %s: %s", msg["conversation_id"], e)
-            await self.repo.update_message_status(msg["id"], "escalated")
+                enqueue_escalation(
+                    org_id=str(org_id),
+                    conversation_id=str(msg["conversation_id"]),
+                    contact_name=content.get("from", "cliente"),
+                    pool=self.repo.pool,
+                )
+            await self.repo.try_mark_replied(msg["id"])
             return
 
-        await self._send_ai_reply(org_id, msg, content, tenant_config, risposta.risposta)
-        await self.repo.update_message_status(msg["id"], "handled")
+        if await self.repo.try_mark_replied(msg["id"]):
+            await self._send_ai_reply(org_id, msg, content, tenant_config, risposta.risposta)
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta):
         to_number = content.get("from", "")

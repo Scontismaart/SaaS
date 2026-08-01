@@ -1,4 +1,7 @@
 import pytest
+from datetime import date
+
+pytestmark = pytest.mark.usefixtures("reset_db")
 
 
 @pytest.mark.asyncio
@@ -12,7 +15,8 @@ async def test_record_and_query_usage(repo, sample_org):
     assert event["event_type"] == "message_sent"
     assert event["billing_month"] is not None
 
-    events = await repo.get_usage_by_month(sample_org["id"], 2026, 7)
+    oggi = date.today()
+    events = await repo.get_usage_by_month(sample_org["id"], oggi.year, oggi.month)
     assert len(events) >= 1
 
 
@@ -29,6 +33,7 @@ async def test_usage_summary(repo, sample_org):
         event_type="ai_response",
         quantity=2,
     )
-    summary = await repo.get_usage_summary(sample_org["id"], 2026, 7)
+    oggi = date.today()
+    summary = await repo.get_usage_summary(sample_org["id"], oggi.year, oggi.month)
     assert summary["message_sent"] == 3
     assert summary["ai_response"] == 2

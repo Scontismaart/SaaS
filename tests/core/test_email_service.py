@@ -1,7 +1,10 @@
 import os
 import uuid
+import asyncio
 import pytest
 from unittest.mock import patch
+
+pytestmark = pytest.mark.usefixtures("reset_db")
 
 
 class TestEmailService:
@@ -22,9 +25,8 @@ class TestEmailService:
             else:
                 os.environ[k] = v
 
-    async def test_send_escalation_notification_sends_to_owners(self, pg_pool):
-        from src.core.notifications.email_service import send_escalation_notification
-
+    @pytest.fixture
+    async def org_and_conv(self, pg_pool):
         async with pg_pool.acquire() as conn:
             org = await conn.fetchrow(
                 "INSERT INTO organizations (id, name) VALUES ($1, 'Test') RETURNING id",
@@ -60,24 +62,31 @@ class TestEmailService:
                 "INSERT INTO conversations (id, organization_id, contact_id) VALUES ($1, $2, $3) RETURNING id",
                 uuid.uuid4(), org["id"], contact["id"]
             )
+        return org, conv
+
+    async def test_send_with_retry_sends_to_owners(self, pg_pool, org_and_conv):
+        from src.core.notifications.email_service import _send_with_retry, EscalationEvent
+
+        org, conv = org_and_conv
+        event = EscalationEvent(
+            org_id=str(org["id"]),
+            conversation_id=str(conv["id"]),
+            contact_name="Test Contact",
+            pool=pg_pool,
+        )
 
         with patch("src.core.notifications.email_service.smtplib.SMTP") as mock_smtp:
             mock_instance = mock_smtp.return_value.__enter__.return_value
 
-            await send_escalation_notification(
-                org_id=str(org["id"]),
-                conversation_id=str(conv["id"]),
-                contact_name="Test Contact",
-                pool=pg_pool
-            )
+            await _send_with_retry(event)
 
             mock_smtp.assert_called_once_with("smtp.example.com", 587, timeout=10)
             sent_email = mock_instance.send_message.call_args[0][0]
             assert "owner@test.com" in sent_email["To"]
             assert "staff@test.com" not in sent_email["To"]
 
-    async def test_send_escalation_notification_no_owners(self, pg_pool):
-        from src.core.notifications.email_service import send_escalation_notification
+    async def test_send_with_retry_no_owners_skips(self, pg_pool):
+        from src.core.notifications.email_service import _send_with_retry, EscalationEvent
 
         async with pg_pool.acquire() as conn:
             org = await conn.fetchrow(
@@ -93,11 +102,32 @@ class TestEmailService:
                 uuid.uuid4(), org["id"], contact["id"]
             )
 
+        event = EscalationEvent(
+            org_id=str(org["id"]),
+            conversation_id=str(conv["id"]),
+            contact_name="Test",
+            pool=pg_pool,
+        )
+
         with patch("src.core.notifications.email_service.smtplib.SMTP") as mock_smtp:
-            await send_escalation_notification(
-                org_id=str(org["id"]),
-                conversation_id=str(conv["id"]),
-                contact_name="Test",
-                pool=pg_pool
-            )
+            await _send_with_retry(event)
             mock_smtp.assert_not_called()
+
+    async def test_enqueue_escalation_adds_to_queue(self, pg_pool):
+        from src.core import notifications
+
+        notifications.email_service.start_worker()
+        q = notifications.email_service._queue
+        assert q is not None
+        assert q.qsize() == 0
+
+        notifications.email_service.enqueue_escalation(
+            org_id="test-org",
+            conversation_id="test-conv",
+            contact_name="Test",
+            pool=pg_pool,
+        )
+
+        assert q.qsize() == 1
+
+        notifications.email_service.stop_worker()

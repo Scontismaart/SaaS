@@ -1,3 +1,4 @@
+import asyncpg
 import hashlib
 import hmac
 import json
@@ -36,7 +37,21 @@ def mock_repo():
         "name": "Test Org",
     })
     repo.update_message_status = AsyncMock(return_value={"status": "delivered"})
+    repo.update_message_status_by_wam_id = AsyncMock(return_value={"status": "delivered"})
     repo.upsert_message = AsyncMock(return_value={"id": uuid.uuid4(), "status": "received_pending_ai"})
+    repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+    repo.get_or_create_conversation = AsyncMock(return_value={"id": uuid.uuid4()})
+    repo.increment_message_usage = AsyncMock()
+    # Pool mockato: fetchrow ritorna una riga (idempotenza passa come nuovo)
+    pool = MagicMock()
+    pool.fetchrow = AsyncMock(return_value={"wam_id": "test"})
+    # acquire + transaction async context manager per _handle_inbound_message
+    mock_conn = MagicMock()
+    mock_conn.transaction.return_value.__aenter__ = AsyncMock()
+    mock_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
+    pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    repo.pool = pool
     return repo
 
 
@@ -160,6 +175,246 @@ class TestRouter:
             },
         )
         assert resp.status_code == 200
+
+    def test_post_payload_oversize(self, client, app_config):
+        body = b"A" * (6 * 1024 * 1024)
+        resp = client.post(
+            "/webhooks/whatsapp",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": "sha256=anything",
+            },
+        )
+        assert resp.status_code == 413
+
+    def test_post_hmac_rejection_log(self, client, app_config, caplog):
+        caplog.set_level("WARNING")
+        payload = {"object": "whatsapp_business_account", "entry": []}
+        body = json.dumps(payload).encode()
+        resp = client.post(
+            "/webhooks/whatsapp",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": "sha256=invalid",
+            },
+        )
+        assert resp.status_code == 403
+        assert any("webhook_hmac_rejected" in r.message for r in caplog.records)
+
+    def test_post_timestamp_replay(self, client, app_config):
+        payload = {"object": "whatsapp_business_account", "entry": []}
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        past_ts = 1000000  # molto vecchio
+        resp = client.post(
+            "/webhooks/whatsapp",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": sig,
+                "X-Timestamp": str(past_ts),
+            },
+        )
+        assert resp.status_code == 403
+
+    def test_post_timestamp_invalid(self, client, app_config):
+        payload = {"object": "whatsapp_business_account", "entry": []}
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        resp = client.post(
+            "/webhooks/whatsapp",
+            content=body,
+            headers={
+                "Content-Type": "application/json",
+                "X-Hub-Signature-256": sig,
+                "X-Timestamp": "not-a-number",
+            },
+        )
+        assert resp.status_code == 400
+
+    def test_post_status_non_uuid_callback_fallback(self, client, app_config, mock_repo, caplog):
+        caplog.set_level("WARNING")
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "statuses": [
+                            {"id": "wamid.bad.callback", "status": "delivered", "timestamp": "1712345678", "recipient_id": "391234567890", "biz_opaque_callback_data": "not-a-uuid"},
+                            {"id": "wamid.good.callback", "status": "read", "timestamp": "1712345679", "recipient_id": "391234567890", "biz_opaque_callback_data": str(uuid.uuid4())},
+                        ],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
+        assert resp.status_code == 200
+        mock_repo.update_message_status_by_wam_id.assert_awaited_with("wamid.bad.callback", "delivered", error_code=None, error_title=None, error_details=None)
+        mock_repo.update_message_status.assert_awaited()
+        assert any("webhook_invalid_callback_data" in r.message for r in caplog.records)
+
+    def test_post_status_idempotent_skip(self, client, app_config, mock_repo, monkeypatch):
+        call_count = [0]
+        async def mock_dedup(*a, **kw):
+            call_count[0] += 1
+            return call_count[0] == 1
+        monkeypatch.setattr("src.whatsapp.router.dedup_check", mock_dedup)
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "statuses": [{"id": "wamid.dup", "status": "delivered", "timestamp": "1712345678", "recipient_id": "391234567890"}],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        headers = {"Content-Type": "application/json", "X-Hub-Signature-256": sig}
+        resp1 = client.post("/webhooks/whatsapp", content=body, headers=headers)
+        assert resp1.status_code == 200
+        resp2 = client.post("/webhooks/whatsapp", content=body, headers=headers)
+        assert resp2.status_code == 200
+        mock_repo.update_message_status_by_wam_id.assert_awaited_once()
+
+    def test_post_inbound_idempotent_skip(self, client, app_config, mock_repo, monkeypatch):
+        call_count = [0]
+        async def mock_dedup(*a, **kw):
+            call_count[0] += 1
+            return call_count[0] == 1
+        monkeypatch.setattr("src.whatsapp.router.dedup_check", mock_dedup)
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "contacts": [{"profile": {"name": "Mario"}, "wa_id": "391234567890"}],
+                        "messages": [{"from": "391234567890", "id": "wamid.inbound.dup", "timestamp": "1712345678", "type": "text", "text": {"body": "Ciao"}}],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        headers = {"Content-Type": "application/json", "X-Hub-Signature-256": sig}
+        resp1 = client.post("/webhooks/whatsapp", content=body, headers=headers)
+        assert resp1.status_code == 200
+        resp2 = client.post("/webhooks/whatsapp", content=body, headers=headers)
+        assert resp2.status_code == 200
+        mock_repo.upsert_message.assert_awaited_once()
+
+    def test_post_batch_db_down_500(self, app, app_config, mock_repo):
+        from starlette.testclient import TestClient
+        mock_repo.pool.fetchrow = AsyncMock(side_effect=asyncpg.InsufficientResourcesError("connection pool exhausted"))
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "statuses": [{"id": "wamid.test", "status": "delivered", "timestamp": "1712345678", "recipient_id": "391234567890"}],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        client = TestClient(app, raise_server_exceptions=False)
+        resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
+        assert resp.status_code == 500
+
+    def test_post_contacts_empty_log(self, client, app_config, mock_repo, caplog):
+        caplog.set_level("WARNING")
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "contacts": [],
+                        "messages": [{"from": "391234567890", "id": "wamid.inbound.nocontact", "timestamp": "1712345678", "type": "text", "text": {"body": "Ciao"}}],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
+        assert resp.status_code == 200
+        assert any("event=contacts_empty" in r.message for r in caplog.records)
+        mock_repo.upsert_message.assert_awaited_once()
+
+    def test_post_status_sequence_dedup_correct(self, client, app_config, mock_repo):
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "statuses": [
+                            {"id": "wamid.seq", "status": "sent", "timestamp": "1712345676", "recipient_id": "391234567890"},
+                            {"id": "wamid.seq", "status": "delivered", "timestamp": "1712345677", "recipient_id": "391234567890"},
+                            {"id": "wamid.seq", "status": "read", "timestamp": "1712345678", "recipient_id": "391234567890"},
+                        ],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
+        assert resp.status_code == 200
+        assert mock_repo.update_message_status_by_wam_id.await_count == 3
+
+    def test_post_batch_mixed_valid_invalid(self, client, app_config, mock_repo, caplog):
+        caplog.set_level("WARNING")
+        payload = {
+            "object": "whatsapp_business_account",
+            "entry": [{
+                "id": "123456789",
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "messaging_product": "whatsapp",
+                        "metadata": {"display_phone_number": "391234567890", "phone_number_id": "1234567890"},
+                        "statuses": [{"id": "wamid.bad", "status": "delivered", "timestamp": "1712345678", "recipient_id": "391234567890", "biz_opaque_callback_data": "not-a-uuid"}],
+                        "messages": [{"from": "391234567890", "id": "wamid.good", "timestamp": "1712345678", "type": "text", "text": {"body": "Prenoto"}}],
+                    },
+                }],
+            }],
+        }
+        body = json.dumps(payload).encode()
+        sig = _sign_body(body, app_config.app_secret)
+        resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
+        assert resp.status_code == 200
+        assert any("webhook_invalid_callback_data" in r.message for r in caplog.records)
+        mock_repo.upsert_message.assert_awaited_once()
 
     def test_post_template_status(self, client, app_config):
         payload = {

@@ -1,4 +1,4 @@
-import os
+import json
 import logging
 from datetime import datetime, timezone, timedelta
 
@@ -29,31 +29,32 @@ def _resolve_plan_from_subscription(subscription_data: dict) -> str | None:
     return None
 
 
-async def handle_stripe_webhook(event: dict, repo) -> dict | None:
+async def handle_stripe_webhook(event: dict, repo, trial_days: int) -> dict | None:
+    """Tutto il processing avviene in un'unica transazione DB: dedup INSERT
+    e effetti billing sono atomici. Se il processo crasha a meta', la
+    transazione fa rollback di tutto — l'evento NON risulta processato."""
     event_type = event.get("type")
     event_id = event.get("id", "")
     data_obj = event.get("data", {}).get("object", {})
 
-    if event_type == "checkout.session.completed":
-        return await _handle_checkout_completed(data_obj, repo, event_id)
-
-    if event_type == "invoice.paid":
-        return await _handle_invoice_paid(data_obj, repo, event_id)
-
-    if event_type == "invoice.payment_failed":
-        return await _handle_payment_failed(data_obj, repo, event_id)
-
-    if event_type == "customer.subscription.updated":
-        return await _handle_subscription_updated(data_obj, repo, event_id)
-
-    if event_type == "subscription.deleted":
-        return await _handle_subscription_deleted(data_obj, repo, event_id)
+    async with repo.pool.acquire() as conn:
+        async with conn.transaction():
+            if event_type == "checkout.session.completed":
+                return await _handle_checkout_completed(conn, repo, data_obj, event_id, trial_days)
+            if event_type == "invoice.paid":
+                return await _handle_invoice_paid(conn, repo, data_obj, event_id)
+            if event_type == "invoice.payment_failed":
+                return await _handle_payment_failed(conn, repo, data_obj, event_id)
+            if event_type == "customer.subscription.updated":
+                return await _handle_subscription_updated(conn, repo, data_obj, event_id)
+            if event_type == "subscription.deleted":
+                return await _handle_subscription_deleted(conn, repo, data_obj, event_id)
 
     logger.info("Unhandled event type: %s", event_type)
     return None
 
 
-async def _handle_checkout_completed(data: dict, repo, event_id: str) -> dict | None:
+async def _handle_checkout_completed(conn, repo, data, event_id, trial_days):
     mode = data.get("mode")
 
     if mode == "payment":
@@ -61,12 +62,13 @@ async def _handle_checkout_completed(data: dict, repo, event_id: str) -> dict | 
         booking_id = metadata.get("booking_id")
         org_id = metadata.get("organization_id")
         if booking_id and org_id:
-            if not await repo.process_stripe_event(event_id, org_id):
+            if not await repo.process_stripe_event_in_tx(conn, event_id, org_id):
                 return {"action": "duplicate", "status": "skipped", "organization_id": org_id}
-            await repo.update_booking_payment(
-                org_id, booking_id, "paid",
-                session_id=data.get("id"),
-            )
+            await conn.execute("""
+                UPDATE bookings SET payment_status = 'paid', payment_link = $1,
+                    updated_at = NOW()
+                WHERE id = $2
+            """, data.get("id"), booking_id)
             return {"action": "deposit_paid", "booking_id": booking_id, "organization_id": org_id}
         return None
 
@@ -77,36 +79,40 @@ async def _handle_checkout_completed(data: dict, repo, event_id: str) -> dict | 
     if not org_id or not subscription_id or mode != "subscription":
         return None
 
-    if not await repo.process_stripe_event(event_id, org_id):
+    if not await repo.process_stripe_event_in_tx(conn, event_id, org_id):
         return {"action": "duplicate", "status": "skipped", "organization_id": org_id}
 
     now = datetime.now(timezone.utc)
-    trial_days = int(os.getenv("STRIPE_TRIAL_DAYS", "7"))
-    await repo.update_organization_billing(org_id, {
-        "stripe_customer_id": customer_id,
-        "subscription_id": subscription_id,
-        "subscription_status": "trialing",
-        "trial_start": now,
-        "trial_end": now + timedelta(days=trial_days),
-        "current_period_start": now,
-        "current_period_end": now + timedelta(days=trial_days),
-    })
+    await conn.execute("""
+        UPDATE organizations SET
+            stripe_customer_id = $1, subscription_id = $2,
+            subscription_status = 'trialing',
+            trial_start = $3, trial_end = $4,
+            current_period_start = $3, current_period_end = $4
+        WHERE id = $5
+    """, customer_id, subscription_id, now, now + timedelta(days=trial_days), org_id)
     return {"action": "subscription_created", "status": "trialing", "organization_id": org_id}
 
 
-async def _lookup_org_by_customer(customer_id: str, repo) -> dict | None:
+async def _lookup_org_by_customer(customer_id: str, repo, conn) -> dict | None:
     if not customer_id:
         return None
-    return await repo.get_organization_by_stripe_customer(customer_id)
+    row = await conn.fetchrow(
+        "SELECT id, stripe_customer_id, subscription_status, plan, "
+        "current_period_start, messages_used_this_period "
+        "FROM organizations WHERE stripe_customer_id = $1",
+        customer_id,
+    )
+    return dict(row) if row else None
 
 
-async def _handle_invoice_paid(data: dict, repo, event_id: str) -> dict | None:
+async def _handle_invoice_paid(conn, repo, data, event_id):
     customer_id = data.get("customer")
-    org = await _lookup_org_by_customer(customer_id, repo)
+    org = await _lookup_org_by_customer(customer_id, repo, conn)
     if not org:
         return None
 
-    if not await repo.process_stripe_event(event_id, org["id"]):
+    if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     period_start = datetime.fromtimestamp(data.get("period_start", 0), tz=timezone.utc)
@@ -119,79 +125,108 @@ async def _handle_invoice_paid(data: dict, repo, event_id: str) -> dict | None:
             plan_slug = PRICE_TO_PLAN[price_id]
             break
 
-    await repo.set_subscription_status(org["id"], "active")
-    # Reset solo se il ciclo e' davvero cambiato: invoice.paid arriva anche per
-    # fatture non di rinnovo (es. correzioni). Confrontare period_start evita
-    # di azzerare la quota fuori dal vero rinnovo.
+    await conn.execute(
+        "UPDATE organizations SET subscription_status = 'active' WHERE id = $1",
+        org["id"],
+    )
     if org.get("current_period_start") != period_start:
-        await repo.reset_message_usage(org["id"], period_start, period_end)
+        await conn.execute("""
+            UPDATE organizations SET
+                messages_used_this_period = 0,
+                current_period_start = $1,
+                current_period_end = $2
+            WHERE id = $3
+        """, period_start, period_end, org["id"])
 
     if plan_slug:
-        await repo.update_plan_limits(org["id"], plan_slug)
+        from src.core.billing.plans import get_plan
+        plan = get_plan(plan_slug)
+        await conn.execute("""
+            UPDATE organizations SET
+                plan = $1, messages_limit = $2, users_limit = $3,
+                whatsapp_numbers_limit = $4
+            WHERE id = $5
+        """, plan_slug, plan.messages_limit, plan.users_limit, plan.whatsapp_numbers_limit, org["id"])
 
     return {"action": "subscription_activated", "status": "active", "organization_id": org["id"]}
 
 
-async def _handle_payment_failed(data: dict, repo, event_id: str) -> dict | None:
+async def _handle_payment_failed(conn, repo, data, event_id):
     customer_id = data.get("customer")
-    org = await _lookup_org_by_customer(customer_id, repo)
+    org = await _lookup_org_by_customer(customer_id, repo, conn)
     if not org:
         return None
 
-    if not await repo.process_stripe_event(event_id, org["id"]):
+    if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
-    await repo.set_subscription_status(org["id"], "past_due")
+    await conn.execute(
+        "UPDATE organizations SET subscription_status = 'past_due' WHERE id = $1",
+        org["id"],
+    )
     return {"action": "payment_failed", "status": "past_due", "organization_id": org["id"]}
 
 
-async def _handle_subscription_updated(data: dict, repo, event_id: str) -> dict | None:
+async def _handle_subscription_updated(conn, repo, data, event_id):
     customer_id = data.get("customer")
-    org = await _lookup_org_by_customer(customer_id, repo)
+    org = await _lookup_org_by_customer(customer_id, repo, conn)
     if not org:
         return None
 
-    if not await repo.process_stripe_event(event_id, org["id"]):
+    if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     plan_slug = _resolve_plan_from_subscription(data)
     if plan_slug:
-        await repo.update_plan_limits(org["id"], plan_slug)
+        from src.core.billing.plans import get_plan
+        plan = get_plan(plan_slug)
+        await conn.execute("""
+            UPDATE organizations SET
+                plan = $1, messages_limit = $2, users_limit = $3,
+                whatsapp_numbers_limit = $4
+            WHERE id = $5
+        """, plan_slug, plan.messages_limit, plan.users_limit, plan.whatsapp_numbers_limit, org["id"])
 
     if data.get("status") == "past_due":
-        await repo.set_subscription_status(org["id"], "past_due")
+        await conn.execute(
+            "UPDATE organizations SET subscription_status = 'past_due' WHERE id = $1",
+            org["id"],
+        )
     elif data.get("status") in ("active", "trialing"):
         current_status = org.get("subscription_status")
         if current_status != "active":
-            await repo.set_subscription_status(org["id"], data["status"])
+            await conn.execute(
+                "UPDATE organizations SET subscription_status = $1 WHERE id = $2",
+                data["status"], org["id"],
+            )
 
-    # Stripe manda current_period_start/end su OGNI subscription.updated,
-    # anche per eventi che non c'entrano col rinnovo (cambio metodo di
-    # pagamento, toggle cancel_at_period_end, modifica metadata). Senza
-    # questo controllo si azzererebbe la quota messaggi ad ogni tocco della
-    # subscription in dashboard Stripe, non solo al vero rinnovo ciclo.
     period_start = data.get("current_period_start")
     period_end = data.get("current_period_end")
     if period_start and period_end:
         new_start = datetime.fromtimestamp(period_start, tz=timezone.utc)
         if org.get("current_period_start") != new_start:
-            await repo.reset_message_usage(
-                org["id"],
-                new_start,
-                datetime.fromtimestamp(period_end, tz=timezone.utc),
-            )
+            await conn.execute("""
+                UPDATE organizations SET
+                    messages_used_this_period = 0,
+                    current_period_start = $1,
+                    current_period_end = $2
+                WHERE id = $3
+            """, new_start, datetime.fromtimestamp(period_end, tz=timezone.utc), org["id"])
 
     return {"action": "subscription_updated", "plan": plan_slug, "organization_id": org["id"]}
 
 
-async def _handle_subscription_deleted(data: dict, repo, event_id: str) -> dict | None:
+async def _handle_subscription_deleted(conn, repo, data, event_id):
     customer_id = data.get("customer")
-    org = await _lookup_org_by_customer(customer_id, repo)
+    org = await _lookup_org_by_customer(customer_id, repo, conn)
     if not org:
         return None
 
-    if not await repo.process_stripe_event(event_id, org["id"]):
+    if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
-    await repo.set_subscription_status(org["id"], "canceled")
+    await conn.execute(
+        "UPDATE organizations SET subscription_status = 'canceled' WHERE id = $1",
+        org["id"],
+    )
     return {"action": "subscription_deleted", "status": "canceled", "organization_id": org["id"]}

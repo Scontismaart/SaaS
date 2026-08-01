@@ -21,6 +21,7 @@ class TenantConfig:
     phone_number_id: str
     waba_id: str
     access_token: str
+    timezone: str = "Europe/Rome"
     business_profile: dict = field(default_factory=dict)
 
 
@@ -38,5 +39,6 @@ async def load_tenant_config(org_id: UUID, app_config: AppConfig, repo) -> Tenan
         phone_number_id=row["phone_number_id"],
         waba_id=row["waba_id"],
         access_token=decrypted,
+        timezone=row.get("timezone", "Europe/Rome"),
         business_profile=row.get("business_profile", {}),
     )

@@ -1,7 +1,7 @@
 from datetime import date, time
 import pytest
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("reset_db")]
 
 
 async def test_webhook_payment_mode_updates_booking(repo, sample_org):
@@ -22,7 +22,7 @@ async def test_webhook_payment_mode_updates_booking(repo, sample_org):
         }
     }
     from src.core.billing.webhook_handler import handle_stripe_webhook
-    result = await handle_stripe_webhook(event, repo)
+    result = await handle_stripe_webhook(event, repo, 7)
     assert result is not None
     updated = await repo.get_booking(sample_org["id"], b["id"])
     assert updated["payment_status"] == "paid"
@@ -44,7 +44,7 @@ async def test_webhook_subscription_mode_unaffected(repo, sample_org):
         }
     }
     from src.core.billing.webhook_handler import handle_stripe_webhook
-    result = await handle_stripe_webhook(event, repo)
+    result = await handle_stripe_webhook(event, repo, 7)
     # Subscription mode, no booking match — returns a subscription result
     assert result is not None
     assert result.get("action") == "subscription_created"

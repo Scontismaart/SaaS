@@ -1,7 +1,7 @@
 import uuid
 import pytest
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("reset_db")]
 
 
 async def test_audit_log_creates_entry(repo, sample_org):

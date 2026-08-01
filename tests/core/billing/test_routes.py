@@ -3,6 +3,8 @@ import pytest
 import httpx
 from unittest.mock import patch, MagicMock
 
+pytestmark = pytest.mark.usefixtures("reset_db")
+
 API_KEY = "test-api-key-12345"
 
 

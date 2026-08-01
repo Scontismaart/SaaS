@@ -2,7 +2,7 @@ import uuid
 import pytest
 from datetime import datetime, timezone
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("reset_db")]
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ async def test_handle_checkout_completed_sets_trialing(repo, sample_org, valid_c
     from src.core.billing.webhook_handler import handle_stripe_webhook
     event = valid_checkout_event
     event["data"]["object"]["client_reference_id"] = str(sample_org["id"])
-    result = await handle_stripe_webhook(event, repo)
+    result = await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["subscription_status"] == "trialing"
     assert billing["stripe_customer_id"] == "cus_test001"
@@ -64,7 +64,7 @@ async def test_handle_checkout_completed_sets_trial_period(repo, sample_org, val
     from src.core.billing.webhook_handler import handle_stripe_webhook
     event = valid_checkout_event
     event["data"]["object"]["client_reference_id"] = str(sample_org["id"])
-    await handle_stripe_webhook(event, repo)
+    await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["trial_start"] is not None
     assert billing["trial_end"] is not None
@@ -79,7 +79,7 @@ async def test_handle_invoice_paid_resets_usage(repo, sample_org, valid_invoice_
     await repo.increment_message_usage(sample_org["id"])
     event = valid_invoice_paid_event
     event["data"]["object"]["customer"] = "cus_test001"
-    await handle_stripe_webhook(event, repo)
+    await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["messages_used_this_period"] == 0
     assert billing["subscription_status"] == "active"
@@ -92,7 +92,7 @@ async def test_handle_invoice_paid_sets_period(repo, sample_org, valid_invoice_p
     })
     event = valid_invoice_paid_event
     event["data"]["object"]["customer"] = "cus_test001"
-    await handle_stripe_webhook(event, repo)
+    await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["current_period_start"] is not None
     assert billing["current_period_end"] is not None
@@ -121,7 +121,7 @@ async def test_handle_subscription_updated_changes_plan(repo, sample_org):
             }
         },
     }
-    await handle_stripe_webhook(event, repo)
+    await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["plan"] == "pro"
     assert billing["messages_limit"] == 2000
@@ -143,7 +143,7 @@ async def test_handle_subscription_deleted_sets_canceled(repo, sample_org):
             }
         },
     }
-    await handle_stripe_webhook(event, repo)
+    await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["subscription_status"] == "canceled"
 
@@ -165,7 +165,7 @@ async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):
             }
         },
     }
-    await handle_stripe_webhook(event, repo)
+    await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["subscription_status"] == "past_due"
 
@@ -173,7 +173,7 @@ async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):
 async def test_handle_unknown_event_does_nothing(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     event = {"id": "evt_unknown_001", "type": "unknown.event", "data": {"object": {}}}
-    result = await handle_stripe_webhook(event, repo)
+    result = await handle_stripe_webhook(event, repo, 7)
     assert result is None
 
 
@@ -214,12 +214,12 @@ async def test_subscription_updated_same_period_does_not_reset_usage(repo, sampl
         }
 
     # Prima chiamata: stesso periodo di quello gia' salvato -> nessun reset.
-    await handle_stripe_webhook(make_event("evt_guard_001"), repo)
+    await handle_stripe_webhook(make_event("evt_guard_001"), repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["messages_used_this_period"] == 3
 
     # Seconda chiamata (evento diverso, stesso periodo) -> ancora nessun reset.
-    await handle_stripe_webhook(make_event("evt_guard_002"), repo)
+    await handle_stripe_webhook(make_event("evt_guard_002"), repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["messages_used_this_period"] == 3
 
@@ -240,7 +240,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
         "type": "invoice.payment_failed",
         "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
     }
-    result1 = await handle_stripe_webhook(event1, repo)
+    result1 = await handle_stripe_webhook(event1, repo, 7)
     assert result1["action"] == "payment_failed"
 
     # Stesso oggetto annidato (stesso "in_same_object"), ma evento Stripe
@@ -250,12 +250,53 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
         "type": "invoice.payment_failed",
         "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
     }
-    result2 = await handle_stripe_webhook(event2, repo)
+    result2 = await handle_stripe_webhook(event2, repo, 7)
     assert result2["action"] == "payment_failed"  # non "duplicate"
 
     # Vero retry dello STESSO evento -> quello si' va deduplicato.
-    result3 = await handle_stripe_webhook(event1, repo)
+    result3 = await handle_stripe_webhook(event1, repo, 7)
     assert result3["action"] == "duplicate"
+
+
+async def test_stripe_atomic_rollback_on_failure(repo, sample_org):
+    """Se un handler solleva eccezione a meta' transazione, l'evento NON
+    deve essere registrato come processato (rollback completo)."""
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_atomic",
+        "subscription_status": "active",
+    })
+
+    event = {
+        "id": "evt_atomic_fail",
+        "type": "checkout.session.completed",
+        "data": {
+            "object": {
+                "id": "cs_atomic_fail",
+                "client_reference_id": str(sample_org["id"]),
+                "mode": "subscription",
+                "customer": "cus_atomic",
+                "subscription": None,  # Forzera' return None, nessuna write
+            }
+        },
+    }
+
+    # mode=subscription ma subscription=None -> ritorna None senza write DB
+    result = await handle_stripe_webhook(event, repo, 7)
+    assert result is None
+
+    # L'evento NON deve essere stato registrato: se riproposto, deve
+    # essere processato di nuovo (non "duplicate").
+    result2 = await handle_stripe_webhook(event, repo, 7)
+    assert result2 is None
+
+    # Verifica che l'event_id non sia in processed_stripe_events
+    row = await repo.pool.fetchrow(
+        "SELECT 1 FROM processed_stripe_events WHERE event_id = $1",
+        "evt_atomic_fail",
+    )
+    assert row is None
 
 
 async def test_handle_checkout_completed_without_subscription(repo, sample_org):
@@ -274,7 +315,7 @@ async def test_handle_checkout_completed_without_subscription(repo, sample_org):
             }
         },
     }
-    result = await handle_stripe_webhook(event, repo)
+    result = await handle_stripe_webhook(event, repo, 7)
     assert result is None
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["subscription_status"] == "incomplete"

@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -31,6 +32,8 @@ def mock_repo(sample_msg):
     repo = AsyncMock()
     repo.claim_inbound_messages = AsyncMock(return_value=[sample_msg])
     repo.reap_stale_claims = AsyncMock(return_value=[])
+    repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
+    repo.update_heartbeat = AsyncMock()
     repo.pool = MagicMock()
     return repo
 
@@ -75,8 +78,6 @@ class TestInboundProcessor:
     async def test_ai_reply_sent_when_no_escalation(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
     ):
-        """Fix task 5: l'AI risponde e non richiede umano -> invio via
-        WhatsAppService, nessuna chiamata di rete reale (tutto mockato)."""
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
              patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
                  risposta="Siamo aperti dalle 12 alle 15.", richiede_umano=False, motivo="orari", categoria="info",
@@ -89,45 +90,42 @@ class TestInboundProcessor:
         assert call_kwargs["to_number"] == "391234567890"
         assert call_kwargs["payload"]["text"]["body"] == "Siamo aperti dalle 12 alle 15."
         mock_repo.escalate_to_human.assert_not_called()
-        mock_repo.update_message_status.assert_awaited_with(sample_msg["id"], "handled")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
 
     async def test_escalation_when_ai_requires_human(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
     ):
-        """Fix task 5: l'AI richiede un umano -> escalate_to_human chiamato
-        e notifica email inviata (mockata, niente SMTP reale)."""
         mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
 
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
              patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
                  risposta="", richiede_umano=True, motivo="allergie", categoria="reclamo",
              ))), \
-             patch("src.whatsapp.inbound_processor.send_escalation_notification", AsyncMock()) as mock_email:
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
             processor = InboundProcessor(app_config, mock_repo, mock_service)
             await processor.process_next_batch()
 
         mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
-        mock_email.assert_awaited_once()
+        mock_email.assert_called_once()
         mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.update_message_status.assert_awaited_with(sample_msg["id"], "escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
 
     async def test_escalation_survives_email_failure(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
     ):
-        """L'escalation (stato ticket) non deve saltare se l'invio email fallisce
-        (es. SMTP non configurato)."""
         mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
 
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
              patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
                  risposta="", richiede_umano=True, motivo="reclamo", categoria="reclamo",
              ))), \
-             patch("src.whatsapp.inbound_processor.send_escalation_notification", AsyncMock(side_effect=Exception("SMTP down"))):
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
             processor = InboundProcessor(app_config, mock_repo, mock_service)
             await processor.process_next_batch()
 
         mock_repo.escalate_to_human.assert_awaited_once()
-        mock_repo.update_message_status.assert_awaited_with(sample_msg["id"], "escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        mock_email.assert_called_once()
 
     async def test_fast_path_reply_also_sent_via_whatsapp(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -138,3 +136,41 @@ class TestInboundProcessor:
             await processor.process_next_batch()
         mock_service.send_whatsapp_message.assert_awaited_once()
         assert mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"] == "Ciao! Benvenuto."
+
+    async def test_race_condition_only_one_reply_sent(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Due worker simulati che processano lo stesso messaggio in
+        parallelo. try_mark_replied restituisce il record solo al primo
+        worker che lo chiama; il secondo riceve None e salta l'invio.
+        Risultato: una sola chiamata a send_whatsapp_message."""
+        mock_service.fast_path_match = AsyncMock(return_value="Ciao! Benvenuto.")
+
+        race_msg = {
+            "id": uuid.uuid4(), "organization_id": uuid.uuid4(),
+            "conversation_id": uuid.uuid4(), "content": {"from": "391234567890"},
+            "content_text": "Ciao", "message_type": "text",
+        }
+
+        call_count = 0
+
+        async def try_mark_race(message_id):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return {"id": race_msg["id"], "status": "handled", "replied_at": datetime.now()}
+            return None
+
+        repo = AsyncMock()
+        repo.claim_inbound_messages = AsyncMock(return_value=[race_msg])
+        repo.reap_stale_claims = AsyncMock(return_value=[])
+        repo.try_mark_replied = AsyncMock(side_effect=try_mark_race)
+        repo.update_heartbeat = AsyncMock()
+        repo.pool = MagicMock()
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)):
+            proc1 = InboundProcessor(app_config, repo, mock_service)
+            proc2 = InboundProcessor(app_config, repo, mock_service)
+            await asyncio.gather(proc1.process_next_batch(), proc2.process_next_batch())
+
+        assert mock_service.send_whatsapp_message.await_count == 1

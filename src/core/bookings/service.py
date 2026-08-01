@@ -10,11 +10,18 @@ STATI_LIBERI = {"cancellata", "cancellato", "rifiutata", "no_show"}
 SLOT_ORE = [f"{h:02d}:00" for h in range(24)]
 
 
+class SlotPienoError(ValueError):
+    def __init__(self, message, alternative=None):
+        super().__init__(message)
+        self.alternative = alternative or []
+
+
 class BookingService:
-    def __init__(self, repo, whatsapp_service=None, app_config=None):
+    def __init__(self, repo, whatsapp_service=None, app_config=None, calendar_service=None):
         self.repo = repo
         self.whatsapp = whatsapp_service
         self.app_config = app_config
+        self.calendar_service = calendar_service
 
     # ── Disponibilità ──────────────────────────────────────────
 
@@ -107,19 +114,31 @@ class BookingService:
     # ── Creazione ──────────────────────────────────────────────
 
     async def create_booking(self, org_id, nome_cliente, data, ora, coperti,
-                              telefono="", note="", tipo_evento="", origine="Dashboard"):
+                              telefono="", note="", tipo_evento="", origine="Dashboard",
+                              richiede_intervento=False, id_conversazione=""):
         disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
         if coperti > disp.coperti_liberi:
-            raise ValueError(f"slot pieno per {coperti} coperti alle {ora}")
+            raise SlotPienoError(
+                f"slot pieno per {coperti} coperti alle {ora}",
+                alternative=disp.alternative,
+            )
         richiede_dep = await self._valuta_richiede_deposito(
             org_id, coperti=coperti, tipo_evento=tipo_evento, ora=ora, data=data
         )
-        return await self.repo.create_booking(
+        booking = await self.repo.create_booking(
             organization_id=org_id, nome_cliente=nome_cliente,
             telefono=telefono, data=data, ora=ora, coperti=coperti,
             note=note, tipo_evento=tipo_evento, stato="in_attesa", origine=origine,
             richiede_deposito=richiede_dep,
+            richiede_intervento=richiede_intervento,
+            id_conversazione=id_conversazione or None,
         )
+        if self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(booking, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail create_booking id=%s", booking.get("id"))
+        return booking
 
     async def _get_booking_or_raise(self, org_id, booking_id):
         b = await self.repo.get_booking(org_id, booking_id)
@@ -175,6 +194,11 @@ class BookingService:
                     f"Per confermare, versa il deposito di {valuta} {importo:.2f}: {link}")
             except Exception as e:
                 logger.error("Failed to generate payment link for booking %s: %s", booking_id, e)
+        if self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(updated, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail confirm id=%s", booking_id)
         return updated
 
     async def reject(self, org_id, booking_id, motivo=""):
@@ -184,10 +208,21 @@ class BookingService:
         if motivo:
             msg += f" Motivo: {motivo}"
         await self._send_whatsapp(org_id, b["telefono"], msg)
+        if self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(updated, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail reject id=%s", booking_id)
         return updated
 
     async def cancel(self, org_id, booking_id):
-        return await self.repo.update_booking_status(org_id, booking_id, "cancellata")
+        booking = await self.repo.update_booking_status(org_id, booking_id, "cancellata")
+        if self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(booking, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail cancel id=%s", booking_id)
+        return booking
 
     async def mark_no_show(self, org_id, booking_id):
         async with self.repo.pool.acquire() as conn:
@@ -196,7 +231,13 @@ class BookingService:
                 WHERE organization_id = $1 AND id = $2
                 RETURNING *
             """, org_id, booking_id)
-            return dict(row) if row else None
+            booking = dict(row) if row else None
+        if booking and self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(booking, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail mark_no_show id=%s", booking_id)
+        return booking
 
     async def mark_completed(self, org_id, booking_id):
         async with self.repo.pool.acquire() as conn:
@@ -205,7 +246,13 @@ class BookingService:
                 WHERE organization_id = $1 AND id = $2
                 RETURNING *
             """, org_id, booking_id)
-            return dict(row) if row else None
+            booking = dict(row) if row else None
+        if booking and self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(booking, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail mark_completed id=%s", booking_id)
+        return booking
 
     async def aggiorna_impostazioni(self, org_id, capienze_orarie=None,
                                      coperti_massimi=40, fasce_orarie=None, config=None):

@@ -2,6 +2,8 @@ from datetime import date, time, datetime, timedelta, timezone
 import uuid
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
+
 
 @pytest.mark.asyncio
 async def test_update_booking_payment(repo, sample_org):

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -70,7 +71,7 @@ async def _reminder_check_job(pool):
     from src.whatsapp.service import WhatsAppService
     from src.core.db.repository import CoreRepository
     orgs = await pool.fetch("""
-        SELECT id FROM organizations
+        SELECT id, timezone FROM organizations
         WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
     """)
     for org in orgs:
@@ -78,7 +79,7 @@ async def _reminder_check_job(pool):
         core_repo = CoreRepository(pool)
         whatsapp = WhatsAppService(None, wrepo)
         service = BookingService(core_repo, whatsapp, None)
-        await send_reminders_for_org(service, org["id"])
+        await send_reminders_for_org(service, org["id"], org.get("timezone", "Europe/Rome"))
 
 
 def _run_reminder_timeout():
@@ -91,13 +92,13 @@ async def _reminder_timeout_job(pool):
     from src.core.bookings.reminder_job import check_timeouts_for_org
     from src.core.db.repository import CoreRepository
     orgs = await pool.fetch("""
-        SELECT id FROM organizations
+        SELECT id, timezone FROM organizations
         WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
     """)
     for org in orgs:
         core_repo = CoreRepository(pool)
         service = BookingService(core_repo)
-        await check_timeouts_for_org(service, org["id"])
+        await check_timeouts_for_org(service, org["id"], org.get("timezone", "Europe/Rome"))
 
 
 def _run_no_show_check():
@@ -110,13 +111,68 @@ async def _no_show_check_job(pool):
     from src.core.bookings.no_show_job import mark_da_verificare_for_org
     from src.core.db.repository import CoreRepository
     orgs = await pool.fetch("""
-        SELECT id FROM organizations
+        SELECT id, timezone FROM organizations
         WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
     """)
     for org in orgs:
         core_repo = CoreRepository(pool)
         service = BookingService(core_repo)
-        await mark_da_verificare_for_org(service, org["id"])
+        await mark_da_verificare_for_org(service, org["id"], org.get("timezone", "Europe/Rome"))
+
+
+def _run_calendar_sync():
+    pool = _pool()
+    asyncio.run(_calendar_sync_job(pool))
+
+
+async def _calendar_sync_job(pool):
+    encryption_key = os.getenv("ENCRYPTION_KEY", "")
+    if not encryption_key:
+        logger = __import__("logging").getLogger(__name__)
+        logger.warning("calendar=sync_skipped reason=no_encryption_key")
+        return
+    from src.core.db.repository import CoreRepository
+    from src.core.calendar import GoogleCalendarService
+    repo = CoreRepository(pool)
+    calendar_service = GoogleCalendarService(repo, encryption_key)
+    orgs = await pool.fetch("""
+        SELECT id FROM google_calendar_credentials
+        WHERE sync_enabled = true
+    """)
+    created = 0
+    for org in orgs:
+        org_id = org["id"]
+        bookings = await pool.fetch("""
+            SELECT * FROM bookings
+            WHERE organization_id = $1
+              AND stato IN ('in_attesa', 'confermata', 'da_verificare')
+              AND data >= CURRENT_DATE
+              AND google_event_id IS NULL
+        """, org_id)
+        for b in bookings:
+            await calendar_service.sync_booking_state(dict(b), org_id)
+            created += 1
+        await pool.execute(
+            "UPDATE google_calendar_credentials SET last_sync_at = NOW() WHERE organization_id = $1",
+            org_id,
+        )
+    if created:
+        logger = __import__("logging").getLogger(__name__)
+        logger.info("calendar=sync_complete created=%d", created)
+
+
+def _run_nonce_cleanup():
+    pool = _pool()
+    asyncio.run(_nonce_cleanup_job(pool))
+
+
+async def _nonce_cleanup_job(pool):
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM oauth_nonces WHERE created_at < NOW() - INTERVAL '1 day'"
+        )
+        logger = __import__("logging").getLogger(__name__)
+        logger.info("cleanup=oauth_nonces deleted=%s", result)
 
 
 def avvia_scheduler():
@@ -160,8 +216,22 @@ def avvia_scheduler():
         name="Marca da_verificare prenotazioni non completate",
         replace_existing=True,
     )
+    _scheduler.add_job(
+        _run_calendar_sync,
+        CronTrigger(minute=0),
+        id="calendar_sync",
+        name="Riconciliazione eventi Google Calendar",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        _run_nonce_cleanup,
+        CronTrigger(hour=4, minute=0),
+        id="oauth_nonce_cleanup",
+        name="Pulisce nonce OAuth scaduti",
+        replace_existing=True,
+    )
     _scheduler.start()
-    print("[scheduler] Avviato — report alle 20:00, retention alle 03:00, booking reminders every 30min, no-show alle 23:30.")
+    print("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00.")
 
 
 def ferma_scheduler():

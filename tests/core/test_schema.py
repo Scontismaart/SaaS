@@ -1,5 +1,7 @@
 import pytest
 
+pytestmark = pytest.mark.usefixtures("reset_db")
+
 
 @pytest.mark.asyncio
 async def test_schema_creates_all_tables(pg_pool):

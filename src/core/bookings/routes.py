@@ -1,6 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from src.core.auth.dependencies import require_ruolo
+from src.core.bookings import SlotPienoError
 from src.models.schemas import DisponibilitaSlot
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,11 @@ async def create_booking(body: dict, request: Request,
             tipo_evento=body.get("tipo_evento", ""),
             origine=body.get("origine", "Dashboard"),
         )
+    except SlotPienoError as e:
+        raise HTTPException(status_code=409, detail={
+            "messaggio": str(e),
+            "alternative": e.alternative,
+        })
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
 
@@ -90,9 +96,10 @@ async def confirm_booking(booking_id: str, request: Request,
 
 
 @router.post("/{booking_id}/reject")
-async def reject_booking(booking_id: str, body: dict = {}, request: Request = None,
+async def reject_booking(booking_id: str, body: dict | None = None, request: Request = None,
                          user: dict = Depends(require_ruolo("owner", "manager"))):
     service = _get_booking_service(request)
+    body = body or {}
     try:
         return await service.reject(user["organization_id"], booking_id, body.get("motivo", ""))
     except ValueError as e:

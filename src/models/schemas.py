@@ -84,14 +84,56 @@ class ProfiloAttivita(BaseModel):
     note_speciali: list[str] = Field(default_factory=list)
 
 
+VerticaleOnboarding = Literal[
+    "ristorante",
+    "parrucchiere",
+    "hotel_bnb",
+    "centro_estetico",
+    "studio_medico_dentista",
+]
+
+
+class OnboardingProfileInput(BaseModel):
+    id: str | None = None
+    verticale: VerticaleOnboarding
+    nome_attivita: str = Field(min_length=2, max_length=120)
+    orari: str = Field(min_length=2, max_length=1000)
+    tono: str = Field(default="", max_length=400)
+    servizi: list[str] = Field(default_factory=list)
+    regole_escalation: list[str] = Field(default_factory=list)
+    whatsapp_collegato: bool = False
+    documenti_importati: bool = False
+
+
+class PreviewInput(BaseModel):
+    profilo: OnboardingProfileInput
+    messaggio: str = Field(min_length=1, max_length=1000)
+
+
+class WhatsAppBusinessProfile(BaseModel):
+    nome: str | None = None
+    tipo_attivita: str | None = None
+    tono: str | None = None
+    orari: str | None = None
+    servizi_principali: list[str] | None = None
+    note_speciali: list[str] | None = None
+
+
+VALID_STATI_RECENSIONE = frozenset({
+    "nuova", "bozza_generata", "approvata", "pubblicata", "errore", "conflitto",
+})
+
 class RecensioneInput(BaseModel):
     testo: str
     valutazione_stelle: int | None = Field(default=None, ge=1, le=5)
     fonte: str = Field(default="manuale")
     autore: str = Field(default="")
+    external_id: str | None = Field(default=None)
 
 
 class RispostaRecensioneOutput(BaseModel):
+    id: str
+    stato: str
     bozza_risposta: str
     sentiment: str
     richiede_revisione_urgente: bool

@@ -1,7 +1,10 @@
 import httpx
+import logging
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 from src.whatsapp.config import TenantConfig
 from src.whatsapp.models import SendTextRequest, SendTemplateRequest, SendResponse
+
+logger = logging.getLogger(__name__)
 
 
 def _is_retryable_error(exception):
@@ -18,16 +21,16 @@ class MetaClient:
         self.access_token = tenant_config.access_token
         self._client = httpx.AsyncClient(
             base_url=self.BASE_URL,
-            timeout=httpx.Timeout(5.0, connect=3.0),
+            timeout=httpx.Timeout(10.0, connect=5.0, read=10.0),
         )
 
     async def close(self):
         await self._client.aclose()
 
     @retry(
-        stop=stop_after_attempt(2),
+        stop=stop_after_attempt(3),
         retry=retry_if_exception(_is_retryable_error),
-        wait=wait_exponential(multiplier=1, min=1, max=10),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
         reraise=True,
     )
     async def send_message(self, payload: SendTextRequest | SendTemplateRequest) -> SendResponse:
@@ -37,6 +40,16 @@ class MetaClient:
             "Content-Type": "application/json",
         }
         data = payload.model_dump(exclude_none=True)
-        response = await self._client.post(url, headers=headers, json=data)
-        response.raise_for_status()
-        return SendResponse.model_validate(response.json())
+        try:
+            response = await self._client.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            return SendResponse.model_validate(response.json())
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "Meta API error: status=%d body=%s",
+                exc.response.status_code, exc.response.text,
+            )
+            raise
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            logger.warning("Meta API error: %s", exc)
+            raise

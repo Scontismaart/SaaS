@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Assistente clienti AI — Pannello</title>
+<title>Melpis — Pannello di controllo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23141B33'/%3E%3Cpath d='M9 11h14v8H15l-3.5 3.2V19H9z' fill='none' stroke='%23B8892E' stroke-width='1.8'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080a08'/%3E%3Cpath d='M9 11h14v8H15l-3.5 3.2V19H9z' fill='none' stroke='%235eff00' stroke-width='1.8'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css?v=premium-1">
 <style>
 .doc-progress-bar-bg {
   width:100%;height:8px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:8px;
@@ -31,7 +31,7 @@
     <div class="sidebar-brand">
       <div class="sidebar-brand-row">
         <span class="sidebar-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="9" fill="#1B2547"/><path d="M9 11h14v8H15l-3.5 3.2V19H9z" stroke="#B8892E" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="9" fill="#121214"/><path d="M9 11h14v8H15l-3.5 3.2V19H9z" stroke="#5eff00" stroke-width="1.6" stroke-linejoin="round"/></svg>
         </span>
         <div class="sidebar-brand-text">
           <span class="sidebar-brand-eyebrow">Pannello</span>
@@ -46,6 +46,12 @@
           <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
         </span>
         Panoramica <span class="nav-badge" data-notification-badge="panoramica" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="onboarding">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5V5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 12h7M12 8.5v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        Onboarding
       </button>
       <button class="nav-item" type="button" data-view="assistente">
         <span class="nav-icon" aria-hidden="true">
@@ -136,6 +142,111 @@
           </ul>
         </div>
 
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: ASSISTENTE ---------- -->
+    <section class="view view-hidden" data-view-panel="onboarding">
+      <p class="view-intro">Configura un assistente pronto per il tuo settore. Il profilo salvato sostituisce il profilo demo usato dalla chat.</p>
+
+      <div class="onboarding-shell">
+        <aside class="onboarding-rail" aria-label="Step onboarding">
+          <button type="button" class="onboarding-step active" data-onboarding-step="0"><span>01</span>Attivita</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="1"><span>02</span>Voce e servizi</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="2"><span>03</span>Escalation</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="3"><span>04</span>WhatsApp</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="4"><span>05</span>Documenti</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="5"><span>06</span>Test</button>
+        </aside>
+
+        <div class="onboarding-panel">
+          <div class="onboarding-progress"><span id="onboarding-progress-bar"></span></div>
+
+          <section class="onboarding-page" data-onboarding-page="0">
+            <span class="onboarding-kicker">Profilo attività</span>
+            <h2>Che assistente vuoi creare?</h2>
+            <p>Ogni verticale cambia prompt, regole di prudenza e esempi iniziali.</p>
+            <div class="vertical-grid" id="vertical-grid"></div>
+            <label class="wizard-label" for="onboarding-name">Nome attività</label>
+            <input class="wizard-input" id="onboarding-name" type="text" placeholder="Es. Studio Capelli Nora">
+          </section>
+
+          <section class="onboarding-page" data-onboarding-page="1" hidden>
+            <span class="onboarding-kicker">Voce operativa</span>
+            <h2>Orari, servizi, tono</h2>
+            <div class="wizard-two">
+              <div>
+                <label class="wizard-label" for="onboarding-hours">Orari</label>
+                <textarea class="wizard-input" id="onboarding-hours" rows="4" placeholder="Es. Martedi-Sabato 09:00-19:00"></textarea>
+              </div>
+              <div>
+                <label class="wizard-label" for="onboarding-tone">Tono di voce</label>
+                <textarea class="wizard-input" id="onboarding-tone" rows="4" placeholder="Gentile, preciso, professionale..."></textarea>
+              </div>
+            </div>
+            <label class="wizard-label" for="onboarding-services">Servizi principali, uno per riga</label>
+            <textarea class="wizard-input" id="onboarding-services" rows="5"></textarea>
+            <div class="preview-card">
+              <div>
+                <span class="preview-title">Anteprima risposta AI</span>
+                <p id="onboarding-preview-text">Compila i dati e genera una preview.</p>
+              </div>
+              <button type="button" class="review-analyze" id="onboarding-preview-btn">Genera preview</button>
+            </div>
+          </section>
+
+          <section class="onboarding-page" data-onboarding-page="2" hidden>
+            <span class="onboarding-kicker">Regole di prudenza</span>
+            <h2>Quando passa a un umano?</h2>
+            <p>Parti dalle regole consigliate per settore. Puoi aggiungerne altre.</p>
+            <div class="escalation-list" id="escalation-list"></div>
+            <label class="wizard-label" for="onboarding-extra-rule">Aggiungi regola</label>
+            <div class="wizard-inline">
+              <input class="wizard-input" id="onboarding-extra-rule" type="text" placeholder="Es. richieste fuori listino">
+              <button type="button" class="report-refresh" id="onboarding-add-rule">Aggiungi</button>
+            </div>
+          </section>
+
+          <section class="onboarding-page" data-onboarding-page="3" hidden>
+            <span class="onboarding-kicker">Canale</span>
+            <h2>Collegamento WhatsApp Business</h2>
+            <p>Per la demo segniamo lo step come pronto. In produzione qui entrano Meta App ID, numero e webhook.</p>
+            <label class="wizard-check strong"><input type="checkbox" id="onboarding-whatsapp"> WhatsApp Business configurato o da collegare in onboarding tecnico</label>
+            <div class="connection-strip">
+              <span>Webhook</span><strong>Pronto</strong>
+              <span>Numero</span><strong>Da collegare</strong>
+              <span>Template</span><strong>Opzionali</strong>
+            </div>
+          </section>
+
+          <section class="onboarding-page" data-onboarding-page="4" hidden>
+            <span class="onboarding-kicker">Knowledge base</span>
+            <h2>Import menu e documenti</h2>
+            <p>Carica PDF e documenti nella sezione Documenti. Qui salviamo lo stato onboarding.</p>
+            <label class="wizard-check strong"><input type="checkbox" id="onboarding-docs"> Ho importato almeno un documento utile</label>
+            <button type="button" class="report-refresh" id="onboarding-open-docs">Vai ai documenti</button>
+          </section>
+
+          <section class="onboarding-page" data-onboarding-page="5" hidden>
+            <span class="onboarding-kicker">Prova guidata</span>
+            <h2>Test conversazione</h2>
+            <p>Salva il profilo e fai una domanda come cliente.</p>
+            <textarea class="wizard-input" id="onboarding-test-message" rows="3"></textarea>
+            <div class="preview-card final">
+              <div>
+                <span class="preview-title">Risposta test</span>
+                <p id="onboarding-test-output">Nessun test eseguito.</p>
+              </div>
+              <button type="button" class="review-analyze" id="onboarding-test-btn">Salva e testa</button>
+            </div>
+          </section>
+
+          <p class="doc-config-status" id="onboarding-status"></p>
+          <div class="onboarding-actions">
+            <button type="button" class="report-refresh" id="onboarding-prev">Indietro</button>
+            <button type="button" class="review-analyze" id="onboarding-next">Avanti</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -288,6 +399,11 @@
               <option value="2">★★☆☆☆</option>
               <option value="1">★☆☆☆☆</option>
             </select>
+            <select class="review-source" id="review-source">
+              <option value="manuale">Manuale</option>
+              <option value="google">Google</option>
+              <option value="tripadvisor">TripAdvisor</option>
+            </select>
             <button type="button" class="review-analyze" id="review-analyze">Analizza e genera bozza</button>
           </div>
           <div class="review-draft" id="review-draft" hidden>
@@ -299,6 +415,7 @@
             <div class="review-draft-footer">
               <span class="review-draft-cat" id="review-draft-cat"></span>
               <button type="button" class="review-copy" id="review-copy">Copia testo</button>
+              <button type="button" class="review-approve" id="review-approve">Approva risposta</button>
             </div>
           </div>
         </div>
@@ -427,6 +544,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=premium-1"></script>
 </body>
 </html>

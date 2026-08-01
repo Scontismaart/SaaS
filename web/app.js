@@ -101,6 +101,7 @@ navItems.forEach((btn) => {
 
     const titles = {
       panoramica: "Panoramica",
+      onboarding: "Onboarding",
       assistente: "Assistente",
       recensioni: "Recensioni",
       prenotazioni: "Prenotazioni",
@@ -112,6 +113,9 @@ navItems.forEach((btn) => {
     if (viewName === "panoramica") {
       aggiornaRiepilogo();
       aggiornaPrioritari();
+    }
+    if (viewName === "onboarding") {
+      inizializzaOnboarding();
     }
     if (viewName === "recensioni") {
       aggiornaTrends();
@@ -128,6 +132,270 @@ navItems.forEach((btn) => {
     }
   });
 });
+
+/* ============================================================
+   ONBOARDING
+   ============================================================ */
+
+const onboardingState = {
+  loaded: false,
+  step: 0,
+  verticals: [],
+  selectedVertical: "ristorante",
+  extraRules: [],
+};
+
+const onboardingEls = {
+  steps: document.querySelectorAll("[data-onboarding-step]"),
+  pages: document.querySelectorAll("[data-onboarding-page]"),
+  progress: document.getElementById("onboarding-progress-bar"),
+  verticalGrid: document.getElementById("vertical-grid"),
+  name: document.getElementById("onboarding-name"),
+  hours: document.getElementById("onboarding-hours"),
+  tone: document.getElementById("onboarding-tone"),
+  services: document.getElementById("onboarding-services"),
+  escalationList: document.getElementById("escalation-list"),
+  extraRule: document.getElementById("onboarding-extra-rule"),
+  addRule: document.getElementById("onboarding-add-rule"),
+  previewBtn: document.getElementById("onboarding-preview-btn"),
+  previewText: document.getElementById("onboarding-preview-text"),
+  whatsapp: document.getElementById("onboarding-whatsapp"),
+  docs: document.getElementById("onboarding-docs"),
+  openDocs: document.getElementById("onboarding-open-docs"),
+  testMessage: document.getElementById("onboarding-test-message"),
+  testBtn: document.getElementById("onboarding-test-btn"),
+  testOutput: document.getElementById("onboarding-test-output"),
+  status: document.getElementById("onboarding-status"),
+  prev: document.getElementById("onboarding-prev"),
+  next: document.getElementById("onboarding-next"),
+};
+
+function verticaleCorrente() {
+  return onboardingState.verticals.find((v) => v.id === onboardingState.selectedVertical) || onboardingState.verticals[0];
+}
+
+function righeDaTextarea(value) {
+  return value.split("\n").map((r) => r.trim()).filter(Boolean);
+}
+
+function profiloOnboarding() {
+  const vertical = verticaleCorrente();
+  return {
+    verticale: onboardingState.selectedVertical,
+    nome_attivita: onboardingEls.name.value.trim() || "Nuova attivita",
+    orari: onboardingEls.hours.value.trim() || "Orari da configurare",
+    tono: onboardingEls.tone.value.trim() || vertical?.tono || "",
+    servizi: righeDaTextarea(onboardingEls.services.value),
+    regole_escalation: [...document.querySelectorAll(".onboarding-rule:checked")].map((input) => input.value),
+    whatsapp_collegato: Boolean(onboardingEls.whatsapp?.checked),
+    documenti_importati: Boolean(onboardingEls.docs?.checked),
+  };
+}
+
+function renderOnboardingStep() {
+  onboardingEls.steps.forEach((step) => {
+    step.classList.toggle("active", Number(step.dataset.onboardingStep) === onboardingState.step);
+  });
+  onboardingEls.pages.forEach((page) => {
+    page.hidden = Number(page.dataset.onboardingPage) !== onboardingState.step;
+  });
+  if (onboardingEls.progress) {
+    onboardingEls.progress.style.width = `${((onboardingState.step + 1) / 6) * 100}%`;
+  }
+  onboardingEls.prev.disabled = onboardingState.step === 0;
+  onboardingEls.next.textContent = onboardingState.step === 5 ? "Completa" : "Avanti";
+}
+
+function renderVerticals() {
+  onboardingEls.verticalGrid.innerHTML = "";
+  onboardingState.verticals.forEach((vertical) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "vertical-card";
+    card.classList.toggle("active", vertical.id === onboardingState.selectedVertical);
+    card.innerHTML = `<strong>${vertical.label}</strong><span>${vertical.servizi.slice(0, 3).join(", ")}</span>`;
+    card.addEventListener("click", () => {
+      onboardingState.selectedVertical = vertical.id;
+      onboardingEls.tone.value = vertical.tono;
+      onboardingEls.services.value = vertical.servizi.join("\n");
+      onboardingEls.testMessage.value = vertical.esempio;
+      onboardingState.extraRules = [];
+      renderVerticals();
+      renderEscalationRules();
+    });
+    onboardingEls.verticalGrid.appendChild(card);
+  });
+}
+
+function renderEscalationRules() {
+  const vertical = verticaleCorrente();
+  const rules = [...(vertical?.escalation || []), ...onboardingState.extraRules];
+  onboardingEls.escalationList.innerHTML = "";
+  rules.forEach((rule) => {
+    const label = document.createElement("label");
+    label.className = "wizard-check";
+    label.innerHTML = `<input class="onboarding-rule" type="checkbox" value="${rule.replaceAll('"', "&quot;")}" checked> ${rule}`;
+    onboardingEls.escalationList.appendChild(label);
+  });
+}
+
+async function caricaProfiloOnboarding() {
+  try {
+    const res = await fetch(`${API_BASE}/api/onboarding/profilo`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const record = data.profilo;
+    if (!record) return;
+    onboardingState.selectedVertical = record.verticale;
+    onboardingEls.name.value = record.nome_attivita || "";
+    onboardingEls.hours.value = record.orari || "";
+    onboardingEls.tone.value = record.tono || "";
+    onboardingEls.services.value = (record.servizi || []).join("\n");
+    onboardingEls.whatsapp.checked = Boolean(record.whatsapp_collegato);
+    onboardingEls.docs.checked = Boolean(record.documenti_importati);
+    document.getElementById("business-name").textContent = record.nome_attivita;
+    document.getElementById("chat-business-name").textContent = record.nome_attivita;
+  } catch {
+    /* profilo assente: wizard parte da template */
+  }
+}
+
+async function inizializzaOnboarding() {
+  if (onboardingState.loaded) {
+    renderOnboardingStep();
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/api/onboarding/verticali`);
+    if (!res.ok) throw new Error("Template verticali non disponibili");
+    const data = await res.json();
+    onboardingState.verticals = data.verticali || [];
+    const first = onboardingState.verticals[0];
+    if (first) {
+      onboardingState.selectedVertical = first.id;
+      onboardingEls.tone.value = first.tono;
+      onboardingEls.services.value = first.servizi.join("\n");
+      onboardingEls.testMessage.value = first.esempio;
+    }
+    await caricaProfiloOnboarding();
+    renderVerticals();
+    renderEscalationRules();
+    renderOnboardingStep();
+    onboardingState.loaded = true;
+  } catch (err) {
+    onboardingEls.status.textContent = err.message || "Errore caricamento onboarding.";
+    onboardingEls.status.style.color = "var(--red)";
+  }
+}
+
+async function salvaProfiloOnboarding() {
+  const payload = profiloOnboarding();
+  const res = await fetch(`${API_BASE}/api/onboarding/profilo`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || "Errore salvataggio profilo");
+  }
+  const data = await res.json();
+  const record = data.profilo;
+  document.getElementById("business-name").textContent = record.nome_attivita;
+  document.getElementById("chat-business-name").textContent = record.nome_attivita;
+  return record;
+}
+
+async function generaPreviewOnboarding(targetEl, message) {
+  const res = await fetch(`${API_BASE}/api/onboarding/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ profilo: profiloOnboarding(), messaggio: message }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || "Errore preview");
+  }
+  const data = await res.json();
+  targetEl.textContent = data.risposta;
+  return data;
+}
+
+onboardingEls.steps.forEach((step) => {
+  step.addEventListener("click", () => {
+    onboardingState.step = Number(step.dataset.onboardingStep);
+    renderOnboardingStep();
+  });
+});
+
+onboardingEls.prev?.addEventListener("click", () => {
+  onboardingState.step = Math.max(0, onboardingState.step - 1);
+  renderOnboardingStep();
+});
+
+onboardingEls.next?.addEventListener("click", async () => {
+  if (onboardingState.step < 5) {
+    onboardingState.step += 1;
+    renderOnboardingStep();
+    return;
+  }
+  onboardingEls.next.disabled = true;
+  onboardingEls.status.textContent = "Salvataggio profilo...";
+  try {
+    await salvaProfiloOnboarding();
+    onboardingEls.status.textContent = "Profilo salvato. La chat ora usa questo assistente.";
+    onboardingEls.status.style.color = "var(--sage)";
+  } catch (err) {
+    onboardingEls.status.textContent = err.message;
+    onboardingEls.status.style.color = "var(--red)";
+  } finally {
+    onboardingEls.next.disabled = false;
+  }
+});
+
+onboardingEls.addRule?.addEventListener("click", () => {
+  const rule = onboardingEls.extraRule.value.trim();
+  if (!rule) return;
+  onboardingState.extraRules.push(rule);
+  onboardingEls.extraRule.value = "";
+  renderEscalationRules();
+});
+
+onboardingEls.previewBtn?.addEventListener("click", async () => {
+  onboardingEls.previewBtn.disabled = true;
+  onboardingEls.previewText.textContent = "Genero anteprima...";
+  try {
+    await generaPreviewOnboarding(onboardingEls.previewText, verticaleCorrente()?.esempio || "Siete aperti domani?");
+  } catch (err) {
+    onboardingEls.previewText.textContent = err.message;
+  } finally {
+    onboardingEls.previewBtn.disabled = false;
+  }
+});
+
+onboardingEls.testBtn?.addEventListener("click", async () => {
+  onboardingEls.testBtn.disabled = true;
+  onboardingEls.testOutput.textContent = "Salvo profilo e provo risposta...";
+  try {
+    await salvaProfiloOnboarding();
+    await generaPreviewOnboarding(
+      onboardingEls.testOutput,
+      onboardingEls.testMessage.value.trim() || verticaleCorrente()?.esempio || "Siete aperti?"
+    );
+    onboardingEls.status.textContent = "Wizard completato end-to-end.";
+    onboardingEls.status.style.color = "var(--sage)";
+  } catch (err) {
+    onboardingEls.testOutput.textContent = err.message;
+  } finally {
+    onboardingEls.testBtn.disabled = false;
+  }
+});
+
+onboardingEls.openDocs?.addEventListener("click", () => {
+  document.querySelector('[data-view="documenti"]')?.click();
+});
+
+inizializzaOnboarding();
 
 /* ============================================================
    CHAT
@@ -544,12 +812,16 @@ document.getElementById("booking-date")?.addEventListener("change", (event) => {
 const reviewText = document.getElementById("review-text");
 const reviewAuthor = document.getElementById("review-author");
 const reviewStars = document.getElementById("review-stars");
+const reviewSource = document.getElementById("review-source");
 const reviewAnalyze = document.getElementById("review-analyze");
 const reviewDraft = document.getElementById("review-draft");
 const reviewDraftText = document.getElementById("review-draft-text");
 const reviewDraftSentiment = document.getElementById("review-draft-sentiment");
 const reviewDraftCat = document.getElementById("review-draft-cat");
 const reviewCopy = document.getElementById("review-copy");
+const reviewApprove = document.getElementById("review-approve");
+
+let reviewAttualeId = null;
 
 async function inviaRecensione() {
   const testo = reviewText.value.trim();
@@ -564,7 +836,7 @@ async function inviaRecensione() {
         testo,
         valutazione_stelle: reviewStars.value ? parseInt(reviewStars.value) : null,
         autore: reviewAuthor.value.trim(),
-        fonte: "manuale",
+        fonte: reviewSource.value || "manuale",
       }),
     });
     if (!res.ok) {
@@ -572,6 +844,8 @@ async function inviaRecensione() {
       throw new Error(errBody?.detail || `Errore HTTP ${res.status}`);
     }
     const data = await res.json();
+    reviewAttualeId = data.id;
+    reviewApprove.disabled = false;
     reviewDraft.hidden = false;
     reviewDraftText.textContent = data.bozza_risposta;
     reviewDraftSentiment.textContent = data.sentiment;
@@ -587,6 +861,32 @@ async function inviaRecensione() {
   } finally {
     reviewAnalyze.disabled = false;
     reviewAnalyze.textContent = "Analizza e genera bozza";
+  }
+}
+
+async function approvaRecensione() {
+  if (!reviewAttualeId) return;
+  reviewApprove.disabled = true;
+  reviewApprove.textContent = "Approvazione\u2026";
+  try {
+    const res = await fetch(`${API_BASE}/api/recensioni/${reviewAttualeId}/approva`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => null);
+      throw new Error(errBody?.detail || `Errore HTTP ${res.status}`);
+    }
+    const data = await res.json();
+    reviewApprove.textContent = "Approvata";
+    reviewDraftSentiment.textContent = data.stato;
+    reviewDraftSentiment.className = "review-draft-sentiment sentiment-approvata";
+    await aggiornaRiepilogo();
+    await aggiornaPrioritari();
+  } catch (err) {
+    alert("Errore: " + err.message);
+    reviewApprove.disabled = false;
+    reviewApprove.textContent = "Approva risposta";
   }
 }
 
@@ -681,6 +981,7 @@ async function aggiornaTrends() {
 reviewCopy.addEventListener("click", () => {
   navigator.clipboard.writeText(reviewDraftText.textContent).catch(() => {});
 });
+reviewApprove.addEventListener("click", approvaRecensione);
 reviewAnalyze.addEventListener("click", inviaRecensione);
 
 /* ============================================================

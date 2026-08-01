@@ -20,3 +20,7 @@ Thumbs.db
 .DS_Store
 *.log
 src/logs/
+
+# ZCode MCP config (puo' contenere PAT Supabase in chiaro)
+.zcode/config.json
+.zcode/*.local.json

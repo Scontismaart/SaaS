@@ -1,5 +1,6 @@
-import pytest
 from datetime import date
+
+import pytest
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 

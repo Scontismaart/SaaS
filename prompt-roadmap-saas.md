@@ -110,7 +110,7 @@ Usa "brainstorming" per definire l'integrazione Stripe con questi piani:
 - Starter 49€/mese: 1 numero WA, 500 msg/mese, 1 utente
 - Pro 99€/mese: 2.000 msg, recensioni auto, 3 utenti
 - Business 199€/mese: illimitato*, RAG avanzato, multi-sede
-Copri: metering di messaggi AI/token LLM/documenti indicizzati, trial 14
+Copri: metering di messaggi AI/token LLM/documenti indicizzati, trial 7
 giorni, Customer Portal Stripe, webhook invoice.paid e subscription.deleted
 con conseguente sospensione servizio. Chiedimi conferma sui prezzi/limiti
 esatti e su come vogliamo gestire l'overage (blocco o addebito extra) prima

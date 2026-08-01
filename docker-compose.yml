@@ -1,0 +1,119 @@
+services:
+  api:
+    build: .
+    image: whatsapp-ai-responder:latest
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma_data:/app/data/chroma
+      - reindex_progress:/app/data/reindex_progress
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: "1.0"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+
+  worker-inbound:
+    build: .
+    image: whatsapp-ai-responder:latest
+    env_file: .env
+    command: ["python", "run_inbound_processor.py"]
+    volumes:
+      - chroma_data:/app/data/chroma
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: "0.5"
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
+
+  worker-retry:
+    build: .
+    image: whatsapp-ai-responder:latest
+    env_file: .env
+    command: ["python", "run_retry_worker.py"]
+    volumes:
+      - chroma_data:/app/data/chroma
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.3"
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Audit 4.2: rete di sicurezza indipendente dai worker che liberano i
+  # claim stale. Se worker-inbound o worker-retry crashano, muore con
+  # loro anche la LORO chiamata interna a reap_stale_claims -- questo
+  # servizio esiste apposta per liberare comunque i claim bloccati anche
+  # quando i worker che li hanno presi in carico non sono piu' vivi.
+  supervisor:
+    build: .
+    image: whatsapp-ai-responder:latest
+    env_file: .env
+    command: ["python", "run_supervisor.py"]
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: "0.1"
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
+
+  postgres-dev:
+    profiles: ["dev"]
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: whatsapp_ai
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    networks:
+      - app_internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d whatsapp_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: "0.5"
+
+networks:
+  app_internal:
+    driver: bridge
+    # DB e' Supabase gestito esterno: nessun servizio DB/Redis locale da
+    # isolare qui. La rete interna impedisce comunque che i worker siano
+    # raggiungibili dall'esterno: solo 'api' pubblica una porta host.
+
+volumes:
+  chroma_data:
+  reindex_progress:
+  pgdata_dev:
+
+# -- Nota secrets ------------------------------------------------------
+# .env passato via env_file: NON finisce nell'immagine (e' in
+# .dockerignore), iniettato solo a runtime nel container. Per deploy
+# reale (Coolify/Fly.io/Railway/VPS+Swarm) sostituire env_file con il
+# secret manager della piattaforma invece di portare il file .env sul
+# server.

@@ -12,11 +12,11 @@ async def main():
     app_config = AppConfig(
         app_secret=os.getenv("META_APP_SECRET", ""),
         encryption_key=os.getenv("ENCRYPTION_KEY", ""),
-        postgres_dsn=os.getenv("POSTGRES_DSN", ""),
+        postgres_dsn=os.getenv("DATABASE_URL", ""),
         verify_token=os.getenv("META_VERIFY_TOKEN", ""),
         max_retry_attempts=5,
     )
-    pool = await asyncpg.create_pool(dsn=app_config.postgres_dsn)
+    pool = await asyncpg.create_pool(dsn=app_config.postgres_dsn, min_size=1, max_size=3)
     repo = Repository(pool)
     service = WhatsAppService(app_config, repo)
     worker = RetryWorker(app_config, repo, service)

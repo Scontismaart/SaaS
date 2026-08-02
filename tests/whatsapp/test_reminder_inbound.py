@@ -18,6 +18,7 @@ def app_config():
 @pytest.fixture
 def mock_repo():
     repo = AsyncMock()
+    repo.get_org_subscription_state = AsyncMock(return_value=None)
     repo.pool = MagicMock()
     return repo
 

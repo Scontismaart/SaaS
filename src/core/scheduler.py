@@ -175,6 +175,31 @@ async def _nonce_cleanup_job(pool):
         logger.info("cleanup=oauth_nonces deleted=%s", result)
 
 
+def _run_suspension_notice():
+    pool = _pool()
+    asyncio.run(_suspension_notice_job(pool))
+
+
+async def _suspension_notice_job(pool):
+    """Notifica via email i gestori delle org con trial scaduto e mai
+    notificati. Idempotente per costruzione: l'UPDATE con WHERE
+    suspension_notified_at IS NULL e' un claim atomico — un'org viene
+    notificata esattamente una volta (condiviso con subscription.deleted)."""
+    from src.core.notifications.email_service import enqueue_suspension_notice
+    claimed = await pool.fetch("""
+        UPDATE organizations SET suspension_notified_at = NOW()
+        WHERE trial_end < NOW()
+          AND subscription_status IN ('trialing', 'incomplete')
+          AND suspension_notified_at IS NULL
+        RETURNING id
+    """)
+    for org in claimed:
+        enqueue_suspension_notice(str(org["id"]), pool)
+    if claimed:
+        logger = __import__("logging").getLogger(__name__)
+        logger.info("suspension=notice_enqueued count=%d", len(claimed))
+
+
 def avvia_scheduler():
     global _scheduler
     if _scheduler is not None:
@@ -230,8 +255,15 @@ def avvia_scheduler():
         name="Pulisce nonce OAuth scaduti",
         replace_existing=True,
     )
+    _scheduler.add_job(
+        _run_suspension_notice,
+        CronTrigger(hour=8, minute=0),
+        id="suspension_notice",
+        name="Notifica email org con trial scaduto",
+        replace_existing=True,
+    )
     _scheduler.start()
-    print("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00.")
+    print("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00, suspension notice 08:00.")
 
 
 def ferma_scheduler():

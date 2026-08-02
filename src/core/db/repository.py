@@ -490,7 +490,7 @@ class CoreRepository:
                        plan, messages_used_this_period, messages_limit,
                        users_limit, whatsapp_numbers_limit,
                        current_period_start, current_period_end,
-                       trial_start, trial_end
+                       trial_start, trial_end, suspension_notified_at
                 FROM organizations WHERE id = $1
             """, organization_id)
             if row is None:

@@ -53,7 +53,7 @@ async function aggiornaNotifiche() {
   try {
     const [dashboardResponse, prenotazioniResponse, documentiResponse, reportResponse] = await Promise.all([
       fetch(`${API_BASE}/api/dashboard`),
-      fetch(`${API_BASE}/api/prenotazioni`),
+      fetch(`${API_BASE}/api/bookings`),
       fetch(`${API_BASE}/api/documenti/elenco`),
       fetch(`${API_BASE}/api/report/stato`),
     ]);
@@ -370,7 +370,7 @@ function inizializzaCalendarioPrenotazioni() {
 async function aggiornaPrenotazioni() {
   if (!bookingCalendarEl) return;
   try {
-    const res = await fetch(`${API_BASE}/api/prenotazioni`);
+    const res = await fetch(`${API_BASE}/api/bookings`);
     if (!res.ok) return;
     const prenotazioni = await res.json();
     bookingCount.textContent = `${prenotazioni.length} prenotazioni`;
@@ -379,11 +379,12 @@ async function aggiornaPrenotazioni() {
     bookingCalendar.removeAllEvents();
     prenotazioni.forEach((p) => {
       if (!p.data || !p.ora) return;
+      const ora = String(p.ora).slice(0, 5);
       bookingCalendar.addEvent({
         id: p.id,
-        title: `${p.ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
-        start: `${p.data}T${p.ora}:00`,
-        end: `${p.data}T${p.ora}:00`,
+        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
+        start: `${p.data}T${ora}:00`,
+        end: `${p.data}T${ora}:00`,
         backgroundColor: colorePrenotazione(p.stato),
         borderColor: colorePrenotazione(p.stato),
         extendedProps: p,
@@ -411,8 +412,9 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
     items.forEach((p) => {
       const item = document.createElement("article");
       item.className = "booking-row";
+      const ora = String(p.ora || "").slice(0, 5);
       item.innerHTML = `
-        <time class="booking-row-time">${p.ora || "--:--"}</time>
+        <time class="booking-row-time">${ora || "--:--"}</time>
         <div class="booking-row-main"><strong>${p.nome_cliente || "Cliente"}</strong><span>${p.coperti || "?"} coperti${p.telefono ? ` · ${p.telefono}` : ""}</span></div>
         <span class="booking-row-status" style="--booking-color:${colorePrenotazione(p.stato)}">${p.stato || "In attesa"}</span>`;
       bookingDayList.appendChild(item);
@@ -421,7 +423,7 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
   if (prenotazioni) {
     render(prenotazioni.filter((p) => p.data === data));
   } else {
-    fetch(`${API_BASE}/api/prenotazioni`).then((res) => res.json()).then((all) => render(all.filter((p) => p.data === data))).catch(() => render([]));
+    fetch(`${API_BASE}/api/bookings`).then((res) => res.json()).then((all) => render(all.filter((p) => p.data === data))).catch(() => render([]));
   }
 }
 
@@ -434,7 +436,7 @@ async function aggiornaSemaforo(data = null) {
     month: "2-digit",
   });
   try {
-    const res = await fetch(`${API_BASE}/api/prenotazioni/semaforo?data=${targetDate}`);
+    const res = await fetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
     if (!res.ok) return;
     const slots = await res.json();
     availabilityList.innerHTML = "";
@@ -456,13 +458,13 @@ async function aggiornaSemaforo(data = null) {
 async function aggiornaImpostazioniPrenotazioni() {
   if (!bookingSettingsGrid || bookingSettingsGrid.children.length) return;
   try {
-    const res = await fetch(`${API_BASE}/api/prenotazioni/impostazioni`);
+    const res = await fetch(`${API_BASE}/api/bookings/settings`);
     if (!res.ok) return;
     const data = await res.json();
     const capienze = data.capienze_orarie || {};
     bookingOpenHours = capienze;
-    bookingSettingsGrid.innerHTML = data.fasce_orarie.map((ora) => `
-      <label class="booking-setting"><span>${ora}</span><input type="number" min="0" max="500" data-capacity-hour="${ora}" value="${capienze[ora] ?? data.coperti_massimi_per_slot}"></label>
+    bookingSettingsGrid.innerHTML = (data.fasce_orarie || []).map((ora) => `
+      <label class="booking-setting"><span>${ora}</span><input type="number" min="0" max="500" data-capacity-hour="${ora}" value="${capienze[ora] ?? 40}"></label>
     `).join("");
   } catch (err) {
     console.error("Impossibile caricare le impostazioni prenotazioni:", err);
@@ -478,11 +480,10 @@ bookingForm?.addEventListener("submit", async (e) => {
     data: document.getElementById("booking-date").value,
     ora: document.getElementById("booking-time").value,
     coperti: parseInt(document.getElementById("booking-seats").value, 10),
-    stato: document.getElementById("booking-status").value,
     note: document.getElementById("booking-note").value.trim(),
   };
   try {
-    const res = await fetch(`${API_BASE}/api/prenotazioni`, {
+    const res = await fetch(`${API_BASE}/api/bookings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -506,7 +507,7 @@ bookingForm?.addEventListener("submit", async (e) => {
 capacitySave?.addEventListener("click", async () => {
   capacityStatus.textContent = "";
   try {
-    const res = await fetch(`${API_BASE}/api/prenotazioni/impostazioni`, {
+    const res = await fetch(`${API_BASE}/api/bookings/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

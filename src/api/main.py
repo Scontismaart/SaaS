@@ -20,15 +20,6 @@ from src.core.notifications.email_service import start_worker, stop_worker as st
 from src.core.crew_runner import genera_risposta
 from src.core.priorita import calcola_priorita, calcola_priorita_recensione
 from src.core.conversation_store import store as conv_store
-from src.core.prenotazioni import (
-    aggiorna_impostazioni_disponibilita,
-    crea_prenotazione_dashboard,
-    elenco_prenotazioni,
-    get_impostazioni_disponibilita,
-    prossimi_giorni_semaforo,
-    semaforo_giorno,
-    verifica_disponibilita,
-)
 
 from src.core.scheduler import (
     imposta_fonte_dati,
@@ -57,16 +48,12 @@ from src.models.schemas import (
     CaricaDocumentoInput,
     ConfiguraEmailInput,
     DomandaInput,
-    ImpostazioniDisponibilitaInput,
-    PrenotazioneManualeInput,
     RispostaDocumento,
     MessaggioInput,
     RispostaOutput,
     RecensioneInput,
     RispostaRecensioneOutput,
     EventoDashboard,
-    DisponibilitaSlot,
-    PrenotazioneCalendario,
     ReportOutput,
     OnboardingProfileInput,
     PreviewInput,
@@ -153,9 +140,9 @@ async def lifespan(app: FastAPI):
             app.state.repo = None
             app.state.pool = None
             app.state.wrepo = None
-            from src.core.bookings import BookingService
+            from src.core.bookings.memory_repo import InMemoryBookingRepo
             app.state.booking_service = BookingService(
-                repo=CoreRepository(pool=None),
+                repo=InMemoryBookingRepo(),
                 whatsapp_service=None, app_config=None,
             )
             init_email_store()
@@ -165,8 +152,9 @@ async def lifespan(app: FastAPI):
         app.state.pool = None
         app.state.wrepo = None
         from src.core.bookings import BookingService
+        from src.core.bookings.memory_repo import InMemoryBookingRepo
         app.state.booking_service = BookingService(
-            repo=CoreRepository(pool=None),
+            repo=InMemoryBookingRepo(),
             whatsapp_service=None, app_config=None,
         )
         init_email_store()
@@ -399,58 +387,6 @@ def onboarding_preview(
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
     return generate_preview(richiesta)
-
-
-@app.get("/api/prenotazioni", response_model=list[PrenotazioneCalendario])
-def ottieni_prenotazioni(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return elenco_prenotazioni()
-
-
-@app.post("/api/prenotazioni", response_model=PrenotazioneCalendario)
-def crea_prenotazione(prenotazione: PrenotazioneManualeInput, user: dict = Depends(require_ruolo("owner", "manager"))):
-    if not prenotazione.data or not prenotazione.ora or not prenotazione.coperti:
-        raise HTTPException(status_code=400, detail="Data, ora e coperti sono obbligatori.")
-
-    disponibilita = verifica_disponibilita(prenotazione.data, prenotazione.ora, prenotazione.coperti)
-    if prenotazione.coperti > disponibilita.coperti_liberi:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "messaggio": "Slot al completo per il numero di coperti richiesto.",
-                "disponibilita": disponibilita.model_dump(),
-            },
-        )
-
-    return crea_prenotazione_dashboard(prenotazione)
-
-
-@app.get("/api/prenotazioni/disponibilita", response_model=DisponibilitaSlot)
-def ottieni_disponibilita(data: str, ora: str, coperti: int | None = None, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return verifica_disponibilita(data, ora, coperti)
-
-
-@app.get("/api/prenotazioni/semaforo", response_model=list[DisponibilitaSlot])
-def ottieni_semaforo(data: str | None = None, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    if data:
-        return semaforo_giorno(data)
-    return prossimi_giorni_semaforo()
-
-
-@app.get("/api/prenotazioni/impostazioni")
-def ottieni_impostazioni_prenotazioni(user: dict = Depends(require_ruolo("owner", "manager"))):
-    return get_impostazioni_disponibilita()
-
-
-@app.put("/api/prenotazioni/impostazioni")
-async def salva_impostazioni_prenotazioni(impostazioni: ImpostazioniDisponibilitaInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
-    risultato = aggiorna_impostazioni_disponibilita(
-        capienze_orarie=impostazioni.capienze_orarie,
-        coperti_massimi_per_slot=impostazioni.coperti_massimi_per_slot,
-        fasce_orarie=impostazioni.fasce_orarie,
-    )
-    await _audit(request, user, "impostazioni_prenotazioni_modificate", target_table="booking_settings",
-                 details=impostazioni.model_dump())
-    return risultato
 
 
 @app.post("/api/recensione", response_model=RispostaRecensioneOutput)

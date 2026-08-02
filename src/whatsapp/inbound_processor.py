@@ -7,6 +7,7 @@ from src.whatsapp.config import AppConfig, load_tenant_config
 from src.core.crew_runner import genera_risposta_async
 from src.core.bookings import SlotPienoError
 from src.core.notifications.email_service import enqueue_escalation
+from src.core.billing.suspension import is_org_suspended
 from src.models.schemas import (
     MessaggioInput, CanaleMessaggio, ProfiloAttivita, WhatsAppBusinessProfile,
 )
@@ -14,6 +15,11 @@ from src.models.schemas import (
 logger = logging.getLogger(__name__)
 
 HEARTBEAT_INTERVAL = 30
+
+# Messaggio neutro per il cliente finale quando l'org e' sospesa: nessuna
+# menzione di abbonamenti/fatturazione (esporrebbe lo stato di billing del
+# locale a un cliente casuale). La notifica vera va al gestore via email.
+ORG_SUSPENDED_REPLY = "Grazie per averci scritto, ti risponderemo al piu' presto."
 
 
 def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
@@ -87,6 +93,17 @@ class InboundProcessor:
             if booking_reply:
                 await self.repo.try_mark_replied(msg["id"])
                 return
+
+        state = await self.repo.get_org_subscription_state(org_id)
+        if state and is_org_suspended(state.get("subscription_status"), state.get("trial_end")):
+            logger.warning(
+                "org_id=%s message_id=%s event=org_suspended — risposta AI inibita",
+                org_id, msg["id"],
+            )
+            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
+            if await self.repo.try_mark_replied(msg["id"]):
+                await self._send_ai_reply(org_id, msg, content, tenant_config, ORG_SUSPENDED_REPLY)
+            return
 
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
         business_profile_raw = getattr(tenant_config, "business_profile", None) or {}

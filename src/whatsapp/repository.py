@@ -49,6 +49,14 @@ class Repository:
             """, waba_id)
             return dict(row) if row else None
 
+    async def get_org_subscription_state(self, org_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT subscription_status, trial_end
+                FROM organizations WHERE id = $1
+            """, org_id)
+            return dict(row) if row else None
+
     async def get_tenant_config(self, org_id):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""

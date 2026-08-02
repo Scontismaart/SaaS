@@ -77,6 +77,8 @@ from src.core.billing.config import BillingConfig
 from src.core.gdpr.routes import router as gdpr_router
 from src.core.inbox.routes import router as inbox_router
 from src.core.bookings.routes import router as bookings_router
+from src.core.reviews.routes import router as reviews_router
+from src.core.reviews.google_routes import router as reviews_google_router
 from src.whatsapp.repository import Repository as WhatsAppRepository
 from src.whatsapp.router import create_router as create_whatsapp_router
 from src.whatsapp.config import AppConfig as WhatsAppAppConfig
@@ -176,6 +178,8 @@ app.include_router(gdpr_router)
 app.include_router(inbox_router)
 app.include_router(bookings_router)
 app.include_router(calendar_router)
+app.include_router(reviews_router)
+app.include_router(reviews_google_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]

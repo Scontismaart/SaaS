@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Melpis — Risposte su WhatsApp. In tempo reale. Assistente AI per WhatsApp Business. Prova gratis 7 giorni." />
+    <meta property="og:title" content="Melpis — Risposte su WhatsApp. In tempo reale." />
+    <meta property="og:description" content="Risponde ai clienti, gestisce prenotazioni e recensioni su WhatsApp. Mentre tu lavori, lui non stacca mai." />
+    <title>Melpis — Il tuo assistente clienti su WhatsApp</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        melpis: {
+                            bg: '#080a08',
+                            lime: '#5eff00',
+                            limeHover: '#4ada00',
+                            darkGray: '#1c1c1e',
+                            lightGray: '#a1a1aa',
+                            cardBg: '#121214',
+                            cardBorder: 'rgba(255,255,255,0.05)',
+                            chatLeft: '#262626',
+                            chatRight: '#0a2100'
+                        }
+                    },
+                    boxShadow: {
+                        'glow': '0 0 35px -2px rgba(94, 255, 0, 0.35)',
+                        'glow-lg': '0 0 60px 0px rgba(94, 255, 0, 0.6)',
+                        'card': '0 10px 30px -10px rgba(0, 0, 0, 0.5)',
+                    },
+                    animation: {
+                        'drift': 'drift 30s ease-in-out infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'typing-dot': 'typing 1.4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        drift: {
+                            '0%,100%': { transform: 'translate(0,0) scale(1)' },
+                            '25%': { transform: 'translate(80px,-40px) scale(1.08)' },
+                            '50%': { transform: 'translate(-30px,60px) scale(0.95)' },
+                            '75%': { transform: 'translate(40px,20px) scale(1.03)' },
+                        },
+                        float: {
+                            '0%,100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        typing: {
+                            '0%,60%,100%': { transform: 'translateY(0)', opacity: '0.4' },
+                            '30%': { transform: 'translateY(-6px)', opacity: '1' },
+                        },
+                        scrollProgress: {
+                            '0%': { transform: 'scaleX(0)' },
+                            '100%': { transform: 'scaleX(1)' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #080a08;
+            color: #ffffff;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .spring { transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
+
+        /* Scroll Progress Bar */
+        .scroll-progress {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 3px; z-index: 60; pointer-events: none;
+            background: linear-gradient(90deg, #5eff00, #4ada00);
+            transform-origin: left center;
+            transform: scaleX(0);
+            will-change: transform;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+            @supports (animation-timeline: scroll()) {
+                .scroll-progress { animation: scrollProgress linear; animation-timeline: scroll(root); }
+            }
+        }
+
+        /* Ambient Glows */
+        .glow-bg-left {
+            position: absolute;
+            top: 20%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(94, 255, 0, 0.15) 0%, rgba(8, 10, 8, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .glow-bg-right {
+            position: absolute;
+            top: 60%;
+            right: -10%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(94, 255, 0, 0.1) 0%, rgba(8, 10, 8, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* 3D Phone Mockup */
+        .phone-container {
+            perspective: 1400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .phone-frame {
+            width: 340px;
+            height: 690px;
+            border-radius: 55px;
+            padding: 12px;
+            background-color: #1c1c1e;
+            box-shadow:
+                inset 0 0 0 0.5px rgba(255,255,255,0.06),
+                inset 2px -2px 6px rgba(255,255,255,0.1),
+                inset -2px 2px 4px rgba(0,0,0,0.5),
+                -1px 1px 0px #454548,
+                -2px 2px 0px #414144,
+                -3px 3px 0px #3d3d40,
+                -4px 4px 0px #39393c,
+                -5px 5px 0px #363638,
+                -6px 6px 0px #323234,
+                -7px 7px 0px #2e2e30,
+                -8px 8px 0px #2a2a2c,
+                -9px 9px 0px #262628,
+                -10px 10px 0px #222224,
+                -11px 11px 0px #1e1e20,
+                -12px 12px 0px #1a1a1c,
+                -13px 13px 0px #161618,
+                -25px 25px 40px rgba(0,0,0,0.9),
+                -15px 15px 70px rgba(94, 255, 0, 0.25);
+            transform: rotateY(-22deg) rotateX(10deg) rotateZ(-2deg);
+            transform-style: preserve-3d;
+            position: relative;
+            transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .phone-frame::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 55px;
+            background: linear-gradient(155deg, rgba(255,255,255,0.06) 0%, transparent 35%, rgba(0,0,0,0.3) 70%, rgba(255,255,255,0.03) 100%);
+            pointer-events: none;
+        }
+        /* frame hover removed — mouse tracking via JS */
+        .volume-buttons {
+            position: absolute;
+            top: 150px;
+            left: -7px;
+            margin-top: 7px;
+            width: 5px;
+            height: 60px;
+            background: linear-gradient(90deg, #353538 0%, #28282b 50%, #2b2b2d 100%);
+            border-radius: 4px 0 0 4px;
+            box-shadow: 1px 0 2px rgba(0,0,0,0.5), 0 75px 0 0 #2b2b2d;
+            z-index: -1;
+        }
+        .volume-buttons::before {
+            content: '';
+            position: absolute;
+            top: -45px;
+            left: 1px;
+            width: 4px;
+            height: 25px;
+            background: linear-gradient(90deg, #353538 0%, #28282b 50%, #2b2b2d 100%);
+            border-radius: 3px 0 0 3px;
+        }
+        .power-button {
+            position: absolute;
+            top: 190px;
+            right: -3px;
+            width: 3px;
+            height: 70px;
+            background: linear-gradient(270deg, #222224 0%, #18181a 50%, #1a1a1c 100%);
+            border-radius: 0 3px 3px 0;
+            z-index: -1;
+        }
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background-color: #0b0b0c;
+            border-radius: 43px;
+            overflow: hidden;
+            position: relative;
+            box-shadow:
+                inset 0 0 0 1px rgba(255,255,255,0.04),
+                inset 0 0 8px rgba(0,0,0,0.9);
+            border: 2px solid #000;
+        }
+        .screen-reflection {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .dynamic-island {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 110px;
+            height: 32px;
+            background-color: #000;
+            border-radius: 20px;
+            z-index: 40;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding-right: 12px;
+            box-shadow: 0 0 0 1px rgba(255,255,255,0.06);
+        }
+        .dynamic-island-camera {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background-color: #0b0b0d;
+            box-shadow: inset -1px -1px 3px rgba(255,255,255,0.2), inset 1px 1px 2px rgba(0,0,0,0.9);
+        }
+        .chat-scroll::-webkit-scrollbar { display: none; }
+        .chat-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* General Animations */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+            animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+
+        /* Bento Card */
+        .bento-card {
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .bento-card:hover {
+            border-color: rgba(94, 255, 0, 0.3);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px -10px rgba(94, 255, 0, 0.1);
+        }
+
+        /* Parallax support */
+        @media (prefers-reduced-motion: no-preference) {
+            @supports (animation-timeline: view()) {
+                .parallax-img { animation: parallaxY linear both; animation-timeline: view(); animation-range: cover; }
+            }
+        }
+        @keyframes parallaxY {
+            from { transform: translateY(-5%); }
+            to { transform: translateY(5%); }
+        }
+
+        a:focus-visible, button:focus-visible {
+            outline: 2px solid #5eff00;
+            outline-offset: 3px;
+            border-radius: 8px;
+        }
+
+        .magnetic { transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1); will-change: transform; }
+
+        /* Noise texture */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+            opacity: 0.015;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-size: 256px 256px;
+        }
+
+        /* Scroll Reveal */
+        .reveal {
+            opacity: 0; filter: blur(6px); transform: translateY(28px);
+            transition: opacity 0.9s cubic-bezier(0.32, 0.72, 0, 1),
+                        transform 0.9s cubic-bezier(0.32, 0.72, 0, 1),
+                        filter 0.9s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .reveal.visible { opacity: 1; filter: blur(0); transform: translateY(0); }
+        .reveal-1 { transition-delay: 0.1s; }
+        .reveal-2 { transition-delay: 0.2s; }
+        .reveal-3 { transition-delay: 0.3s; }
+        .reveal-4 { transition-delay: 0.4s; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reveal { opacity: 1; filter: blur(0); transform: none; transition: none; }
+            .animate-drift, .animate-float, .animate-fade-up { animation: none; }
+        }
+
+        /* Glass Card with lime gradient border */
+        .glass-card {
+            padding: 1px;
+            border-radius: 24px;
+            background: linear-gradient(180deg, rgba(94,255,0,0.12), rgba(94,255,0,0.02));
+        }
+        .glass-card-inner {
+            border-radius: 23px;
+            background: #121214;
+        }
+
+        .btn-icon {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            background: rgba(94,255,0,0.1);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+                        background 0.3s ease;
+        }
+        .group:hover .btn-icon {
+            transform: translateX(3px) scale(1.05);
+            background: rgba(94,255,0,0.18);
+        }
+
+        /* Nav underline hover */
+        .nav-underline {
+            position: relative;
+        }
+        .nav-underline::after {
+            content: '';
+            position: absolute; bottom: -2px; left: 0;
+            width: 0; height: 1.5px;
+            background: #5eff00;
+            transition: width 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .nav-underline:hover::after { width: 100%; }
+
+        /* Spotlight hover */
+        .spotlight {
+            position: relative; overflow: hidden;
+        }
+        .spotlight::before {
+            content: '';
+            position: absolute;
+            top: var(--my, 50%); left: var(--mx, 50%);
+            width: 320px; height: 320px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(94,255,0,0.07), transparent 60%);
+            transform: translate(-50%, -50%);
+            pointer-events: none; opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        .spotlight:hover::before { opacity: 1; }
+
+        /* Chat bubbles */
+        .chat-in { background: #262626; border-radius: 18px 18px 18px 4px; }
+        .chat-out { background: #0a2100; border-radius: 18px 18px 4px 18px; }
+
+        .typing-dot {
+            display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+            background: rgba(94,255,0,0.4);
+        }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Mobile Nav Overlay */
+        .nav-overlay {
+            position: fixed; inset: 0; z-index: 40;
+            background: rgba(8,10,8,0.95);
+            backdrop-filter: blur(48px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .nav-overlay.open { opacity: 1; pointer-events: all; }
+        .nav-overlay a {
+            font-size: 2rem; color: rgba(255,255,255,0.45); text-decoration: none;
+            transform: translateY(20px); opacity: 0;
+            transition: opacity 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+                        transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+                        color 0.3s ease;
+        }
+        .nav-overlay.open a { transform: translateY(0); opacity: 1; }
+        .nav-overlay a:nth-child(1) { transition-delay: 0.1s; }
+        .nav-overlay a:nth-child(2) { transition-delay: 0.15s; }
+        .nav-overlay a:nth-child(3) { transition-delay: 0.2s; }
+        .nav-overlay a:nth-child(4) { transition-delay: 0.25s; }
+        .nav-overlay a:hover { color: #5eff00; }
+
+        /* Pricing */
+        .pricing-card {
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1),
+                        box-shadow 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px -12px rgba(0,0,0,0.3);
+        }
+        .pricing-featured {
+            box-shadow: 0 20px 60px -12px rgba(94,255,0,0.15);
+        }
+        .pricing-featured:hover {
+            box-shadow: 0 28px 80px -12px rgba(94,255,0,0.2);
+        }
+
+        .pricing-toggle-btn {
+            position: relative;
+            width: 48px; height: 26px;
+            border-radius: 13px;
+            background: rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: background 0.3s ease;
+            flex-shrink: 0;
+        }
+        .pricing-toggle-btn.active { background: #5eff00; }
+        .pricing-toggle-knob {
+            position: absolute; top: 3px; left: 3px;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: #fff;
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+        }
+        .pricing-toggle-btn.active .pricing-toggle-knob { transform: translateX(22px); }
+
+        /* Carousel */
+        .carousel-track {
+            -ms-overflow-style: none; scrollbar-width: none;
+        }
+        .carousel-track::-webkit-scrollbar { display: none; }
+        .carousel-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: #121214; border: 1px solid rgba(255,255,255,0.1);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .carousel-btn:hover {
+            background: #5eff00; border-color: #5eff00;
+        }
+        .carousel-btn:hover svg { stroke: #080a08; }
+        .carousel-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+            cursor: pointer;
+        }
+        .carousel-dot.active { width: 24px; border-radius: 4px; background: #5eff00; }
+
+        /* FAQ Accordion */
+        .faq-q {
+            cursor: pointer;
+            -webkit-user-select: none; user-select: none;
+        }
+        .faq-arrow {
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .faq-q.open .faq-arrow { transform: rotate(45deg); }
+        .faq-answer {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .faq-q.open + .faq-answer { grid-template-rows: 1fr; }
+        .faq-answer-inner { overflow: hidden; }
+
+        /* Elevation tokens */
+        :root {
+            --elevation-1: 0 1px 3px rgba(0,0,0,0.2);
+            --elevation-2: 0 4px 12px rgba(0,0,0,0.3);
+            --elevation-3: 0 12px 32px rgba(0,0,0,0.35);
+            --elevation-4: 0 24px 60px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative font-sans">
+
+    <!-- Scroll Progress Bar -->
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+
+    <!-- Mobile Nav Overlay -->
+    <div class="nav-overlay" id="navOverlay">
+        <a href="#" onclick="closeNav()">Home</a>
+        <a href="#funzionalita" onclick="closeNav()">Funzionalità</a>
+        <a href="#piani" onclick="closeNav()">Piani</a>
+        <a href="#cta" onclick="closeNav()">Prova gratis</a>
+    </div>
+
+    <!-- Ambient Glows -->
+    <div class="glow-bg-left"></div>
+    <div class="glow-bg-right"></div>
+
+    <!-- Navbar -->
+    <nav id="navbar" class="fixed top-0 left-0 right-0 z-50 flex justify-center pt-3 px-4">
+        <div class="flex items-center justify-between w-full max-w-5xl px-5 h-13 rounded-full
+                    bg-[#121214]/80 backdrop-blur-2xl border border-white/5
+                    shadow-[0_4px_24px_rgba(0,0,0,0.3)]
+                    transition-all duration-500 spring">
+            <a href="#" class="flex items-center gap-2 text-xl font-bold tracking-tight text-white">
+                <i class="fa-brands fa-whatsapp text-[#5eff00] drop-shadow-[0_0_8px_rgba(94,255,0,0.4)]"></i>
+                Melpis
+            </a>
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#funzionalita" class="nav-underline text-sm text-gray-400 hover:text-white transition-colors spring">Funzionalità</a>
+                <a href="#piani" class="nav-underline text-sm text-gray-400 hover:text-white transition-colors spring">Piani</a>
+                <a href="#cta" class="inline-flex items-center gap-2 bg-[#5eff00] text-black pl-5 pr-4 py-2 rounded-full text-sm font-semibold
+                              transition-all duration-400 spring hover:scale-[1.02] hover:shadow-glow group">
+                    Prova gratis 7 giorni
+                    <span class="btn-icon bg-black/15 text-black">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M5 12h14M13 5l7 7-7 7"/>
+                        </svg>
+                    </span>
+                </a>
+            </div>
+            <button id="hamburger" class="md:hidden w-10 h-10 rounded-full bg-[#1c1c1e] border border-white/10 flex items-center justify-center cursor-pointer
+                                        transition-all duration-300 spring hover:bg-[#262626]"
+                    aria-label="Menu"
+                    onclick="toggleNav()">
+                <div class="relative w-5 h-4">
+                    <span id="hamTop" class="absolute top-0 left-0 w-full h-[2px] bg-white rounded-full transition-all duration-300 spring origin-center"></span>
+                    <span id="hamMid" class="absolute top-1/2 left-0 w-full h-[2px] bg-white rounded-full -translate-y-1/2 transition-all duration-300 spring"></span>
+                    <span id="hamBot" class="absolute bottom-0 left-0 w-full h-[2px] bg-white rounded-full transition-all duration-300 spring origin-center"></span>
+                </div>
+            </button>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex flex-col relative z-10">
+
+        <!-- HERO Section -->
+        <section class="relative min-h-[100dvh] flex items-center pt-20 overflow-hidden">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(94,255,0,0.06),transparent_50%)]"></div>
+            <div class="absolute w-[500px] h-[500px] -top-40 -right-40 rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(94,255,0,0.07),transparent_70%)] animate-drift pointer-events-none"></div>
+            <div class="absolute w-[400px] h-[400px] -bottom-40 -left-40 rounded-full bg-[radial-gradient(circle_at_70%_70%,rgba(0,0,0,0.02),transparent_70%)] animate-drift pointer-events-none" style="animation-direction:reverse"></div>
+
+            <div class="max-w-7xl mx-auto px-6 w-full relative z-10">
+                <div class="grid lg:grid-cols-2 gap-16 lg:gap-20 items-center">
+                    <!-- Copy & CTA -->
+                    <div class="space-y-8 max-w-xl">
+                        <div class="reveal visible">
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-[#5eff00] self-center lg:self-start">
+                                <span class="relative flex h-2 w-2">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#5eff00] opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-[#5eff00]"></span>
+                                </span>
+                                Assistente AI per WhatsApp Business
+                            </span>
+                        </div>
+                        <h1 class="text-5xl md:text-7xl lg:text-8xl font-bold leading-[0.95] tracking-tight reveal visible" style="text-wrap:balance">
+                            Risposte su WhatsApp.<br>
+                            <span class="text-[#5eff00] drop-shadow-[0_0_20px_rgba(94,255,0,0.2)]">In tempo reale.</span>
+                        </h1>
+                        <p class="text-lg md:text-xl text-gray-400 max-w-lg leading-relaxed reveal reveal-1 visible">
+                            Mentre tu lavori, Melpis risponde ai clienti, gestisce prenotazioni e recensioni su WhatsApp. <strong class="text-white font-medium">Mentre tu lavori, lui non stacca mai.</strong>
+                        </p>
+                        <div class="flex flex-wrap gap-4 reveal reveal-2 visible">
+                            <a href="#piani" data-magnetic class="magnetic inline-flex items-center gap-2 bg-[#5eff00] text-black pl-7 pr-5 py-3.5 rounded-full text-base font-semibold
+                                              transition-all duration-500 spring hover:scale-[1.03] hover:shadow-glow-lg group">
+                                Prova gratis 7 giorni
+                                <span class="btn-icon bg-black/15">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M5 12h14M13 5l7 7-7 7"/>
+                                    </svg>
+                                </span>
+                            </a>
+                            <a href="#funzionalita" class="inline-flex items-center gap-2 text-gray-400 hover:text-white pl-7 pr-5 py-3.5 rounded-full text-base font-medium
+                                              border border-white/10 transition-all duration-400 spring hover:border-[#5eff00]/30 hover:bg-white/5">
+                                Scopri di più
+                            </a>
+                        </div>
+                        <p class="reveal reveal-2 visible text-sm text-gray-500">Nessuna carta richiesta. Attivazione in 5 minuti.</p>
+                    </div>
+
+                    <!-- 3D Phone Mockup -->
+                    <div class="hidden lg:flex justify-center reveal reveal-3 visible">
+                        <div class="phone-container animate-float">
+                            <div class="phone-frame">
+                                <div class="volume-buttons"></div>
+                                <div class="power-button"></div>
+                                <div class="phone-screen flex flex-col">
+                                    <div class="screen-reflection"></div>
+                                    <div class="dynamic-island"><div class="dynamic-island-camera"></div></div>
+
+                                    <!-- iOS Status Bar -->
+                                    <div class="flex justify-between items-center px-7 pt-4 pb-2 text-[11px] font-semibold z-30 relative bg-[#0b0b0c]/90 backdrop-blur-md">
+                                        <span class="mt-0.5">18:30</span>
+                                        <div class="flex gap-1.5 items-center mt-0.5">
+                                            <i class="fa-solid fa-signal text-[10px]"></i>
+                                            <i class="fa-solid fa-wifi text-[10px]"></i>
+                                            <i class="fa-solid fa-battery-full text-[13px]"></i>
+                                        </div>
+                                    </div>
+
+                                    <!-- WhatsApp Header -->
+                                    <div class="flex items-center justify-between px-4 py-2.5 bg-[#0b0b0c]/95 backdrop-blur-md border-b border-gray-800 z-30 relative">
+                                        <div class="flex items-center gap-3">
+                                            <div class="flex items-center text-[#5eff00] text-xl">
+                                                <i class="fa-solid fa-chevron-left mr-1"></i>
+                                            </div>
+                                            <div class="w-9 h-9 rounded-full bg-[#5eff00] flex items-center justify-center text-black shadow-sm">
+                                                <i class="fa-brands fa-whatsapp text-2xl"></i>
+                                            </div>
+                                            <div class="flex flex-col -gap-1">
+                                                <span class="text-[15px] font-semibold leading-tight">Melpis AI</span>
+                                                <span class="text-[11px] text-gray-400 font-medium leading-tight">Online</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-5 text-[#5eff00] pr-2">
+                                            <i class="fa-solid fa-video text-[17px]"></i>
+                                            <i class="fa-solid fa-phone text-[17px]"></i>
+                                        </div>
+                                    </div>
+
+                                    <!-- Chat Area -->
+                                    <div class="flex-grow bg-[#050505] relative chat-scroll overflow-y-auto px-3.5 py-4 flex flex-col gap-1.5 z-20">
+                                        <div class="absolute inset-0 opacity-[0.03] z-0 pointer-events-none" style="background-image: radial-gradient(circle at 2px 2px, white 1.5px, transparent 0); background-size: 14px 14px;"></div>
+
+                                        <div class="flex justify-center my-2 relative z-10">
+                                            <span class="text-[11px] bg-[#1a1a1c] text-gray-400 px-3.5 py-1 rounded-lg font-medium shadow-sm border border-gray-800/50">Oggi</span>
+                                        </div>
+
+                                        <div class="flex relative z-10 w-full mb-2">
+                                            <div class="bg-[#262626] max-w-[82%] rounded-[18px] rounded-tl-[4px] px-3.5 py-2 text-[14px] leading-[1.35] shadow-sm">
+                                                <p class="text-gray-100">Buonasera, avete un tavolo per stasera alle 20:00 per 4 persone?</p>
+                                                <div class="text-right mt-1 -mb-0.5">
+                                                    <span class="text-[10px] text-gray-400 font-medium">18:30</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex justify-end relative z-10 w-full mb-2">
+                                            <div class="bg-[#5eff00] text-black max-w-[82%] rounded-[18px] rounded-tr-[4px] px-3.5 py-2 text-[14px] leading-[1.35] shadow-[0_2px_15px_rgba(94,255,0,0.15)] relative">
+                                                <p class="font-medium">Buonasera! Confermo la disponibilità per 4 persone alle 20:00. Procedo con la prenotazione a tuo nome?</p>
+                                                <div class="text-right mt-1 -mb-0.5 flex justify-end items-center gap-1">
+                                                    <span class="text-[10px] text-[#0a2100]/70 font-semibold">18:30</span>
+                                                    <i class="fa-solid fa-check-double text-[11px] text-blue-700"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex relative z-10 w-full mb-2">
+                                            <div class="bg-[#262626] max-w-[82%] rounded-[18px] rounded-tl-[4px] px-3.5 py-2 text-[14px] leading-[1.35] shadow-sm">
+                                                <p class="text-gray-100">Perfetto, confermo! Grazie.</p>
+                                                <div class="text-right mt-1 -mb-0.5">
+                                                    <span class="text-[10px] text-gray-400 font-medium">18:31</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex relative z-10 mt-1 items-center gap-2">
+                                            <div class="bg-[#262626] rounded-full px-4 py-2.5 flex gap-1.5 items-center shadow-sm">
+                                                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse"></div>
+                                                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-100"></div>
+                                                <div class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-pulse delay-200"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Chat Input Footer -->
+                                    <div class="bg-[#0b0b0c]/95 backdrop-blur-md p-2 flex items-center gap-3 z-30 relative pb-8 pt-2.5 border-t border-gray-800/50">
+                                        <i class="fa-solid fa-plus text-[#5eff00] text-[22px] pl-1"></i>
+                                        <div class="flex-grow bg-[#1a1a1c] rounded-full h-9 flex items-center px-4 justify-between border border-gray-700/30">
+                                            <span class="text-[15px] text-gray-500 pt-0.5">Messaggio</span>
+                                            <i class="fa-regular fa-note-sticky text-gray-400 text-lg"></i>
+                                        </div>
+                                        <i class="fa-solid fa-camera text-[#5eff00] text-[22px]"></i>
+                                        <i class="fa-solid fa-microphone text-[#5eff00] text-[22px] pr-1"></i>
+                                    </div>
+
+                                    <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-[130px] h-[4px] bg-white/50 rounded-full z-40"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEM / STAT Section -->
+        <section class="relative py-28 md:py-40 overflow-hidden">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(94,255,0,0.03),transparent_50%)]"></div>
+            <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
+                <div class="reveal">
+                    <h2 class="text-3xl md:text-5xl font-bold mb-8 leading-tight" style="text-wrap:balance">
+                        Ogni cliente che aspetta,<br />è un cliente che se ne va.
+                    </h2>
+                    <p class="text-lg md:text-xl text-gray-400 leading-relaxed mb-16 max-w-2xl mx-auto">
+                        Un messaggio senza risposta, una recensione ignorata, una prenotazione persa.
+                        Mentre sei in sala o in negozio, il telefono squilla.
+                    </p>
+                </div>
+                <div class="reveal reveal-1">
+                    <div class="flex items-center justify-center gap-6 mb-20">
+                        <span class="text-7xl md:text-9xl font-bold text-[#5eff00] leading-none drop-shadow-[0_0_20px_rgba(94,255,0,0.15)]">78%</span>
+                        <p class="text-left text-sm text-gray-400 max-w-[220px] leading-relaxed">
+                            dei clienti si aspetta una risposta entro 60 minuti su WhatsApp.
+                            <span class="block text-xs text-gray-500 mt-2">Fonte: Meta, 2024</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="reveal reveal-2 pt-16 border-t border-white/5">
+                    <p class="text-xl md:text-2xl font-semibold text-white leading-relaxed" style="text-wrap:balance">
+                        Con <span class="text-[#5eff00]">Melpis</span>, non devi più scegliere tra servire chi hai davanti e rispondere a chi ti scrive.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Target Audience Banner -->
+        <div class="w-full border-y border-white/5 bg-white/[0.02] py-8 mb-24">
+            <div class="max-w-7xl mx-auto px-6 text-center">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-widest mb-6">Progettato per le attività che non possono stare al telefono</p>
+                <div class="flex flex-wrap justify-center gap-8 md:gap-16 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
+                    <div class="flex items-center gap-2 text-xl font-bold"><i class="fa-solid fa-utensils text-[#5eff00]"></i> Ristoranti & Bar</div>
+                    <div class="flex items-center gap-2 text-xl font-bold"><i class="fa-solid fa-spa text-[#5eff00]"></i> Saloni & Spa</div>
+                    <div class="flex items-center gap-2 text-xl font-bold"><i class="fa-solid fa-user-doctor text-[#5eff00]"></i> Studi Medici</div>
+                    <div class="flex items-center gap-2 text-xl font-bold"><i class="fa-solid fa-dumbbell text-[#5eff00]"></i> Palestre</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FEATURES Section -->
+        <section id="funzionalita" class="py-28 md:py-40 bg-[#121214]">
+            <div class="max-w-6xl mx-auto px-6">
+                <div class="text-center mb-20 reveal">
+                    <h2 class="text-3xl md:text-5xl font-bold leading-tight" style="text-wrap:balance">
+                        Tutto quello che serve.<br />Niente di più.
+                    </h2>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-5">
+                    <!-- Feature 1: Large (main) -->
+                    <div class="md:col-span-2 reveal spotlight">
+                        <div class="glass-card h-full">
+                            <div class="glass-card-inner p-7 md:p-9 h-full flex flex-col md:flex-row gap-8 items-start">
+                                <div class="flex-1 space-y-4">
+                                    <div class="w-10 h-10 rounded-xl bg-[#5eff00]/10 flex items-center justify-center">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-2xl md:text-3xl font-bold leading-tight">Risposte WhatsApp in tempo reale</h3>
+                                    <p class="text-gray-400 text-base md:text-lg leading-relaxed max-w-md">
+                                        Mentre sei in servizio, Melpis risponde ai clienti su WhatsApp. Veloce, preciso, in italiano. Le tue regole, la sua voce.
+                                    </p>
+                                </div>
+                                <div class="flex-shrink-0 w-full md:w-56 space-y-2.5 p-4 rounded-xl bg-[#1c1c1e] border border-white/5">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-[#5eff00]/15 flex items-center justify-center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Domande frequenti</span>
+                                    </div>
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-[#5eff00]/15 flex items-center justify-center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Orari e disponibilità</span>
+                                    </div>
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-[#5eff00]/15 flex items-center justify-center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Info menu e servizi</span>
+                                    </div>
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-7 h-7 rounded-full bg-[#5eff00]/15 flex items-center justify-center">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                        </div>
+                                        <span class="text-xs text-gray-400">Prenotazioni e modifiche</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="reveal reveal-1 spotlight">
+                        <div class="glass-card h-full">
+                            <div class="glass-card-inner p-7 h-full flex flex-col gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#5eff00]/10 flex items-center justify-center">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold">Prenotazioni automatiche</h3>
+                                <p class="text-gray-400 text-sm leading-relaxed flex-1">
+                                    Legge il calendario, controlla la disponibilità e conferma. Il cliente vede subito se c'è posto.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="reveal reveal-2 spotlight">
+                        <div class="glass-card h-full">
+                            <div class="glass-card-inner p-7 h-full flex flex-col gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#5eff00]/10 flex items-center justify-center">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                                        <path d="M12 6v6l4 2"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold">Allerta intelligente</h3>
+                                <p class="text-gray-400 text-sm leading-relaxed flex-1">
+                                    Se la richiesta è delicata o fuori copione, ti gira solo quella. Il resto lo gestisce lui.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-3 gap-5 mt-5">
+                    <!-- Feature 4 -->
+                    <div class="reveal reveal-1 spotlight">
+                        <div class="glass-card h-full">
+                            <div class="glass-card-inner p-7 h-full flex flex-col gap-4 bg-[#1c1c1e]">
+                                <div class="w-10 h-10 rounded-xl bg-[#5eff00]/10 flex items-center justify-center">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold">Report serale</h3>
+                                <p class="text-gray-400 text-sm leading-relaxed flex-1">
+                                    Ogni sera un riepilogo di messaggi, prenotazioni e suggerimenti. Pronto quando arrivi.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Feature 5 -->
+                    <div class="reveal reveal-2 spotlight relative overflow-hidden">
+                        <div class="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-[radial-gradient(circle,rgba(94,255,0,0.18),transparent_70%)] pointer-events-none"></div>
+                        <div class="glass-card h-full relative">
+                            <div class="glass-card-inner p-7 h-full flex flex-col gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#5eff00]/10 flex items-center justify-center">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold">Gestione recensioni</h3>
+                                <p class="text-gray-400 text-sm leading-relaxed flex-1">
+                                    Analizza il tono e prepara bozze di risposta. Mantieni alta la reputazione senza stress.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Feature 6 -->
+                    <div class="reveal reveal-3 spotlight">
+                        <div class="glass-card h-full">
+                            <div class="glass-card-inner p-7 h-full flex flex-col gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-[#5eff00]/10 flex items-center justify-center">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-bold">Personalizzazione totale</h3>
+                                <p class="text-gray-400 text-sm leading-relaxed flex-1">
+                                    Carichi menu, listini, orari e regole. Lui impara e risponde come te.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STATS COUNTER -->
+        <section class="py-20 md:py-28 bg-[#080a08] border-t border-white/5">
+            <div class="max-w-4xl mx-auto px-6 text-center">
+                <div class="grid md:grid-cols-2 gap-8 max-w-xl mx-auto">
+                    <div class="glass-card reveal">
+                        <div class="glass-card-inner p-8">
+                            <p class="counter-value text-5xl md:text-6xl text-[#5eff00] font-bold drop-shadow-[0_0_10px_rgba(94,255,0,0.15)]" data-target="500" data-suffix="+">0</p>
+                            <p class="text-gray-400 text-lg mt-2">attività usano Melpis</p>
+                        </div>
+                    </div>
+                    <div class="glass-card reveal reveal-1">
+                        <div class="glass-card-inner p-8">
+                            <p class="counter-value text-5xl md:text-6xl text-[#5eff00] font-bold drop-shadow-[0_0_10px_rgba(94,255,0,0.15)]" data-target="10000" data-suffix="+">0</p>
+                            <p class="text-gray-400 text-lg mt-2">conversazioni gestite al giorno</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TESTIMONIALS Carousel -->
+        <section class="py-28 md:py-40 bg-[#121214]">
+            <div class="max-w-6xl mx-auto px-6">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-3xl md:text-5xl font-bold mb-4">Cosa dicono i nostri partner</h2>
+                    <p class="text-gray-400 text-lg max-w-xl mx-auto">Attività di ogni settore si affidano a Melpis per non perdere più un cliente.</p>
+                </div>
+                <div class="testimonial-carousel relative" data-stagger>
+                    <div class="carousel-track flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-4 -mx-6 px-6" id="carouselTrack">
+                        <div class="carousel-slide snap-start shrink-0 w-[85vw] md:w-[380px]">
+                            <div class="bg-[#1c1c1e] p-8 rounded-3xl border border-white/5 h-full flex flex-col">
+                                <div class="flex text-[#5eff00] mb-4 text-sm tracking-widest" aria-label="5 stelle">★★★★★</div>
+                                <p class="text-gray-300 mb-8 italic leading-relaxed text-sm flex-1">"Da quando usiamo Melpis, il telefono squilla molto meno per richieste banali. Il tono dell'AI è sorprendentemente naturale."</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#5eff00]/10 flex items-center justify-center font-bold text-[#5eff00] text-sm">MR</div>
+                                    <div>
+                                        <p class="font-bold text-sm">Marco R.</p>
+                                        <p class="text-xs text-gray-400">Osteria Moderna</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-slide snap-start shrink-0 w-[85vw] md:w-[380px]">
+                            <div class="bg-[#1c1c1e] p-8 rounded-3xl border border-white/5 h-full flex flex-col">
+                                <div class="flex text-[#5eff00] mb-4 text-sm tracking-widest" aria-label="5 stelle">★★★★★</div>
+                                <p class="text-gray-300 mb-8 italic leading-relaxed text-sm flex-1">"Le nostre clienti prenotano il taglio alle 23:00 su WhatsApp. Il tasso di conversione è aumentato del 40% in un mese."</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#5eff00]/10 flex items-center justify-center font-bold text-[#5eff00] text-sm">ES</div>
+                                    <div>
+                                        <p class="font-bold text-sm">Elena S.</p>
+                                        <p class="text-xs text-gray-400">Hair Stylist & Salon Manager</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-slide snap-start shrink-0 w-[85vw] md:w-[380px]">
+                            <div class="bg-[#1c1c1e] p-8 rounded-3xl border border-white/5 h-full flex flex-col">
+                                <div class="flex text-[#5eff00] mb-4 text-sm tracking-widest" aria-label="5 stelle">★★★★★</div>
+                                <p class="text-gray-300 mb-8 italic leading-relaxed text-sm flex-1">"Gestire check-in e richieste degli ospiti del nostro B&B è diventato un gioco da ragazzi. Come avere un receptionist h24."</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#5eff00]/10 flex items-center justify-center font-bold text-[#5eff00] text-sm">GT</div>
+                                    <div>
+                                        <p class="font-bold text-sm">Giulia T.</p>
+                                        <p class="text-xs text-gray-400">Boutique Hotel</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-slide snap-start shrink-0 w-[85vw] md:w-[380px]">
+                            <div class="bg-[#1c1c1e] p-8 rounded-3xl border border-white/5 h-full flex flex-col">
+                                <div class="flex text-[#5eff00] mb-4 text-sm tracking-widest" aria-label="5 stelle">★★★★★</div>
+                                <p class="text-gray-300 mb-8 italic leading-relaxed text-sm flex-1">"I clienti ci scrivono su WhatsApp a qualsiasi ora. Melpis risponde sempre. Abbiamo ridotto le mancate prenotazioni del 60%."</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#5eff00]/10 flex items-center justify-center font-bold text-[#5eff00] text-sm">LM</div>
+                                    <div>
+                                        <p class="font-bold text-sm">Luca M.</p>
+                                        <p class="text-xs text-gray-400">Pizzeria Da Marco</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-slide snap-start shrink-0 w-[85vw] md:w-[380px]">
+                            <div class="bg-[#1c1c1e] p-8 rounded-3xl border border-white/5 h-full flex flex-col">
+                                <div class="flex text-[#5eff00] mb-4 text-sm tracking-widest" aria-label="5 stelle">★★★★★</div>
+                                <p class="text-gray-300 mb-8 italic leading-relaxed text-sm flex-1">"Rispondere a WhatsApp mentre lavoro con le clienti era impossibile. Ora Melpis gestisce tutto. Le recensioni sono migliorate."</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#5eff00]/10 flex items-center justify-center font-bold text-[#5eff00] text-sm">AB</div>
+                                    <div>
+                                        <p class="font-bold text-sm">Anna B.</p>
+                                        <p class="text-xs text-gray-400">Centro Benessere</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="carousel-slide snap-start shrink-0 w-[85vw] md:w-[380px]">
+                            <div class="bg-[#1c1c1e] p-8 rounded-3xl border border-white/5 h-full flex flex-col">
+                                <div class="flex text-[#5eff00] mb-4 text-sm tracking-widest" aria-label="5 stelle">★★★★★</div>
+                                <p class="text-gray-300 mb-8 italic leading-relaxed text-sm flex-1">"I clienti chiedono orari, disponibilità e consigli su WhatsApp. Melpis risponde come farei io. Ho più tempo per consigliare i lettori."</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-[#5eff00]/10 flex items-center justify-center font-bold text-[#5eff00] text-sm">DC</div>
+                                    <div>
+                                        <p class="font-bold text-sm">Davide C.</p>
+                                        <p class="text-xs text-gray-400">Libreria Indipendente</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-center gap-4 mt-8">
+                        <button class="carousel-btn" id="carouselPrev" aria-label="Precedente">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        </button>
+                        <div class="flex gap-2" id="carouselDots"></div>
+                        <button class="carousel-btn" id="carouselNext" aria-label="Successivo">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PARALLAX Section -->
+        <section class="relative min-h-[78vh] md:min-h-[80vh] flex items-end md:items-center overflow-hidden">
+            <div class="absolute inset-0 overflow-hidden">
+                <div class="parallax-img w-full h-full object-cover scale-110" style="background: linear-gradient(135deg, #0a2100 0%, #080a08 50%, #1c1c1e 100%);"></div>
+                <div class="absolute inset-0 bg-[linear-gradient(105deg,rgba(8,10,8,0.78)_0%,rgba(8,10,8,0.45)_45%,rgba(8,10,8,0.15)_75%,transparent_100%)]"></div>
+                <div class="absolute inset-0 bg-[linear-gradient(0deg,rgba(8,10,8,0.55)_0%,transparent_45%)]"></div>
+            </div>
+            <div class="max-w-7xl mx-auto px-6 w-full relative z-10 py-20 md:py-28">
+                <div class="max-w-xl">
+                    <div class="reveal">
+                        <span class="inline-block text-[10px] uppercase tracking-[0.28em] font-medium text-[#5eff00] mb-6">Melpis presente</span>
+                    </div>
+                    <h2 class="reveal reveal-1 text-5xl md:text-7xl font-bold leading-[0.98] tracking-tight text-white" style="text-wrap:balance">
+                        Qualcuno c'è.<br /><span class="italic text-[#5eff00] drop-shadow-[0_0_15px_rgba(94,255,0,0.2)]">Melpis.</span>
+                    </h2>
+                    <p class="reveal reveal-2 text-lg md:text-xl text-white/85 leading-relaxed mt-7 max-w-md">
+                        Risponde, conferma e organizza. 24 ore su 24, senza staccare mai.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- HOW IT WORKS -->
+        <section id="come-funziona" class="py-28 md:py-40 bg-[#121214]">
+            <div class="max-w-6xl mx-auto px-6">
+                <div class="text-center mb-20 reveal">
+                    <h2 class="text-3xl md:text-5xl font-bold">Come funziona</h2>
+                </div>
+                <div class="grid md:grid-cols-3 gap-12 md:gap-20">
+                    <div class="reveal text-center">
+                        <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#1c1c1e] border border-white/10 mb-8 shadow-sm">
+                            <span class="text-2xl font-bold text-[#5eff00]">1</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3">Colleghi</h3>
+                        <p class="text-gray-400 text-lg leading-relaxed max-w-xs mx-auto">Colleghi Melpis al tuo account WhatsApp Business in 2 click. Nessun cavo, nessun tecnico.</p>
+                    </div>
+                    <div class="reveal reveal-1 text-center">
+                        <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#1c1c1e] border border-white/10 mb-8 shadow-sm">
+                            <span class="text-2xl font-bold text-[#5eff00]">2</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3">Personalizzi</h3>
+                        <p class="text-gray-400 text-lg leading-relaxed max-w-xs mx-auto">Carichi menu, listini, orari e regole. Lui impara e comincia a rispondere.</p>
+                    </div>
+                    <div class="reveal reveal-2 text-center">
+                        <div class="relative inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#1c1c1e] border border-white/10 mb-8 shadow-sm">
+                            <span class="text-2xl font-bold text-[#5eff00]">3</span>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3">Lavori</h3>
+                        <p class="text-gray-400 text-lg leading-relaxed max-w-xs mx-auto">Melpis gestisce messaggi, prenotazioni e recensioni. Tu fai quello che sai fare meglio.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRICING Section -->
+        <section id="piani" class="py-28 md:py-40 bg-[#080a08]">
+            <div class="max-w-6xl mx-auto px-6">
+                <div class="text-center mb-16 reveal">
+                    <span class="inline-block text-[10px] uppercase tracking-[0.25em] font-medium text-[#5eff00] border border-[#5eff00]/30 rounded-full px-4 py-1.5 bg-[#5eff00]/5 mb-6">Piani</span>
+                    <h2 class="text-3xl md:text-5xl font-bold mb-4">Piani semplici e trasparenti</h2>
+                    <p class="text-gray-400 text-lg max-w-xl mx-auto">Scegli il piano più adatto alla tua attività. Nessun costo nascosto, cancellazione in qualsiasi momento.</p>
+                </div>
+                <div class="flex items-center justify-center gap-4 mb-12 reveal">
+                    <span class="text-sm font-medium text-gray-400" id="toggleLabelMonthly">Mensile</span>
+                    <button class="pricing-toggle-btn" id="pricingToggle" aria-label="Toggle annuale">
+                        <span class="pricing-toggle-knob"></span>
+                    </button>
+                    <span class="text-sm font-medium text-white" id="toggleLabelYearly">Annuale</span>
+                    <span class="text-[9px] uppercase tracking-[0.15em] bg-[#5eff00]/10 text-[#5eff00] px-2 py-1 rounded-full font-semibold">-20%</span>
+                </div>
+                <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto items-start">
+                    <!-- Starter -->
+                    <div class="reveal reveal-1 bg-[#121214] rounded-3xl p-8 border border-white/5 pricing-card flex flex-col">
+                        <h3 class="text-2xl font-bold mb-2">Starter</h3>
+                        <p class="text-gray-400 text-sm mb-6">Per iniziare. Prova gratis 7 giorni, poi €29/mese.</p>
+                        <div class="mb-8">
+                            <span class="text-5xl font-bold"><span class="price-value" data-monthly="29" data-yearly="279">29</span>€</span>
+                            <span class="price-period text-gray-400 text-sm">/mese</span>
+                            <span class="price-yearly-note hidden text-gray-400 text-xs ml-1">(23€/mese)</span>
+                        </div>
+                        <ul class="space-y-4 mb-10 flex-grow text-sm text-gray-300">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Risposte AI su WhatsApp H24
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Fino a 500 messaggi/mese
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Gestione prenotazioni base
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                1 utente dashboard
+                            </li>
+                        </ul>
+                        <a href="#cta" class="block w-full text-center py-3 rounded-full border border-white/20 text-white font-medium
+                                          transition-all duration-300 spring hover:bg-[#5eff00] hover:text-black hover:border-[#5eff00]">
+                            Inizia prova gratuita
+                        </a>
+                    </div>
+
+                    <!-- Pro (Highlighted) -->
+                    <div class="reveal reveal-2 bg-[#121214] rounded-3xl p-8 border-2 border-[#5eff00] pricing-featured pricing-card flex flex-col relative -mt-0 md:-mt-4 shadow-[0_0_50px_-15px_rgba(94,255,0,0.3)]">
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#5eff00] text-black px-5 py-1 rounded-full text-[10px] font-bold tracking-[0.15em] uppercase">
+                            Il più scelto
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2 text-[#5eff00]">Pro</h3>
+                        <p class="text-gray-400 text-sm mb-6">Per attività in crescita che vogliono il massimo.</p>
+                        <div class="mb-8">
+                            <span class="text-5xl font-bold text-white"><span class="price-value" data-monthly="59" data-yearly="569">59</span>€</span>
+                            <span class="price-period text-gray-400 text-sm">/mese</span>
+                            <span class="price-yearly-note hidden text-gray-400 text-xs ml-1">(47€/mese)</span>
+                        </div>
+                        <ul class="space-y-4 mb-10 flex-grow text-sm text-gray-300">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                <span class="text-white">Tutto dello Starter</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                <strong class="text-white">Messaggi illimitati</strong>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Gestione recensioni automatica
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Human-in-the-loop (Ticket)
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                3 utenti dashboard
+                            </li>
+                        </ul>
+                        <a href="#cta" class="block w-full text-center py-3 rounded-full bg-[#5eff00] text-black font-bold
+                                          transition-all duration-300 spring hover:bg-[#4ada00] hover:shadow-glow">
+                            Scegli Pro
+                        </a>
+                    </div>
+
+                    <!-- Max -->
+                    <div class="reveal reveal-3 bg-[#121214] rounded-3xl p-8 border border-white/5 pricing-card flex flex-col">
+                        <h3 class="text-2xl font-bold mb-2">Max</h3>
+                        <p class="text-gray-400 text-sm mb-6">Soluzione completa senza limiti.</p>
+                        <div class="mb-8">
+                            <span class="text-5xl font-bold"><span class="price-value" data-monthly="120" data-yearly="1199">120</span>€</span>
+                            <span class="price-period text-gray-400 text-sm">/mese</span>
+                            <span class="price-yearly-note hidden text-gray-400 text-xs ml-1">(100€/mese)</span>
+                        </div>
+                        <ul class="space-y-4 mb-10 flex-grow text-sm text-gray-300">
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                <span class="text-white">Tutto del Pro</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                AI su documenti (RAG)
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Multi-sede
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Integrazioni personalizzate
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="w-5 h-5 rounded-full bg-[#5eff00]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+                                </span>
+                                Account manager dedicato
+                            </li>
+                        </ul>
+                        <a href="#cta" class="block w-full text-center py-3 rounded-full border border-white/20 text-white font-medium
+                                          transition-all duration-300 spring hover:bg-[#5eff00] hover:text-black hover:border-[#5eff00]">
+                            Contattaci
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section class="py-28 md:py-40 bg-[#121214] border-t border-white/5">
+            <div class="max-w-3xl mx-auto px-6">
+                <div class="text-center mb-16 reveal">
+                    <h2 class="text-3xl md:text-5xl font-bold mb-4">Domande frequenti</h2>
+                    <p class="text-gray-400 text-lg max-w-xl mx-auto">Tutto quello che devi sapere su Melpis.</p>
+                </div>
+                <div class="space-y-4 max-w-2xl mx-auto">
+                    <div class="reveal border border-white/5 rounded-2xl bg-[#1c1c1e]">
+                        <div class="faq-q flex items-center justify-between w-full text-left p-6">
+                            <span class="font-semibold text-sm md:text-base">Ho bisogno di un account WhatsApp Business?</span>
+                            <svg class="faq-arrow shrink-0 ml-4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner">
+                                <p class="px-6 pb-6 text-sm text-gray-400 leading-relaxed">Sì, Melpis si collega al tuo account WhatsApp Business API. Se hai già un account, l'attivazione richiede 5 minuti. Se non ce l'hai, ti guidiamo noi nella creazione.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reveal reveal-1 border border-white/5 rounded-2xl bg-[#1c1c1e]">
+                        <div class="faq-q flex items-center justify-between w-full text-left p-6">
+                            <span class="font-semibold text-sm md:text-base">Quanto tempo ci vuole per configurare Melpis?</span>
+                            <svg class="faq-arrow shrink-0 ml-4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner">
+                                <p class="px-6 pb-6 text-sm text-gray-400 leading-relaxed">La configurazione base richiede circa 15 minuti: colleghi WhatsApp, carichi menu e orari, definisci le regole di risposta. Il team Melpis ti assiste in ogni passo.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reveal reveal-2 border border-white/5 rounded-2xl bg-[#1c1c1e]">
+                        <div class="faq-q flex items-center justify-between w-full text-left p-6">
+                            <span class="font-semibold text-sm md:text-base">Posso cancellare quando voglio?</span>
+                            <svg class="faq-arrow shrink-0 ml-4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner">
+                                <p class="px-6 pb-6 text-sm text-gray-400 leading-relaxed">Assolutamente sì. Puoi cancellare la tua sottoscrizione in qualsiasi momento, senza penali. Il servizio resta attivo fino alla fine del periodo di fatturazione corrente.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reveal reveal-3 border border-white/5 rounded-2xl bg-[#1c1c1e]">
+                        <div class="faq-q flex items-center justify-between w-full text-left p-6">
+                            <span class="font-semibold text-sm md:text-base">Melpis gestisce più di una sede?</span>
+                            <svg class="faq-arrow shrink-0 ml-4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner">
+                                <p class="px-6 pb-6 text-sm text-gray-400 leading-relaxed">Sì, il piano Max supporta multi-sede. Ogni sede ha il proprio numero WhatsApp, menu e regole di risposta personalizzate.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reveal reveal-4 border border-white/5 rounded-2xl bg-[#1c1c1e]">
+                        <div class="faq-q flex items-center justify-between w-full text-left p-6">
+                            <span class="font-semibold text-sm md:text-base">I dati dei clienti sono al sicuro?</span>
+                            <svg class="faq-arrow shrink-0 ml-4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner">
+                                <p class="px-6 pb-6 text-sm text-gray-400 leading-relaxed">La sicurezza è la nostra priorità. Melpis non memorizza il contenuto delle conversazioni. Tutti i dati sono crittografati e i server sono conformi GDPR. Non condividiamo mai i tuoi dati con terze parti.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="reveal reveal-4 border border-white/5 rounded-2xl bg-[#1c1c1e]">
+                        <div class="faq-q flex items-center justify-between w-full text-left p-6">
+                            <span class="font-semibold text-sm md:text-base">Come funziona il periodo di prova gratuito?</span>
+                            <svg class="faq-arrow shrink-0 ml-4" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner">
+                                <p class="px-6 pb-6 text-sm text-gray-400 leading-relaxed">Attivi Melpis gratis per 7 giorni, senza carta di credito. Hai accesso a tutte le funzionalità del piano Starter. Se decidi di continuare, scegli il piano che preferisci. Se non fa per te, il servizio si disattiva automaticamente.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section id="cta" class="py-32 md:py-44 text-center relative overflow-hidden bg-[#080a08]">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(94,255,0,0.05),transparent_50%)]"></div>
+            <div class="max-w-3xl mx-auto px-6 relative z-10">
+                <div class="reveal">
+                    <h2 class="text-4xl md:text-6xl font-bold mb-6 leading-tight" style="text-wrap:balance">Pronto a non perdere più un cliente?</h2>
+                    <p class="text-lg md:text-xl text-gray-400 mb-10 leading-relaxed max-w-xl mx-auto">Prova Melpis gratis per 7 giorni. Nessuna carta di credito. Attivazione in 5 minuti.</p>
+                    <a href="#" data-magnetic class="magnetic inline-flex items-center gap-2 bg-[#5eff00] text-black pl-8 pr-6 py-4 rounded-full text-lg font-semibold
+                                      transition-all duration-500 spring hover:scale-[1.03] hover:shadow-glow-lg group">
+                        Prova gratis 7 giorni
+                        <span class="btn-icon w-10 h-10 bg-black/15">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M5 12h14M13 5l7 7-7 7"/>
+                            </svg>
+                        </span>
+                    </a>
+                    <p class="text-sm text-gray-500 mt-6">Funziona con WhatsApp Business. Assistenza inclusa.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#050505] border-t border-white/10 pt-16 pb-8 text-sm text-gray-400">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+            <div class="col-span-1 md:col-span-2">
+                <a href="#" class="flex items-center gap-2 text-xl font-bold tracking-tight text-white mb-4">
+                    <i class="fa-brands fa-whatsapp text-[#5eff00] drop-shadow-[0_0_8px_rgba(94,255,0,0.4)]"></i> Melpis
+                </a>
+                <p class="mb-4 max-w-sm text-gray-400">L'assistente virtuale intelligente progettato per farti risparmiare tempo e non farti perdere nessuna prenotazione su WhatsApp Business.</p>
+                <div class="flex gap-4">
+                    <a href="#" class="text-gray-400 hover:text-white"><i class="fa-brands fa-instagram text-xl"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-white"><i class="fa-brands fa-linkedin text-xl"></i></a>
+                </div>
+            </div>
+            <div>
+                <h4 class="text-white font-semibold mb-4">Prodotto</h4>
+                <ul class="space-y-2">
+                    <li><a href="#funzionalita" class="hover:text-[#5eff00] transition-colors">Funzionalità</a></li>
+                    <li><a href="#piani" class="hover:text-[#5eff00] transition-colors">Prezzi</a></li>
+                    <li><a href="#" class="hover:text-[#5eff00] transition-colors">Integrazioni</a></li>
+                    <li><a href="#" class="hover:text-[#5eff00] transition-colors">Sicurezza & GDPR</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-white font-semibold mb-4">Supporto</h4>
+                <ul class="space-y-2">
+                    <li><a href="#" class="hover:text-[#5eff00] transition-colors">Centro Assistenza</a></li>
+                    <li><a href="#" class="hover:text-[#5eff00] transition-colors">Contattaci</a></li>
+                    <li><a href="#" class="hover:text-[#5eff00] transition-colors">Privacy Policy</a></li>
+                    <li><a href="#" class="hover:text-[#5eff00] transition-colors">Termini di Servizio</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-white/10 pt-8">
+            <p class="text-sm text-gray-400">&copy; 2026 Melpis AI. Tutti i diritti riservati.</p>
+            <div class="flex gap-8 text-sm text-gray-400">
+                <a href="#" class="hover:text-white transition-colors">Privacy</a>
+                <a href="#" class="hover:text-white transition-colors">Termini</a>
+                <a href="#" class="hover:text-white transition-colors">Contatti</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+    <script>
+        var GSAP_LOADED = false;
+
+        // ---- NAV TOGGLE ----
+        function toggleNav() {
+            var o = document.getElementById('navOverlay');
+            var t = document.getElementById('hamTop'), m = document.getElementById('hamMid'), b = document.getElementById('hamBot');
+            var open = o.classList.toggle('open');
+            if (open) {
+                t.style.transform = 'translateY(7px) rotate(45deg)';
+                m.style.opacity = '0'; m.style.transform = 'translateX(-8px)';
+                b.style.transform = 'translateY(-7px) rotate(-45deg)';
+            } else { t.style.transform = ''; m.style.opacity = ''; m.style.transform = ''; b.style.transform = ''; }
+            document.body.style.overflow = open ? 'hidden' : '';
+        }
+        function closeNav() {
+            document.getElementById('navOverlay').classList.remove('open');
+            document.getElementById('hamTop').style.transform = '';
+            document.getElementById('hamMid').style.opacity = '';
+            document.getElementById('hamMid').style.transform = '';
+            document.getElementById('hamBot').style.transform = '';
+            document.body.style.overflow = '';
+        }
+
+        // ---- SCROLL REVEAL (GSAP with IntersectionObserver fallback) ----
+        function runReveals() {
+            if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                gsap.registerPlugin(ScrollTrigger);
+                GSAP_LOADED = true;
+
+                document.querySelectorAll('section').forEach(function(section) {
+                    var reveals = section.querySelectorAll('.reveal:not(.visible)');
+                    if (reveals.length === 0) return;
+                    gsap.fromTo(reveals,
+                        { opacity: 0, y: 28, filter: 'blur(6px)' },
+                        {
+                            opacity: 1, y: 0, filter: 'blur(0px)',
+                            duration: 0.7,
+                            stagger: Math.min(0.08, 0.6 / reveals.length),
+                            ease: 'power2.out',
+                            scrollTrigger: {
+                                trigger: section,
+                                start: 'top 85%',
+                                toggleActions: 'play none none none',
+                            }
+                        }
+                    );
+                });
+
+                // Counter animation with GSAP
+                document.querySelectorAll('.counter-value').forEach(function(el) {
+                    var target = parseInt(el.dataset.target);
+                    var suffix = el.dataset.suffix || '';
+                    ScrollTrigger.create({
+                        trigger: el,
+                        start: 'top 85%',
+                        onEnter: function() {
+                            var obj = { val: 0 };
+                            gsap.to(obj, {
+                                val: target,
+                                duration: 1.5,
+                                ease: 'power2.out',
+                                onUpdate: function() {
+                                    el.textContent = Math.round(obj.val).toLocaleString('it-IT') + suffix;
+                                }
+                            });
+                        },
+                        once: true
+                    });
+                });
+
+            } else {
+                // Fallback: IntersectionObserver
+                var revObs = new IntersectionObserver(function(e) {
+                    e.forEach(function(entry) {
+                        if (entry.isIntersecting) { entry.target.classList.add('visible'); revObs.unobserve(entry.target); }
+                    });
+                }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+                document.querySelectorAll('.reveal').forEach(function(el) { revObs.observe(el); });
+
+                // Counter fallback
+                var counterObs2 = new IntersectionObserver(function(entries) {
+                    entries.forEach(function(entry) {
+                        if (!entry.isIntersecting) return;
+                        var el = entry.target;
+                        var target = parseInt(el.dataset.target);
+                        var suffix = el.dataset.suffix || '';
+                        var current = 0;
+                        var step = Math.max(1, Math.floor(target / 50));
+                        var interval = setInterval(function() { current += step; if (current >= target) { current = target; clearInterval(interval); } el.textContent = current.toLocaleString('it-IT') + suffix; }, 20);
+                        counterObs2.unobserve(el);
+                    });
+                }, { threshold: 0.5 });
+                document.querySelectorAll('.counter-value').forEach(function(c) { counterObs2.observe(c); });
+            }
+        }
+
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.querySelectorAll('.reveal').forEach(function(el) { el.classList.add('visible'); });
+        }
+
+        runReveals();
+
+        // ---- SPOTLIGHT ----
+        document.querySelectorAll('.spotlight').forEach(function(card) {
+            card.addEventListener('mousemove', function(e) {
+                var rect = card.getBoundingClientRect();
+                card.style.setProperty('--mx', (e.clientX - rect.left) + 'px');
+                card.style.setProperty('--my', (e.clientY - rect.top) + 'px');
+            });
+        });
+
+        // ---- NAV BAR SHADOW ----
+        var nav = document.getElementById('navbar');
+        var navInner = nav.querySelector('div');
+        var sentinel = document.createElement('div');
+        sentinel.style.cssText = 'position:absolute;top:0;left:0;width:1px;height:1px;';
+        document.body.prepend(sentinel);
+        var navObs = new IntersectionObserver(function(entries) {
+            var scrolled = !entries[0].isIntersecting;
+            navInner.style.borderColor = scrolled ? 'rgba(94,255,0,0.15)' : '';
+            navInner.style.boxShadow = scrolled ? '0 4px 24px rgba(0,0,0,0.3)' : '';
+        }, { threshold: 0, rootMargin: '0px 0px 0px 0px' });
+        navObs.observe(sentinel);
+
+        // ---- 3D PHONE MOUSE TRACKING ----
+        (function() {
+            var container = document.querySelector('.phone-container');
+            if (!container) return;
+            var frame = container.querySelector('.phone-frame');
+            var reflection = container.querySelector('.screen-reflection');
+            var base = 'rotateY(-22deg) rotateX(10deg) rotateZ(-2deg)';
+            var maxY = 20, maxX = 12, maxZ = 4;
+            var ticking = false;
+
+            container.addEventListener('mousemove', function(e) {
+                if (!ticking) { requestAnimationFrame(update); ticking = true; }
+                function update() {
+                    var r = container.getBoundingClientRect();
+                    var cx = r.left + r.width / 2;
+                    var cy = r.top + r.height / 2;
+                    var px = (e.clientX - cx) / (r.width / 2);
+                    var py = (e.clientY - cy) / (r.height / 2);
+                    var rotY = px * maxY;
+                    var rotX = -py * maxX;
+                    var rotZ = px * py * -maxZ;
+                    frame.style.transition = 'none';
+                    frame.style.transform = 'rotateY(' + rotY.toFixed(1) + 'deg) rotateX(' + rotX.toFixed(1) + 'deg) rotateZ(' + rotZ.toFixed(1) + 'deg)';
+                    if (reflection) {
+                        var angle = 125 + px * 12 + py * 6;
+                        reflection.style.background = 'linear-gradient(' + angle.toFixed(0) + 'deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 40%)';
+                    }
+                    ticking = false;
+                }
+            });
+
+            container.addEventListener('mouseleave', function() {
+                frame.style.transition = 'transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                frame.style.transform = base;
+                if (reflection) {
+                    reflection.style.background = '';
+                }
+            });
+        })();
+
+        // ---- SCROLL PROGRESS ----
+        (function() {
+            var progressEl = document.getElementById('scrollProgress');
+            var supportsScrollTimeline = CSS.supports('animation-timeline: scroll()');
+            if (!supportsScrollTimeline && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                var progressTicking = false;
+                var updateProgress = function() {
+                    var h = document.documentElement;
+                    var max = h.scrollHeight - h.clientHeight;
+                    var ratio = max > 0 ? (h.scrollTop / max) : 0;
+                    progressEl.style.transform = 'scaleX(' + ratio + ')';
+                    progressTicking = false;
+                };
+                document.addEventListener('scroll', function() {
+                    if (!progressTicking) { requestAnimationFrame(updateProgress); progressTicking = true; }
+                }, { passive: true });
+                updateProgress();
+            }
+        })();
+
+        // ---- MAGNETIC BUTTONS ----
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.querySelectorAll('[data-magnetic]').forEach(function(el) {
+                var strength = 0.25;
+                el.addEventListener('mousemove', function(e) {
+                    var r = el.getBoundingClientRect();
+                    var x = (e.clientX - (r.left + r.width / 2)) * strength;
+                    var y = (e.clientY - (r.top + r.height / 2)) * strength;
+                    requestAnimationFrame(function() { el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)'; });
+                });
+                el.addEventListener('mouseleave', function() { el.style.transform = ''; });
+            });
+        }
+
+        // ---- PRICING TOGGLE ----
+        (function() {
+            var toggle = document.getElementById('pricingToggle');
+            if (!toggle) return;
+            var monthlyLabel = document.getElementById('toggleLabelMonthly');
+            var yearlyLabel = document.getElementById('toggleLabelYearly');
+            var isYearly = false;
+
+            function updatePrices() {
+                document.querySelectorAll('.price-value').forEach(function(el) {
+                    var val = isYearly ? el.dataset.yearly : el.dataset.monthly;
+                    el.textContent = val;
+                });
+                document.querySelectorAll('.price-period').forEach(function(el) {
+                    el.textContent = isYearly ? '/anno' : '/mese';
+                });
+                document.querySelectorAll('.price-yearly-note').forEach(function(el) {
+                    if (isYearly) el.classList.remove('hidden'); else el.classList.add('hidden');
+                });
+                monthlyLabel.classList.toggle('text-gray-400', isYearly);
+                monthlyLabel.classList.toggle('text-white', !isYearly);
+                yearlyLabel.classList.toggle('text-gray-400', !isYearly);
+                yearlyLabel.classList.toggle('text-white', isYearly);
+            }
+
+            toggle.addEventListener('click', function() {
+                isYearly = !isYearly;
+                toggle.classList.toggle('active', isYearly);
+                updatePrices();
+            });
+        })();
+
+        // ---- CAROUSEL ----
+        (function() {
+            var track = document.getElementById('carouselTrack');
+            if (!track) return;
+            var slides = track.querySelectorAll('.carousel-slide');
+            var dotsContainer = document.getElementById('carouselDots');
+            var prevBtn = document.getElementById('carouselPrev');
+            var nextBtn = document.getElementById('carouselNext');
+            var current = 0;
+
+            slides.forEach(function(_, i) {
+                var dot = document.createElement('button');
+                dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+                dot.setAttribute('aria-label', 'Vai alla testimonianza ' + (i + 1));
+                dot.addEventListener('click', function() { goTo(i); });
+                dotsContainer.appendChild(dot);
+            });
+
+            function goTo(index) {
+                if (index < 0) index = 0;
+                if (index >= slides.length) index = slides.length - 1;
+                current = index;
+                var slide = slides[current];
+                track.scrollTo({ left: slide.offsetLeft - track.offsetLeft, behavior: 'smooth' });
+                dotsContainer.querySelectorAll('.carousel-dot').forEach(function(d, i) {
+                    d.classList.toggle('active', i === current);
+                });
+            }
+
+            prevBtn.addEventListener('click', function() { goTo(current - 1); });
+            nextBtn.addEventListener('click', function() { goTo(current + 1); });
+
+            var scrollTimeout;
+            track.addEventListener('scroll', function() {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    var closest = 0;
+                    var minDist = Infinity;
+                    var trackRect = track.getBoundingClientRect();
+                    slides.forEach(function(s, i) {
+                        var dist = Math.abs(s.getBoundingClientRect().left - trackRect.left);
+                        if (dist < minDist) { minDist = dist; closest = i; }
+                    });
+                    current = closest;
+                    dotsContainer.querySelectorAll('.carousel-dot').forEach(function(d, i) {
+                        d.classList.toggle('active', i === current);
+                    });
+                }, 100);
+            });
+        })();
+
+        // ---- FAQ ACCORDION ----
+        document.querySelectorAll('.faq-q').forEach(function(q) {
+            q.addEventListener('click', function() {
+                var parent = q.parentElement;
+                var isOpen = q.classList.contains('open');
+                parent.parentElement.querySelectorAll('.faq-q').forEach(function(other) {
+                    if (other !== q) other.classList.remove('open');
+                });
+                q.classList.toggle('open');
+            });
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+name: Migration check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/core/db/migrations/*.sql"
+      - "src/core/db/schema.sql"
+      - "src/core/db/triggers.sql"
+      - "src/whatsapp/schema.sql"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Create auth stubs (Supabase schema not available in vanilla Postgres)
+        run: |
+          PGPASSWORD=test psql -h localhost -U postgres -d test <<'EOSQL'
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE TABLE IF NOT EXISTS auth.users (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              email TEXT
+          );
+          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid AS $$
+              SELECT NULL::uuid
+          $$ LANGUAGE sql STABLE;
+          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb AS $$
+              SELECT '{}'::jsonb
+          $$ LANGUAGE sql STABLE;
+      EOSQL
+
+      - name: Apply whatsapp schema
+        run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/whatsapp/schema.sql
+
+      - name: Apply core schema
+        run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/core/db/schema.sql
+
+      - name: Apply triggers
+        run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/core/db/triggers.sql
+
+      - name: Apply all migrations in order
+        run: |
+          for f in $(ls src/core/db/migrations/0*.sql | sort); do
+            echo "--- Applying $f ---"
+            PGPASSWORD=test psql -h localhost -U postgres -d test -f "$f"
+          done
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests with service container
+        env:
+          CI: true
+          PGUSER: postgres
+          PGPASSWORD: test
+          PGDATABASE: test
+          PGHOST: localhost
+          PGPORT: 5432
+          ENCRYPTION_KEY: C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=
+        run: pytest -v --tb=short -x

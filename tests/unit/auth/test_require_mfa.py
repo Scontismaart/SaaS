@@ -121,6 +121,9 @@ class TestSensitivePathList:
             "/api/calendar/auth",
             "/api/calendar/disconnect",
             "/api/calendar/settings",
+            "/api/reviews/google/auth",
+            "/api/reviews/google/settings",
+            "/api/reviews/google/disconnect",
         })
 
     def test_consistent_paths_cover_all_tier1_operations(self):

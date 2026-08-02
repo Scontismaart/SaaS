@@ -175,11 +175,18 @@ class GoogleBusinessService:
         )
         nuove = 0
         import asyncpg
+        from src.core.crew_runner_review import genera_risposta_recensione
         for raw in raw_reviews:
             m = self._map_review(raw)
             if not m["testo"]:
                 continue
             try:
+                output = await asyncio.to_thread(
+                    genera_risposta_recensione,
+                    testo=m["testo"],
+                    stelle=m["valutazione_stelle"],
+                    autore=m["autore"],
+                )
                 await self.repo.create_review(
                     organization_id=org_id,
                     testo=m["testo"],
@@ -187,7 +194,11 @@ class GoogleBusinessService:
                     fonte="google",
                     autore=m["autore"],
                     external_id=m["external_id"],
-                    stato="nuova",
+                    bozza_risposta=output.bozza_risposta,
+                    sentiment=output.sentiment,
+                    categoria=output.categoria,
+                    richiede_revisione_urgente=output.richiede_revisione_urgente,
+                    stato="bozza_generata",
                 )
                 nuove += 1
             except asyncpg.UniqueViolationError:

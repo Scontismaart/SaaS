@@ -1,4 +1,4 @@
--- 025_google_business_credentials.sql
+-- 026_google_business_credentials.sql
 -- Token OAuth Google Business Profile per-organization, criptati con Fernet.
 -- Stesso pattern di 019_google_calendar_credentials: RLS attiva fin dalla
 -- creazione, ON DELETE CASCADE per il GDPR erasure dell'org.

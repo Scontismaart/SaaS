@@ -109,6 +109,8 @@ async def pg_pool(postgres_container):
             pass
         with open("src/core/db/migrations/025_suspension_notified.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/026_google_business_credentials.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 
@@ -128,6 +130,7 @@ async def reset_db(pg_pool):
                 processed_stripe_events,
                 webhook_idempotency,
                 google_calendar_credentials,
+                google_business_credentials,
                 oauth_nonces
             CASCADE
         """)

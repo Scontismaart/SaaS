@@ -16,14 +16,18 @@ _worker_task: asyncio.Task | None = None
 
 
 @dataclass
-class EscalationEvent:
+class EmailEvent:
     org_id: str
-    conversation_id: str
-    contact_name: str
+    subject: str
+    body: str
     pool: object  # asyncpg pool
 
 
-def _get_smtp_config() -> dict:
+def _get_smtp_config() -> dict | None:
+    required = ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "SMTP_FROM"]
+    if any(not os.environ.get(key, "") for key in required):
+        logger.warning("smtp=config_missing — notifica email non inviata, impostare SMTP_*")
+        return None
     return {
         "host": os.environ["SMTP_HOST"],
         "port": int(os.environ.get("SMTP_PORT", "587")),
@@ -38,23 +42,20 @@ def _get_smtp_config() -> dict:
     wait=wait_exponential(multiplier=5, min=5, max=120),
     reraise=True,
 )
-async def _send_with_retry(event: EscalationEvent) -> None:
+async def _send_with_retry(event: EmailEvent) -> None:
     repo = CoreRepository(event.pool)
     owners = await repo.get_organization_owners(event.org_id)
     if not owners:
         return
 
     config = _get_smtp_config()
+    if not config:
+        return
     msg = EmailMessage()
-    msg["Subject"] = f"New escalation: {event.contact_name}"
+    msg["Subject"] = event.subject
     msg["From"] = config["from_addr"]
     msg["To"] = ", ".join(o["email"] for o in owners)
-    msg.set_content(
-        f"The conversation with {event.contact_name} has been escalated "
-        f"and is waiting for staff.\n\n"
-        f"Conversation ID: {event.conversation_id}\n"
-        f"Open the inbox to claim this ticket."
-    )
+    msg.set_content(event.body)
 
     loop = asyncio.get_running_loop()
 
@@ -74,24 +75,30 @@ async def _worker():
             await _send_with_retry(event)
         except RetryError:
             logger.critical(
-                "Escalation email permanently failed after all retries",
+                "Email permanently failed after all retries",
                 extra={
                     "org_id": event.org_id,
-                    "conversation_id": event.conversation_id,
-                    "contact_name": event.contact_name,
+                    "subject": event.subject,
                 },
             )
         except Exception as e:
             logger.critical(
-                "Escalation email failed with unexpected error",
+                "Email failed with unexpected error",
                 extra={
                     "org_id": event.org_id,
-                    "conversation_id": event.conversation_id,
+                    "subject": event.subject,
                     "error": str(e),
                 },
             )
         finally:
             _queue.task_done()
+
+
+def _enqueue(event: EmailEvent) -> None:
+    if _queue is None:
+        logger.error("Email queue not started — event dropped")
+        return
+    _queue.put_nowait(event)
 
 
 def enqueue_escalation(
@@ -100,13 +107,34 @@ def enqueue_escalation(
     contact_name: str,
     pool,
 ) -> None:
-    if _queue is None:
-        logger.error("Escalation queue not started — event dropped")
-        return
-    _queue.put_nowait(EscalationEvent(
+    _enqueue(EmailEvent(
         org_id=org_id,
-        conversation_id=conversation_id,
-        contact_name=contact_name,
+        subject=f"New escalation: {contact_name}",
+        body=(
+            f"The conversation with {contact_name} has been escalated "
+            f"and is waiting for staff.\n\n"
+            f"Conversation ID: {conversation_id}\n"
+            f"Open the inbox to claim this ticket."
+        ),
+        pool=pool,
+    ))
+
+
+SUSPENSION_NOTICE_SUBJECT = "Sempre — servizio sospeso"
+SUSPENSION_NOTICE_BODY = (
+    "Il tuo abbonamento a Sempre e' sospeso.\n\n"
+    "Da questo momento il risponditore automatico non risponde piu' ai tuoi "
+    "clienti su WhatsApp e le prenotazioni via WhatsApp sono sospese.\n"
+    "Le prenotazioni gia' confermate restano valide.\n\n"
+    "Rinnova il tuo abbonamento per riattivare il servizio."
+)
+
+
+def enqueue_suspension_notice(org_id: str, pool) -> None:
+    _enqueue(EmailEvent(
+        org_id=org_id,
+        subject=SUSPENSION_NOTICE_SUBJECT,
+        body=SUSPENSION_NOTICE_BODY,
         pool=pool,
     ))
 

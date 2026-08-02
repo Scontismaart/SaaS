@@ -34,6 +34,7 @@ def mock_repo(sample_msg):
     repo.reap_stale_claims = AsyncMock(return_value=[])
     repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
     repo.update_heartbeat = AsyncMock()
+    repo.get_org_subscription_state = AsyncMock(return_value=None)
     repo.pool = MagicMock()
     return repo
 
@@ -166,6 +167,7 @@ class TestInboundProcessor:
         repo.reap_stale_claims = AsyncMock(return_value=[])
         repo.try_mark_replied = AsyncMock(side_effect=try_mark_race)
         repo.update_heartbeat = AsyncMock()
+        repo.get_org_subscription_state = AsyncMock(return_value=None)
         repo.pool = MagicMock()
 
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)):
@@ -174,3 +176,61 @@ class TestInboundProcessor:
             await asyncio.gather(proc1.process_next_batch(), proc2.process_next_batch())
 
         assert mock_service.send_whatsapp_message.await_count == 1
+
+    async def test_suspended_org_blocks_ai_and_fast_path(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Org sospesa: nessuna risposta AI, nessuna fast_path; il cliente
+        riceve il messaggio neutro e il messaggio viene marcato replied."""
+        mock_repo.get_org_subscription_state = AsyncMock(return_value={
+            "subscription_status": "canceled",
+            "trial_end": None,
+        })
+        mock_service.fast_path_match = AsyncMock(return_value="Ciao! Benvenuto.")
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.fast_path_match.assert_not_called()
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert body == "Grazie per averci scritto, ti risponderemo al piu' presto."
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+
+    async def test_suspended_org_blocks_new_booking(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Una prenotazione NUOVA richiesta da un'org sospesa non viene creata:
+        il pipeline AI (che parsifica la prenotazione) non viene mai avviato."""
+        mock_repo.get_org_subscription_state = AsyncMock(return_value={
+            "subscription_status": "canceled",
+            "trial_end": None,
+        })
+        booking_service = MagicMock()
+        booking_service.handle_reminder_reply = AsyncMock(return_value=None)
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai:
+            processor = InboundProcessor(app_config, mock_repo, mock_service, booking_service=booking_service)
+            await processor.process_next_batch()
+
+        mock_ai.assert_not_called()
+        booking_service.create_booking.assert_not_called()
+
+    async def test_reminder_reply_still_handled_when_suspended(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Il gate NON tocca handle_reminder_reply: una prenotazione gia'
+        confermata resta gestibile anche da org sospesa (impegno preso con
+        un terzo, non nuovo lavoro)."""
+        mock_repo.get_org_subscription_state = AsyncMock(return_value={
+            "subscription_status": "canceled",
+            "trial_end": None,
+        })
+        booking_service = MagicMock()
+        booking_service.handle_reminder_reply = AsyncMock(return_value="confirmed")
+        processor = InboundProcessor(app_config, mock_repo, mock_service, booking_service=booking_service)
+        await processor.process_next_batch()
+
+        booking_service.handle_reminder_reply.assert_awaited_once()
+        mock_service.send_whatsapp_message.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])

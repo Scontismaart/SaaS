@@ -107,6 +107,8 @@ async def pg_pool(postgres_container):
                 await conn.execute(f.read())
         except asyncpg.UndefinedObjectError:
             pass
+        with open("src/core/db/migrations/025_suspension_notified.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

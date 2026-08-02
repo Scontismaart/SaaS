@@ -40,15 +40,24 @@ async def handle_stripe_webhook(event: dict, repo, trial_days: int) -> dict | No
     async with repo.pool.acquire() as conn:
         async with conn.transaction():
             if event_type == "checkout.session.completed":
-                return await _handle_checkout_completed(conn, repo, data_obj, event_id, trial_days)
-            if event_type == "invoice.paid":
-                return await _handle_invoice_paid(conn, repo, data_obj, event_id)
-            if event_type == "invoice.payment_failed":
-                return await _handle_payment_failed(conn, repo, data_obj, event_id)
-            if event_type == "customer.subscription.updated":
-                return await _handle_subscription_updated(conn, repo, data_obj, event_id)
-            if event_type == "subscription.deleted":
-                return await _handle_subscription_deleted(conn, repo, data_obj, event_id)
+                result = await _handle_checkout_completed(conn, repo, data_obj, event_id, trial_days)
+            elif event_type == "invoice.paid":
+                result = await _handle_invoice_paid(conn, repo, data_obj, event_id)
+            elif event_type == "invoice.payment_failed":
+                result = await _handle_payment_failed(conn, repo, data_obj, event_id)
+            elif event_type == "customer.subscription.updated":
+                result = await _handle_subscription_updated(conn, repo, data_obj, event_id)
+            elif event_type == "subscription.deleted":
+                result = await _handle_subscription_deleted(conn, repo, data_obj, event_id)
+            else:
+                result = None
+
+    if result and result.get("suspension_notice"):
+        from src.core.notifications.email_service import enqueue_suspension_notice
+        enqueue_suspension_notice(str(result["organization_id"]), repo.pool)
+
+    if result:
+        return result
 
     logger.info("Unhandled event type: %s", event_type)
     return None
@@ -88,7 +97,8 @@ async def _handle_checkout_completed(conn, repo, data, event_id, trial_days):
             stripe_customer_id = $1, subscription_id = $2,
             subscription_status = 'trialing',
             trial_start = $3, trial_end = $4,
-            current_period_start = $3, current_period_end = $4
+            current_period_start = $3, current_period_end = $4,
+            suspension_notified_at = NULL
         WHERE id = $5
     """, customer_id, subscription_id, now, now + timedelta(days=trial_days), org_id)
     return {"action": "subscription_created", "status": "trialing", "organization_id": org_id}
@@ -126,7 +136,7 @@ async def _handle_invoice_paid(conn, repo, data, event_id):
             break
 
     await conn.execute(
-        "UPDATE organizations SET subscription_status = 'active' WHERE id = $1",
+        "UPDATE organizations SET subscription_status = 'active', suspension_notified_at = NULL WHERE id = $1",
         org["id"],
     )
     if org.get("current_period_start") != period_start:
@@ -196,7 +206,7 @@ async def _handle_subscription_updated(conn, repo, data, event_id):
         current_status = org.get("subscription_status")
         if current_status != "active":
             await conn.execute(
-                "UPDATE organizations SET subscription_status = $1 WHERE id = $2",
+                "UPDATE organizations SET subscription_status = $1, suspension_notified_at = NULL WHERE id = $2",
                 data["status"], org["id"],
             )
 
@@ -225,8 +235,19 @@ async def _handle_subscription_deleted(conn, repo, data, event_id):
     if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
-    await conn.execute(
-        "UPDATE organizations SET subscription_status = 'canceled' WHERE id = $1",
-        org["id"],
-    )
-    return {"action": "subscription_deleted", "status": "canceled", "organization_id": org["id"]}
+    # Claim atomico della notifica: solo chi trova suspension_notified_at IS
+    # NULL la imposta e segnala la mail. Se un altro trigger (job trial) e'
+    # passato prima, RETURNING non restituisce nulla e non inviamo doppioni.
+    claimed = await conn.fetchrow("""
+        UPDATE organizations SET
+            subscription_status = 'canceled',
+            suspension_notified_at = NOW()
+        WHERE id = $1 AND suspension_notified_at IS NULL
+        RETURNING id
+    """, org["id"])
+    return {
+        "action": "subscription_deleted",
+        "status": "canceled",
+        "organization_id": org["id"],
+        "suspension_notice": claimed is not None,
+    }

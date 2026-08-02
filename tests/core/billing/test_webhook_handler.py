@@ -143,9 +143,73 @@ async def test_handle_subscription_deleted_sets_canceled(repo, sample_org):
             }
         },
     }
-    await handle_stripe_webhook(event, repo, 7)
+    result = await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["subscription_status"] == "canceled"
+    assert result["suspension_notice"] is True
+    assert billing["suspension_notified_at"] is not None
+
+
+async def test_handle_subscription_deleted_no_second_notice(repo, sample_org):
+    """Un secondo subscription.deleted (stessa org) non deve rilanciare la
+    notifica: la colonna suspension_notified_at e' gia' valorizzata."""
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test001",
+        "subscription_status": "active",
+    })
+    event = {
+        "id": "evt_sub_del_002",
+        "type": "subscription.deleted",
+        "data": {"object": {"id": "sub_test001", "customer": "cus_test001"}},
+    }
+    result1 = await handle_stripe_webhook(event, repo, 7)
+    assert result1["suspension_notice"] is True
+    event2 = {**event, "id": "evt_sub_del_003"}
+    result2 = await handle_stripe_webhook(event2, repo, 7)
+    assert result2["action"] == "subscription_deleted"
+    assert result2["suspension_notice"] is False
+
+
+async def test_reactivation_resets_notification_then_resuspend(repo, sample_org):
+    """Riattivazione -> reset suspension_notified_at; una nuova cancellazione
+    deve poter notificare di nuovo (niente 'notificato per sempre')."""
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test001",
+        "subscription_status": "active",
+    })
+    sub_del = {
+        "id": "evt_sub_del_100",
+        "type": "subscription.deleted",
+        "data": {"object": {"id": "sub_test001", "customer": "cus_test001"}},
+    }
+    result1 = await handle_stripe_webhook(sub_del, repo, 7)
+    assert result1["suspension_notice"] is True
+
+    inv_paid = {
+        "id": "evt_inv_paid_100",
+        "type": "invoice.paid",
+        "data": {
+            "object": {
+                "id": "in_test_100",
+                "customer": "cus_test001",
+                "subscription": "sub_test001",
+                "status": "paid",
+                "period_start": datetime.now(timezone.utc).timestamp(),
+                "period_end": datetime.now(timezone.utc).timestamp() + 2592000,
+                "lines": {"data": [{"price": {"id": ""}, "plan": {"product": "prod_starter"}}]},
+            }
+        },
+    }
+    await handle_stripe_webhook(inv_paid, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == "active"
+    assert billing["suspension_notified_at"] is None
+
+    sub_del2 = {**sub_del, "id": "evt_sub_del_101"}
+    result2 = await handle_stripe_webhook(sub_del2, repo, 7)
+    assert result2["suspension_notice"] is True
 
 
 async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):

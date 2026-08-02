@@ -65,13 +65,13 @@ class TestEmailService:
         return org, conv
 
     async def test_send_with_retry_sends_to_owners(self, pg_pool, org_and_conv):
-        from src.core.notifications.email_service import _send_with_retry, EscalationEvent
+        from src.core.notifications.email_service import _send_with_retry, EmailEvent
 
         org, conv = org_and_conv
-        event = EscalationEvent(
+        event = EmailEvent(
             org_id=str(org["id"]),
-            conversation_id=str(conv["id"]),
-            contact_name="Test Contact",
+            subject="New escalation: Test Contact",
+            body=f"Conversation ID: {conv['id']}\nOpen the inbox to claim this ticket.",
             pool=pg_pool,
         )
 
@@ -86,7 +86,7 @@ class TestEmailService:
             assert "staff@test.com" not in sent_email["To"]
 
     async def test_send_with_retry_no_owners_skips(self, pg_pool):
-        from src.core.notifications.email_service import _send_with_retry, EscalationEvent
+        from src.core.notifications.email_service import _send_with_retry, EmailEvent
 
         async with pg_pool.acquire() as conn:
             org = await conn.fetchrow(
@@ -102,10 +102,10 @@ class TestEmailService:
                 uuid.uuid4(), org["id"], contact["id"]
             )
 
-        event = EscalationEvent(
+        event = EmailEvent(
             org_id=str(org["id"]),
-            conversation_id=str(conv["id"]),
-            contact_name="Test",
+            subject="Test",
+            body="Test",
             pool=pg_pool,
         )
 

@@ -151,6 +151,14 @@ class GoogleBusinessService:
             "autore": reviewer.get("displayName", ""),
         }
 
+    async def _genera_bozza(self, testo, stelle, autore):
+        """Generazione bozza isolata in un metodo — mockabile nei test
+        come _build_service/_list_reviews, senza toccare il crew AI reale."""
+        from src.core.crew_runner_review import genera_risposta_recensione
+        return await asyncio.to_thread(
+            genera_risposta_recensione, testo=testo, stelle=stelle, autore=autore
+        )
+
     async def fetch_reviews(self, org_id, page_size=50):
         """Recupera e persiste le review Google dell'org (con dedup).
 
@@ -175,17 +183,13 @@ class GoogleBusinessService:
         )
         nuove = 0
         import asyncpg
-        from src.core.crew_runner_review import genera_risposta_recensione
         for raw in raw_reviews:
             m = self._map_review(raw)
             if not m["testo"]:
                 continue
             try:
-                output = await asyncio.to_thread(
-                    genera_risposta_recensione,
-                    testo=m["testo"],
-                    stelle=m["valutazione_stelle"],
-                    autore=m["autore"],
+                output = await self._genera_bozza(
+                    m["testo"], m["valutazione_stelle"], m["autore"]
                 )
                 await self.repo.create_review(
                     organization_id=org_id,

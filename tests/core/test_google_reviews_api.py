@@ -155,9 +155,18 @@ async def test_settings_aggiorna_account_e_location(async_client, pg_pool, sampl
 # ── Sync ──────────────────────────────────────────────────────
 
 def _mocking_sync(service, fake_reviews):
-    """Mocka build() e la chiamata di rete _list_reviews."""
+    """Mocka build(), la chiamata di rete _list_reviews e la generazione
+    bozza AI (mai il crew AI reale nei test)."""
     service._build_service = AsyncMock(return_value=MagicMock())
     service._list_reviews = AsyncMock(return_value=fake_reviews)
+
+    class _FakeOutput:
+        bozza_risposta = "Grazie per la recensione!"
+        sentiment = "positiva"
+        categoria = "generico"
+        richiede_revisione_urgente = False
+
+    service._genera_bozza = AsyncMock(return_value=_FakeOutput())
 
 
 async def test_sync_persiste_nuove_recensioni(async_client, pg_pool, sample_org, repo):
@@ -239,6 +248,26 @@ async def test_sync_senza_account_location_ritorna_zero(async_client, pg_pool, s
     resp = await client.post("/api/reviews/google/sync", headers=_headers(sample_org["id"]))
     assert resp.status_code == 200
     assert resp.json() == {"nuove": 0}
+
+
+async def test_sync_bozza_fallita_non_persiste_ma_non_blocca(async_client, pg_pool, sample_org, repo):
+    """Se la generazione bozza fallisce (crew AI down) la review di quel
+    giro non viene salvata — ma non e' persa: senza external_id gia' in
+    DB, il prossimo sync la ritenta (nessun dedup a bloccarla)."""
+    client, service = async_client
+    await _inserisci_credenziali(pg_pool, sample_org["id"])
+    fake = [{"reviewId": "rev-err", "starRating": "THREE",
+             "reviewer": {"displayName": "X"},
+             "comment": {"comment": "Nella media"}}]
+    service._build_service = AsyncMock(return_value=MagicMock())
+    service._list_reviews = AsyncMock(return_value=fake)
+    service._genera_bozza = AsyncMock(side_effect=RuntimeError("crew AI down"))
+
+    resp = await client.post("/api/reviews/google/sync", headers=_headers(sample_org["id"]))
+    assert resp.status_code == 200
+    assert resp.json() == {"nuove": 0}
+    rows = await repo.list_reviews(sample_org["id"], fonte="google")
+    assert rows == []
 
 
 # ── Disconnect ────────────────────────────────────────────────

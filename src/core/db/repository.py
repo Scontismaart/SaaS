@@ -403,6 +403,35 @@ class CoreRepository:
             )
             return [dict(r) for r in rows]
 
+    async def count_chunks(self, organization_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT COUNT(*) AS n FROM document_chunks WHERE organization_id = $1",
+                organization_id,
+            )
+            return row["n"]
+
+    async def list_sources(self, organization_id):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT d.id, d.nome, d.tipo, d.fonte, d.caricato_il,
+                       COUNT(dc.id) AS chunk
+                FROM documents d
+                LEFT JOIN document_chunks dc ON dc.document_id = d.id
+                WHERE d.organization_id = $1
+                GROUP BY d.id
+                ORDER BY d.caricato_il DESC, d.nome
+            """, organization_id)
+            return [dict(r) for r in rows]
+
+    async def delete_document(self, organization_id, document_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                DELETE FROM documents WHERE id = $1 AND organization_id = $2
+                RETURNING id
+            """, document_id, organization_id)
+            return 1 if row else 0
+
     # ── Email configs ─────────────────────────────────────────
 
     async def add_email_config(self, organization_id, indirizzo, is_active=True):

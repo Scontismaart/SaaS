@@ -32,7 +32,7 @@ from src.core.scheduler import (
 from src.core.crew_runner_report import genera_report as genera_report_completo
 from src.core.crew_runner_review import genera_risposta_recensione
 from src.core.email_config_store import carica_config, elenca_config, elimina_config, inizializza as init_email_store
-from src.core.documenti.vector_store import aggiungi, conteggio, elenco_fonti, elimina_documento
+from src.core.documenti.embeddings import vettorizza
 from src.core.documenti.extractor import estrai_testo
 from src.core.documenti.qa_agent import rispondi
 from src.core.documenti.chunking import chunk_testo
@@ -548,36 +548,45 @@ def indicizza_documenti(user: dict = Depends(require_ruolo("owner", "manager")))
 
 
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)
-def chiedi_documenti(domanda: DomandaInput, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return rispondi(domanda.domanda, k=domanda.k)
+async def chiedi_documenti(domanda: DomandaInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    repo = get_repo(request)
+    return await rispondi(user["organization_id"], domanda.domanda, repo, k=domanda.k)
 
 
 @app.get("/api/documenti/conteggio")
-def conteggio_documenti(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return {"chunk_indicizzati": conteggio()}
+async def conteggio_documenti(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    repo = get_repo(request)
+    return {"chunk_indicizzati": await repo.count_chunks(user["organization_id"])}
 
 
 @app.get("/api/documenti/elenco")
-def elenco_documenti(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return {"documenti": elenco_fonti()}
+async def elenco_documenti(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    repo = get_repo(request)
+    return {"documenti": await repo.list_sources(user["organization_id"])}
 
 
 @app.post("/api/documenti/carica")
-def carica_documento(doc: CaricaDocumentoInput, user: dict = Depends(require_ruolo("owner", "manager"))):
+async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
     if not doc.testo.strip():
         raise HTTPException(status_code=400, detail="Testo vuoto.")
 
+    repo = get_repo(request)
     chunks = chunk_testo(doc.testo)
-    documento_id = uuid.uuid4().hex[:16]
-    caricato_il = datetime.now().isoformat(timespec="seconds")
-    metadati = [{"fonte": doc.nome, "tipo": "upload", "document_id": documento_id, "caricato_il": caricato_il}] * len(chunks)
-    aggiunti = aggiungi(chunks, metadati)
+    if not chunks:
+        raise HTTPException(status_code=400, detail="Testo senza contenuto indicizzabile.")
 
-    return {"detail": f"Indicizzati {aggiunti} chunk da '{doc.nome}'.", "indicizzati": aggiunti, "id": documento_id}
+    record = await repo.create_document(user["organization_id"], doc.nome, tipo="upload", fonte="dashboard")
+    embeds = vettorizza(chunks, tipo="passage")
+    for i, (chunk, emb) in enumerate(zip(chunks, embeds)):
+        await repo.add_chunk(
+            user["organization_id"], record["id"], i, chunk, emb,
+            {"fonte": doc.nome, "tipo": "upload", "document_id": str(record["id"])},
+        )
+    return {"detail": f"Indicizzati {len(chunks)} chunk da '{doc.nome}'.", "indicizzati": len(chunks), "id": str(record["id"])}
 
 
 @app.post("/api/documenti/carica-file")
-async def carica_file_documento(file: UploadFile = File(...), user: dict = Depends(require_ruolo("owner", "manager"))):
+async def carica_file_documento(request: Request, file: UploadFile = File(...), user: dict = Depends(require_ruolo("owner", "manager"))):
     nome = file.filename or "documento"
     contenuto = await file.read()
     if not contenuto:
@@ -589,17 +598,25 @@ async def carica_file_documento(file: UploadFile = File(...), user: dict = Depen
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    repo = get_repo(request)
     chunks = chunk_testo(testo)
-    documento_id = uuid.uuid4().hex[:16]
-    caricato_il = datetime.now().isoformat(timespec="seconds")
-    metadati = [{"fonte": nome, "tipo": "documento", "document_id": documento_id, "caricato_il": caricato_il}] * len(chunks)
-    aggiunti = aggiungi(chunks, metadati)
-    return {"detail": f"Indicizzati {aggiunti} chunk da '{nome}'.", "indicizzati": aggiunti, "nome": nome, "id": documento_id}
+    if not chunks:
+        raise HTTPException(status_code=400, detail="Nessun testo indicizzabile estratto dal file.")
+
+    record = await repo.create_document(user["organization_id"], nome, tipo="documento", fonte=nome)
+    embeds = vettorizza(chunks, tipo="passage")
+    for i, (chunk, emb) in enumerate(zip(chunks, embeds)):
+        await repo.add_chunk(
+            user["organization_id"], record["id"], i, chunk, emb,
+            {"fonte": nome, "tipo": "documento", "document_id": str(record["id"])},
+        )
+    return {"detail": f"Indicizzati {len(chunks)} chunk da '{nome}'.", "indicizzati": len(chunks), "nome": nome, "id": str(record["id"])}
 
 
 @app.delete("/api/documenti/{documento_id}")
 async def elimina_documento_api(documento_id: str, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
-    eliminati = elimina_documento(documento_id)
+    repo = get_repo(request)
+    eliminati = await repo.delete_document(user["organization_id"], documento_id)
     if not eliminati:
         raise HTTPException(status_code=404, detail="Documento non trovato.")
     await _audit(request, user, "documento_eliminato", target_table="documents", details={"documento_id": documento_id, "chunk_eliminati": eliminati})

@@ -24,3 +24,9 @@ src/logs/
 # ZCode MCP config (puo' contenere PAT Supabase in chiaro)
 .zcode/config.json
 .zcode/*.local.json
+
+# Tooling locale di editor/agenti AI - mai nel repo del prodotto
+.opencode/
+.claude/
+.zcode/
+graphify-out/

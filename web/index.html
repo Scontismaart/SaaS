@@ -83,6 +83,12 @@
         </span>
         Documenti <span class="nav-badge" data-notification-badge="documenti" hidden></span>
       </button>
+      <button class="nav-item" type="button" data-view="inbox">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16v11H4v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Inbox <span class="nav-badge" data-notification-badge="inbox" hidden></span>
+      </button>
     </nav>
 
     <div class="sidebar-cta">
@@ -536,6 +542,43 @@
             <span class="doc-fonti-title">Fonti</span>
             <ul class="doc-fonti-list" id="doc-fonti-list"></ul>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: INBOX ---------- -->
+    <section class="view view-hidden" data-view-panel="inbox">
+      <p class="view-intro">Ticket escalati all'operatore umano. Claim un ticket per prendere in carico la conversazione e rispondi manualmente su WhatsApp.</p>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Filtri</span>
+        </div>
+        <div class="inbox-filters">
+          <div class="inbox-filter-group" role="group" aria-label="Filtro stato">
+            <button type="button" class="inbox-filter-btn active" data-inbox-status="ALL">Tutti</button>
+            <button type="button" class="inbox-filter-btn" data-inbox-status="PENDING_STAFF">In attesa</button>
+            <button type="button" class="inbox-filter-btn" data-inbox-status="CLAIMED">Preso in carico</button>
+            <button type="button" class="inbox-filter-btn" data-inbox-status="AI_ACTIVE">Automazione</button>
+            <button type="button" class="inbox-filter-btn" data-inbox-status="RESOLVED">Risolti</button>
+          </div>
+          <div class="inbox-filter-group" role="group" aria-label="Filtro priorità">
+            <span class="inbox-filter-label">Priorità:</span>
+            <button type="button" class="inbox-filter-btn active" data-priorita="">Tutte</button>
+            <button type="button" class="inbox-filter-btn" data-priorita="alta">Alta</button>
+            <button type="button" class="inbox-filter-btn" data-priorita="media">Media</button>
+            <button type="button" class="inbox-filter-btn" data-priorita="bassa">Bassa</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Ticket</span>
+          <span class="dash-card-meta" id="inbox-count"></span>
+        </div>
+        <div class="inbox-list" id="inbox-list">
+          <p class="inbox-empty" id="inbox-empty">Nessun ticket.</p>
         </div>
       </div>
     </section>

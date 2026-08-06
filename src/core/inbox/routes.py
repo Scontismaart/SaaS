@@ -1,15 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
 import os
 import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Request
+
 from src.core.auth.dependencies import require_ruolo
 from src.core.inbox.schemas import (
-    ClaimRequest, ClaimResponse, TicketListResponse, TicketListItem,
-    ReplyRequest, ReplyResponse,
+    ClaimRequest,
+    ClaimResponse,
+    ReplyRequest,
+    ReplyResponse,
+    TicketListItem,
+    TicketListResponse,
 )
+from src.whatsapp.config import AppConfig, load_tenant_config
 from src.whatsapp.repository import Repository as WhatsAppRepository
 from src.whatsapp.service import WhatsAppService
-from src.whatsapp.config import AppConfig, load_tenant_config
-from src.core.notifications.email_service import enqueue_escalation
 
 router = APIRouter(prefix="/api/inbox", tags=["inbox"])
 

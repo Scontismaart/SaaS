@@ -1,8 +1,9 @@
 import os
 import uuid
-import pytest
-from httpx import AsyncClient, ASGITransport
 from datetime import timedelta
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 
@@ -71,7 +72,7 @@ class TestSla:
     async def test_sla_due_at_from_org_sla_minutes(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool, sla_minutes=30)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -88,7 +89,7 @@ class TestSla:
     async def test_sla_default_15(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -102,7 +103,7 @@ class TestSla:
     async def test_sla_overdue_when_expired(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool, sla_minutes=5)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -120,7 +121,7 @@ class TestSla:
     async def test_priority_from_event_log(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -144,7 +145,7 @@ class TestSla:
     async def test_priority_fallback_pending_staff_high(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -157,9 +158,9 @@ class TestSla:
     async def test_priority_fallback_ai_active_medium(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool)
-        _, conv = await self._create_conv(pg_pool, org["id"])
+        _, _conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
         rows = await wrepo.list_tickets(str(org["id"]))
@@ -169,7 +170,7 @@ class TestSla:
     async def test_priority_filter_query(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -184,7 +185,7 @@ class TestSla:
     async def test_priority_filter_via_route(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, app = async_client
         org = await self._create_org(pg_pool)
         _, conv = await self._create_conv(pg_pool, org["id"])
 
@@ -204,9 +205,9 @@ class TestSla:
     async def test_phone_and_last_message_preview(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, _app = async_client
         org = await self._create_org(pg_pool)
-        contact, conv = await self._create_conv(pg_pool, org["id"])
+        _contact, conv = await self._create_conv(pg_pool, org["id"])
 
         async with pg_pool.acquire() as conn:
             await conn.execute(
@@ -225,7 +226,7 @@ class TestSla:
     async def test_get_ticket_sla_and_context(self, async_client):
         from src.whatsapp.repository import Repository as WRepo
 
-        repo, pg_pool, app = async_client
+        _repo, pg_pool, app = async_client
         org = await self._create_org(pg_pool, sla_minutes=45)
         _, conv = await self._create_conv(pg_pool, org["id"])
 

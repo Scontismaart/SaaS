@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 
 pytestmark = pytest.mark.usefixtures("reset_db")

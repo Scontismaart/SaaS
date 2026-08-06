@@ -34,6 +34,23 @@ async def extended_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/006_hitl.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/027_sla.sql") as f:
+            await conn.execute(f.read())
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS event_log (
+                id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                organization_id UUID NOT NULL,
+                source_table    TEXT NOT NULL,
+                source_id       UUID NOT NULL,
+                tipo_evento     TEXT NOT NULL,
+                priorita        TEXT NOT NULL,
+                testo_originale TEXT NOT NULL DEFAULT '',
+                risposta_ai     TEXT NOT NULL DEFAULT '',
+                gestito_da_ai   BOOLEAN NOT NULL DEFAULT TRUE,
+                dettagli        JSONB NOT NULL DEFAULT '{}',
+                created_at      TIMESTAMPTZ DEFAULT NOW()
+            );
+        """)
     yield pool
     await pool.close()
 

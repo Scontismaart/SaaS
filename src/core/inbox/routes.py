@@ -30,34 +30,41 @@ def _get_app_config() -> AppConfig:
     )
 
 
+def _to_ticket_item(t: dict) -> TicketListItem:
+    return TicketListItem(
+        id=str(t["id"]),
+        organization_id=str(t["organization_id"]),
+        contact_id=str(t["contact_id"]),
+        ticket_status=t["ticket_status"],
+        assigned_to=str(t["assigned_to"]) if t.get("assigned_to") else None,
+        assigned_nome=t.get("assigned_nome"),
+        assigned_email=t.get("assigned_email"),
+        pending_staff_at=t["pending_staff_at"].isoformat() if t.get("pending_staff_at") else None,
+        claimed_at=t["claimed_at"].isoformat() if t.get("claimed_at") else None,
+        resolved_at=t["resolved_at"].isoformat() if t.get("resolved_at") else None,
+        last_message_at=t["last_message_at"].isoformat() if t.get("last_message_at") else None,
+        created_at=t["created_at"].isoformat(),
+        version=t["version"],
+        sla_minutes=t.get("sla_minutes") or 15,
+        sla_due_at=t["sla_due_at"].isoformat() if t.get("sla_due_at") else None,
+        is_overdue=bool(t.get("is_overdue")),
+        priorita=t.get("priorita") or "media",
+        phone_number=t.get("phone_number"),
+        last_message_preview=t.get("last_message_preview"),
+    )
+
+
 @router.get("/tickets", response_model=TicketListResponse)
 async def list_tickets(
     request: Request,
     status: str | None = None,
+    priorita: str | None = None,
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    tickets = await wrepo.list_tickets(org_id, status=status)
-    items = []
-    for t in tickets:
-        item = TicketListItem(
-            id=str(t["id"]),
-            organization_id=str(t["organization_id"]),
-            contact_id=str(t["contact_id"]),
-            ticket_status=t["ticket_status"],
-            assigned_to=str(t["assigned_to"]) if t.get("assigned_to") else None,
-            assigned_nome=t.get("assigned_nome"),
-            assigned_email=t.get("assigned_email"),
-            pending_staff_at=t["pending_staff_at"].isoformat() if t.get("pending_staff_at") else None,
-            claimed_at=t["claimed_at"].isoformat() if t.get("claimed_at") else None,
-            resolved_at=t["resolved_at"].isoformat() if t.get("resolved_at") else None,
-            last_message_at=t["last_message_at"].isoformat() if t.get("last_message_at") else None,
-            created_at=t["created_at"].isoformat(),
-            version=t["version"],
-        )
-        items.append(item)
-    return TicketListResponse(tickets=items)
+    tickets = await wrepo.list_tickets(org_id, status=status, priorita=priorita)
+    return TicketListResponse(tickets=[_to_ticket_item(t) for t in tickets])
 
 
 @router.get("/tickets/{conversation_id}", response_model=TicketListItem)
@@ -71,21 +78,7 @@ async def get_ticket(
     conv = await wrepo.get_conversation(conversation_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return TicketListItem(
-        id=str(conv["id"]),
-        organization_id=str(conv["organization_id"]),
-        contact_id=str(conv["contact_id"]),
-        ticket_status=conv["ticket_status"],
-        assigned_to=str(conv["assigned_to"]) if conv.get("assigned_to") else None,
-        assigned_nome=conv.get("assigned_nome"),
-        assigned_email=conv.get("assigned_email"),
-        pending_staff_at=conv["pending_staff_at"].isoformat() if conv.get("pending_staff_at") else None,
-        claimed_at=conv["claimed_at"].isoformat() if conv.get("claimed_at") else None,
-        resolved_at=conv["resolved_at"].isoformat() if conv.get("resolved_at") else None,
-        last_message_at=conv["last_message_at"].isoformat() if conv.get("last_message_at") else None,
-        created_at=conv["created_at"].isoformat(),
-        version=conv["version"],
-    )
+    return _to_ticket_item(conv)
 
 
 @router.post("/claim/{conversation_id}", response_model=ClaimResponse)

@@ -18,7 +18,6 @@ def set_env():
 @pytest.fixture
 async def async_client(repo, pg_pool):
     from src.api.main import app
-    from src.core.auth.dependencies import get_organization_context
 
     app.state.repo = repo
     app.state.pool = pg_pool

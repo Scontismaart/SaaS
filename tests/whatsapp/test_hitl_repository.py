@@ -37,7 +37,8 @@ async def extended_pool(postgres_container):
         with open("src/core/db/migrations/027_sla.sql") as f:
             await conn.execute(f.read())
         await conn.execute("""
-            CREATE TABLE IF NOT EXISTS event_log (
+            DROP TABLE IF EXISTS event_log CASCADE;
+            CREATE TABLE event_log (
                 id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 organization_id UUID NOT NULL,
                 source_table    TEXT NOT NULL,

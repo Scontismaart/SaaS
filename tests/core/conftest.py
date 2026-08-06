@@ -111,6 +111,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/026_google_business_credentials.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/027_sla.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

@@ -107,6 +107,7 @@ navItems.forEach((btn) => {
       prenotazioni: "Prenotazioni",
       report: "Report",
       documenti: "Documenti",
+      inbox: "Inbox",
     };
     topbarTitle.textContent = titles[viewName] || viewName;
 
@@ -129,6 +130,9 @@ navItems.forEach((btn) => {
     if (viewName === "documenti") {
       aggiornaConteggio();
       aggiornaDocumenti();
+    }
+    if (viewName === "inbox") {
+      caricaInbox();
     }
   });
 });
@@ -1434,6 +1438,260 @@ docChiediBtn.addEventListener("click", async () => {
     docChiediBtn.disabled = false;
     docChiediBtn.textContent = "Chiedi";
   }
+});
+
+/* ============================================================
+   INBOX (HITL) — ticket escalati all'operatore umano
+   ============================================================ */
+
+const inboxList = document.getElementById("inbox-list");
+const inboxEmpty = document.getElementById("inbox-empty");
+const inboxCount = document.getElementById("inbox-count");
+let inboxState = {
+  status: "ALL",
+  priorita: "",
+};
+
+const TICKET_STATUS_LABEL = {
+  AI_ACTIVE: "Automazione",
+  PENDING_STAFF: "In attesa",
+  CLAIMED: "Preso in carico",
+  RESOLVED: "Risolto",
+};
+
+function formatInboxDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatSla(sla_due_at, is_overdue) {
+  if (!sla_due_at) return null;
+  const due = new Date(sla_due_at);
+  const now = new Date();
+  const minutes = Math.max(0, Math.round((due - now) / 60000));
+  if (is_overdue) return { text: "SLA superato", overdue: true };
+  if (minutes <= 0) return { text: "SLA scaduto", overdue: true };
+  return { text: `SLA ${minutes} min`, overdue: false };
+}
+
+async function caricaInbox() {
+  if (!inboxList) return;
+  try {
+    const params = new URLSearchParams();
+    if (inboxState.status !== "ALL") params.set("status", inboxState.status);
+    if (inboxState.priorita) params.set("priorita", inboxState.priorita);
+    const res = await fetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const tickets = data.tickets || [];
+    inboxCount.textContent = `${tickets.length} ticket`;
+    inboxList.innerHTML = "";
+    if (!tickets.length) {
+      inboxList.appendChild(inboxEmpty);
+      inboxEmpty.textContent = "Nessun ticket.";
+      return;
+    }
+    tickets.forEach((t) => renderInboxCard(inboxList, t));
+  } catch (err) {
+    console.error("Impossibile caricare l'inbox:", err);
+  }
+}
+
+function renderInboxCard(container, t) {
+  const card = document.createElement("div");
+  card.className = "inbox-card";
+  card.classList.add(`prio-${t.priorita}`);
+  if (t.is_overdue) card.classList.add("overdue");
+
+  const top = document.createElement("div");
+  top.className = "inbox-card-top";
+
+  const left = document.createElement("div");
+  left.style.flex = "1";
+  left.style.minWidth = "0";
+
+  const title = document.createElement("h3");
+  title.className = "inbox-card-title";
+  title.textContent = t.phone_number || "Cliente";
+
+  const meta = document.createElement("div");
+  meta.className = "inbox-card-meta";
+  const assigned = t.assigned_nome ? ` · ${t.assigned_nome}` : "";
+  meta.textContent = `${TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status}${assigned}`;
+  left.appendChild(title);
+  left.appendChild(meta);
+
+  const tags = document.createElement("div");
+  tags.className = "inbox-tags";
+
+  const prioTag = document.createElement("span");
+  prioTag.className = "ticket-tag";
+  prioTag.textContent = t.priorita;
+  tags.appendChild(prioTag);
+
+  const sla = formatSla(t.sla_due_at, t.is_overdue);
+  if (sla) {
+    const slaEl = document.createElement("span");
+    slaEl.className = "inbox-sla";
+    if (sla.overdue) slaEl.classList.add("overdue");
+    slaEl.textContent = sla.text;
+    slaEl.title = t.sla_due_at ? `Scadenza: ${formatInboxDate(t.sla_due_at)}` : "";
+    tags.appendChild(slaEl);
+  }
+
+  if (t.pending_staff_at) {
+    const pend = document.createElement("span");
+    pend.className = "inbox-card-meta";
+    pend.textContent = ` · attesa da ${formatInboxDate(t.pending_staff_at)}`;
+    meta.textContent += pend.textContent;
+  }
+
+  top.appendChild(left);
+  top.appendChild(tags);
+  card.appendChild(top);
+
+  if (t.last_message_preview) {
+    const msg = document.createElement("p");
+    msg.className = "inbox-card-msg";
+    msg.textContent = t.last_message_preview;
+    card.appendChild(msg);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "inbox-actions";
+
+  if (t.ticket_status === "PENDING_STAFF") {
+    const claim = document.createElement("button");
+    claim.type = "button";
+    claim.className = "inbox-btn primary";
+    claim.textContent = "Claim";
+    claim.title = "Prendi in carico";
+    claim.addEventListener("click", async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(t.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ expected_version: t.version }),
+        });
+        if (!res.ok) throw new Error("Impossibile fare il claim.");
+        await caricaInbox();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+    actions.appendChild(claim);
+  }
+
+  if (t.ticket_status === "CLAIMED") {
+    const release = document.createElement("button");
+    release.type = "button";
+    release.className = "inbox-btn";
+    release.textContent = "Rilascia";
+    release.addEventListener("click", async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/inbox/release/${encodeURIComponent(t.id)}`, { method: "POST" });
+        if (!res.ok) throw new Error("Impossibile rilasciare.");
+        await caricaInbox();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+    actions.appendChild(release);
+
+    const risolvi = document.createElement("button");
+    risolvi.type = "button";
+    risolvi.className = "inbox-btn";
+    risolvi.textContent = "Risolvi";
+    risolvi.addEventListener("click", async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/inbox/resolve/${encodeURIComponent(t.id)}`, { method: "POST" });
+        if (!res.ok) throw new Error("Impossibile risolvere.");
+        await caricaInbox();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+    actions.appendChild(risolvi);
+
+    const replyToggle = document.createElement("button");
+    replyToggle.type = "button";
+    replyToggle.className = "inbox-btn";
+    replyToggle.textContent = "Rispondi";
+    replyToggle.addEventListener("click", () => {
+      replyArea.classList.toggle("open");
+      replyToggle.textContent = replyArea.classList.contains("open") ? "Chiudi" : "Rispondi";
+    });
+    actions.appendChild(replyToggle);
+  }
+
+  card.appendChild(actions);
+
+  const replyArea = document.createElement("div");
+  replyArea.className = "inbox-reply";
+  const replyInput = document.createElement("textarea");
+  replyInput.className = "inbox-reply-input";
+  replyInput.rows = 2;
+  replyInput.placeholder = "Scrivi la risposta da inviare su WhatsApp...";
+  const replyRow = document.createElement("div");
+  replyRow.className = "inbox-reply-row";
+  const invia = document.createElement("button");
+  invia.type = "button";
+  invia.className = "inbox-btn primary";
+  invia.textContent = "Invia su WhatsApp";
+  const replyStatus = document.createElement("p");
+  replyStatus.className = "inbox-status";
+  invia.addEventListener("click", async () => {
+    const content = replyInput.value.trim();
+    if (!content) return;
+    invia.disabled = true;
+    replyStatus.textContent = "Invio...";
+    try {
+      const res = await fetch(`${API_BASE}/api/inbox/reply/${encodeURIComponent(t.id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          message_type: "text",
+          idempotency_key: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || "Impossibile inviare.");
+      }
+      replyStatus.textContent = "Inviato su WhatsApp.";
+      replyInput.value = "";
+    } catch (err) {
+      replyStatus.classList.add("error");
+      replyStatus.textContent = err.message;
+    } finally {
+      invia.disabled = false;
+    }
+  });
+  replyRow.appendChild(invia);
+  replyArea.appendChild(replyInput);
+  replyArea.appendChild(replyRow);
+  replyArea.appendChild(replyStatus);
+  card.appendChild(replyArea);
+
+  container.appendChild(card);
+}
+
+document.querySelectorAll("[data-inbox-status]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    inboxState.status = btn.dataset.inboxStatus;
+    document.querySelectorAll("[data-inbox-status]").forEach((b) => b.classList.toggle("active", b === btn));
+    caricaInbox();
+  });
+});
+
+document.querySelectorAll("[data-priorita]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    inboxState.priorita = btn.dataset.priorita;
+    document.querySelectorAll("[data-priorita]").forEach((b) => b.classList.toggle("active", b === btn));
+    caricaInbox();
+  });
 });
 
 /* ============================================================

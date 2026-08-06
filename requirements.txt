@@ -1,7 +1,6 @@
 alembic==1.18.5
 APScheduler==3.11.3
 asyncpg==0.31.0
-chromadb==1.1.1
 crewai==1.15.4
 cryptography==43.0.3
 fastapi==0.139.2

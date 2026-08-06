@@ -1,9 +1,10 @@
 from src.core.llm_config import crea_llm
-from src.core.documenti.vector_store import cerca
+from src.core.documenti.embeddings import vettorizza
 
 
-def rispondi(domanda: str, k: int = 5) -> dict:
-    risultati = cerca(domanda, k=k)
+async def rispondi(organization_id: str, domanda: str, repo, k: int = 5) -> dict:
+    q_emb = vettorizza([domanda], tipo="query")[0]
+    risultati = await repo.search_similar(organization_id, q_emb, k)
 
     if not risultati:
         return {
@@ -11,15 +12,15 @@ def rispondi(domanda: str, k: int = 5) -> dict:
             "fonti": [],
         }
 
-    contesto = "\n\n".join(f"-- Documento --\n{doc}" for doc, _, _ in risultati)
+    contesto = "\n\n".join(f"-- Documento --\n{r['content']}" for r in risultati)
 
     fonti_dict = {}
-    for doc, meta, score in risultati:
-        nome = (meta.get("fonte") or "documento").strip()
+    for r in risultati:
+        nome = (r.get("document_name") or (r.get("metadata") or {}).get("fonte") or "documento").strip()
         if not nome:
             nome = "documento"
-        if nome not in fonti_dict or score < fonti_dict[nome]["score"]:
-            fonti_dict[nome] = {"documento": nome, "score": round(score, 4)}
+        if nome not in fonti_dict or r["distance"] < fonti_dict[nome]["score"]:
+            fonti_dict[nome] = {"documento": nome, "score": round(r["distance"], 4)}
     fonti = sorted(fonti_dict.values(), key=lambda f: f["score"])
 
     prompt = (

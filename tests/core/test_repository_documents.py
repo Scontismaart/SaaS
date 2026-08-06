@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 
 pytestmark = pytest.mark.usefixtures("reset_db")
@@ -80,3 +78,40 @@ async def test_list_documents(repo, sample_org):
     )
     docs = await repo.list_documents(sample_org["id"])
     assert len(docs) == 2
+
+
+@pytest.mark.asyncio
+async def test_count_chunks(repo, sample_org, other_org):
+    doc = await repo.create_document(organization_id=sample_org["id"], nome="doc.pdf", tipo="upload")
+    await repo.add_chunk(organization_id=sample_org["id"], document_id=doc["id"],
+                         chunk_index=0, content="c1", embedding=[0.1] * 384)
+    await repo.add_chunk(organization_id=sample_org["id"], document_id=doc["id"],
+                         chunk_index=1, content="c2", embedding=[0.2] * 384)
+    assert await repo.count_chunks(sample_org["id"]) == 2
+    assert await repo.count_chunks(other_org["id"]) == 0
+
+
+@pytest.mark.asyncio
+async def test_list_sources_groups_by_document(repo, sample_org):
+    doc = await repo.create_document(organization_id=sample_org["id"], nome="menu.pdf", tipo="upload", fonte="dashboard")
+    await repo.add_chunk(organization_id=sample_org["id"], document_id=doc["id"],
+                         chunk_index=0, content="c1", embedding=[0.1] * 384)
+    await repo.add_chunk(organization_id=sample_org["id"], document_id=doc["id"],
+                         chunk_index=1, content="c2", embedding=[0.2] * 384)
+    fonti = await repo.list_sources(sample_org["id"])
+    assert len(fonti) == 1
+    assert fonti[0]["nome"] == "menu.pdf"
+    assert fonti[0]["chunk"] == 2
+    assert str(fonti[0]["id"]) == str(doc["id"])
+
+
+@pytest.mark.asyncio
+async def test_delete_document_org_scoped(repo, sample_org, other_org):
+    doc = await repo.create_document(organization_id=sample_org["id"], nome="doc.pdf", tipo="upload")
+    await repo.add_chunk(organization_id=sample_org["id"], document_id=doc["id"],
+                         chunk_index=0, content="c1", embedding=[0.1] * 384)
+    # org sbagliata non tocca nulla
+    assert await repo.delete_document(other_org["id"], doc["id"]) == 0
+    # org giusta elimina documento + chunk via cascade
+    assert await repo.delete_document(sample_org["id"], doc["id"]) == 1
+    assert await repo.count_chunks(sample_org["id"]) == 0

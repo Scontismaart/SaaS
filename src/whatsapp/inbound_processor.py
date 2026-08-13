@@ -2,6 +2,7 @@ import asyncio
 import logging
 import uuid
 from pydantic import ValidationError
+from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
 from src.core.security_logger import security_audit
 from src.whatsapp.config import AppConfig, load_tenant_config
 from src.core.crew_runner import genera_risposta_async
@@ -123,9 +124,33 @@ class InboundProcessor:
 
         heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
         try:
-            risposta = await genera_risposta_async(messaggio, profilo)
+            risposta = await genera_risposta_async(messaggio, profilo, billing=state)
         finally:
             heartbeat_task.cancel()
+
+        try:
+            route = route_llm(
+                LLMRouteRequest(
+                    task_type="customer_message",
+                    user_text=text,
+                    remaining_budget_ratio=budget_ratio_from_billing(state),
+                )
+            )
+            await self.repo.record_usage(
+                org_id,
+                "ai_response",
+                quantity=1,
+                metadata={
+                    "channel": "whatsapp",
+                    "model": route.model,
+                    "tier": route.tier,
+                    "reason": route.reason,
+                    "conversation_id": str(msg.get("conversation_id", "")),
+                    "message_id": str(msg["id"]),
+                },
+            )
+        except Exception as e:
+            logger.warning("AI usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
 
         pren = risposta.prenotazione
         if pren and pren.data and pren.ora and pren.coperti:

@@ -1,5 +1,7 @@
 # Prompt operativi per la roadmap del SaaS
 
+> **Nota sulle skill citate**: questo documento è pensato per più AI operative in parallelo su questo progetto (Codex, DeepSeek, GLM), ciascuna con il proprio pacchetto skill configurato nel proprio ambiente. Skill come `systematic-debugging`, `using-git-worktrees`, `dispatching-parallel-agents`, `subagent-driven-development`, `design-taste-frontend`, `minimalist-ui`, `high-end-visual-design`, `brandkit`, `finishing-a-development-branch`, `full-output-enforcement` non sono disponibili in Claude via questa chat (verificato in `/mnt/skills/user/`, che contiene solo: `brainstorming`, `writing-plans`, `test-driven-development`, `executing-plans`, `verification-before-completion`, `requesting-code-review`, più le skill di marketing). Se questo prompt viene incollato qui, Claude userà solo il sottoinsieme disponibile e ignorerà silenziosamente il resto — non è un errore, è previsto. Per Codex/DeepSeek/GLM, verificare che il pacchetto skill referenziato sia effettivamente installato nel loro ambiente prima di incollare.
+
 Ogni blocco = un punto della roadmap. Contiene:
 - **Tipo di lavoro** (per capire perché ho scelto quelle skill)
 - **Skill da invocare, in ordine**
@@ -11,6 +13,44 @@ Regola generale usata per scegliere le skill:
 - Lavoro UI/design → `brainstorming` → `writing-plans` + skill di design proprie (`design-taste-frontend`, `minimalist-ui`, `high-end-visual-design`, `brandkit`) → `executing-plans` → `requesting-code-review`
 - Task grandi con parti indipendenti → `dispatching-parallel-agents` o `subagent-driven-development`, eventualmente con `using-git-worktrees` per isolare i branch
 - Sempre, in chiusura, `verification-before-completion` prima di dichiarare "fatto", e `finishing-a-development-branch` quando il lavoro è pronto per il merge
+
+---
+
+## Regole trasversali — imparate sul campo, valgono per OGNI punto sotto
+
+Non sono teoria: sono i 3 bug/incidenti reali che hanno rallentato questo progetto quando più AI hanno lavorato in parallelo sullo stesso repo senza queste regole.
+
+**1. Verifica sempre via CI reale, mai sulla sola esecuzione locale.** "I test passano" detto senza aver ispezionato un run CI vero (log scaricati, conteggio pass/fail letto per intero) non è verifica, è un'affermazione di parte. Se Docker locale non è disponibile (RAM, crash), la CI è l'unica fonte di verità — non un'alternativa di ripiego.
+
+**2. Numerazione migration: controlla sempre il numero più alto già presente su `origin/main` prima di crearne una nuova**, non sul tuo branch locale (può essere indietro). Due collisioni sullo stesso numero sono già successe in questo progetto per questo motivo esatto.
+
+**3. Ogni sessione/agente lavora su un branch nuovo, esplicito, da `origin/main` aggiornato — mai su un branch di un'altra sessione, mai su modifiche locali non committate lasciate da qualcun altro.** Se `using-git-worktrees`/`dispatching-parallel-agents` non sono disponibili nel tuo ambiente, la mitigazione minima è: `git fetch origin && git checkout -b <nome-branch-univoco> origin/main` prima di scrivere una riga di codice.
+
+**4. Prima di far ripartire un agente su un punto qualsiasi di questa roadmap, verifica lo stato reale nel codice — non fidarti della descrizione "cosa manca" scritta qui sotto.** Questo documento descrive il progetto a uno stadio iniziale; molti item P0 sono oggi sostanzialmente completi (vedi sezione successiva). Un prompt scritto per uno stato "giorno zero" lanciato su un codebase maturo produce lavoro duplicato o, peggio, azioni basate su assunzioni false.
+
+---
+
+## Stato reale ad oggi (audit verificato su `main`, non dalla descrizione originale del documento)
+
+| # | Punto | Stato reale |
+|---|---|---|
+| 1 | WhatsApp Business reale | Fatto — webhook, firma verificata, invio via Graph API |
+| 2 | Multi-tenancy + DB persistente | Fatto — Postgres, RLS, `organization_id` ovunque |
+| 3 | Auth/autorizzazione | Fatto — JWT, ruoli, MFA/AAL2 su path sensibili |
+| 4 | Billing Stripe | Fatto — piani, webhook, sospensione robusta |
+| 5 | GDPR/compliance | Quasi — retention/encryption/.env.example ci sono, manca la bozza DPA (documento legale, non codice) |
+| 6 | HITL | Parziale — inbox + email escalation ci sono, manca assegnazione a membro team e SLA visibili |
+| 7 | Onboarding wizard | Non fatto — ancora file JSON hardcoded (`data/onboarding_profiles.json`) |
+| 8 | Prenotazioni standalone | Parziale — core solido (conferma/rifiuto/no-show/reminder), manca TheFork/Calendly e deposito Stripe |
+| 9 | Recensioni automatiche | Fatto — fetch Google reale, OAuth, bozza AI, approvazione, dedup, priorità unificata |
+| 10 | Canali aggiuntivi | Non iniziato (corretto: la roadmap dice di farlo dopo) |
+| 11 | RAG collegato al responder | Irrisolto — `chromadb` e `asyncpg`/pgvector convivono ancora nei requirements, dual-stack mai deciso |
+| 12-14 | Guardrails, model routing, multilingua | Non affrontati |
+| 15 | Infra production-ready | Parziale — `docker-compose.yml` esiste solo in locale, mai committato; Redis assente; Sentry sì |
+| 16 | Debito tecnico | Fatto in gran parte — Pillow in requirements, route legacy sistemate, README/test/CI presenti |
+| 17-20 | Analytics report, white-label, landing page, PWA | Non toccati o solo abbozzati |
+
+Questa tabella va aggiornata a mano man mano — non fidarsi delle descrizioni "cosa manca" nei blocchi originali sotto, che restano intatte perché descrivono correttamente come si presentava il problema quando è stato scritto, utile come contesto storico, non come stato attuale.
 
 ---
 
@@ -304,6 +344,13 @@ Usa "systematic-debugging" per capire esattamente perché oggi /api/documenti/*
 (RAG) e /api/messaggio (assistente clienti) sono disconnessi: dove si ferma
 il flusso, cosa manca per collegarli.
 
+IMPORTANTE - decisione ancora aperta: il progetto oggi ha sia chromadb che
+asyncpg/pgvector nei requirements, un dual-stack mai risolto. Prima di
+pianificare il collegamento, decidi esplicitamente quale storage vettoriale
+usare andando avanti (probabilmente pgvector, già integrato col resto del
+DB multi-tenant) e pianifica la migrazione via da ChromaDB, non solo il
+collegamento.
+
 Poi usa "writing-plans" per pianificare il collegamento:
 - Retrieval su menu/prezzi/policy del locale prima di ogni risposta AI
 - Citazione della fonte interna nei log (non mostrata al cliente, solo per audit)
@@ -404,6 +451,11 @@ lingua corretta). Esegui con "executing-plans" e verifica con
 **Skill:** writing-plans → dispatching-parallel-agents → test-driven-development → executing-plans → verification-before-completion
 
 ```
+IMPORTANTE - verificato nell'audit: docker-compose.yml esiste solo in locale
+sul pc di sviluppo, non è mai stato committato su git. Prima di pianificare
+altro, committalo (o ricostruiscilo se perso) — oggi chiunque clona il repo
+pulito non ha modo di far girare l'app in locale.
+
 Usa "writing-plans" per pianificare la messa in produzione dell'infrastruttura:
 - Docker + docker-compose (API + Postgres + Redis)
 - Scelta piattaforma di deploy (Railway, Fly.io o AWS ECS: chiedimi quale
@@ -412,8 +464,9 @@ Usa "writing-plans" per pianificare la messa in produzione dell'infrastruttura:
 - Worker separati: message_processor, reindex_worker (quest'ultimo esiste
   già parzialmente, va completato)
 - Health check avanzato su /api/health (oggi controlla solo l'API key)
-- Monitoring con Sentry + Datadog/Grafana
-- Backup automatici di Postgres e ChromaDB
+- Monitoring con Sentry (già presente/inizializzato) + Datadog/Grafana
+- Backup automatici di Postgres e ChromaDB/pgvector (dipende dalla
+  decisione presa al punto 11)
 
 Dato che i sotto-task sono in gran parte indipendenti (dockerizzazione,
 worker, monitoring, backup), usa "dispatching-parallel-agents" per
@@ -432,6 +485,12 @@ rispondano.
 **Skill:** systematic-debugging → dispatching-parallel-agents → test-driven-development → verification-before-completion
 
 ```
+NOTA: la maggior parte di questi punti risulta già risolta nell'audit più
+recente (Pillow in requirements, routes.py legacy sistemato, README/test/CI
+presenti, git inizializzato con storia di PR). Verifica prima uno per uno
+lo stato reale nel codice attuale — non ripartire da zero su un problema
+già chiuso.
+
 Usa "systematic-debugging" per analizzare uno per uno questi problemi noti
 nel codice, senza correggerli finché non hai chiarito la causa radice di
 ciascuno:
@@ -515,10 +574,14 @@ dominio custom carichi il tenant corretto e il tema giusto). Esegui con
 **Skill:** brainstorming → writing-plans → design-taste-frontend / high-end-visual-design / brandkit → requesting-code-review
 
 ```
-Usa "brainstorming" per definire la struttura del sito marketing pubblico
-(oggi manca, esiste solo la dashboard interna):
+NOTA: risultano già presenti asset di landing page nel repo (web/landing
+page/), stato di completamento da verificare prima di ripartire da zero.
+
+Usa "brainstorming" per definire la struttura del sito marketing pubblico:
 - Landing page con demo video, orientata all'outreach commerciale
-- Pricing page allineata ai piani Stripe (Starter/Pro/Business)
+- Pricing page allineata ai piani Stripe (Starter/Pro/Business) — vedi il
+  piano tariffario Melpis già definito, se disponibile, invece di
+  ridiscutere prezzi/limiti da zero
 - Case study "Trattoria Da Mario"
 - Integrazione Calendly per prenotare demo call
 - Blog SEO, a partire da un articolo tipo "Come rispondere alle recensioni
@@ -551,7 +614,9 @@ useranno prevalentemente dal telefono:
 - Azione rapida "approva risposta" e "conferma prenotazione" con un solo tap
 
 Conferma che il flusso HITL (punto 6) sia già implementato o pianificato in
-parallelo, dato che questa feature ne dipende direttamente.
+parallelo, dato che questa feature ne dipende direttamente (verificato:
+HITL è parziale, manca assegnazione team e SLA visibili — valuta se
+sufficiente per sbloccare questo punto o se va completato prima).
 
 Usa "writing-plans" per pianificare service worker, notifiche push e le
 azioni rapide. Usa "design-taste-frontend" e "minimalist-ui" per un'interfaccia
@@ -565,12 +630,20 @@ emulato.
 
 ---
 
-## Quick wins (1–2 settimane, alto impatto)
+## Quick wins (1-2 settimane, alto impatto)
 
-**Tipo:** bugfix + task rapidi, indipendenti tra loro → ottimo caso per parallelizzare
+**Tipo:** bugfix + task rapidi, indipendenti tra loro -> ottimo caso per parallelizzare
 **Skill:** systematic-debugging (dove serve) → dispatching-parallel-agents → verification-before-completion
 
 ```
+NOTA: dei 6 quick win originali, i punti 1, 2, 4, 5, 6 risultano già
+sostanzialmente completati nell'audit più recente (README/.env.example
+esistono, .gitignore protegge i segreti, persistenza è su Postgres non
+SQLite-bridge, notifiche email su escalation esistono, template WhatsApp
+sono in uso). Verifica lo stato reale di ciascuno prima di rilanciarlo.
+Il punto 3 (RAG collegato) risulta ancora aperto — vedi punto 11 sopra,
+con la decisione ChromaDB vs pgvector ancora da prendere esplicitamente.
+
 Voglio affrontare questi 6 quick win in parallelo, dato che sono
 indipendenti tra loro. Usa "dispatching-parallel-agents" per assegnarli a
 task separati, e per ciascuno segui questo approccio:
@@ -608,7 +681,8 @@ ecc.) prima di passare al successivo.
 
 ## Note d'uso
 
-- I punti **1, 2, 3** sono fortemente interdipendenti: valuta se farli partire in un ordine preciso (di solito: 2 DB persistente → 3 auth → 1 WhatsApp) oppure in worktree paralleli se il team è più di una persona.
+- I punti **1, 2, 3** sono fortemente interdipendenti — **ma verificati già tutti sostanzialmente completi**, vedi tabella "Stato reale ad oggi". Non serve più decidere l'ordine di partenza tra loro.
 - Per ogni punto "grande" (1, 2, 6, 7, 15), se lavori con più agenti/sessioni in parallelo, usa **subagent-driven-development** per eseguire il piano tramite sotto-agenti nella stessa sessione invece di seguirlo manualmente passo-passo.
 - Quando un punto è pronto per essere unito al branch principale, chiama esplicitamente **finishing-a-development-branch** per far decidere all'AI se mergiare, aprire PR o tenere il branch aperto.
 - Se in una risposta noti output tagliato o placeholder tipo `// TODO` al posto di codice reale, richiama **full-output-enforcement**.
+- **Regola aggiuntiva imparata sul campo**: prima di lanciare qualsiasi punto di questa roadmap su un nuovo agente/sessione, fai eseguire `git fetch origin && git log --oneline origin/main -5` e un controllo dello stato reale nel codice — non l'esecuzione locale, non la memoria della sessione precedente. Ha già causato lavoro duplicato e collisioni di migration quando saltato.

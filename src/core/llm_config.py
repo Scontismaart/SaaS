@@ -13,6 +13,13 @@ chiave API tramite variabile d'ambiente.
 import asyncio
 import os
 from crewai import LLM
+from src.core.llm_routing import (
+    LLMRoute,
+    LLMRouteRequest,
+    budget_ratio_from_billing,
+    get_route_fallback_models,
+    route_llm,
+)
 
 # Modello di default: buon compromesso reasoning/costo per validazione
 # e generazione risposta. Cambialo qui se il modello viene ritirato
@@ -34,7 +41,11 @@ MAX_RETRY = int(os.getenv("LLM_MAX_RETRY", "3"))
 LLM_CONCURRENCY_SEM = asyncio.Semaphore(int(os.getenv("LLM_MAX_CONCURRENT", "3")))
 
 
-def crea_llm(model: str | None = None, temperature: float = 0.4) -> LLM:
+def crea_llm(
+    model: str | None = None,
+    temperature: float = 0.4,
+    route_request: LLMRouteRequest | None = None,
+) -> LLM:
     """Restituisce un'istanza LLM configurata su OpenRouter, pronta
     per essere assegnata a un Agent CrewAI.
 
@@ -49,9 +60,26 @@ def crea_llm(model: str | None = None, temperature: float = 0.4) -> LLM:
             "e inserisci la tua chiave da openrouter.ai/keys"
         )
 
+    selected_model = model
+    if selected_model is None and route_request is not None:
+        selected_model = route_llm(route_request).model
+
     return LLM(
-        model=f"openrouter/{model or MODELLO_DEFAULT}",
+        model=f"openrouter/{selected_model or MODELLO_DEFAULT}",
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         temperature=temperature,
     )
+
+
+__all__ = [
+    "LLM_CONCURRENCY_SEM",
+    "LLMRoute",
+    "LLMRouteRequest",
+    "MAX_RETRY",
+    "MODELLO_DEFAULT",
+    "budget_ratio_from_billing",
+    "crea_llm",
+    "get_route_fallback_models",
+    "route_llm",
+]

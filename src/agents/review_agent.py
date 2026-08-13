@@ -1,6 +1,6 @@
 from crewai import Agent, Task, Crew, Process
 
-from src.core.llm_config import crea_llm
+from src.core.llm_config import LLMRouteRequest, crea_llm
 from src.agents.review_prompts import (
     costruisci_system_prompt_review,
     costruisci_user_prompt_review,
@@ -8,7 +8,7 @@ from src.agents.review_prompts import (
 from src.models.schemas import RispostaRecensioneOutput
 
 
-def crea_review_agent() -> Agent:
+def crea_review_agent(model: str | None = None) -> Agent:
     return Agent(
         role="Esperto gestione reputazione online",
         goal=(
@@ -16,7 +16,11 @@ def crea_review_agent() -> Agent:
             "professionali, misurate, mai difensive."
         ),
         backstory=costruisci_system_prompt_review(),
-        llm=crea_llm(temperature=0.3),
+        llm=crea_llm(
+            model=model,
+            temperature=0.3,
+            route_request=LLMRouteRequest(task_type="review"),
+        ),
         verbose=False,
         allow_delegation=False,
     )
@@ -46,8 +50,9 @@ def crea_review_crew(
     testo: str,
     stelle: int | None = None,
     autore: str = "",
+    model: str | None = None,
 ) -> Crew:
-    agent = crea_review_agent()
+    agent = crea_review_agent(model=model)
     task = crea_review_task(agent, testo, stelle, autore)
 
     return Crew(

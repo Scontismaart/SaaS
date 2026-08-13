@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class ClaimRequest(BaseModel):
@@ -30,6 +31,12 @@ class TicketListItem(BaseModel):
     last_message_at: Optional[str] = None
     created_at: str
     version: int
+    sla_minutes: int = 15
+    sla_due_at: Optional[str] = None
+    is_overdue: bool = False
+    priorita: str = "media"
+    phone_number: Optional[str] = None
+    last_message_preview: Optional[str] = None
 
 
 class TicketListResponse(BaseModel):

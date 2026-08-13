@@ -473,37 +473,87 @@ class Repository:
 
     # ── HITL: Ticket State Machine ──────────────────────────────
 
-    async def list_tickets(self, org_id: str, status: str | None = None) -> list[dict]:
+    async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None) -> list[dict]:
         async with self.pool.acquire() as conn:
-            if status:
-                rows = await conn.fetch(
-                    """SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email
+            rows = await conn.fetch(
+                """WITH enriched AS (
+                       SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
+                              ct.phone_number AS phone_number,
+                              o.sla_minutes,
+                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) AS sla_due_at,
+                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) < NOW() AS is_overdue,
+                              COALESCE(el.priorita,
+                                       CASE WHEN c.ticket_status IN ('PENDING_STAFF', 'CLAIMED') THEN 'alta'
+                                            ELSE 'media' END) AS priorita,
+                              lm.content_text AS last_message_preview
                        FROM conversations c
                        LEFT JOIN user_profiles u ON u.id = c.assigned_to
-                       WHERE c.organization_id = $1::uuid AND c.ticket_status = $2 AND c.deleted_at IS NULL
-                       ORDER BY c.pending_staff_at ASC NULLS LAST, c.claimed_at ASC NULLS LAST, c.created_at ASC""",
-                    org_id, status
-                )
-            else:
-                rows = await conn.fetch(
-                    """SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email
-                       FROM conversations c
-                       LEFT JOIN user_profiles u ON u.id = c.assigned_to
+                       LEFT JOIN contacts ct ON ct.id = c.contact_id
+                       JOIN organizations o ON o.id = c.organization_id
+                       LEFT JOIN LATERAL (
+                           SELECT e.priorita
+                           FROM event_log e
+                           WHERE e.organization_id = c.organization_id
+                             AND e.dettagli->>'conversation_id' = c.id::text
+                           ORDER BY CASE e.priorita WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END,
+                                    e.created_at DESC
+                           LIMIT 1
+                       ) el ON TRUE
+                       LEFT JOIN LATERAL (
+                           SELECT m.content_text
+                           FROM messages m
+                           WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
+                           ORDER BY m.created_at DESC
+                           LIMIT 1
+                       ) lm ON TRUE
                        WHERE c.organization_id = $1::uuid AND c.deleted_at IS NULL
-                       ORDER BY c.pending_staff_at ASC NULLS LAST, c.claimed_at ASC NULLS LAST, c.created_at ASC""",
-                    org_id
-                )
+                   )
+                   SELECT * FROM enriched
+                   WHERE ($2::text IS NULL OR ticket_status = $2)
+                     AND ($3::text IS NULL OR priorita = $3)
+                   ORDER BY pending_staff_at ASC NULLS LAST,
+                            claimed_at ASC NULLS LAST,
+                            created_at ASC""",
+                org_id, status, priorita
+            )
             return [dict(r) for r in rows]
 
     async def get_conversation(self, conversation_id: str) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
-                """SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
-                          ct.phone_number AS phone_number
-                   FROM conversations c
-                   LEFT JOIN user_profiles u ON u.id = c.assigned_to
-                   LEFT JOIN contacts ct ON ct.id = c.contact_id
-                   WHERE c.id = $1::uuid AND c.deleted_at IS NULL""",
+                """WITH enriched AS (
+                       SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
+                              ct.phone_number AS phone_number,
+                              o.sla_minutes,
+                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) AS sla_due_at,
+                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) < NOW() AS is_overdue,
+                              COALESCE(el.priorita,
+                                       CASE WHEN c.ticket_status IN ('PENDING_STAFF', 'CLAIMED') THEN 'alta'
+                                            ELSE 'media' END) AS priorita,
+                              lm.content_text AS last_message_preview
+                       FROM conversations c
+                       LEFT JOIN user_profiles u ON u.id = c.assigned_to
+                       LEFT JOIN contacts ct ON ct.id = c.contact_id
+                       JOIN organizations o ON o.id = c.organization_id
+                       LEFT JOIN LATERAL (
+                           SELECT e.priorita
+                           FROM event_log e
+                           WHERE e.organization_id = c.organization_id
+                             AND e.dettagli->>'conversation_id' = c.id::text
+                           ORDER BY CASE e.priorita WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END,
+                                    e.created_at DESC
+                           LIMIT 1
+                       ) el ON TRUE
+                       LEFT JOIN LATERAL (
+                           SELECT m.content_text
+                           FROM messages m
+                           WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
+                           ORDER BY m.created_at DESC
+                           LIMIT 1
+                       ) lm ON TRUE
+                       WHERE c.id = $1::uuid AND c.deleted_at IS NULL
+                   )
+                   SELECT * FROM enriched""",
                 conversation_id
             )
             return dict(row) if row else None

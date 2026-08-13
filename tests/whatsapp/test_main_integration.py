@@ -22,6 +22,8 @@ def test_health_check(monkeypatch):
 def test_rate_limit_llm_global(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    import src.api.main as main_mod
+    main_mod.rate_windows.clear()
     monkeypatch.setattr("src.api.main.LLM_GLOBAL_RATE_LIMIT", 2)
     monkeypatch.setattr("src.api.main.LLM_GLOBAL_RATE_WINDOW", 99999)
     from fastapi.testclient import TestClient
@@ -55,7 +57,9 @@ def test_cors_whitespace_stripped(monkeypatch):
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
     monkeypatch.setenv("CORS_ORIGINS", "http://a.com , http://b.com")
     import importlib
+
     import src.api.main as main_mod
+
     importlib.reload(main_mod)
     app2 = main_mod.app
     from fastapi.testclient import TestClient

@@ -11,12 +11,16 @@ overengineering per questo step. Se in futuro servirà un secondo agente
 
 from crewai import Agent, Task, Crew, Process
 
-from src.core.llm_config import crea_llm
+from src.core.llm_config import LLMRouteRequest, crea_llm
 from src.agents.prompts import costruisci_system_prompt, costruisci_user_prompt, formatta_cronologia
 from src.models.schemas import MessaggioInput, ProfiloAttivita, RispostaOutput
 
 
-def crea_responder_agent(profilo: ProfiloAttivita) -> Agent:
+def crea_responder_agent(
+    profilo: ProfiloAttivita,
+    route_request: LLMRouteRequest | None = None,
+    model: str | None = None,
+) -> Agent:
     """Costruisce l'agente con il backstory calibrato sul profilo attività.
     Il backstory in CrewAI funziona come parte del system prompt."""
 
@@ -28,7 +32,7 @@ def crea_responder_agent(profilo: ProfiloAttivita) -> Agent:
             "invece di essere gestito in autonomia."
         ),
         backstory=costruisci_system_prompt(profilo),
-        llm=crea_llm(),
+        llm=crea_llm(model=model, route_request=route_request),
         verbose=False,
         allow_delegation=False,
     )
@@ -59,11 +63,17 @@ def crea_responder_task(agent: Agent, messaggio: MessaggioInput, cronologia: lis
     )
 
 
-def crea_crew(profilo: ProfiloAttivita, messaggio: MessaggioInput, cronologia: list[tuple[str, str]] | None = None) -> Crew:
+def crea_crew(
+    profilo: ProfiloAttivita,
+    messaggio: MessaggioInput,
+    cronologia: list[tuple[str, str]] | None = None,
+    route_request: LLMRouteRequest | None = None,
+    model: str | None = None,
+) -> Crew:
     """Assembla agente + task in una Crew pronta per il kickoff.
     Process.sequential è l'unico sensato con un solo task."""
 
-    agent = crea_responder_agent(profilo)
+    agent = crea_responder_agent(profilo, route_request=route_request, model=model)
     task = crea_responder_task(agent, messaggio, cronologia)
 
     return Crew(

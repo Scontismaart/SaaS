@@ -20,6 +20,9 @@ def _load_project_env() -> None:
     global ENV_LOADED
     if ENV_LOADED:
         return
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        ENV_LOADED = True
+        return
     project_root = Path(__file__).resolve().parents[3]
     load_dotenv(project_root / ".env", override=False)
     ENV_LOADED = True
@@ -173,8 +176,10 @@ def require_ruolo(*ruoli: str):
     if invalid:
         raise ValueError(f"Ruoli non validi: {invalid}. Validi: {VALID_RUOLI}")
     async def _check(user: dict = Depends(get_organization_context)):
-        if user.get("source") in ("api_key", "anonymous"):
+        if user.get("source") == "api_key":
             return user
+        if user.get("source") == "anonymous":
+            raise HTTPException(status_code=401, detail="Token o API Key richiesti")
         if user.get("ruolo") not in ruoli:
             raise HTTPException(
                 403, f"Richiesto ruolo: {', '.join(ruoli)}"

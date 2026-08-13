@@ -52,10 +52,23 @@ class Repository:
     async def get_org_subscription_state(self, org_id):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                SELECT subscription_status, trial_end
+                SELECT subscription_status, trial_end,
+                       messages_used_this_period, messages_limit
                 FROM organizations WHERE id = $1
             """, org_id)
             return dict(row) if row else None
+
+    async def record_usage(self, organization_id, event_type, quantity=1,
+                            metadata=None):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                INSERT INTO usage_events (id, organization_id, event_type,
+                                          quantity, metadata)
+                VALUES ($1, $2, $3, $4, $5::jsonb)
+                RETURNING *
+            """, uuid.uuid4(), organization_id, event_type, quantity,
+            json.dumps(metadata or {}))
+            return dict(row)
 
     async def get_tenant_config(self, org_id):
         async with self.pool.acquire() as conn:

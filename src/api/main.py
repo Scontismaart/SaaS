@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse
 
 from src.core.notifications.email_service import start_worker, stop_worker as stop_email_worker
 from src.core.crew_runner import genera_risposta
+from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
 from src.core.priorita import calcola_priorita, calcola_priorita_recensione
 from src.core.conversation_store import store as conv_store
 
@@ -92,6 +93,7 @@ async def lifespan(app: FastAPI):
     app.state.billing_config = BillingConfig(
         stripe_trial_days=int(os.getenv("STRIPE_TRIAL_DAYS", "7")),
     )
+    rate_windows.clear()
     start_worker()
     dsn = os.getenv("DATABASE_URL")
     if dsn:
@@ -142,6 +144,7 @@ async def lifespan(app: FastAPI):
             app.state.repo = None
             app.state.pool = None
             app.state.wrepo = None
+            from src.core.bookings import BookingService
             from src.core.bookings.memory_repo import InMemoryBookingRepo
             app.state.booking_service = BookingService(
                 repo=InMemoryBookingRepo(),
@@ -312,6 +315,45 @@ def _imposta_fonte_dati_per_scheduler():
     imposta_fonte_dati(lambda: _storico_eventi)
 
 
+async def _get_billing_snapshot(repo, organization_id: str | None) -> dict | None:
+    if repo is None or not organization_id:
+        return None
+    try:
+        return await repo.get_organization_billing(organization_id)
+    except Exception as e:
+        print(f"[llm_routing] billing snapshot non disponibile org={organization_id}: {e}")
+        return None
+
+
+async def _record_ai_usage(repo, organization_id: str | None, task_type: str,
+                           user_text: str, billing: dict | None,
+                           metadata: dict | None = None) -> None:
+    if repo is None or not organization_id:
+        return
+    try:
+        route = route_llm(
+            LLMRouteRequest(
+                task_type=task_type,
+                user_text=user_text,
+                remaining_budget_ratio=budget_ratio_from_billing(billing),
+            )
+        )
+        await repo.record_usage(
+            organization_id,
+            "ai_response",
+            quantity=1,
+            metadata={
+                "task_type": task_type,
+                "model": route.model,
+                "tier": route.tier,
+                "reason": route.reason,
+                **(metadata or {}),
+            },
+        )
+    except Exception as e:
+        print(f"[llm_routing] usage logging fallito org={organization_id}: {e}")
+
+
 @app.post("/api/messaggio", response_model=RispostaOutput)
 def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_mario"):
     profilo = get_active_profile() or PROFILI_DEMO.get(profilo_id)
@@ -396,12 +438,16 @@ def onboarding_preview(
 @app.post("/api/recensione", response_model=RispostaRecensioneOutput)
 async def ricevi_recensione(recensione: RecensioneInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     import asyncio
+    repo = get_repo(request)
+    org_id = user.get("organization_id")
+    billing = await _get_billing_snapshot(repo, org_id)
     try:
         output = await asyncio.to_thread(
             lambda: genera_risposta_recensione(
                 testo=recensione.testo,
                 stelle=recensione.valutazione_stelle,
                 autore=recensione.autore,
+                billing=billing,
             )
         )
     except Exception as e:
@@ -412,10 +458,7 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
 
     stato = "bozza_generata"
     review_id = str(uuid.uuid4())
-    org_id = user.get("organization_id")
-
     if org_id:
-        repo = get_repo(request)
         try:
             review = await repo.create_review(
                 organization_id=org_id,
@@ -448,6 +491,15 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
             # segnaliamo l'errore invece di mentire sul successo.
             print(f"[recensione] Persistenza fallita org={org_id} external_id={recensione.external_id}: {e}")
             raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
+
+    await _record_ai_usage(
+        repo,
+        org_id,
+        "review",
+        recensione.testo,
+        billing,
+        {"fonte": recensione.fonte, "stelle": recensione.valutazione_stelle},
+    )
 
     _storico_eventi.append(
         EventoDashboard(
@@ -550,7 +602,17 @@ def indicizza_documenti(user: dict = Depends(require_ruolo("owner", "manager")))
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)
 async def chiedi_documenti(domanda: DomandaInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     repo = get_repo(request)
-    return await rispondi(user["organization_id"], domanda.domanda, repo, k=domanda.k)
+    billing = await _get_billing_snapshot(repo, user.get("organization_id"))
+    output = await rispondi(user["organization_id"], domanda.domanda, repo, k=domanda.k, billing=billing)
+    await _record_ai_usage(
+        repo,
+        user.get("organization_id"),
+        "document_qa",
+        domanda.domanda,
+        billing,
+        {"k": domanda.k, "fonti": output.get("fonti", [])},
+    )
+    return output
 
 
 @app.get("/api/documenti/conteggio")

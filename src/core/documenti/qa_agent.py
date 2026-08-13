@@ -1,8 +1,14 @@
-from src.core.llm_config import crea_llm
+from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, crea_llm, route_llm
 from src.core.documenti.embeddings import vettorizza
 
 
-async def rispondi(organization_id: str, domanda: str, repo, k: int = 5) -> dict:
+async def rispondi(
+    organization_id: str,
+    domanda: str,
+    repo,
+    k: int = 5,
+    billing: dict | None = None,
+) -> dict:
     q_emb = vettorizza([domanda], tipo="query")[0]
     risultati = await repo.search_similar(organization_id, q_emb, k)
 
@@ -39,8 +45,24 @@ async def rispondi(organization_id: str, domanda: str, repo, k: int = 5) -> dict
     )
 
     try:
-        llm = crea_llm(temperature=0.15)
-        risposta_raw = llm.call(prompt)
+        route = route_llm(
+            LLMRouteRequest(
+                task_type="document_qa",
+                user_text=domanda,
+                remaining_budget_ratio=budget_ratio_from_billing(billing),
+            )
+        )
+        errors: list[str] = []
+        risposta_raw = None
+        for model in [route.model, *route.fallback_models]:
+            try:
+                llm = crea_llm(model=model, temperature=0.15)
+                risposta_raw = llm.call(prompt)
+                break
+            except Exception as e:
+                errors.append(f"{model}: {e}")
+        if risposta_raw is None:
+            raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors))
         risposta = str(risposta_raw).strip() if risposta_raw else (
             "Impossibile generare una risposta."
         )

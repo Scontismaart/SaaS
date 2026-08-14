@@ -44,7 +44,7 @@ Non sono teoria: sono i 3 bug/incidenti reali che hanno rallentato questo proget
 | 8 | Prenotazioni standalone | Parziale — core solido (conferma/rifiuto/no-show/reminder), manca TheFork/Calendly e deposito Stripe |
 | 9 | Recensioni automatiche | Fatto — fetch Google reale, OAuth, bozza AI, approvazione, dedup, priorità unificata |
 | 10 | Canali aggiuntivi | Non iniziato (corretto: la roadmap dice di farlo dopo) |
-| 11 | RAG collegato al responder | Irrisolto — `chromadb` e `asyncpg`/pgvector convivono ancora nei requirements, dual-stack mai deciso |
+| 11 | RAG collegato al responder | Fatto — chromadb non piu' usato dal nostro codice (`requirements.txt` lo elenca solo come dipendenza transitiva di `crewai==1.15.4`, che lo importa a import-time: non e' disinstallabile); unico stack per i nostri documenti: pgvector; retrieval org-scoped condiviso (`src/core/documenti/rag_context.py`, k=3, timeout non bloccante) iniettato nel path WhatsApp reale da `inbound_processor`; resta solo `scripts/migrate_chromadb_to_pgvector.py` come utility di migrazione |
 | 12-14 | Guardrails, model routing, multilingua | Non affrontati |
 | 15 | Infra production-ready | Parziale — `docker-compose.yml` esiste solo in locale, mai committato; Redis assente; Sentry sì |
 | 16 | Debito tecnico | Fatto in gran parte — Pillow in requirements, route legacy sistemate, README/test/CI presenti |
@@ -344,12 +344,15 @@ Usa "systematic-debugging" per capire esattamente perché oggi /api/documenti/*
 (RAG) e /api/messaggio (assistente clienti) sono disconnessi: dove si ferma
 il flusso, cosa manca per collegarli.
 
-IMPORTANTE - decisione ancora aperta: il progetto oggi ha sia chromadb che
-asyncpg/pgvector nei requirements, un dual-stack mai risolto. Prima di
-pianificare il collegamento, decidi esplicitamente quale storage vettoriale
-usare andando avanti (probabilmente pgvector, già integrato col resto del
-DB multi-tenant) e pianifica la migrazione via da ChromaDB, non solo il
-collegamento.
+IMPORTANTE - decisione RISOLTA: il dual-stack chromadb/pgvector non esiste
+piu'. Il nostro codice non usa chromadb (unico stack: pgvector, gia'
+integrato col DB multi-tenant e protetto da RLS); resta solo
+`scripts/migrate_chromadb_to_pgvector.py` come utility per portare dati
+storici. NOTA: `chromadb` NON e' disinstallabile finche' si usa
+`crewai==1.15.4`: crewai lo dichiara come dipendenza e lo importa a
+import-time (crewai.rag.chromadb). Il collegamento e' fatto:
+`src/core/documenti/rag_context.py` inietta il retrieval org-scoped nel
+path WhatsApp reale (k=3, timeout non bloccante).
 
 Poi usa "writing-plans" per pianificare il collegamento:
 - Retrieval su menu/prezzi/policy del locale prima di ogni risposta AI

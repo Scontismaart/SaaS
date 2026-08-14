@@ -2,7 +2,7 @@ import os
 import uuid
 import pytest
 from httpx import AsyncClient, ASGITransport
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 
@@ -25,6 +25,23 @@ async def async_client(repo, pg_pool):
 
     yield repo, pg_pool, app
     app.dependency_overrides.clear()
+
+
+async def _make_client(app, org_id, user_id, ruolo="staff"):
+    from src.core.auth.dependencies import get_organization_context
+
+    async def fake_get_organization_context():
+        return {
+            "auth_user_id": str(uuid.uuid4()),
+            "organization_id": str(org_id),
+            "ruolo": ruolo,
+            "source": "jwt",
+            "user_id": str(user_id),
+        }
+
+    app.dependency_overrides[get_organization_context] = fake_get_organization_context
+    transport = ASGITransport(app=app)
+    return AsyncClient(transport=transport, base_url="http://test")
 
 
 class TestInboxAPI:
@@ -55,29 +72,13 @@ class TestInboxAPI:
             )
         return org, profile, conv
 
-    async def _make_client(self, app, org_id, user_id):
-        from src.core.auth.dependencies import get_organization_context
-
-        async def fake_get_organization_context():
-            return {
-                "auth_user_id": str(uuid.uuid4()),
-                "organization_id": str(org_id),
-                "ruolo": "staff",
-                "source": "jwt",
-                "user_id": str(user_id),
-            }
-
-        app.dependency_overrides[get_organization_context] = fake_get_organization_context
-        transport = ASGITransport(app=app)
-        return AsyncClient(transport=transport, base_url="http://test")
-
     async def test_list_tickets_empty(self, async_client):
         repo, pg_pool, app = async_client
         org = await pg_pool.fetchrow(
             "INSERT INTO organizations (id, name) VALUES ($1, 'Empty Org') RETURNING id",
             uuid.uuid4()
         )
-        async with await self._make_client(app, org["id"], uuid.uuid4()) as client:
+        async with await _make_client(app, org["id"], uuid.uuid4()) as client:
             response = await client.get("/api/inbox/tickets")
             assert response.status_code == 200
             assert response.json() == {"tickets": []}
@@ -102,7 +103,7 @@ class TestInboxAPI:
         wrepo = WRepo(pool=pg_pool)
         await wrepo.escalate_to_human(str(conv["id"]))
 
-        async with await self._make_client(app, org["id"], profile2["id"]) as client:
+        async with await _make_client(app, org["id"], profile2["id"]) as client:
             response = await client.get("/api/inbox/tickets")
             assert response.status_code == 200
             data = response.json()
@@ -131,7 +132,7 @@ class TestInboxAPI:
         wrepo = WRepo(pool=pg_pool)
         await wrepo.escalate_to_human(str(conv["id"]))
 
-        async with await self._make_client(app, org["id"], staff_profile["id"]) as client:
+        async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(
                 f"/api/inbox/claim/{conv['id']}",
                 json={"expected_version": 2}
@@ -161,7 +162,7 @@ class TestInboxAPI:
         wrepo = WRepo(pool=pg_pool)
         await wrepo.escalate_to_human(str(conv["id"]))
 
-        async with await self._make_client(app, org["id"], staff_profile["id"]) as client:
+        async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(
                 f"/api/inbox/claim/{conv['id']}",
                 json={"expected_version": 1}  # wrong version
@@ -174,7 +175,7 @@ class TestInboxAPI:
             "INSERT INTO organizations (id, name) VALUES ($1, 'Test') RETURNING id",
             uuid.uuid4()
         )
-        async with await self._make_client(app, org["id"], uuid.uuid4()) as client:
+        async with await _make_client(app, org["id"], uuid.uuid4()) as client:
             response = await client.get(f"/api/inbox/tickets/{uuid.uuid4()}")
             assert response.status_code == 404
 
@@ -199,7 +200,7 @@ class TestInboxAPI:
         await wrepo.escalate_to_human(str(conv["id"]))
         await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2)
 
-        async with await self._make_client(app, org["id"], staff_profile["id"]) as client:
+        async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(f"/api/inbox/release/{conv['id']}")
             assert response.status_code == 200
             data = response.json()
@@ -226,7 +227,7 @@ class TestInboxAPI:
         await wrepo.escalate_to_human(str(conv["id"]))
         await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2)
 
-        async with await self._make_client(app, org["id"], staff_profile["id"]) as client:
+        async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(f"/api/inbox/resolve/{conv['id']}")
             assert response.status_code == 200
             data = response.json()
@@ -259,7 +260,7 @@ class TestInboxAPI:
         wrepo = WRepo(pool=pg_pool)
         await wrepo.escalate_to_human(str(conv["id"]))  # PENDING_STAFF, non CLAIMED
 
-        async with await self._make_client(app, org["id"], profile["id"]) as client:
+        async with await _make_client(app, org["id"], profile["id"]) as client:
             response = await client.post(
                 f"/api/inbox/reply/{conv['id']}",
                 json={"content": "Certo, confermo!", "idempotency_key": "test-key-1"},
@@ -299,7 +300,7 @@ class TestInboxAPI:
                  "send_whatsapp_message",
                  AsyncMock(return_value=fake_result),
              ) as mock_send:
-            async with await self._make_client(app, org["id"], staff_profile["id"]) as client:
+            async with await _make_client(app, org["id"], staff_profile["id"]) as client:
                 response = await client.post(
                     f"/api/inbox/reply/{conv['id']}",
                     json={"content": "Certo, confermo la prenotazione!", "idempotency_key": "test-key-ok"},
@@ -312,3 +313,285 @@ class TestInboxAPI:
         call_kwargs = mock_send.call_args.kwargs
         assert call_kwargs["idempotency_key"] == "test-key-ok"
         assert call_kwargs["payload"]["text"]["body"] == "Certo, confermo la prenotazione!"
+
+
+class TestRealJwtPropagatesUserId:
+    """C.1 — il fix che mancava: `get_organization_context` oggi NON
+    propaga `user_id`, quindi le route inbox (che leggono
+    `user["user_id"]`) vanno in KeyError 500 in produzione con un JWT
+    reale. I test storici lo mascherano iniettando `user_id` a mano nel
+    dict mockato: qui invece passiamo per il path VERO —
+    get_current_user (JWT) -> get_organization_context (membership DB) ->
+    route che legge user["user_id"]."""
+
+    async def _setup_org_and_jwt_user(self, pg_pool, monkeypatch):
+        async with pg_pool.acquire() as conn:
+            org = await conn.fetchrow(
+                "INSERT INTO organizations (id, name) VALUES ($1, 'Jwt Org') RETURNING id",
+                uuid.uuid4()
+            )
+            auth_user = await conn.fetchrow(
+                "INSERT INTO auth.users (email) VALUES ($1) RETURNING id",
+                "jwt-owner@test.com"
+            )
+            profile = await conn.fetchrow(
+                "SELECT * FROM user_profiles WHERE auth_user_id = $1", auth_user["id"]
+            )
+            await conn.execute(
+                "INSERT INTO organization_memberships (organization_id, user_id, ruolo) VALUES ($1, $2, 'owner')",
+                org["id"], profile["id"]
+            )
+            contact = await conn.fetchrow(
+                "INSERT INTO contacts (id, organization_id, phone_number) VALUES ($1, $2, '+39333111222') RETURNING id",
+                uuid.uuid4(), org["id"]
+            )
+            conv = await conn.fetchrow(
+                "INSERT INTO conversations (id, organization_id, contact_id) VALUES ($1, $2, $3) RETURNING id",
+                uuid.uuid4(), org["id"], contact["id"]
+            )
+        return org, auth_user, profile, conv
+
+    async def test_claim_via_real_jwt_does_not_crash(
+        self, async_client, monkeypatch
+    ):
+        """Regression guard per il bug P1: claim su un ticket PENDING_STAFF
+        con un JWT Supabase reale. PRIMA del fix questa chiamata finiva in
+        500 (KeyError 'user_id'); DOPO deve funzionare e restituire 200."""
+        import src.core.auth.dependencies as deps
+
+        monkeypatch.setenv("SUPABASE_URL", "https://myproj.supabase.co")
+        monkeypatch.setenv("SUPABASE_JWT_AUD", "authenticated")
+        monkeypatch.setattr(
+            deps, "_get_supabase_jwks", AsyncMock(return_value=[{"kid": "k1"}])
+        )
+
+        repo, pg_pool, app = async_client
+        org, auth_user, profile, conv = await self._setup_org_and_jwt_user(pg_pool, monkeypatch)
+
+        from src.whatsapp.repository import Repository as WRepo
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+
+        import jose.jwt as jose_jwt_module
+
+        def _fake_decode(token, key, algorithms, audience, issuer, options):
+            return {"sub": str(auth_user["id"]), "aal": "aal2"}
+
+        monkeypatch.setattr(jose_jwt_module, "decode", _fake_decode)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                f"/api/inbox/claim/{conv['id']}",
+                json={"expected_version": 2},
+                headers={
+                    "Authorization": "Bearer real.jwt.token",
+                    "x-organization-id": str(org["id"]),
+                },
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["ticket_status"] == "CLAIMED"
+            # user_id propagato: e' l'id del profilo collegato al JWT sub
+            assert data["assigned_to"] == str(profile["id"])
+
+    async def test_release_via_real_jwt(self, async_client, monkeypatch):
+        """Rilascio col path JWT reale: il CLAIMED ticket viene rilasciato
+        solo se user_id e' quello dell'assegnato (letto dalla membership)."""
+        import src.core.auth.dependencies as deps
+
+        monkeypatch.setenv("SUPABASE_URL", "https://myproj.supabase.co")
+        monkeypatch.setenv("SUPABASE_JWT_AUD", "authenticated")
+        monkeypatch.setattr(
+            deps, "_get_supabase_jwks", AsyncMock(return_value=[{"kid": "k1"}])
+        )
+
+        repo, pg_pool, app = async_client
+        org, auth_user, profile, conv = await self._setup_org_and_jwt_user(pg_pool, monkeypatch)
+
+        from src.whatsapp.repository import Repository as WRepo
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2)
+
+        import jose.jwt as jose_jwt_module
+
+        def _fake_decode(token, key, algorithms, audience, issuer, options):
+            return {"sub": str(auth_user["id"]), "aal": "aal2"}
+
+        monkeypatch.setattr(jose_jwt_module, "decode", _fake_decode)
+
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                f"/api/inbox/release/{conv['id']}",
+                headers={
+                    "Authorization": "Bearer real.jwt.token",
+                    "x-organization-id": str(org["id"]),
+                },
+            )
+            assert response.status_code == 200, response.text
+            assert response.json()["ticket_status"] == "PENDING_STAFF"
+
+
+class TestTeamAndAssign:
+    async def _setup_org_owner_and_staff(self, pg_pool):
+        async with pg_pool.acquire() as conn:
+            org = await conn.fetchrow(
+                "INSERT INTO organizations (id, name) VALUES ($1, 'Assign Org') RETURNING id",
+                uuid.uuid4()
+            )
+            ids = {}
+            for key, email, ruolo in [
+                ("owner", "owner@test.com", "owner"),
+                ("manager", "manager@test.com", "manager"),
+                ("staff", "staff3@test.com", "staff"),
+            ]:
+                au = await conn.fetchrow(
+                    "INSERT INTO auth.users (email) VALUES ($1) RETURNING id", email
+                )
+                prof = await conn.fetchrow(
+                    "SELECT * FROM user_profiles WHERE auth_user_id = $1", au["id"]
+                )
+                await conn.execute(
+                    "INSERT INTO organization_memberships (organization_id, user_id, ruolo) VALUES ($1, $2, $3)",
+                    org["id"], prof["id"], ruolo
+                )
+                ids[key] = prof
+            contact = await conn.fetchrow(
+                "INSERT INTO contacts (id, organization_id, phone_number) VALUES ($1, $2, '+39333999000') RETURNING id",
+                uuid.uuid4(), org["id"]
+            )
+            conv = await conn.fetchrow(
+                "INSERT INTO conversations (id, organization_id, contact_id) VALUES ($1, $2, $3) RETURNING id",
+                uuid.uuid4(), org["id"], contact["id"]
+            )
+        return org, ids, conv
+
+    async def test_list_team(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+        async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
+            response = await client.get("/api/inbox/team")
+        assert response.status_code == 200
+        members = response.json()["members"]
+        assert len(members) == 3
+        assert {m["ruolo"] for m in members} == {"owner", "manager", "staff"}
+        assert all(m["user_id"] for m in members)
+
+    async def test_assign_by_owner(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+
+        from src.whatsapp.repository import Repository as WRepo
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+
+        async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
+            response = await client.post(
+                f"/api/inbox/assign/{conv['id']}",
+                json={"assigned_to": str(ids["staff"]["id"]), "expected_version": 2},
+            )
+        assert response.status_code == 200, response.text
+        data = response.json()
+        assert data["ticket_status"] == "CLAIMED"
+        assert data["assigned_to"] == str(ids["staff"]["id"])
+        assert data["assigned_nome"] == ids["staff"]["nome"]
+
+    async def test_assign_reassigns_claimed_ticket(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+
+        from src.whatsapp.repository import Repository as WRepo
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(ids["staff"]["id"]), expected_version=2)
+
+        async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
+            response = await client.post(
+                f"/api/inbox/assign/{conv['id']}",
+                json={"assigned_to": str(ids["manager"]["id"]), "expected_version": 3},
+            )
+        assert response.status_code == 200, response.text
+        assert response.json()["assigned_to"] == str(ids["manager"]["id"])
+
+    async def test_assign_staff_forbidden(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+        async with await _make_client(app, org["id"], ids["staff"]["id"], ruolo="staff") as client:
+            response = await client.post(
+                f"/api/inbox/assign/{conv['id']}",
+                json={"assigned_to": str(ids["owner"]["id"]), "expected_version": 1},
+            )
+        assert response.status_code == 403
+
+    async def test_assign_member_of_other_org_404(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+
+        # un profilo di un'ALTRA org: non deve poter essere assegnato
+        async with pg_pool.acquire() as conn:
+            other = await conn.fetchrow(
+                "INSERT INTO organizations (id, name) VALUES ($1, 'Other') RETURNING id",
+                uuid.uuid4()
+            )
+            au = await conn.fetchrow(
+                "INSERT INTO auth.users (email) VALUES ($1) RETURNING id",
+                "outsider@test.com"
+            )
+            outside_profile = await conn.fetchrow(
+                "SELECT * FROM user_profiles WHERE auth_user_id = $1", au["id"]
+            )
+            await conn.execute(
+                "INSERT INTO organization_memberships (organization_id, user_id, ruolo) VALUES ($1, $2, 'staff')",
+                other["id"], outside_profile["id"]
+            )
+
+        async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
+            response = await client.post(
+                f"/api/inbox/assign/{conv['id']}",
+                json={"assigned_to": str(outside_profile["id"]), "expected_version": 1},
+            )
+        assert response.status_code == 404
+
+    async def test_assign_cross_tenant_ticket_404(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+
+        async with pg_pool.acquire() as conn:
+            other = await conn.fetchrow(
+                "INSERT INTO organizations (id, name) VALUES ($1, 'Other2') RETURNING id",
+                uuid.uuid4()
+            )
+            other_contact = await conn.fetchrow(
+                "INSERT INTO contacts (id, organization_id, phone_number) VALUES ($1, $2, '+39333123456') RETURNING id",
+                uuid.uuid4(), other["id"]
+            )
+            other_conv = await conn.fetchrow(
+                "INSERT INTO conversations (id, organization_id, contact_id) VALUES ($1, $2, $3) RETURNING id",
+                uuid.uuid4(), other["id"], other_contact["id"]
+            )
+
+        async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
+            response = await client.post(
+                f"/api/inbox/assign/{other_conv['id']}",
+                json={"assigned_to": str(ids["staff"]["id"]), "expected_version": 1},
+            )
+        assert response.status_code == 404
+
+    async def test_assign_version_conflict_409(self, async_client):
+        repo, pg_pool, app = async_client
+        org, ids, conv = await self._setup_org_owner_and_staff(pg_pool)
+
+        from src.whatsapp.repository import Repository as WRepo
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+
+        async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
+            response = await client.post(
+                f"/api/inbox/assign/{conv['id']}",
+                json={"assigned_to": str(ids["staff"]["id"]), "expected_version": 999},
+            )
+        assert response.status_code == 409

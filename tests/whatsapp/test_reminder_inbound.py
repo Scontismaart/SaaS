@@ -5,6 +5,14 @@ from src.whatsapp.inbound_processor import InboundProcessor
 from src.whatsapp.config import AppConfig, TenantConfig
 
 
+@pytest.fixture(autouse=True)
+def _no_real_embedding_model():
+    """Evita il download del modello MiniLM: il path AI recupera ora il
+    contesto RAG (vettorizza reale) prima della risposta."""
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]):
+        yield
+
+
 @pytest.fixture
 def app_config():
     return AppConfig(

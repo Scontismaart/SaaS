@@ -471,6 +471,31 @@ class Repository:
                 json.dumps(components))
             return dict(row)
 
+    # ── RAG: Document Search ────────────────────────────────────
+
+    async def search_similar(self, organization_id: str, embedding: list, k: int = 3) -> list[dict]:
+        """Chunk piu' simili tra i documenti dell'org (distanza cosine, `<=>`).
+        Lo scope `WHERE dc.organization_id = $1` e' la barriera di tensione
+        tra tenant: il risultato e' sempre limitato ai documenti dell'org
+        che richiede, indipendentemente da chi costruisce il prompt."""
+        async with self.pool.acquire() as conn:
+            vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
+            rows = await conn.fetch("""
+                SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
+                       dc.document_id, d.nome as document_name,
+                       dc.embedding <=> $2::vector AS distance
+                FROM document_chunks dc
+                JOIN documents d ON d.id = dc.document_id
+                WHERE dc.organization_id = $1::uuid
+                ORDER BY dc.embedding <=> $2::vector
+                LIMIT $3
+            """, organization_id, vec_str, k)
+            results = [dict(r) for r in rows]
+            for r in results:
+                if isinstance(r.get("metadata"), str):
+                    r["metadata"] = json.loads(r["metadata"])
+            return results
+
     # ── HITL: Ticket State Machine ──────────────────────────────
 
     async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None) -> list[dict]:
@@ -625,6 +650,42 @@ class Repository:
                      AND deleted_at IS NULL
                    RETURNING *""",
                 conversation_id, staff_user_id
+            )
+            return dict(row) if row else None
+
+    async def list_team_members(self, org_id: str) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT up.id AS user_id, up.nome, up.email, om.ruolo
+                FROM organization_memberships om
+                JOIN user_profiles up ON up.id = om.user_id
+                WHERE om.organization_id = $1::uuid
+                  AND om.ruolo IN ('owner', 'manager', 'staff')
+                ORDER BY
+                  CASE om.ruolo WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END,
+                  up.nome
+            """, org_id)
+            return [dict(r) for r in rows]
+
+    async def assign_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int) -> dict | None:
+        """Assegna (o riassegna) un ticket a un membro del team. Funziona sia
+        su PENDING_STAFF sia su CLAIMED (da qualcun altro): la riassegnazione
+        non richiede prima un release. Optimistic lock su version contro la
+        race con claim/release/resolve concorrenti."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE conversations
+                   SET ticket_status = 'CLAIMED',
+                       assigned_to = $2::uuid,
+                       claimed_at = NOW(),
+                       updated_at = NOW(),
+                       version = version + 1
+                   WHERE id = $1::uuid
+                     AND version = $3
+                     AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')
+                     AND deleted_at IS NULL
+                   RETURNING *""",
+                conversation_id, staff_user_id, expected_version
             )
             return dict(row) if row else None
 

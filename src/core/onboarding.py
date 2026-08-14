@@ -1,7 +1,7 @@
 from typing import Any
 
 from src.core.crew_runner import genera_risposta_async
-from src.core.documenti.embeddings import vettorizza
+from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.models.schemas import (
     MessaggioInput,
     OnboardingProfileInput,
@@ -169,23 +169,9 @@ async def generate_preview(
     contesto e' vuoto e la preview procede comunque (nessun errore)."""
     profilo = build_business_profile(payload.profilo)
 
-    contesto_documenti = ""
-    try:
-        q_emb = vettorizza([payload.messaggio], tipo="query")[0]
-        risultati = await repo.search_similar(organization_id, q_emb, k=3)
-        if risultati:
-            blocchi = []
-            for r in risultati:
-                nome = (
-                    r.get("document_name")
-                    or (r.get("metadata") or {}).get("fonte")
-                    or "documento"
-                )
-                blocchi.append(f"-- {nome} --\n{r['content']}")
-            contesto_documenti = "\n\n".join(blocchi)
-    except Exception as e:
-        print(f"[onboarding] contesto RAG non disponibile org={organization_id}: {e}")
-        contesto_documenti = ""
+    contesto_documenti = await recupera_contesto_documenti(
+        organization_id, payload.messaggio, repo
+    )
 
     messaggio = MessaggioInput(testo=payload.messaggio)
     return await genera_risposta_async(

@@ -1,11 +1,22 @@
 import asyncio
+import time
 import uuid
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
+from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.whatsapp.inbound_processor import InboundProcessor
 from src.whatsapp.config import AppConfig, TenantConfig
 from src.models.schemas import RispostaOutput
+
+
+@pytest.fixture(autouse=True)
+def _no_real_embedding_model():
+    """Il path AI ora recupera il contesto RAG prima della risposta: il
+    vettorizza reale carica il modello MiniLM (download in CI). Lo
+    congeliamo con un embedding finto per tutti i test del processor."""
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]):
+        yield
 
 
 @pytest.fixture
@@ -234,3 +245,144 @@ class TestInboundProcessor:
         booking_service.handle_reminder_reply.assert_awaited_once()
         mock_service.send_whatsapp_message.assert_not_called()
         mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+
+
+class TestRagContestoWhatsapp:
+    """Il messaggio WhatsApp reale viaggia ora con il contesto RAG dei
+    documenti dell'org (Punto 11)."""
+
+    async def test_contesto_documenti_iniettato_nella_risposta_ai(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        mock_repo.search_similar = AsyncMock(return_value=[
+            {"id": uuid.uuid4(), "content": "Apriamo alle 12:00",
+             "metadata": {"fonte": "menu.pdf"}, "document_name": "menu.pdf"},
+            {"id": uuid.uuid4(), "content": "Carta vini all'ingresso",
+             "metadata": {"fonte": "orari.pdf"}, "document_name": "orari.pdf"},
+        ])
+        captured = {}
+
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+            captured["contesto"] = contesto_documenti
+            return RispostaOutput(
+                risposta="Di giorno siamo aperti dalle 12:00.",
+                richiede_umano=False, motivo="", categoria="info",
+            )
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", side_effect=fake_risposta):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.search_similar.assert_awaited_once()
+        assert "-- menu.pdf --" in captured["contesto"]
+        assert "Apriamo alle 12:00" in captured["contesto"]
+        assert "-- orari.pdf --" in captured["contesto"]
+        mock_service.send_whatsapp_message.assert_awaited_once()
+
+    async def test_retrieval_scoped_shall_use_message_org(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Isolamento a livello unit: il retrieval riceve SEMPRE l'org del
+        messaggio, mai un org diverso. (La barriera SQL `organization_id = $1`
+        e' gia' coperta dal test su DB in test_onboarding.py.)"""
+        mock_repo.search_similar = AsyncMock(return_value=[])
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", new=AsyncMock(return_value=RispostaOutput(
+                 risposta="ok", richiede_umano=False, motivo="", categoria="info"))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+        org_used, _, k = mock_repo.search_similar.await_args.args
+        assert org_used == str(sample_msg["organization_id"])
+        assert k == 3
+
+    async def test_retrieval_rotto_non_blocca_risposta_ai(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        """Search_similar che solleva: il messaggio riceve comunque risposta,
+        senza contesto, e il flusso non si rompe."""
+        captured = {}
+
+        async def broken_search(*args, **kwargs):
+            raise RuntimeError("pgvector query failed")
+
+        mock_repo.search_similar = AsyncMock(side_effect=broken_search)
+
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+            captured["contesto"] = contesto_documenti
+            return RispostaOutput(
+                risposta="Siamo aperti dalle 12:00.",
+                richiede_umano=False, motivo="", categoria="info",
+            )
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", side_effect=fake_risposta):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        assert captured["contesto"] == ""
+        mock_service.send_whatsapp_message.assert_awaited_once()
+
+    async def test_timeout_reale_del_retrieval_non_blocca_il_messaggio(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        """Il test del timeout VERO: search_similar resta appeso (sleep lungo)
+        oltre il timeout; asyncio.wait_for scade davvero e il messaggio viene
+        comunque risposto senza contesto. Verifichiamo che il tempo di
+        esecuzione resti basso: se wait_for non scadesse, il test durerebbe
+        rialmeno quanto lo sleep."""
+        captured = {}
+
+        async def hanging_search(*args, **kwargs):
+            await asyncio.sleep(60)
+            return [{"content": "x", "document_name": "x.pdf"}]
+
+        mock_repo.search_similar = AsyncMock(side_effect=hanging_search)
+
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+            captured["contesto"] = contesto_documenti
+            return RispostaOutput(
+                risposta="Siamo aperti dalle 12:00.",
+                richiede_umano=False, motivo="", categoria="info",
+            )
+
+        # il processor usa recupera_contesto_documenti col timeout di default;
+        # iniettiamo un timeout breve solo nel test per renderlo veloce.
+        real_retrieval = recupera_contesto_documenti
+
+        async def fast_retrieval(org_id, testo, repo):
+            return await real_retrieval(org_id, testo, repo, timeout=0.05)
+
+        start = time.monotonic()
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.recupera_contesto_documenti", new=fast_retrieval), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", side_effect=fake_risposta):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+        elapsed = time.monotonic() - start
+
+        assert mock_repo.search_similar.await_count == 1
+        assert captured["contesto"] == ""
+        assert elapsed < 5
+        mock_service.send_whatsapp_message.assert_awaited_once()
+
+    async def test_senza_documenti_contesto_vuoto_ma_risposta_ok(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        mock_repo.search_similar = AsyncMock(return_value=[])
+        captured = {}
+
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+            captured["contesto"] = contesto_documenti
+            return RispostaOutput(
+                risposta="Grazie della richiesta.",
+                richiede_umano=False, motivo="", categoria="info",
+            )
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", side_effect=fake_risposta):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        assert captured["contesto"] == ""
+        mock_service.send_whatsapp_message.assert_awaited_once()

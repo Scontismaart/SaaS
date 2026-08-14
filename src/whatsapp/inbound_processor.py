@@ -9,6 +9,7 @@ from src.core.crew_runner import genera_risposta_async
 from src.core.bookings import SlotPienoError
 from src.core.notifications.email_service import enqueue_escalation
 from src.core.billing.suspension import is_org_suspended
+from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.models.schemas import (
     MessaggioInput, CanaleMessaggio, ProfiloAttivita, WhatsAppBusinessProfile,
 )
@@ -124,7 +125,12 @@ class InboundProcessor:
 
         heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
         try:
-            risposta = await genera_risposta_async(messaggio, profilo, billing=state)
+            contesto_documenti = await recupera_contesto_documenti(
+                str(org_id), text, self.repo
+            )
+            risposta = await genera_risposta_async(
+                messaggio, profilo, billing=state, contesto_documenti=contesto_documenti
+            )
         finally:
             heartbeat_task.cancel()
 

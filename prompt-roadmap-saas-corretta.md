@@ -40,7 +40,7 @@ Non sono teoria: sono i 3 bug/incidenti reali che hanno rallentato questo proget
 | 4 | Billing Stripe | Fatto — piani, webhook, sospensione robusta |
 | 5 | GDPR/compliance | Quasi — retention/encryption/.env.example ci sono, manca la bozza DPA (documento legale, non codice) |
 | 6 | HITL | Parziale — inbox + email escalation ci sono, manca assegnazione a membro team e SLA visibili |
-| 7 | Onboarding wizard | Non fatto — ancora file JSON hardcoded (`data/onboarding_profiles.json`) |
+| 7 | Onboarding wizard | Fatto — migration 028 `onboarding_profiles` org-scoped + RLS, sync di `organizations.business_profile`, preview reale (crew + LLM + contesto RAG pgvector non bloccante), upload documenti nel wizard, auth frontend transitoria (X-API-Key + X-Organization-Id da localStorage) |
 | 8 | Prenotazioni standalone | Parziale — core solido (conferma/rifiuto/no-show/reminder), manca TheFork/Calendly e deposito Stripe |
 | 9 | Recensioni automatiche | Fatto — fetch Google reale, OAuth, bozza AI, approvazione, dedup, priorità unificata |
 | 10 | Canali aggiuntivi | Non iniziato (corretto: la roadmap dice di farlo dopo) |

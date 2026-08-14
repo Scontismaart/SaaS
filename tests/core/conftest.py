@@ -113,6 +113,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/027_sla.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/028_onboarding_profiles.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 
@@ -126,6 +128,7 @@ async def reset_db(pg_pool):
                 event_log, usage_events, email_configs,
                 document_chunks, documents, reviews,
                 booking_settings, bookings,
+                onboarding_profiles,
                 contact_consent_log, message_delivery_attempts,
                 messages, conversations, contacts, whatsapp_templates,
                 whatsapp_accounts, organizations,

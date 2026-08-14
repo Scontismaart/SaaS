@@ -25,3 +25,20 @@ lanciare il progetto in produzione. Non cancellare le voci fatte, spuntarle
       webhook riceve -> AI genera risposta -> risposta arriva su WhatsApp
       (o, se richiede_umano, il ticket appare in inbox e l'email di
       escalation arriva al titolare). Mai testato finora, solo mockato.
+
+## Onboarding / dashboard (auth transitoria)
+
+- [ ] **Sostituire l'auth transitoria del pannello** (`X-API-Key` +
+      `X-Organization-Id` salvati nel localStorage del browser) con la
+      sessione Supabase JWT reale: oggi il frontend tiene la credenziale in
+      chiaro nel browser, e `get_organization_context` (dependencies.py) la
+      scambia per un membro dell'org solo se `source != "api_key"`. Finché
+      resta così, esporre il backend SOLO su HTTPS e non condividere l'API
+      key del pannello con celle esterne.
+- [ ] **Badge stato WhatsApp Business** nel wizard (step 04): oggi lo step
+      registra solo il flag `whatsapp_collegato` senza interrogare Meta
+      Cloud API; il collegamento reale arriverà con l'Embedded Signup
+      self-service (v. design 2026-07-24-whatsapp-integration-design, Punto 7).
+- [ ] **Verifica `event_log` di onboarding**: dopo il salvataggio del profilo
+      deve comparire un record `tipo_evento='onboarding'` (scritto dal trigger
+      `log_onboarding_event`, migration 028).

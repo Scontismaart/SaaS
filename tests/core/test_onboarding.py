@@ -144,7 +144,7 @@ async def test_preview_rag_org_scoped_no_leak(repo, sample_org, other_org):
         captured["contesto"] = contesto_documenti
         return RispostaOutput(risposta="ok", richiede_umano=False, motivo="", categoria="info")
 
-    with patch("src.core.onboarding.vettorizza", return_value=[[0.1] * 384]), \
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]), \
          patch("src.core.onboarding.genera_risposta_async", side_effect=fake_risposta):
         await onboarding.generate_preview(
             str(sample_org["id"]),
@@ -154,7 +154,7 @@ async def test_preview_rag_org_scoped_no_leak(repo, sample_org, other_org):
     assert "tartufo nero" in captured["contesto"]
 
     captured["contesto"] = ""
-    with patch("src.core.onboarding.vettorizza", return_value=[[0.1] * 384]), \
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]), \
          patch("src.core.onboarding.genera_risposta_async", side_effect=fake_risposta):
         await onboarding.generate_preview(
             str(other_org["id"]),

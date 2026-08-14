@@ -92,7 +92,7 @@ async def test_preview_org_scoped_e_usage_logged(async_client, repo, sample_org)
         motivo="",
         categoria="booking",
     )
-    with patch("src.core.onboarding.vettorizza", return_value=[[0.1] * 384]), \
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]), \
          patch("src.core.onboarding.genera_risposta_async", new=AsyncMock(return_value=risposta)) as mocked:
         r = await async_client.post("/api/onboarding/preview", json={
             "profilo": PAYLOAD,

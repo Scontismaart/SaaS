@@ -52,3 +52,29 @@ class ReplyRequest(BaseModel):
 class ReplyResponse(BaseModel):
     message_id: str
     status: str
+
+
+class AssignRequest(BaseModel):
+    assigned_to: str
+    expected_version: int
+
+
+class AssignResponse(BaseModel):
+    id: str
+    ticket_status: str
+    assigned_to: Optional[str] = None
+    claimed_at: Optional[str] = None
+    version: int
+    assigned_nome: Optional[str] = None
+    assigned_email: Optional[str] = None
+
+
+class TeamMemberItem(BaseModel):
+    user_id: str
+    nome: str
+    email: str
+    ruolo: str
+
+
+class TeamListResponse(BaseModel):
+    members: list[TeamMemberItem]

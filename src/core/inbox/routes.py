@@ -5,10 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.core.auth.dependencies import require_ruolo
 from src.core.inbox.schemas import (
+    AssignRequest,
+    AssignResponse,
     ClaimRequest,
     ClaimResponse,
     ReplyRequest,
     ReplyResponse,
+    TeamListResponse,
+    TeamMemberItem,
     TicketListItem,
     TicketListResponse,
 )
@@ -144,6 +148,62 @@ async def resolve_ticket(
     if not result:
         raise HTTPException(status_code=409, detail="Cannot resolve: not assigned to you or not CLAIMED")
     return {"ticket_status": result["ticket_status"], "version": result["version"]}
+
+
+@router.get("/team", response_model=TeamListResponse)
+async def list_team(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    org_id = user["organization_id"]
+    wrepo = _get_wrepo(request)
+    members = await wrepo.list_team_members(org_id)
+    return TeamListResponse(members=[
+        TeamMemberItem(
+            user_id=str(m["user_id"]),
+            nome=m["nome"],
+            email=m["email"],
+            ruolo=m["ruolo"],
+        )
+        for m in members
+    ])
+
+
+@router.post("/assign/{conversation_id}", response_model=AssignResponse)
+async def assign_ticket(
+    conversation_id: str,
+    body: AssignRequest,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    """Assegna o riassegna un ticket a un membro del team. Solo owner/manager:
+    lo staff assegna a se stesso col claim. Riassegnazione ottimistica:
+    tre partner non possono sovrascriversi a vicenda."""
+    org_id = user["organization_id"]
+    wrepo = _get_wrepo(request)
+    conv = await wrepo.get_conversation(conversation_id)
+    if not conv or str(conv["organization_id"]) != str(org_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    team = await wrepo.list_team_members(org_id)
+    if body.assigned_to not in {str(m["user_id"]) for m in team}:
+        raise HTTPException(status_code=404, detail="Member not found in this organization")
+
+    result = await wrepo.assign_ticket(
+        conversation_id, body.assigned_to, expected_version=body.expected_version
+    )
+    if not result:
+        raise HTTPException(status_code=409, detail="Conflict: ticket status or version mismatch")
+    enriched = await wrepo.get_conversation(conversation_id) or result
+    return AssignResponse(
+        id=str(result["id"]),
+        ticket_status=result["ticket_status"],
+        assigned_to=str(result["assigned_to"]) if result.get("assigned_to") else None,
+        claimed_at=str(result["claimed_at"]) if result.get("claimed_at") else None,
+        version=result["version"],
+        assigned_nome=enriched.get("assigned_nome"),
+        assigned_email=enriched.get("assigned_email"),
+    )
 
 
 @router.post("/reply/{conversation_id}", response_model=ReplyResponse)

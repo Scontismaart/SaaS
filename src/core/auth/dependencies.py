@@ -168,6 +168,7 @@ async def get_organization_context(
         **current_user,
         "organization_id": x_organization_id,
         "ruolo": membership["ruolo"],
+        "user_id": str(membership["user_id"]),
     }
 
 

@@ -1,18 +1,14 @@
-import json
-import re
-import uuid
-from pathlib import Path
 from typing import Any
 
+from src.core.crew_runner import genera_risposta_async
+from src.core.documenti.embeddings import vettorizza
 from src.models.schemas import (
+    MessaggioInput,
     OnboardingProfileInput,
     PreviewInput,
     ProfiloAttivita,
     RispostaOutput,
 )
-
-
-PROFILE_STORE = Path("data/onboarding_profiles.json")
 
 
 VERTICAL_TEMPLATES: dict[str, dict[str, Any]] = {
@@ -118,27 +114,6 @@ def list_verticals() -> list[dict[str, Any]]:
     ]
 
 
-def _ensure_store_dir() -> None:
-    PROFILE_STORE.parent.mkdir(parents=True, exist_ok=True)
-
-
-def _read_store() -> dict[str, Any]:
-    if not PROFILE_STORE.exists():
-        return {"active_profile_id": None, "profiles": {}}
-    try:
-        return json.loads(PROFILE_STORE.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {"active_profile_id": None, "profiles": {}}
-
-
-def _write_store(data: dict[str, Any]) -> None:
-    _ensure_store_dir()
-    PROFILE_STORE.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-
 def build_business_profile(payload: OnboardingProfileInput) -> ProfiloAttivita:
     template = VERTICAL_TEMPLATES[payload.verticale]
     servizi = payload.servizi or template["servizi"]
@@ -154,95 +129,68 @@ def build_business_profile(payload: OnboardingProfileInput) -> ProfiloAttivita:
     )
 
 
-def save_profile(payload: OnboardingProfileInput) -> dict[str, Any]:
-    store = _read_store()
-    profile_id = payload.id or f"{payload.verticale}-{uuid.uuid4().hex[:8]}"
+async def get_profile(organization_id: str, repo) -> dict | None:
+    """Profilo onboarding dell'org, oppure None se mai salvato.
+    Org-scoped: il chiamante passa SEMPRE l'organization_id dell'utente."""
+    return await repo.get_onboarding_profile(organization_id)
+
+
+async def save_profile(
+    organization_id: str,
+    payload: OnboardingProfileInput,
+    repo,
+) -> dict:
+    """Persiste il profilo onboarding dell'org e sincronizza
+    organizations.business_profile (usato dal responder WhatsApp reale)."""
     profile = build_business_profile(payload)
-    record = {
-        "id": profile_id,
-        "verticale": payload.verticale,
-        "nome_attivita": payload.nome_attivita,
-        "orari": payload.orari,
-        "tono": payload.tono,
-        "servizi": payload.servizi,
-        "regole_escalation": payload.regole_escalation,
-        "whatsapp_collegato": payload.whatsapp_collegato,
-        "documenti_importati": payload.documenti_importati,
-        "profilo": profile.model_dump(),
-    }
-    store.setdefault("profiles", {})[profile_id] = record
-    store["active_profile_id"] = profile_id
-    _write_store(store)
-    return record
-
-
-def get_active_profile() -> ProfiloAttivita | None:
-    store = _read_store()
-    profile_id = store.get("active_profile_id")
-    if not profile_id:
-        return None
-    record = store.get("profiles", {}).get(profile_id)
-    if not record:
-        return None
-    return ProfiloAttivita(**record["profilo"])
-
-
-def get_active_profile_record() -> dict[str, Any] | None:
-    store = _read_store()
-    profile_id = store.get("active_profile_id")
-    if not profile_id:
-        return None
-    return store.get("profiles", {}).get(profile_id)
-
-
-def reset_profiles() -> None:
-    _write_store({"active_profile_id": None, "profiles": {}})
-
-
-def generate_preview(payload: PreviewInput) -> RispostaOutput:
-    profile = build_business_profile(payload.profilo)
-    text = payload.messaggio.lower()
-    escalation_terms = " ".join(profile.note_speciali).lower()
-    matched_escalation = any(
-        term in text or term in escalation_terms
-        for term in [
-            "allerg",
-            "dolore",
-            "farmac",
-            "refert",
-            "rimborso",
-            "reclamo",
-            "gravid",
-            "diagnosi",
-            "urgen",
-            "15 persone",
-            "evento",
-        ]
+    return await repo.save_onboarding_profile(
+        organization_id,
+        payload.verticale,
+        payload.nome_attivita,
+        payload.orari,
+        payload.tono,
+        payload.servizi,
+        payload.regole_escalation,
+        payload.whatsapp_collegato,
+        payload.documenti_importati,
+        profile.model_dump(),
     )
-    if matched_escalation:
-        return RispostaOutput(
-            risposta=(
-                "Grazie per averci scritto. Per questa richiesta ti metto in "
-                "contatto con una persona dello staff, cosi ricevi una risposta corretta."
-            ),
-            richiede_umano=True,
-            motivo="regola_escalation_verticale",
-            categoria="escalation",
-        )
-    if re.search(r"\b(orari|aperti|chiusi|check-in|check in|check-out|dove)\b", text):
-        return RispostaOutput(
-            risposta=f"Certo. {profile.nome} segue questi orari: {profile.orari}",
-            richiede_umano=False,
-            motivo="informazione_presente_nel_profilo",
-            categoria="informazioni",
-        )
-    servizi = ", ".join(profile.servizi_principali[:3])
-    return RispostaOutput(
-        risposta=(
-            f"Certo, posso aiutarti. Da {profile.nome} gestiamo: {servizi}. "
-            "Dimmi giorno e preferenza, oppure scrivici cosa ti serve."
-        ),
-        richiede_umano=False,
-        motivo="richiesta_generica_gestibile",
-        categoria="generico",
+
+
+async def generate_preview(
+    organization_id: str,
+    payload: PreviewInput,
+    repo,
+    billing: dict | None = None,
+) -> RispostaOutput:
+    """Preview reale: costruisce il profilo dal payload del wizard e lo fa
+    girare nel vero responder (crew + LLM), arricchito dal contesto RAG dei
+    documenti dell'org. Se l'org non ha ancora documenti indicizzati il
+    contesto e' vuoto e la preview procede comunque (nessun errore)."""
+    profilo = build_business_profile(payload.profilo)
+
+    contesto_documenti = ""
+    try:
+        q_emb = vettorizza([payload.messaggio], tipo="query")[0]
+        risultati = await repo.search_similar(organization_id, q_emb, k=3)
+        if risultati:
+            blocchi = []
+            for r in risultati:
+                nome = (
+                    r.get("document_name")
+                    or (r.get("metadata") or {}).get("fonte")
+                    or "documento"
+                )
+                blocchi.append(f"-- {nome} --\n{r['content']}")
+            contesto_documenti = "\n\n".join(blocchi)
+    except Exception as e:
+        print(f"[onboarding] contesto RAG non disponibile org={organization_id}: {e}")
+        contesto_documenti = ""
+
+    messaggio = MessaggioInput(testo=payload.messaggio)
+    return await genera_risposta_async(
+        messaggio,
+        profilo,
+        billing=billing,
+        contesto_documenti=contesto_documenti,
     )

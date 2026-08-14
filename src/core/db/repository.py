@@ -432,6 +432,71 @@ class CoreRepository:
             """, document_id, organization_id)
             return 1 if row else 0
 
+    # ── Onboarding ────────────────────────────────────────────
+
+    @staticmethod
+    def _json_fields_onboarding(result: dict) -> dict:
+        for key in ("servizi", "regole_escalation", "profilo"):
+            if isinstance(result.get(key), str):
+                result[key] = json.loads(result[key])
+        return result
+
+    async def get_onboarding_profile(self, organization_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM onboarding_profiles WHERE organization_id = $1",
+                organization_id,
+            )
+            return self._json_fields_onboarding(dict(row)) if row else None
+
+    async def save_onboarding_profile(self, organization_id, verticale, nome_attivita,
+                                      orari, tono, servizi, regole_escalation,
+                                      whatsapp_collegato, documenti_importati, profilo):
+        """Upsert del profilo onboarding dell'org + sync atomico su
+        organizations.business_profile in una sola transazione.
+
+        `profilo` deve essere il model_dump() di ProfiloAttivita: le chiavi
+        combaciano 1:1 con WhatsAppBusinessProfile, il formato che il responder
+        WhatsApp reale si aspetta in organizations.business_profile
+        (inbound_processor._profile_from_dict)."""
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow("""
+                    INSERT INTO onboarding_profiles (organization_id, verticale,
+                                                     nome_attivita, orari, tono,
+                                                     servizi, regole_escalation,
+                                                     whatsapp_collegato,
+                                                     documenti_importati, profilo)
+                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10::jsonb)
+                    ON CONFLICT (organization_id) DO UPDATE SET
+                        verticale = EXCLUDED.verticale,
+                        nome_attivita = EXCLUDED.nome_attivita,
+                        orari = EXCLUDED.orari,
+                        tono = EXCLUDED.tono,
+                        servizi = EXCLUDED.servizi,
+                        regole_escalation = EXCLUDED.regole_escalation,
+                        whatsapp_collegato = EXCLUDED.whatsapp_collegato,
+                        documenti_importati = EXCLUDED.documenti_importati,
+                        profilo = EXCLUDED.profilo,
+                        updated_at = NOW()
+                    RETURNING *
+                """, organization_id, verticale, nome_attivita, orari, tono,
+                json.dumps(servizi), json.dumps(regole_escalation),
+                whatsapp_collegato, documenti_importati, json.dumps(profilo))
+                await conn.execute(
+                    "UPDATE organizations SET business_profile = $2::jsonb WHERE id = $1",
+                    organization_id,
+                    json.dumps(profilo),
+                )
+            return self._json_fields_onboarding(dict(row))
+
+    async def list_onboarding_profiles(self):
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT * FROM onboarding_profiles ORDER BY nome_attivita"
+            )
+            return [self._json_fields_onboarding(dict(r)) for r in rows]
+
     # ── Email configs ─────────────────────────────────────────
 
     async def add_email_config(self, organization_id, indirizzo, is_active=True):

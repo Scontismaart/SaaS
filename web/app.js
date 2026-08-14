@@ -2,6 +2,73 @@ const API_BASE = "http://localhost:8000";
 const PROFILO_ID = "trattoria_da_mario";
 
 /* ============================================================
+   AUTENTICAZIONE (transitoria)
+   ============================================================
+   NB: auth "transitoria" verso il backend — API key + Organization ID
+   salvati nel localStorage del browser e inviati come header X-API-Key /
+   X-Organization-Id. Da sostituire con sessione Supabase (JWT) prima del
+   lancio multi-tenant pubblico: vedi docs/CHECKLIST-PRE-LANCIO.md.
+   In produzione il backend va esposto SOLO su HTTPS.
+   ============================================================ */
+
+const CRED_STORAGE_KEY = "melpis-credentials-v1";
+
+function leggiCredenziali() {
+  try {
+    return JSON.parse(localStorage.getItem(CRED_STORAGE_KEY) || "null") || {};
+  } catch {
+    return {};
+  }
+}
+
+function salvaCredenziali(apiKey, organizationId) {
+  localStorage.setItem(CRED_STORAGE_KEY, JSON.stringify({ apiKey, organizationId }));
+}
+
+function assicuraCredenziali() {
+  const cred = leggiCredenziali();
+  if (cred.apiKey && cred.organizationId) return true;
+  apriConfigAccesso();
+  return false;
+}
+
+function apriConfigAccesso() {
+  const cred = leggiCredenziali();
+  document.getElementById("accesso-api-key").value = cred.apiKey || "";
+  document.getElementById("accesso-org-id").value = cred.organizationId || "";
+  document.getElementById("accesso-error").textContent = "";
+  document.getElementById("accesso-modal").hidden = false;
+}
+
+function chiudiConfigAccesso() {
+  document.getElementById("accesso-modal").hidden = true;
+}
+
+document.getElementById("accesso-btn")?.addEventListener("click", apriConfigAccesso);
+document.getElementById("accesso-save")?.addEventListener("click", () => {
+  const apiKey = document.getElementById("accesso-api-key").value.trim();
+  const organizationId = document.getElementById("accesso-org-id").value.trim();
+  if (!apiKey || !organizationId) {
+    document.getElementById("accesso-error").textContent = "Compila entrambi i campi.";
+    return;
+  }
+  salvaCredenziali(apiKey, organizationId);
+  chiudiConfigAccesso();
+  inizializzaOnboarding();
+});
+document.querySelectorAll("[data-accesso-close]").forEach((el) => {
+  el.addEventListener("click", chiudiConfigAccesso);
+});
+
+async function apiFetch(url, options = {}) {
+  const cred = leggiCredenziali();
+  const headers = { ...(options.headers || {}) };
+  if (cred.apiKey) headers["X-API-Key"] = cred.apiKey;
+  if (cred.organizationId) headers["X-Organization-Id"] = cred.organizationId;
+  return fetch(url, { ...options, headers });
+}
+
+/* ============================================================
    SIDEBAR / NAVIGATION
    ============================================================ */
 
@@ -52,10 +119,10 @@ function segnaNotificheViste(viewName) {
 async function aggiornaNotifiche() {
   try {
     const [dashboardResponse, prenotazioniResponse, documentiResponse, reportResponse] = await Promise.all([
-      fetch(`${API_BASE}/api/dashboard`),
-      fetch(`${API_BASE}/api/bookings`),
-      fetch(`${API_BASE}/api/documenti/elenco`),
-      fetch(`${API_BASE}/api/report/stato`),
+      apiFetch(`${API_BASE}/api/dashboard`),
+      apiFetch(`${API_BASE}/api/bookings`),
+      apiFetch(`${API_BASE}/api/documenti/elenco`),
+      apiFetch(`${API_BASE}/api/report/stato`),
     ]);
     const eventi = dashboardResponse.ok ? await dashboardResponse.json() : [];
     const prenotazioni = prenotazioniResponse.ok ? await prenotazioniResponse.json() : [];
@@ -165,6 +232,9 @@ const onboardingEls = {
   previewText: document.getElementById("onboarding-preview-text"),
   whatsapp: document.getElementById("onboarding-whatsapp"),
   docs: document.getElementById("onboarding-docs"),
+  docFile: document.getElementById("onboarding-doc-file"),
+  uploadDoc: document.getElementById("onboarding-doc-upload"),
+  docStatus: document.getElementById("onboarding-doc-status"),
   openDocs: document.getElementById("onboarding-open-docs"),
   testMessage: document.getElementById("onboarding-test-message"),
   testBtn: document.getElementById("onboarding-test-btn"),
@@ -245,7 +315,12 @@ function renderEscalationRules() {
 
 async function caricaProfiloOnboarding() {
   try {
-    const res = await fetch(`${API_BASE}/api/onboarding/profilo`);
+    const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
+    if (res.status === 401) {
+      onboardingEls.status.textContent = "Serve la config di accesso: clicca \"Configura accesso\" in alto.";
+      onboardingEls.status.style.color = "var(--red)";
+      return;
+    }
     if (!res.ok) return;
     const data = await res.json();
     const record = data.profilo;
@@ -269,8 +344,14 @@ async function inizializzaOnboarding() {
     renderOnboardingStep();
     return;
   }
+  if (!assicuraCredenziali()) return;
   try {
-    const res = await fetch(`${API_BASE}/api/onboarding/verticali`);
+    const res = await apiFetch(`${API_BASE}/api/onboarding/verticali`);
+    if (res.status === 401) {
+      onboardingEls.status.textContent = "Credenziali non valide: verifica API key e Organization ID.";
+      onboardingEls.status.style.color = "var(--red)";
+      return;
+    }
     if (!res.ok) throw new Error("Template verticali non disponibili");
     const data = await res.json();
     onboardingState.verticals = data.verticali || [];
@@ -294,7 +375,7 @@ async function inizializzaOnboarding() {
 
 async function salvaProfiloOnboarding() {
   const payload = profiloOnboarding();
-  const res = await fetch(`${API_BASE}/api/onboarding/profilo`, {
+  const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -311,7 +392,7 @@ async function salvaProfiloOnboarding() {
 }
 
 async function generaPreviewOnboarding(targetEl, message) {
-  const res = await fetch(`${API_BASE}/api/onboarding/preview`, {
+  const res = await apiFetch(`${API_BASE}/api/onboarding/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ profilo: profiloOnboarding(), messaggio: message }),
@@ -399,6 +480,36 @@ onboardingEls.openDocs?.addEventListener("click", () => {
   document.querySelector('[data-view="documenti"]')?.click();
 });
 
+onboardingEls.uploadDoc?.addEventListener("click", async () => {
+  const file = onboardingEls.docFile.files[0];
+  if (!file) {
+    onboardingEls.docStatus.textContent = "Scegli un file prima di caricare.";
+    onboardingEls.docStatus.style.color = "var(--red)";
+    return;
+  }
+  onboardingEls.uploadDoc.disabled = true;
+  onboardingEls.docStatus.textContent = "Caricamento e indicizzazione...";
+  onboardingEls.docStatus.style.color = "";
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await apiFetch(`${API_BASE}/api/documenti/carica-file`, { method: "POST", body: form });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Errore caricamento");
+    }
+    const data = await res.json();
+    onboardingEls.docStatus.textContent = `Indicizzati ${data.indicizzati} chunk da '${data.nome}'.`;
+    onboardingEls.docStatus.style.color = "var(--sage)";
+    onboardingEls.docs.checked = true;
+  } catch (err) {
+    onboardingEls.docStatus.textContent = err.message;
+    onboardingEls.docStatus.style.color = "var(--red)";
+  } finally {
+    onboardingEls.uploadDoc.disabled = false;
+  }
+});
+
 inizializzaOnboarding();
 
 /* ============================================================
@@ -452,7 +563,7 @@ async function inviaMessaggio(testo) {
   chatStatus.textContent = "sta scrivendo\u2026";
   mostraTyping();
   try {
-    const res = await fetch(`${API_BASE}/api/messaggio?profilo_id=${PROFILO_ID}`, {
+    const res = await apiFetch(`${API_BASE}/api/messaggio?profilo_id=${PROFILO_ID}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ testo }),
@@ -642,7 +753,7 @@ function inizializzaCalendarioPrenotazioni() {
 async function aggiornaPrenotazioni() {
   if (!bookingCalendarEl) return;
   try {
-    const res = await fetch(`${API_BASE}/api/bookings`);
+    const res = await apiFetch(`${API_BASE}/api/bookings`);
     if (!res.ok) return;
     const prenotazioni = await res.json();
     bookingCount.textContent = `${prenotazioni.length} prenotazioni`;
@@ -654,7 +765,7 @@ async function aggiornaPrenotazioni() {
       const ora = String(p.ora).slice(0, 5);
       bookingCalendar.addEvent({
         id: p.id,
-        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
+        title: `${ora} Â· ${p.nome_cliente || "Cliente"} Â· ${p.coperti || "?"} coperti`,
         start: `${p.data}T${ora}:00`,
         end: `${p.data}T${ora}:00`,
         backgroundColor: colorePrenotazione(p.stato),
@@ -687,7 +798,7 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
       const ora = String(p.ora || "").slice(0, 5);
       item.innerHTML = `
         <time class="booking-row-time">${ora || "--:--"}</time>
-        <div class="booking-row-main"><strong>${p.nome_cliente || "Cliente"}</strong><span>${p.coperti || "?"} coperti${p.telefono ? ` · ${p.telefono}` : ""}</span></div>
+        <div class="booking-row-main"><strong>${p.nome_cliente || "Cliente"}</strong><span>${p.coperti || "?"} coperti${p.telefono ? ` Â· ${p.telefono}` : ""}</span></div>
         <span class="booking-row-status" style="--booking-color:${colorePrenotazione(p.stato)}">${p.stato || "In attesa"}</span>`;
       bookingDayList.appendChild(item);
     });
@@ -695,7 +806,7 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
   if (prenotazioni) {
     render(prenotazioni.filter((p) => p.data === data));
   } else {
-    fetch(`${API_BASE}/api/bookings`).then((res) => res.json()).then((all) => render(all.filter((p) => p.data === data))).catch(() => render([]));
+    apiFetch(`${API_BASE}/api/bookings`).then((res) => res.json()).then((all) => render(all.filter((p) => p.data === data))).catch(() => render([]));
   }
 }
 
@@ -708,7 +819,7 @@ async function aggiornaSemaforo(data = null) {
     month: "2-digit",
   });
   try {
-    const res = await fetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
+    const res = await apiFetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
     if (!res.ok) return;
     const slots = await res.json();
     availabilityList.innerHTML = "";
@@ -730,7 +841,7 @@ async function aggiornaSemaforo(data = null) {
 async function aggiornaImpostazioniPrenotazioni() {
   if (!bookingSettingsGrid || bookingSettingsGrid.children.length) return;
   try {
-    const res = await fetch(`${API_BASE}/api/bookings/settings`);
+    const res = await apiFetch(`${API_BASE}/api/bookings/settings`);
     if (!res.ok) return;
     const data = await res.json();
     const capienze = data.capienze_orarie || {};
@@ -755,7 +866,7 @@ bookingForm?.addEventListener("submit", async (e) => {
     note: document.getElementById("booking-note").value.trim(),
   };
   try {
-    const res = await fetch(`${API_BASE}/api/bookings`, {
+    const res = await apiFetch(`${API_BASE}/api/bookings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -779,7 +890,7 @@ bookingForm?.addEventListener("submit", async (e) => {
 capacitySave?.addEventListener("click", async () => {
   capacityStatus.textContent = "";
   try {
-    const res = await fetch(`${API_BASE}/api/bookings/settings`, {
+    const res = await apiFetch(`${API_BASE}/api/bookings/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -833,7 +944,7 @@ async function inviaRecensione() {
   reviewAnalyze.disabled = true;
   reviewAnalyze.textContent = "Analisi in corso\u2026";
   try {
-    const res = await fetch(`${API_BASE}/api/recensione`, {
+    const res = await apiFetch(`${API_BASE}/api/recensione`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -873,7 +984,7 @@ async function approvaRecensione() {
   reviewApprove.disabled = true;
   reviewApprove.textContent = "Approvazione\u2026";
   try {
-    const res = await fetch(`${API_BASE}/api/recensioni/${reviewAttualeId}/approva`, {
+    const res = await apiFetch(`${API_BASE}/api/recensioni/${reviewAttualeId}/approva`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -897,8 +1008,8 @@ async function approvaRecensione() {
 const trendList = document.getElementById("trend-list");
 
 function _paroleChiave(testi, max = 3) {
-  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "è", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "più", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
-  const words = testi.join(" ").toLowerCase().replace(/[^a-zàèéìòù\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
+  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "Ã¨", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "piÃ¹", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
+  const words = testi.join(" ").toLowerCase().replace(/[^a-zÃ Ã¨Ã©Ã¬Ã²Ã¹\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
   const freq = {};
   words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
   return Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, max).map(e => e[0]);
@@ -906,14 +1017,14 @@ function _paroleChiave(testi, max = 3) {
 
 async function aggiornaTrends() {
   try {
-    const res = await fetch(`${API_BASE}/api/dashboard`);
+    const res = await apiFetch(`${API_BASE}/api/dashboard`);
     if (!res.ok) return;
     const eventi = await res.json();
     const recensioni = eventi.filter(e => e.tipo_evento === "recensione");
     const totale = recensioni.length;
 
     if (totale === 0) {
-      trendList.innerHTML = `<li class="trend-item"><div class="trend-body"><span class="trend-label" style="color:var(--sidebar-text)">Nessuna recensione ancora — incollane una qui sopra.</span></div></li>`;
+      trendList.innerHTML = `<li class="trend-item"><div class="trend-body"><span class="trend-label" style="color:var(--sidebar-text)">Nessuna recensione ancora â€” incollane una qui sopra.</span></div></li>`;
       return;
     }
 
@@ -938,7 +1049,7 @@ async function aggiornaTrends() {
 
     if (pos > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-pos">▲</span>
+        <span class="trend-icon trend-pos">â–²</span>
         <div class="trend-body">
           <span class="trend-label">Positivo (${pctPos}%)</span>
           <div class="trend-bar-track"><div class="trend-bar-fill fill-pos" style="width:${pctPos}%"></div></div>
@@ -947,7 +1058,7 @@ async function aggiornaTrends() {
 
     if (neg > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-neg">▼</span>
+        <span class="trend-icon trend-neg">â–¼</span>
         <div class="trend-body">
           <span class="trend-label">Negativo (${pctNeg}%)</span>
           <div class="trend-bar-track"><div class="trend-bar-fill fill-neg" style="width:${pctNeg}%"></div></div>
@@ -956,14 +1067,14 @@ async function aggiornaTrends() {
 
     if (neut > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-neutral">—</span>
+        <span class="trend-icon trend-neutral">â€”</span>
         <div class="trend-body"><span class="trend-label">Neutro (${pctNeut}%)</span></div>
       </li>`);
 
     topCat.forEach(([cat]) => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-topic">↗</span>
+          <span class="trend-icon trend-topic">â†—</span>
           <div class="trend-body"><span class="trend-label">Argomento ricorrente: ${cat.replace(/_/g, " ")}</span></div>
         </li>`);
     });
@@ -971,7 +1082,7 @@ async function aggiornaTrends() {
     keywords.forEach(kw => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-new">✦</span>
+          <span class="trend-icon trend-new">âœ¦</span>
           <div class="trend-body"><span class="trend-label">Parola chiave: "${kw}"</span></div>
         </li>`);
     });
@@ -1040,7 +1151,7 @@ async function aggiornaReport(forza = false) {
 reportRefresh.addEventListener("click", () => aggiornaReport(true));
 
 /* ============================================================
-   PANORAMICA — KPI + priorità + attività
+   PANORAMICA â€” KPI + prioritÃ  + attivitÃ 
    ============================================================ */
 
 const prioritySection = document.getElementById("priority-section");
@@ -1053,12 +1164,12 @@ const statUmano = document.getElementById("stat-umano");
 
 async function aggiornaPrioritari() {
   try {
-    const res = await fetch(`${API_BASE}/api/dashboard/prioritari`);
+    const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
     if (!res.ok) return;
     const eventi = await res.json();
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
-      priorityList.innerHTML = `<li class="priority-empty">Niente da gestire — tutto sotto controllo.</li>`;
+      priorityList.innerHTML = `<li class="priority-empty">Niente da gestire â€” tutto sotto controllo.</li>`;
       return;
     }
     eventi.forEach((e) => {
@@ -1085,7 +1196,7 @@ async function aggiornaPrioritari() {
 
 async function aggiornaRiepilogo() {
   try {
-    const res = await fetch(`${API_BASE}/api/dashboard`);
+    const res = await apiFetch(`${API_BASE}/api/dashboard`);
     if (!res.ok) return;
     const storico = await res.json();
     const totale = storico.length;
@@ -1172,7 +1283,7 @@ const docConfigStatus = document.getElementById("doc-config-status");
 
 async function aggiornaConteggio() {
   try {
-    const res = await fetch(`${API_BASE}/api/documenti/conteggio`);
+    const res = await apiFetch(`${API_BASE}/api/documenti/conteggio`);
     if (!res.ok) { docConteggio.textContent = "Non disponibile."; return; }
     const data = await res.json();
     docConteggio.textContent = `${data.chunk_indicizzati} parti indicizzate.`;
@@ -1184,7 +1295,7 @@ async function aggiornaConteggio() {
 async function aggiornaDocumenti() {
   if (!docLibrary) return;
   try {
-    const res = await fetch(`${API_BASE}/api/documenti/elenco`);
+    const res = await apiFetch(`${API_BASE}/api/documenti/elenco`);
     if (!res.ok) return;
     const data = await res.json();
     docLibrary.innerHTML = "";
@@ -1211,7 +1322,7 @@ async function aggiornaDocumenti() {
         if (!window.confirm(`Rimuovere ${documento.nome} dalla knowledge base?`)) return;
         remove.disabled = true;
         try {
-          const response = await fetch(`${API_BASE}/api/documenti/${encodeURIComponent(documento.id)}`, { method: "DELETE" });
+          const response = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(documento.id)}`, { method: "DELETE" });
           if (!response.ok) throw new Error("Impossibile rimuovere il documento.");
           await aggiornaConteggio();
           await aggiornaDocumenti();
@@ -1231,7 +1342,7 @@ async function aggiornaDocumenti() {
 
 async function aggiornaConfigStatus() {
   try {
-    const res = await fetch(`${API_BASE}/api/email/config`);
+    const res = await apiFetch(`${API_BASE}/api/email/config`);
     if (!res.ok) { docConfigStatus.textContent = ""; return; }
     const data = await res.json();
     if (data.configurazioni && data.configurazioni.length > 0) {
@@ -1260,7 +1371,7 @@ docEmailSalva?.addEventListener("click", async () => {
   docEmailSalva.disabled = true;
   docEmailSalva.textContent = "Salvataggio\u2026";
   try {
-    const res = await fetch(`${API_BASE}/api/email/configura`, {
+    const res = await apiFetch(`${API_BASE}/api/email/configura`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imap_server, indirizzo, app_password, polling_minuti: 5 }),
@@ -1284,7 +1395,7 @@ docIndicizzaBtn?.addEventListener("click", async () => {
   docIndicizzaBtn.disabled = true;
   docIndicizzaBtn.textContent = "Controllo in corso\u2026";
   try {
-    const res = await fetch(`${API_BASE}/api/email/check-now`, { method: "POST" });
+    const res = await apiFetch(`${API_BASE}/api/email/check-now`, { method: "POST" });
     const data = await res.json();
     alert(data.detail);
     await aggiornaConteggio();
@@ -1310,13 +1421,13 @@ docReindicizzaBtn?.addEventListener("click", async () => {
   docReindicizzaStatus.style.color = "";
 
   try {
-    const res = await fetch(`${API_BASE}/api/documenti/reindicizza`, { method: "POST" });
+    const res = await apiFetch(`${API_BASE}/api/documenti/reindicizza`, { method: "POST" });
     if (!res.ok) throw new Error("Errore avvio");
     const { task_id } = await res.json();
 
     const poll = setInterval(async () => {
       try {
-        const res2 = await fetch(`${API_BASE}/api/documenti/reindicizza/stato/${task_id}`);
+        const res2 = await apiFetch(`${API_BASE}/api/documenti/reindicizza/stato/${task_id}`);
         if (!res2.ok) { clearInterval(poll); throw new Error("Errore polling"); }
         const stato = await res2.json();
 
@@ -1372,9 +1483,9 @@ docCaricaBtn.addEventListener("click", async () => {
     if (file) {
       const form = new FormData();
       form.append("file", file);
-      res = await fetch(`${API_BASE}/api/documenti/carica-file`, { method: "POST", body: form });
+      res = await apiFetch(`${API_BASE}/api/documenti/carica-file`, { method: "POST", body: form });
     } else {
-      res = await fetch(`${API_BASE}/api/documenti/carica`, {
+      res = await apiFetch(`${API_BASE}/api/documenti/carica`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ testo, nome }),
@@ -1408,7 +1519,7 @@ docChiediBtn.addEventListener("click", async () => {
   docChiediBtn.textContent = "Cerco\u2026";
   docRisposta.hidden = true;
   try {
-    const res = await fetch(`${API_BASE}/api/documenti/chiedi`, {
+    const res = await apiFetch(`${API_BASE}/api/documenti/chiedi`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domanda, k: 5 }),
@@ -1441,7 +1552,7 @@ docChiediBtn.addEventListener("click", async () => {
 });
 
 /* ============================================================
-   INBOX (HITL) — ticket escalati all'operatore umano
+   INBOX (HITL) â€” ticket escalati all'operatore umano
    ============================================================ */
 
 const inboxList = document.getElementById("inbox-list");
@@ -1481,7 +1592,7 @@ async function caricaInbox() {
     const params = new URLSearchParams();
     if (inboxState.status !== "ALL") params.set("status", inboxState.status);
     if (inboxState.priorita) params.set("priorita", inboxState.priorita);
-    const res = await fetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);
+    const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);
     if (!res.ok) return;
     const data = await res.json();
     const tickets = data.tickets || [];
@@ -1517,7 +1628,7 @@ function renderInboxCard(container, t) {
 
   const meta = document.createElement("div");
   meta.className = "inbox-card-meta";
-  const assigned = t.assigned_nome ? ` · ${t.assigned_nome}` : "";
+  const assigned = t.assigned_nome ? ` Â· ${t.assigned_nome}` : "";
   meta.textContent = `${TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status}${assigned}`;
   left.appendChild(title);
   left.appendChild(meta);
@@ -1543,7 +1654,7 @@ function renderInboxCard(container, t) {
   if (t.pending_staff_at) {
     const pend = document.createElement("span");
     pend.className = "inbox-card-meta";
-    pend.textContent = ` · attesa da ${formatInboxDate(t.pending_staff_at)}`;
+    pend.textContent = ` Â· attesa da ${formatInboxDate(t.pending_staff_at)}`;
     meta.textContent += pend.textContent;
   }
 
@@ -1569,7 +1680,7 @@ function renderInboxCard(container, t) {
     claim.title = "Prendi in carico";
     claim.addEventListener("click", async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(t.id)}`, {
+        const res = await apiFetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(t.id)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ expected_version: t.version }),
@@ -1590,7 +1701,7 @@ function renderInboxCard(container, t) {
     release.textContent = "Rilascia";
     release.addEventListener("click", async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/inbox/release/${encodeURIComponent(t.id)}`, { method: "POST" });
+        const res = await apiFetch(`${API_BASE}/api/inbox/release/${encodeURIComponent(t.id)}`, { method: "POST" });
         if (!res.ok) throw new Error("Impossibile rilasciare.");
         await caricaInbox();
       } catch (err) {
@@ -1605,7 +1716,7 @@ function renderInboxCard(container, t) {
     risolvi.textContent = "Risolvi";
     risolvi.addEventListener("click", async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/inbox/resolve/${encodeURIComponent(t.id)}`, { method: "POST" });
+        const res = await apiFetch(`${API_BASE}/api/inbox/resolve/${encodeURIComponent(t.id)}`, { method: "POST" });
         if (!res.ok) throw new Error("Impossibile risolvere.");
         await caricaInbox();
       } catch (err) {
@@ -1647,7 +1758,7 @@ function renderInboxCard(container, t) {
     invia.disabled = true;
     replyStatus.textContent = "Invio...";
     try {
-      const res = await fetch(`${API_BASE}/api/inbox/reply/${encodeURIComponent(t.id)}`, {
+      const res = await apiFetch(`${API_BASE}/api/inbox/reply/${encodeURIComponent(t.id)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

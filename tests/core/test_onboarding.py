@@ -1,5 +1,11 @@
+import json
+
+import pytest
+from unittest.mock import patch
+
 from src.core import onboarding
-from src.models.schemas import OnboardingProfileInput, PreviewInput
+from src.models.schemas import OnboardingProfileInput, PreviewInput, RispostaOutput
+from src.whatsapp.inbound_processor import _profile_from_dict
 
 
 def _profile(**overrides):
@@ -15,48 +21,145 @@ def _profile(**overrides):
     return OnboardingProfileInput(**data)
 
 
-def test_save_profile_sets_active_profile(tmp_path, monkeypatch):
-    monkeypatch.setattr(onboarding, "PROFILE_STORE", tmp_path / "profiles.json")
-
-    record = onboarding.save_profile(_profile())
-    active = onboarding.get_active_profile()
-
-    assert record["verticale"] == "parrucchiere"
-    assert active is not None
-    assert active.nome == "Studio Capelli Nora"
-    assert "Taglio" in active.servizi_principali
+def test_list_verticals():
+    verticali = {v["id"]: v for v in onboarding.list_verticals()}
+    assert "ristorante" in verticali
+    assert "parrucchiere" in verticali
+    assert verticali["parrucchiere"]["label"] == "Parrucchiere / Barber"
 
 
-def test_preview_escalates_sensitive_vertical_request(tmp_path, monkeypatch):
-    monkeypatch.setattr(onboarding, "PROFILE_STORE", tmp_path / "profiles.json")
-    request = PreviewInput(
-        profilo=_profile(
-            verticale="studio_medico_dentista",
-            nome_attivita="Studio Sorriso",
-            servizi=["Igiene", "Visite"],
-            regole_escalation=["Dolore acuto", "Farmaci"],
-        ),
-        messaggio="Ho dolore a un dente, cosa posso prendere?",
+def test_build_business_profile_con_default_dal_template():
+    profile = onboarding.build_business_profile(
+        _profile(tono="", servizi=[], regole_escalation=[])
+    )
+    # template del verticale usato quando il wizard non compila i campi
+    assert profile.tono == "curato, rassicurante, pratico"
+    assert "Taglio donna e uomo" in profile.servizi_principali
+
+
+[pytest.mark.asyncio]
+async def test_save_e_get_profilo_org_scoped(repo, sample_org, other_org):
+    saved = await onboarding.save_profile(sample_org["id"], _profile(), repo)
+    assert saved["verticale"] == "parrucchiere"
+    assert saved["nome_attivita"] == "Studio Capelli Nora"
+
+    fetched = await onboarding.get_profile(sample_org["id"], repo)
+    assert fetched is not None
+    assert fetched["profilo"]["nome"] == "Studio Capelli Nora"
+    # l'altra org non vede nulla
+    assert await onboarding.get_profile(other_org["id"], repo) is None
+
+
+[pytest.mark.asyncio]
+async def test_sync_business_profile_leggibile_dal_responder_reale(repo, sample_org):
+    """Il JSON scritto su organizations.business_profile deve avere esattamente
+    le chiavi che _profile_from_dict (inbound_processor) si aspetta: se il
+    sync avesse un formato diverso, il responder in produzione riceverebbe un
+    profilo silenziosamente errato. Verifica il round-trip 1:1."""
+    payload = _profile()
+    await onboarding.save_profile(sample_org["id"], payload, repo)
+
+    async with repo.pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT business_profile FROM organizations WHERE id = $1",
+            sample_org["id"],
+        )
+        # asyncpg restituisce jsonb come stringa: il repo la parsea con
+        # json.loads (vedi repository._json_fields_*), qui lo facciamo a mano.
+        raw = json.loads(row["business_profile"])
+
+    riletto = _profile_from_dict(raw)
+    atteso = onboarding.build_business_profile(payload)
+    assert riletto.nome == atteso.nome
+    assert riletto.tipo_attivita == atteso.tipo_attivita
+    assert riletto.tono == atteso.tono
+    assert riletto.orari == atteso.orari
+    assert riletto.servizi_principali == atteso.servizi_principali
+    assert riletto.note_speciali == atteso.note_speciali
+
+
+[pytest.mark.asyncio]
+async def test_cross_tenant_non_sovrascrive_business_profile(repo, sample_org, other_org):
+    await onboarding.save_profile(sample_org["id"], _profile(nome_attivita="Studio A"), repo)
+    await onboarding.save_profile(other_org["id"], _profile(nome_attivita="Studio B"), repo)
+
+    async with repo.pool.acquire() as conn:
+        row_a = await conn.fetchrow(
+            "SELECT business_profile FROM organizations WHERE id = $1", sample_org["id"]
+        )
+        row_b = await conn.fetchrow(
+            "SELECT business_profile FROM organizations WHERE id = $1", other_org["id"]
+        )
+    assert json.loads(row_a["business_profile"])["nome"] == "Studio A"
+    assert json.loads(row_b["business_profile"])["nome"] == "Studio B"
+
+
+[pytest.mark.asyncio]
+async def test_upsert_su_secondo_salvataggio_una_sola_riga(repo, sample_org):
+    await onboarding.save_profile(sample_org["id"], _profile(), repo)
+    saved2 = await onboarding.save_profile(
+        sample_org["id"], _profile(nome_attivita="Studio Capelli Nora 2"), repo
+    )
+    assert saved2["nome_attivita"] == "Studio Capelli Nora 2"
+    async with repo.pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM onboarding_profiles WHERE organization_id = $1",
+            sample_org["id"],
+        )
+    assert len(rows) == 1
+
+
+[pytest.mark.asyncio]
+async def test_save_scrive_evento_su_event_log(repo, sample_org):
+    """Audit riusando event_log (stesso feed di task13/HITL): il record lo
+    scrive un trigger DB, come per messages/reviews."""
+    await onboarding.save_profile(sample_org["id"], _profile(), repo)
+    async with repo.pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT * FROM event_log WHERE organization_id = $1 AND tipo_evento = 'onboarding'",
+            sample_org["id"],
+        )
+    assert len(rows) == 1
+    assert rows[0]["source_table"] == "onboarding_profiles"
+    assert rows[0]["testo_originale"] == "Studio Capelli Nora"
+
+
+async def test_preview_rag_org_scoped_no_leak(repo, sample_org, other_org):
+    """Il contesto RAG della preview e' org-scoped: una preview dell'org B
+    NON deve mai ricevere i documenti dell'org A (nemmeno un chunk). E'
+    il controllo di isolamento multi-tenant piu' importante del wizard."""
+    doc = await repo.create_document(
+        str(sample_org["id"]), "menu-segreto.txt", tipo="upload", fonte="menu-segreto.txt"
+    )
+    await repo.add_chunk(
+        str(sample_org["id"]), str(doc["id"]), 0,
+        "Ingrediente segreto dell'org A: tartufo nero. Solo i clienti dell'org A lo vedono.",
+        [0.1] * 384,
+        {"fonte": "menu-segreto.txt"},
     )
 
-    result = onboarding.generate_preview(request)
+    captured: dict[str, str] = {"contesto": ""}
 
-    assert result.richiede_umano is True
-    assert result.categoria == "escalation"
+    async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+        captured["contesto"] = contesto_documenti
+        return RispostaOutput(risposta="ok", richiede_umano=False, motivo="", categoria="info")
 
+    with patch("src.core.onboarding.vettorizza", return_value=[[0.1] * 384]), \
+         patch("src.core.onboarding.genera_risposta_async", side_effect=fake_risposta):
+        await onboarding.generate_preview(
+            str(sample_org["id"]),
+            PreviewInput(profilo=_profile(), messaggio="Cosa contiene il menu?"),
+            repo,
+        )
+    assert "tartufo nero" in captured["contesto"]
 
-def test_preview_answers_known_hours(tmp_path, monkeypatch):
-    monkeypatch.setattr(onboarding, "PROFILE_STORE", tmp_path / "profiles.json")
-    request = PreviewInput(
-        profilo=_profile(
-            verticale="hotel_bnb",
-            nome_attivita="Casa Lido",
-            orari="Check-in 15:00-20:00",
-        ),
-        messaggio="A che ora posso fare check-in?",
-    )
-
-    result = onboarding.generate_preview(request)
-
-    assert result.richiede_umano is False
-    assert "Check-in 15:00-20:00" in result.risposta
+    captured["contesto"] = ""
+    with patch("src.core.onboarding.vettorizza", return_value=[[0.1] * 384]), \
+         patch("src.core.onboarding.genera_risposta_async", side_effect=fake_risposta):
+        await onboarding.generate_preview(
+            str(other_org["id"]),
+            PreviewInput(profilo=_profile(), messaggio="Cosa contiene il menu?"),
+            repo,
+        )
+    # l'org B non ha documenti: contesto vuoto, nessun leak dal tenant A
+    assert captured["contesto"] == ""

@@ -1596,6 +1596,15 @@ async function caricaInbox() {
     if (!res.ok) return;
     const data = await res.json();
     const tickets = data.tickets || [];
+
+    let team = [];
+    try {
+      const teamRes = await apiFetch(`${API_BASE}/api/inbox/team`);
+      if (teamRes.ok) team = (await teamRes.json()).members || [];
+    } catch (e) {
+      console.error("Impossibile caricare il team:", e);
+    }
+
     inboxCount.textContent = `${tickets.length} ticket`;
     inboxList.innerHTML = "";
     if (!tickets.length) {
@@ -1603,13 +1612,14 @@ async function caricaInbox() {
       inboxEmpty.textContent = "Nessun ticket.";
       return;
     }
-    tickets.forEach((t) => renderInboxCard(inboxList, t));
+    tickets.forEach((t) => renderInboxCard(inboxList, t, team));
   } catch (err) {
     console.error("Impossibile caricare l'inbox:", err);
   }
 }
 
-function renderInboxCard(container, t) {
+function renderInboxCard(container, t, team) {
+  team = team || [];
   const card = document.createElement("div");
   card.className = "inbox-card";
   card.classList.add(`prio-${t.priorita}`);
@@ -1671,6 +1681,46 @@ function renderInboxCard(container, t) {
 
   const actions = document.createElement("div");
   actions.className = "inbox-actions";
+
+  if ((t.ticket_status === "PENDING_STAFF" || t.ticket_status === "CLAIMED") && team.length) {
+    const assignWrap = document.createElement("div");
+    assignWrap.className = "inbox-assign";
+    const assignSel = document.createElement("select");
+    assignSel.className = "inbox-assign-select";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Assegna a…";
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    assignSel.appendChild(placeholder);
+    team.forEach((m) => {
+      const opt = document.createElement("option");
+      opt.value = m.user_id;
+      opt.textContent = `${m.nome || m.email}${m.user_id === t.assigned_to ? " (assegnato)" : ""}`;
+      assignSel.appendChild(opt);
+    });
+    assignSel.addEventListener("change", async () => {
+      if (!assignSel.value) return;
+      assignSel.disabled = true;
+      try {
+        const res = await apiFetch(`${API_BASE}/api/inbox/assign/${encodeURIComponent(t.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assigned_to: assignSel.value, expected_version: t.version }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Impossibile assegnare.");
+        }
+        await caricaInbox();
+      } catch (err) {
+        assignSel.disabled = false;
+        alert(err.message);
+      }
+    });
+    assignWrap.appendChild(assignSel);
+    actions.appendChild(assignWrap);
+  }
 
   if (t.ticket_status === "PENDING_STAFF") {
     const claim = document.createElement("button");

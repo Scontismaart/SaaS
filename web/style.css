@@ -3098,6 +3098,32 @@ body {
   border-color: var(--red);
 }
 
+.inbox-assign-select {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  max-width: 180px;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.inbox-assign-select:hover {
+  color: var(--ink);
+  border-color: rgba(255,255,255,0.25);
+}
+
+.inbox-assign-select option {
+  background: var(--sidebar-bg);
+  color: var(--ink);
+  text-transform: none;
+}
+
 .inbox-reply {
   display: none;
   flex-direction: column;

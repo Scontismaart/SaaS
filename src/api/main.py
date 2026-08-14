@@ -39,8 +39,7 @@ from src.core.documenti.qa_agent import rispondi
 from src.core.documenti.chunking import chunk_testo
 from src.core.onboarding import (
     generate_preview,
-    get_active_profile,
-    get_active_profile_record,
+    get_profile,
     list_verticals,
     save_profile,
 )
@@ -356,7 +355,11 @@ async def _record_ai_usage(repo, organization_id: str | None, task_type: str,
 
 @app.post("/api/messaggio", response_model=RispostaOutput)
 def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_mario"):
-    profilo = get_active_profile() or PROFILI_DEMO.get(profilo_id)
+    # Endpoint demo della dashboard: usa solo i profili demo statici. Il
+    # profilo onboarding configurato dal wizard e' org-scoped e alimenta il
+    # responder WhatsApp reale (organizations.business_profile), non questo
+    # percorso demo.
+    profilo = PROFILI_DEMO.get(profilo_id)
     if profilo is None:
         raise HTTPException(status_code=404, detail=f"Profilo '{profilo_id}' non trovato")
 
@@ -415,24 +418,57 @@ def onboarding_verticali(user: dict = Depends(require_ruolo("owner", "manager", 
 
 
 @app.get("/api/onboarding/profilo")
-def onboarding_profilo(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return {"profilo": get_active_profile_record()}
+async def onboarding_profilo(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Nessuna organizzazione collegata: inserisci API key e Organization ID.",
+        )
+    repo = get_repo(request)
+    return {"profilo": await get_profile(org_id, repo)}
 
 
 @app.post("/api/onboarding/profilo")
-def onboarding_salva_profilo(
+async def onboarding_salva_profilo(
     profilo: OnboardingProfileInput,
+    request: Request,
     user: dict = Depends(require_ruolo("owner", "manager")),
 ):
-    return {"profilo": save_profile(profilo)}
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Nessuna organizzazione collegata: inserisci API key e Organization ID.",
+        )
+    repo = get_repo(request)
+    return {"profilo": await save_profile(org_id, profilo, repo)}
 
 
 @app.post("/api/onboarding/preview", response_model=RispostaOutput)
-def onboarding_preview(
+async def onboarding_preview(
     richiesta: PreviewInput,
+    request: Request,
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
-    return generate_preview(richiesta)
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(
+            status_code=401,
+            detail="Nessuna organizzazione collegata: inserisci API key e Organization ID.",
+        )
+    repo = get_repo(request)
+    billing = await _get_billing_snapshot(repo, org_id)
+    output = await generate_preview(org_id, richiesta, repo, billing=billing)
+    await _record_ai_usage(
+        repo,
+        org_id,
+        "onboarding_preview",
+        richiesta.messaggio,
+        billing,
+        {"verticale": richiesta.profilo.verticale},
+    )
+    return output
 
 
 @app.post("/api/recensione", response_model=RispostaRecensioneOutput)

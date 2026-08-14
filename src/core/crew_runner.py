@@ -67,6 +67,7 @@ async def genera_risposta_async(
     messaggio: MessaggioInput,
     profilo: ProfiloAttivita,
     billing: dict | None = None,
+    contesto_documenti: str = "",
 ) -> RispostaOutput:
     """Versione asincrona di genera_risposta per essere usata da route
     FastAPI che girano in un event loop già attivo.
@@ -80,7 +81,8 @@ async def genera_risposta_async(
     async with LLM_CONCURRENCY_SEM:
         for model in [route.model, *route.fallback_models]:
             try:
-                crew = crea_crew(profilo, messaggio, route_request=route_request, model=model)
+                crew = crea_crew(profilo, messaggio, route_request=route_request, model=model,
+                                 contesto_documenti=contesto_documenti)
                 return _validate_output(await crew.kickoff_async())
             except Exception as exc:
                 errors.append(f"{model}: {exc}")

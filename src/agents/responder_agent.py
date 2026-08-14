@@ -38,7 +38,8 @@ def crea_responder_agent(
     )
 
 
-def crea_responder_task(agent: Agent, messaggio: MessaggioInput, cronologia: list[tuple[str, str]] | None = None) -> Task:
+def crea_responder_task(agent: Agent, messaggio: MessaggioInput, cronologia: list[tuple[str, str]] | None = None,
+                        contesto_documenti: str = "") -> Task:
     """Il task che genera l'output strutturato. output_pydantic forza
     CrewAI a validare/parsare la risposta del modello nello schema
     RispostaOutput — è la nostra rete di sicurezza contro le risposte
@@ -46,6 +47,12 @@ def crea_responder_task(agent: Agent, messaggio: MessaggioInput, cronologia: lis
 
     cronologia_testo = formatta_cronologia(cronologia or [])
     descrizione = f"{cronologia_testo}\n\n" if cronologia_testo else ""
+    if contesto_documenti.strip():
+        descrizione += (
+            "Contesto dai documenti dell'attivita' (usa queste informazioni "
+            "solo se rilevanti per la domanda del cliente, senza inventare nulla):\n"
+            f"{contesto_documenti}\n\n"
+        )
     descrizione += (
         costruisci_user_prompt(messaggio)
         + "\n\nAnalizza il messaggio secondo le regole ricevute e "
@@ -69,12 +76,13 @@ def crea_crew(
     cronologia: list[tuple[str, str]] | None = None,
     route_request: LLMRouteRequest | None = None,
     model: str | None = None,
+    contesto_documenti: str = "",
 ) -> Crew:
     """Assembla agente + task in una Crew pronta per il kickoff.
     Process.sequential è l'unico sensato con un solo task."""
 
     agent = crea_responder_agent(profilo, route_request=route_request, model=model)
-    task = crea_responder_task(agent, messaggio, cronologia)
+    task = crea_responder_task(agent, messaggio, cronologia, contesto_documenti)
 
     return Crew(
         agents=[agent],

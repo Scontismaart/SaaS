@@ -140,7 +140,7 @@ async def test_preview_rag_org_scoped_no_leak(repo, sample_org, other_org):
 
     captured: dict[str, str] = {"contesto": ""}
 
-    async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None):
+    async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
         captured["contesto"] = contesto_documenti
         return RispostaOutput(risposta="ok", richiede_umano=False, motivo="", categoria="info")
 

@@ -4,11 +4,55 @@ prompts.py
 Qui costruiamo il testo che l'agente riceve come istruzioni.
 Tenerlo separato da responder_agent.py significa poter affinare
 il tono/le regole senza toccare la logica CrewAI.
+
+A/B test per tenant (roadmap task 12): PROMPT_VARIANTS contiene le
+varianti (blocchi di istruzioni extra aggiunte in coda al system prompt);
+GUARDRAIL_AB_VARIANTS attiva quelle con cui fare il test e
+assegna_variante() distribuisce i tenant in modo deterministico (hash
+dell'org), cosi' lo stesso locale vede sempre lo stesso stile e la
+variante finisce nei metadata degli usage events per l'analisi.
 """
 
-from src.models.schemas import ProfiloAttivita, MessaggioInput
+import hashlib
+import os
+
+from src.models.schemas import MessaggioInput, ProfiloAttivita
 
 GIRO_MAX = 5
+
+PROMPT_VARIANTS: dict[str, str] = {
+    # Comportamento attuale: nessuna istruzione extra.
+    "control": "",
+    # Variante sperimentale: risposte piu' brevi e dirette.
+    "concise": (
+        "\n\nSTILE RISPOSTE (variante 'concise'):\n"
+        "Rispondi in modo molto conciso: massimo 2-3 frasi, nessun preambolo "
+        "('Gentile cliente', 'La ringrazio per il messaggio'), vai dritta/o "
+        "all'informazione utile. Se basta una frase, scrivi una frase sola."
+    ),
+}
+
+
+def varianti_attive() -> list[str]:
+    """Varianti del test in ordine stabile: 'control' sempre prima (ed
+    sempre presente, e' il baseline); le altre come da env, scartando
+    nomi non definiti in PROMPT_VARIANTS."""
+    raw = os.getenv("GUARDRAIL_AB_VARIANTS", "control")
+    scelte = [v.strip() for v in raw.split(",") if v.strip() in PROMPT_VARIANTS and v.strip()]
+    if "control" not in scelte:
+        scelte.insert(0, "control")
+    return scelte
+
+
+def assegna_variante(organization_id: str) -> str:
+    """Assegnazione A/B deterministica per tenant: hash stabile dell'org,
+    zero storage, zero drift tra chiamate. Con una sola variante attiva
+    ('control') il comportamento resta quello di prima."""
+    scelte = varianti_attive()
+    if len(scelte) == 1:
+        return scelte[0]
+    digest = hashlib.sha256(str(organization_id).encode("utf-8")).digest()
+    return scelte[digest[0] % len(scelte)]
 
 
 def formatta_cronologia(scambi: list[tuple[str, str]]) -> str:
@@ -23,14 +67,15 @@ def formatta_cronologia(scambi: list[tuple[str, str]]) -> str:
     return "\n".join(parti)
 
 
-def costruisci_system_prompt(profilo: ProfiloAttivita) -> str:
+def costruisci_system_prompt(profilo: ProfiloAttivita, variante: str = "control") -> str:
     """Genera le istruzioni di ruolo per l'agente, basate sul profilo
-    dell'attività (nome, tono, orari, regole di escalation)."""
+    dell'attività (nome, tono, orari, regole di escalation). La variante
+    A/B aggiunge un blocco di istruzioni in coda ('control': nessuna)."""
 
     note = "\n".join(f"- {nota}" for nota in profilo.note_speciali)
     servizi = "\n".join(f"- {s}" for s in profilo.servizi_principali)
 
-    return f"""Sei l'assistente virtuale di "{profilo.nome}", un/a {profilo.tipo_attivita}.
+    testo = f"""Sei l'assistente virtuale di "{profilo.nome}", un/a {profilo.tipo_attivita}.
 Rispondi ai messaggi dei clienti (via WhatsApp, Instagram o altri canali di messaggistica) con questo tono: {profilo.tono}.
 
 INFORMAZIONI SULL'ATTIVITÀ:
@@ -72,6 +117,10 @@ Se mancano dati essenziali, imposta richiede_umano=True e spiega cosa manca.
 Le richieste per gruppi oltre 10 persone vanno SEMPRE escalate a umano.
 
 Rispondi SOLO con i campi richiesti dallo schema strutturato, nessun testo extra."""
+    extra = PROMPT_VARIANTS.get(variante, "")
+    if extra:
+        testo += extra
+    return testo
 
 
 def costruisci_user_prompt(messaggio: MessaggioInput) -> str:

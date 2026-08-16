@@ -4,6 +4,7 @@ import uuid
 
 from pydantic import ValidationError
 
+from src.agents.prompts import assegna_variante
 from src.core.billing.suspension import is_org_suspended
 from src.core.bookings import SlotPienoError
 from src.core.crew_runner import genera_risposta_async
@@ -233,11 +234,14 @@ class InboundProcessor:
                 return
 
         heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
+        # Variante A/B del prompt per questo tenant (task 12): deterministica
+        # per org, finisce nei metadata dell'usage event per l'analisi.
+        variante_prompt = assegna_variante(str(org_id))
         try:
             contesto = await recupera_contesto_documenti(str(org_id), text, self.repo, q_emb=q_emb)
             risposta = await genera_risposta_async(
                 messaggio, profilo, billing=state, contesto_documenti=contesto.testo,
-                intent=intent_result.intent,
+                intent=intent_result.intent, variante=variante_prompt,
             )
         finally:
             heartbeat_task.cancel()
@@ -287,6 +291,7 @@ class InboundProcessor:
                     "reason": route.reason,
                     "intent": intent_result.intent,
                     "intent_source": intent_result.source,
+                    "prompt_variant": variante_prompt,
                     "conversation_id": str(msg.get("conversation_id", "")),
                     "message_id": str(msg["id"]),
                 },
@@ -367,7 +372,8 @@ class InboundProcessor:
                 and not (pren and pren.data and pren.ora and pren.coperti)):
             try:
                 await faq_cache.salva_in_cache(
-                    str(org_id), text, risposta.risposta, self.repo, q_emb=q_emb
+                    str(org_id), text, risposta.risposta, self.repo,
+                    q_emb=q_emb, prompt_variant=variante_prompt,
                 )
             except Exception as e:
                 logger.warning("FAQ cache store failed for org %s msg %s: %s", org_id, msg["id"], e)

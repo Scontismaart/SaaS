@@ -1,5 +1,6 @@
 from typing import Any
 
+from src.agents.prompts import assegna_variante
 from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.core.guardrails.validator import applica_guardrail, valida_risposta
@@ -181,6 +182,7 @@ async def generate_preview(
         profilo,
         billing=billing,
         contesto_documenti=contesto.testo,
+        variante=assegna_variante(organization_id),
     )
     esito = valida_risposta(risposta, contesto.chunks, profilo)
     return applica_guardrail(risposta, esito)

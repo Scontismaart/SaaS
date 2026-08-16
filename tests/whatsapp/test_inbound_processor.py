@@ -666,6 +666,78 @@ class TestGuardrailsProcessor:
         mock_repo.faq_cache_store.assert_not_called()
 
 
+class TestFeedbackEmojiProcessor:
+    """Task 12: 👍/👎 dal cliente — feedback sull'ultima risposta AI,
+    mai una risposta generata dall'LLM."""
+
+    async def test_pollice_su_registra_feedback_e_non_genera(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        last_ai_msg = {"id": uuid.uuid4(), "handling_type": "ai_handled"}
+        mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=last_ai_msg)
+        mock_repo.registra_feedback = AsyncMock(
+            return_value={"id": uuid.uuid4(), "value": "up"}
+        )
+        sample_msg["content_text"] = "👍"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.get_last_ai_outbound_message.assert_awaited_once()
+        kwargs = mock_repo.registra_feedback.await_args.kwargs
+        assert kwargs["message_id"] == last_ai_msg["id"]
+        assert kwargs["source"] == "customer_emoji"
+        assert kwargs["value"] == "up"
+        mock_ai.assert_not_called()
+        mock_service.send_whatsapp_message.assert_not_called()
+        mock_service.fast_path_match.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+
+    async def test_pollice_giu_con_skin_tone(self, app_config, mock_repo, mock_service, sample_msg):
+        mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=None)
+        sample_msg["content_text"] = "👎🏽 "
+        processor = InboundProcessor(app_config, mock_repo, mock_service)
+        await processor.process_next_batch()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+
+    async def test_senza_risposta_ai_precedente_resto_gestito(
+        self, app_config, mock_repo, mock_service, sample_msg
+    ):
+        """👍 senza una risposta AI a cui riferirsi: nessun feedback da
+        scrivere, ma il messaggio non deve comunque finire all'LLM."""
+        mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=None)
+        mock_repo.registra_feedback = AsyncMock()
+        sample_msg["content_text"] = "👍"
+
+        with patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.registra_feedback.assert_not_called()
+        mock_ai.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+
+    async def test_testo_con_emoji_non_e_feedback(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """"'grazie 👍' contiene altro testo: flusso normale (AI path)."""
+        sample_msg["content_text"] = "grazie 👍"
+        mock_repo.get_last_ai_outbound_message = AsyncMock()
+        mock_repo.registra_feedback = AsyncMock()
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Prego!", richiede_umano=False, motivo="", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.registra_feedback.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled")
+
+
 class TestRagContestoWhatsapp:
     """Il messaggio WhatsApp reale viaggia ora con il contesto RAG dei
     documenti dell'org (Punto 11)."""

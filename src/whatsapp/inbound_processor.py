@@ -10,6 +10,7 @@ from src.core.bookings import SlotPienoError
 from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.core.guardrails import faq_cache
+from src.core.guardrails.feedback import rileva_feedback_emoji
 from src.core.guardrails.intent_classifier import classifica_intent
 from src.core.guardrails.validator import applica_guardrail, valida_risposta
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
@@ -133,6 +134,14 @@ class InboundProcessor:
                     contact_name=from_number or "cliente",
                     pool=self.repo.pool,
                 )
+            return
+
+        # Feedback 👍/👎 del cliente (task 12): un messaggio che e' solo un
+        # pollice valuta l'ultima risposta AI, non e' una domanda — non deve
+        # generare risposta.
+        feedback_emoji = rileva_feedback_emoji(text)
+        if feedback_emoji:
+            await self._handle_feedback_emoji(org_id, msg, feedback_emoji)
             return
 
         if self.booking_service:
@@ -377,6 +386,31 @@ class InboundProcessor:
                 )
             except Exception as e:
                 logger.warning("FAQ cache store failed for org %s msg %s: %s", org_id, msg["id"], e)
+
+    async def _handle_feedback_emoji(self, org_id, msg, value: str):
+        """Registra il 👍/👎 del cliente sull'ultima risposta AI della
+        conversazione e chiude il messaggio senza generare risposta. Se non
+        c'e' una risposta AI recente il feedback non ha target, ma il
+        messaggio resta comunque gestito (un pollice non va mai all'LLM)."""
+        try:
+            ultimo_ai = await self.repo.get_last_ai_outbound_message(
+                org_id, str(msg["conversation_id"])
+            )
+            if ultimo_ai:
+                await self.repo.registra_feedback(
+                    organization_id=org_id,
+                    message_id=ultimo_ai["id"],
+                    conversation_id=str(msg["conversation_id"]),
+                    source="customer_emoji",
+                    value=value,
+                )
+                logger.info(
+                    "feedback cliente %s su risposta AI %s (org %s)",
+                    value, ultimo_ai["id"], org_id,
+                )
+        except Exception as e:
+            logger.error("Registrazione feedback emoji fallita msg %s: %s", msg["id"], e)
+        await self.repo.try_mark_replied(msg["id"], handling_type="feedback")
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta,
                              handling_type="ai_handled"):

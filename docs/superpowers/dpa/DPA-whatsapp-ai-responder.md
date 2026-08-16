@@ -207,8 +207,9 @@ intelligenza artificiale e, in conformità all'art. 50(1) del Regolamento
 (UE) 2024/1689 ("AI Act"), informa gli utenti finali che stanno interagendo
 con un sistema di IA al momento del primo contatto automatico: la prima
 risposta generata dal sistema verso ciascun contatto inizia con la dicitura
-"Sono l'assistente automatico di [attività], un sistema di intelligenza
-artificiale" e offre la possibilità di richiedere di parlare con una persona
+"Ciao! Sono l'assistente automatico di [attività], un sistema di
+intelligenza artificiale. Scrivi OPERATORE se vuoi parlare con una persona."
+e offre la possibilità di richiedere di parlare con una persona
 ("OPERATORE"), che determina l'instradamento della conversazione a un
 operatore umano del Titolare (HITL).
 

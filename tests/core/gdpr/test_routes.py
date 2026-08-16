@@ -58,6 +58,42 @@ class TestDPA:
         resp = await async_client.get("/api/gdpr/dpa")
         assert resp.status_code == 200
 
+    async def test_dpa_subprocessors_aligned_with_annex_b(self, async_client):
+        resp = await async_client.get("/api/gdpr/dpa")
+        assert resp.status_code == 200
+        text = resp.text
+        assert "Neon" not in text
+        assert "Supabase" in text
+        assert "Meta Platforms (WhatsApp Business API)" in text
+        assert "OpenRouter / underlying LLM providers" in text
+        assert "Google (Business Profile, Calendar)" in text
+        assert "Stripe" in text
+        assert "Sentry" in text
+        assert "SMTP provider" in text
+        assert "Airtable, Softr" in text
+
+    async def test_dpa_retention_matches_real_policy(self, async_client):
+        resp = await async_client.get("/api/gdpr/dpa")
+        assert resp.status_code == 200
+        text = resp.text
+        assert "fixed for all tenants" in text
+        assert "not yet configurable per tenant" in text
+        assert "message_retention_days" not in text
+
+    async def test_dpa_security_reflects_regex_redaction(self, async_client):
+        resp = await async_client.get("/api/gdpr/dpa")
+        assert resp.status_code == 200
+        text = resp.text
+        assert "whitelist" not in text
+        assert "regex" in text
+
+    async def test_dpa_has_breach_notification_and_no_placeholder_contact(self, async_client):
+        resp = await async_client.get("/api/gdpr/dpa")
+        assert resp.status_code == 200
+        text = resp.text
+        assert "48 hours" in text
+        assert "dpo@example.com" not in text
+
 
 # ── Task 8: Consent preference center ──────────────────────────
 

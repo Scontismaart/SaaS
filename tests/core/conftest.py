@@ -119,6 +119,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/031_guardrails_feedback_cache.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/032_search_path_hardening_new_triggers.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

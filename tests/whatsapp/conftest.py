@@ -104,6 +104,16 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/016_org_timezone.sql") as f:
             await conn.execute(f.read())
+        # Da 030_instagram_channel: qui serve solo la colonna canale su
+        # conversations (get_or_create_conversation / claim_inbound_messages).
+        # La tabella instagram_accounts e la sua policy RLS vivono nello
+        # schema completo (tests/core/conftest.py): qui le tabelle della
+        # policy non esistono in questo schema ridotto.
+        await conn.execute("""
+            ALTER TABLE conversations
+                ADD COLUMN IF NOT EXISTS canale TEXT NOT NULL DEFAULT 'whatsapp'
+                CHECK (canale IN ('whatsapp', 'instagram'))
+        """)
     yield pool
     await pool.close()
 

@@ -1645,6 +1645,15 @@ function renderInboxCard(container, t, team) {
   title.className = "inbox-card-title";
   title.textContent = t.phone_number || "Cliente";
 
+  const isInstagram = t.canale === "instagram";
+  if (isInstagram) {
+    const igBadge = document.createElement("span");
+    igBadge.className = "ticket-tag";
+    igBadge.textContent = "Instagram";
+    title.appendChild(document.createTextNode(" "));
+    title.appendChild(igBadge);
+  }
+
   const meta = document.createElement("div");
   meta.className = "inbox-card-meta";
   const assigned = t.assigned_nome ? ` Â· ${t.assigned_nome}` : "";
@@ -1807,16 +1816,17 @@ function renderInboxCard(container, t, team) {
 
   const replyArea = document.createElement("div");
   replyArea.className = "inbox-reply";
+  const canaleLabel = isInstagram ? "Instagram" : "WhatsApp";
   const replyInput = document.createElement("textarea");
   replyInput.className = "inbox-reply-input";
   replyInput.rows = 2;
-  replyInput.placeholder = "Scrivi la risposta da inviare su WhatsApp...";
+  replyInput.placeholder = `Scrivi la risposta da inviare su ${canaleLabel}...`;
   const replyRow = document.createElement("div");
   replyRow.className = "inbox-reply-row";
   const invia = document.createElement("button");
   invia.type = "button";
   invia.className = "inbox-btn primary";
-  invia.textContent = "Invia su WhatsApp";
+  invia.textContent = `Invia su ${canaleLabel}`;
   const replyStatus = document.createElement("p");
   replyStatus.className = "inbox-status";
   invia.addEventListener("click", async () => {
@@ -1838,7 +1848,7 @@ function renderInboxCard(container, t, team) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.detail || "Impossibile inviare.");
       }
-      replyStatus.textContent = "Inviato su WhatsApp.";
+      replyStatus.textContent = `Inviato su ${canaleLabel}.`;
       replyInput.value = "";
     } catch (err) {
       replyStatus.classList.add("error");

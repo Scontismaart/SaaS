@@ -595,7 +595,6 @@ class TestTeamAndAssign:
             )
         assert response.status_code == 409
 
-
 async def _make_api_key_client(app, org_id):
     """Simula il path reale X-API-Key: get_organization_context per source
     api_key NON propaga user_id (dependencies.py). Oggi le route inbox che
@@ -700,3 +699,115 @@ class TestApiKeySenzaUserId:
 
             single = await client.get(f"/api/inbox/tickets/{conv['id']}")
             assert single.status_code == 200
+
+class TestReplyDispatchPerCanale:
+    """Punto 10: la reply manuale di un ticket Instagram esce su Instagram
+    DM, non su WhatsApp."""
+
+    async def _create_instagram_ticket(self, pg_pool):
+        async with pg_pool.acquire() as conn:
+            org = await conn.fetchrow(
+                "INSERT INTO organizations (id, name) VALUES ($1, 'IG Reply Org') RETURNING id",
+                uuid.uuid4()
+            )
+            auth_user = await conn.fetchrow(
+                "INSERT INTO auth.users (email) VALUES ($1) RETURNING id",
+                "ig-reply-staff@test.com"
+            )
+            profile = await conn.fetchrow(
+                "SELECT * FROM user_profiles WHERE auth_user_id = $1", auth_user["id"]
+            )
+            await conn.execute(
+                "INSERT INTO organization_memberships (organization_id, user_id, ruolo) VALUES ($1, $2, 'staff')",
+                org["id"], profile["id"]
+            )
+            # contatto Instagram: phone_number contiene l'IG user id
+            contact = await conn.fetchrow(
+                "INSERT INTO contacts (id, organization_id, phone_number) VALUES ($1, $2, 'ig-user-777') RETURNING id",
+                uuid.uuid4(), org["id"]
+            )
+            conv = await conn.fetchrow(
+                "INSERT INTO conversations (id, organization_id, contact_id, canale) "
+                "VALUES ($1, $2, $3, 'instagram') RETURNING id",
+                uuid.uuid4(), org["id"], contact["id"]
+            )
+        return org, profile, conv
+
+    async def test_reply_on_instagram_ticket_uses_instagram_service(self, async_client):
+        from unittest.mock import patch, MagicMock
+        from src.whatsapp.repository import Repository as WRepo
+        from src.instagram.config import InstagramTenantConfig
+
+        repo, pg_pool, app = async_client
+        org, profile, conv = await self._create_instagram_ticket(pg_pool)
+
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2)
+
+        mock_send = AsyncMock(return_value={"id": "msg-ig-1", "status": "sent"})
+        fake_ig_service = MagicMock()
+        fake_ig_service.send_instagram_message = mock_send
+        fake_config = InstagramTenantConfig(
+            organization_id=org["id"], ig_user_id="17841400000000000", access_token="tok"
+        )
+
+        with patch("src.core.inbox.routes.load_tenant_config", AsyncMock()) as mock_wa_load, \
+             patch("src.whatsapp.service.WhatsAppService.send_whatsapp_message", AsyncMock()) as mock_wa_send, \
+             patch("src.instagram.config.load_instagram_config", AsyncMock(return_value=fake_config)), \
+             patch("src.instagram.service.InstagramService", MagicMock(return_value=fake_ig_service)):
+            async with await _make_client(app, org["id"], profile["id"]) as client:
+                response = await client.post(
+                    f"/api/inbox/reply/{conv['id']}",
+                    json={"content": "Ti confermo il tavolo!", "idempotency_key": "ig-reply-key-1"},
+                )
+
+        assert response.status_code == 200, response.text
+        assert response.json() == {"message_id": "msg-ig-1", "status": "sent"}
+
+        mock_send.assert_awaited_once()
+        kwargs = mock_send.call_args.kwargs
+        assert kwargs["to_ig_id"] == "ig-user-777"
+        assert kwargs["text"] == "Ti confermo il tavolo!"
+        assert kwargs["idempotency_key"] == "ig-reply-key-1"
+        # nessun invio WhatsApp e nessun tentativo di caricare il tenant WA
+        mock_wa_send.assert_not_called()
+        mock_wa_load.assert_not_called()
+
+    async def test_reply_on_instagram_ticket_without_account_409(self, async_client):
+        from unittest.mock import patch, MagicMock
+        from src.whatsapp.repository import Repository as WRepo
+
+        repo, pg_pool, app = async_client
+        org, profile, conv = await self._create_instagram_ticket(pg_pool)
+
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2)
+
+        with patch("src.instagram.config.load_instagram_config", AsyncMock(return_value=None)), \
+             patch("src.instagram.service.InstagramService") as mock_ig_cls:
+            async with await _make_client(app, org["id"], profile["id"]) as client:
+                response = await client.post(
+                    f"/api/inbox/reply/{conv['id']}",
+                    json={"content": "test", "idempotency_key": "ig-reply-key-2"},
+                )
+
+        assert response.status_code == 409
+        mock_ig_cls.assert_not_called()
+
+    async def test_ticket_list_exposes_canale(self, async_client):
+        from src.whatsapp.repository import Repository as WRepo
+
+        repo, pg_pool, app = async_client
+        org, profile, conv = await self._create_instagram_ticket(pg_pool)
+
+        wrepo = WRepo(pool=pg_pool)
+        await wrepo.escalate_to_human(str(conv["id"]))
+
+        async with await _make_client(app, org["id"], profile["id"]) as client:
+            response = await client.get("/api/inbox/tickets")
+            assert response.status_code == 200
+            tickets = response.json()["tickets"]
+            assert len(tickets) == 1
+            assert tickets[0]["canale"] == "instagram"

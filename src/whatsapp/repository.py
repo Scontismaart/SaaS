@@ -110,6 +110,15 @@ class Repository:
                 """, uuid.uuid4(), org_id, phone_number_id, waba_id, encrypted)
             return dict(row)
 
+    async def get_org_business_profile(self, org_id):
+        """Profilo business a livello organizzazione (canale-agnostico):
+        serve quando l'org non ha account WhatsApp (es. solo Instagram)."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT business_profile FROM organizations WHERE id = $1", org_id
+            )
+            return dict(row)["business_profile"] if row else None
+
     async def get_or_create_contact(self, org_id, phone):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -121,15 +130,18 @@ class Repository:
             """, uuid.uuid4(), org_id, phone)
             return dict(row)
 
-    async def get_or_create_conversation(self, org_id, contact_id):
+    async def get_or_create_conversation(self, org_id, contact_id, canale: str = "whatsapp"):
+        """canale: origine della conversazione. L'identita' del contatto
+        (contacts.phone_number) e' gia' channel-agnostic (numero WA o IG id),
+        quindi una conversazione nuova nasce col canale del primo messaggio."""
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                INSERT INTO conversations (id, organization_id, contact_id)
-                VALUES ($1, $2, $3)
+                INSERT INTO conversations (id, organization_id, contact_id, canale)
+                VALUES ($1, $2, $3, $4)
                 ON CONFLICT (organization_id, contact_id) DO UPDATE
                     SET last_message_at = NOW()
                 RETURNING *
-            """, uuid.uuid4(), org_id, contact_id)
+            """, uuid.uuid4(), org_id, contact_id, canale)
             return dict(row)
 
     async def get_contact_prefs(self, org_id, phone):
@@ -253,7 +265,9 @@ class Repository:
                         LIMIT $1
                         FOR UPDATE SKIP LOCKED
                     )
-                    RETURNING *
+                    RETURNING *,
+                        (SELECT c.canale FROM conversations c
+                         WHERE c.id = messages.conversation_id) AS canale
                 """, limit)
                 return [dict(r) for r in rows]
 

@@ -31,7 +31,7 @@ def costruisci_system_prompt(profilo: ProfiloAttivita) -> str:
     servizi = "\n".join(f"- {s}" for s in profilo.servizi_principali)
 
     return f"""Sei l'assistente virtuale di "{profilo.nome}", un/a {profilo.tipo_attivita}.
-Rispondi ai messaggi dei clienti su WhatsApp con questo tono: {profilo.tono}.
+Rispondi ai messaggi dei clienti (via WhatsApp, Instagram o altri canali di messaggistica) con questo tono: {profilo.tono}.
 
 INFORMAZIONI SULL'ATTIVITÀ:
 Orari: {profilo.orari}

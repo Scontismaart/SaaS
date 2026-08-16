@@ -89,6 +89,10 @@ class InboundProcessor:
         org_id = msg["organization_id"]
         text = msg.get("content_text", "")
         content = msg.get("content", {})
+        # Canale di origine della conversazione (join in claim_inbound_messages):
+        # opt-out, OPERATORE, AI, escalation sono channel-agnostic, cambia
+        # solo l'invio della risposta (dispatch in _send_ai_reply).
+        canale = msg.get("canale") or "whatsapp"
 
         opt_out = await self.service.check_opt_out(text)
         if opt_out["is_opt_out"]:
@@ -142,7 +146,12 @@ class InboundProcessor:
             return
 
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-        business_profile_raw = getattr(tenant_config, "business_profile", None) or {}
+        if tenant_config is not None:
+            business_profile_raw = getattr(tenant_config, "business_profile", None) or {}
+        else:
+            # Org senza account WhatsApp (es. solo Instagram): il profilo
+            # business e' a livello organizzazione, non di canale.
+            business_profile_raw = await self.repo.get_org_business_profile(org_id) or {}
 
         fast_reply = await self.service.fast_path_match(text, business_profile_raw)
         if fast_reply:
@@ -158,7 +167,7 @@ class InboundProcessor:
         profilo = _profile_from_dict(business_profile_raw)
         messaggio = MessaggioInput(
             testo=text,
-            canale=CanaleMessaggio.WHATSAPP,
+            canale=CanaleMessaggio(canale),
             id_conversazione=str(msg.get("conversation_id", "")),
         )
 
@@ -186,7 +195,7 @@ class InboundProcessor:
                 "ai_response",
                 quantity=1,
                 metadata={
-                    "channel": "whatsapp",
+                    "channel": canale,
                     "model": route.model,
                     "tier": route.tier,
                     "reason": route.reason,
@@ -203,13 +212,15 @@ class InboundProcessor:
                 try:
                     created = await self.booking_service.create_booking(
                         org_id=org_id,
-                        nome_cliente=pren.nome_cliente or "Cliente WhatsApp",
-                        telefono=pren.telefono or content.get("from", ""),
+                        nome_cliente=pren.nome_cliente or (
+                            "Cliente Instagram" if canale == "instagram" else "Cliente WhatsApp"
+                        ),
+                        telefono=pren.telefono or ("" if canale == "instagram" else content.get("from", "")),
                         data=pren.data,
                         ora=pren.ora,
                         coperti=pren.coperti,
                         note=pren.note,
-                        origine="WhatsApp",
+                        origine="Instagram" if canale == "instagram" else "WhatsApp",
                         richiede_intervento=risposta.richiede_umano,
                         id_conversazione=str(msg.get("conversation_id", "")),
                     )
@@ -250,6 +261,10 @@ class InboundProcessor:
         await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta):
+        canale = msg.get("canale") or "whatsapp"
+        if canale == "instagram":
+            await self._send_instagram_reply(org_id, msg, content, testo_risposta)
+            return
         to_number = content.get("from", "")
         if not to_number or not tenant_config:
             logger.warning("Impossibile inviare risposta AI per messaggio %s: numero o tenant_config mancante", msg["id"])
@@ -268,3 +283,31 @@ class InboundProcessor:
             logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
         except Exception as e:
             logger.error("Invio risposta AI fallito per messaggio %s: %s", msg["id"], e)
+
+    async def _send_instagram_reply(self, org_id, msg, content, testo_risposta):
+        """Invio della risposta AI via Instagram DM. Se l'org non ha un
+        account Instagram collegato (non dovrebbe accadere: il webhook
+        arriva solo per account registrati) logga e non crasha."""
+        to_ig_id = content.get("from", "")
+        if not to_ig_id:
+            logger.warning("Impossibile inviare risposta AI Instagram per messaggio %s: mittente mancante", msg["id"])
+            return
+        from src.instagram.repository import InstagramRepository
+        from src.instagram.config import load_instagram_config
+        from src.instagram.service import InstagramService
+
+        try:
+            ig_config = await load_instagram_config(
+                org_id, self.app_config.encryption_key, InstagramRepository(self.repo.pool)
+            )
+            if not ig_config:
+                logger.warning("Org %s: account Instagram non configurato, risposta AI non inviata", org_id)
+                return
+            await InstagramService(self.repo).send_instagram_message(
+                org_id=org_id,
+                to_ig_id=to_ig_id,
+                text=testo_risposta,
+                ig_config=ig_config,
+            )
+        except Exception as e:
+            logger.error("Invio risposta AI Instagram fallito per messaggio %s: %s", msg["id"], e)

@@ -18,8 +18,9 @@ import logging
 import os
 import asyncpg
 from src.whatsapp.repository import Repository
+from src.core.logging_filter import configure_logging
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+configure_logging(level=logging.INFO)
 logger = logging.getLogger("supervisor")
 
 REAP_TIMEOUT_MINUTES = int(os.getenv("SUPERVISOR_REAP_TIMEOUT_MINUTES", "15"))

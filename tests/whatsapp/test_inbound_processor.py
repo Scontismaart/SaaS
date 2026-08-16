@@ -46,6 +46,8 @@ def mock_repo(sample_msg):
     repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
     repo.update_heartbeat = AsyncMock()
     repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+    repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
     repo.pool = MagicMock()
     return repo
 
@@ -55,6 +57,7 @@ def mock_service():
     service = AsyncMock()
     service.check_opt_out = AsyncMock(return_value={"is_opt_out": False, "confidence": "low"})
     service.fast_path_match = AsyncMock(return_value=None)
+    service.check_human_request = AsyncMock(return_value=False)
     service.MessageUsageExceeded = Exception
     return service
 
@@ -87,6 +90,26 @@ class TestInboundProcessor:
         await processor.process_next_batch()
         mock_service.fast_path_match.assert_not_called()
 
+    async def test_human_request_forces_escalation(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        mock_service.check_human_request = AsyncMock(return_value=True)
+        mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.fast_path_match.assert_not_called()
+        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
+        mock_email.assert_called_once()
+        # Nessuna disclosure sul messaggio di attesa (vedi spec §6)
+        assert mock_service.send_whatsapp_message.await_count == 1
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "assistente automatico" not in body
+        assert body == "Ti passo una persona dello staff, un attimo!"
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+
     async def test_ai_reply_sent_when_no_escalation(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
     ):
@@ -100,7 +123,9 @@ class TestInboundProcessor:
         mock_service.send_whatsapp_message.assert_awaited_once()
         call_kwargs = mock_service.send_whatsapp_message.call_args.kwargs
         assert call_kwargs["to_number"] == "391234567890"
-        assert call_kwargs["payload"]["text"]["body"] == "Siamo aperti dalle 12 alle 15."
+        payload_body = call_kwargs["payload"]["text"]["body"]
+        assert payload_body.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
+        assert payload_body.endswith("Siamo aperti dalle 12 alle 15.")
         mock_repo.escalate_to_human.assert_not_called()
         mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
 
@@ -147,7 +172,23 @@ class TestInboundProcessor:
             processor = InboundProcessor(app_config, mock_repo, mock_service)
             await processor.process_next_batch()
         mock_service.send_whatsapp_message.assert_awaited_once()
-        assert mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"] == "Ciao! Benvenuto."
+        payload_body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert payload_body.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
+        assert payload_body.endswith("Ciao! Benvenuto.")
+
+    async def test_ai_reply_no_disclosure_on_second_contact(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        mock_repo.mark_ai_disclosure_sent = AsyncMock(return_value=False)
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Siamo aperti.", richiede_umano=False, motivo="orari", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        call_kwargs = mock_service.send_whatsapp_message.call_args.kwargs
+        assert call_kwargs["payload"]["text"]["body"] == "Siamo aperti."
 
     async def test_race_condition_only_one_reply_sent(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -245,6 +286,31 @@ class TestInboundProcessor:
         booking_service.handle_reminder_reply.assert_awaited_once()
         mock_service.send_whatsapp_message.assert_not_called()
         mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+
+    async def test_decorate_with_disclosure_first_contact(
+        self, app_config, mock_repo, mock_service
+    ):
+        from src.whatsapp.inbound_processor import decorate_with_disclosure, DISCLOSURE_TEXT
+        mock_repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+        mock_repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
+        out = await decorate_with_disclosure(
+            str(uuid.uuid4()), "391234567890", "Siamo aperti.",
+            mock_repo, nome_attivita="Trattoria Test",
+        )
+        assert out.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
+        assert DISCLOSURE_TEXT.format(nome="Trattoria Test") in out
+        assert out.endswith("Siamo aperti.")
+
+    async def test_decorate_with_disclosure_second_contact(
+        self, app_config, mock_repo, mock_service
+    ):
+        from src.whatsapp.inbound_processor import decorate_with_disclosure
+        mock_repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+        mock_repo.mark_ai_disclosure_sent = AsyncMock(return_value=False)
+        out = await decorate_with_disclosure(
+            str(uuid.uuid4()), "391234567890", "Gia' vista.", mock_repo, nome_attivita="X"
+        )
+        assert out == "Gia' vista."
 
 
 class TestRagContestoWhatsapp:

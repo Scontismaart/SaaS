@@ -1,0 +1,1 @@
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS ai_disclosure_sent_at TIMESTAMPTZ;

@@ -23,6 +23,13 @@ HEARTBEAT_INTERVAL = 30
 # locale a un cliente casuale). La notifica vera va al gestore via email.
 ORG_SUSPENDED_REPLY = "Grazie per averci scritto, ti risponderemo al piu' presto."
 
+DISCLOSURE_TEXT = (
+    "Ciao! Sono l'assistente automatico di {nome}, un sistema di intelligenza "
+    "artificiale. Scrivi OPERATORE se vuoi parlare con una persona."
+)
+
+HUMAN_WAIT_REPLY = "Ti passo una persona dello staff, un attimo!"
+
 
 def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
     raw = raw or {}
@@ -42,6 +49,16 @@ def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> Pro
         servizi_principali=validated.servizi_principali or [],
         note_speciali=validated.note_speciali or [],
     )
+
+
+async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, repo,
+                                   nome_attivita: str = "Attivita") -> str:
+    """Prepende la disclosure AI al primo messaggio automatico per quel contatto."""
+    contact = await repo.get_or_create_contact(org_id, from_number)
+    sent = await repo.mark_ai_disclosure_sent(contact["id"])
+    if not sent:
+        return testo
+    return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
 
 
 class InboundProcessor:
@@ -88,6 +105,23 @@ class InboundProcessor:
             await self.repo.try_mark_replied(msg["id"])
             return
 
+        wants_human = await self.service.check_human_request(text)
+        if wants_human:
+            from_number = content.get("from", "")
+            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
+            if not await self.repo.try_mark_replied(msg["id"]):
+                return
+            await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY)
+            conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
+            if conv:
+                enqueue_escalation(
+                    org_id=str(org_id),
+                    conversation_id=str(msg["conversation_id"]),
+                    contact_name=from_number or "cliente",
+                    pool=self.repo.pool,
+                )
+            return
+
         if self.booking_service:
             booking_reply = await self.booking_service.handle_reminder_reply(
                 org_id, content.get("from", ""), text
@@ -112,8 +146,13 @@ class InboundProcessor:
 
         fast_reply = await self.service.fast_path_match(text, business_profile_raw)
         if fast_reply:
-            if await self.repo.try_mark_replied(msg["id"]):
-                await self._send_ai_reply(org_id, msg, content, tenant_config, fast_reply)
+            from_number = content.get("from", "")
+            nome = (business_profile_raw or {}).get("nome") or "Attivita"
+            replied = await self.repo.try_mark_replied(msg["id"])
+            if not replied:
+                return
+            decorated = await decorate_with_disclosure(org_id, from_number, fast_reply, self.repo, nome_attivita=nome)
+            await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
             return
 
         profilo = _profile_from_dict(business_profile_raw)
@@ -203,8 +242,12 @@ class InboundProcessor:
             await self.repo.try_mark_replied(msg["id"])
             return
 
-        if await self.repo.try_mark_replied(msg["id"]):
-            await self._send_ai_reply(org_id, msg, content, tenant_config, risposta.risposta)
+        replied = await self.repo.try_mark_replied(msg["id"])
+        if not replied:
+            return
+        from_number = content.get("from", "")
+        decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
+        await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta):
         to_number = content.get("from", "")

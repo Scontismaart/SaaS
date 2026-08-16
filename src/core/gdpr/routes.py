@@ -85,6 +85,9 @@ DPA_HTML = """<!DOCTYPE html>
   <li><strong>Export:</strong> <code>GET /api/gdpr/export</code> — JSON export with 15-minute pre-signed URL</li>
   <li><strong>Deletion:</strong> <code>POST /api/gdpr/delete</code> — hard-delete with external service propagation</li>
   <li><strong>Consent:</strong> <code>GET/PUT /api/gdpr/consent-prefs</code> — manage consent preferences</li>
+  <li><strong>AI Transparency:</strong> the first automated reply to each new
+      customer is preceded by a disclosure that the user is interacting with
+      an AI assistant, with the option to be transferred to a human (HITL)</li>
 </ul>
 
 <h2>8. Contact</h2>

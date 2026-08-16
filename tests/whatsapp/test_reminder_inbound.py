@@ -35,6 +35,7 @@ def mock_repo():
 def mock_service():
     service = AsyncMock()
     service.check_opt_out = AsyncMock(return_value={"is_opt_out": False})
+    service.check_human_request = AsyncMock(return_value=False)
     service.fast_path_match = AsyncMock(return_value=None)
     service.MessageUsageExceeded = Exception
     return service

@@ -38,7 +38,7 @@ Non sono teoria: sono i 3 bug/incidenti reali che hanno rallentato questo proget
 | 2 | Multi-tenancy + DB persistente | Fatto — Postgres, RLS, `organization_id` ovunque |
 | 3 | Auth/autorizzazione | Fatto — JWT, ruoli, MFA/AAL2 su path sensibili |
 | 4 | Billing Stripe | Fatto — piani, webhook, sospensione robusta |
-| 5 | GDPR/compliance | Quasi — retention/encryption/.env.example ci sono, manca la bozza DPA (documento legale, non codice) |
+| 5 | GDPR/compliance | Quasi - retention/encryption/.env.example ci sono; bozza DPA in docs/superpowers/dpa/ (validazione legale ancora da fare); disclosure AI Act art. 50 al primo contatto implementata (migration 029, ai_disclosure_sent_at) |
 | 6 | HITL | Parziale — inbox + email escalation ci sono, manca assegnazione a membro team e SLA visibili |
 | 7 | Onboarding wizard | Fatto — migration 028 `onboarding_profiles` org-scoped + RLS, sync di `organizations.business_profile`, preview reale (crew + LLM + contesto RAG pgvector non bloccante), upload documenti nel wizard, auth frontend transitoria (X-API-Key + X-Organization-Id da localStorage) |
 | 8 | Prenotazioni standalone | Parziale — core solido (conferma/rifiuto/no-show/reminder), manca TheFork/Calendly e deposito Stripe |

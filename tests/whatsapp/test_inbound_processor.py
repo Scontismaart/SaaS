@@ -46,6 +46,8 @@ def mock_repo(sample_msg):
     repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
     repo.update_heartbeat = AsyncMock()
     repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+    repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
     repo.pool = MagicMock()
     return repo
 
@@ -100,7 +102,9 @@ class TestInboundProcessor:
         mock_service.send_whatsapp_message.assert_awaited_once()
         call_kwargs = mock_service.send_whatsapp_message.call_args.kwargs
         assert call_kwargs["to_number"] == "391234567890"
-        assert call_kwargs["payload"]["text"]["body"] == "Siamo aperti dalle 12 alle 15."
+        payload_body = call_kwargs["payload"]["text"]["body"]
+        assert payload_body.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
+        assert payload_body.endswith("Siamo aperti dalle 12 alle 15.")
         mock_repo.escalate_to_human.assert_not_called()
         mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
 
@@ -147,7 +151,23 @@ class TestInboundProcessor:
             processor = InboundProcessor(app_config, mock_repo, mock_service)
             await processor.process_next_batch()
         mock_service.send_whatsapp_message.assert_awaited_once()
-        assert mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"] == "Ciao! Benvenuto."
+        payload_body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert payload_body.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
+        assert payload_body.endswith("Ciao! Benvenuto.")
+
+    async def test_ai_reply_no_disclosure_on_second_contact(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        mock_repo.mark_ai_disclosure_sent = AsyncMock(return_value=False)
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Siamo aperti.", richiede_umano=False, motivo="orari", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        call_kwargs = mock_service.send_whatsapp_message.call_args.kwargs
+        assert call_kwargs["payload"]["text"]["body"] == "Siamo aperti."
 
     async def test_race_condition_only_one_reply_sent(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg

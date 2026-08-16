@@ -129,8 +129,13 @@ class InboundProcessor:
 
         fast_reply = await self.service.fast_path_match(text, business_profile_raw)
         if fast_reply:
-            if await self.repo.try_mark_replied(msg["id"]):
-                await self._send_ai_reply(org_id, msg, content, tenant_config, fast_reply)
+            from_number = content.get("from", "")
+            nome = (business_profile_raw or {}).get("nome") or "Attivita"
+            replied = await self.repo.try_mark_replied(msg["id"])
+            if not replied:
+                return
+            decorated = await decorate_with_disclosure(org_id, from_number, fast_reply, self.repo, nome_attivita=nome)
+            await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
             return
 
         profilo = _profile_from_dict(business_profile_raw)
@@ -220,8 +225,12 @@ class InboundProcessor:
             await self.repo.try_mark_replied(msg["id"])
             return
 
-        if await self.repo.try_mark_replied(msg["id"]):
-            await self._send_ai_reply(org_id, msg, content, tenant_config, risposta.risposta)
+        replied = await self.repo.try_mark_replied(msg["id"])
+        if not replied:
+            return
+        from_number = content.get("from", "")
+        decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
+        await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta):
         to_number = content.get("from", "")

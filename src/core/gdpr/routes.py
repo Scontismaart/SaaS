@@ -57,11 +57,16 @@ DPA_HTML = """<!DOCTYPE html>
 <h2>4. Sub-processors</h2>
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%">
 <tr><th>Sub-processor</th><th>Service</th><th>Data Location</th></tr>
-<tr><td>Meta (WhatsApp Cloud API)</td><td>Message delivery</td><td>USA (Oregon, Virginia), Ireland (Dublin)</td></tr>
-<tr><td>OpenRouter / LLM providers</td><td>AI response generation</td><td>USA (Oregon, Iowa), EU (Frankfurt, Stockholm)</td></tr>
-<tr><td>Neon (Postgres hosting)</td><td>Database</td><td>USA (Ohio, Oregon), EU (Frankfurt)</td></tr>
-<tr><td>Stripe</td><td>Payment processing</td><td>USA (multiple regions), Ireland (Dublin)</td></tr>
+<tr><td>Meta Platforms (WhatsApp Business API)</td><td>Message delivery</td><td>USA — verify transfer mechanism</td></tr>
+<tr><td>OpenRouter / underlying LLM providers</td><td>AI response generation</td><td>USA/variable — verify transfer mechanism</td></tr>
+<tr><td>Google (Business Profile, Calendar)</td><td>Reviews, calendar sync</td><td>USA — verify transfer mechanism</td></tr>
+<tr><td>Stripe</td><td>Payment processing, subscriptions, booking deposits</td><td>USA/EU per Stripe configuration</td></tr>
+<tr><td>Supabase</td><td>Authentication, database hosting</td><td>Depends on the Supabase project region</td></tr>
+<tr><td>Sentry</td><td>Error monitoring (active only if configured)</td><td>USA/EU per configuration</td></tr>
+<tr><td>SMTP provider</td><td>Escalation and account-suspension email notifications</td><td>Per configured SMTP provider</td></tr>
+<tr><td>Airtable, Softr</td><td>GDPR deletion propagation only</td><td>To be verified</td></tr>
 </table>
+<p>Transfer mechanisms (Standard Contractual Clauses and/or applicable adequacy decisions such as the EU-U.S. Data Privacy Framework) apply where data is transferred outside the EEA, as available for each provider at the time of signing.</p>
 
 <h2>5. Data Retention</h2>
 <p>Messages and conversation data are retained for a maximum of 90 days:</p>
@@ -69,15 +74,16 @@ DPA_HTML = """<!DOCTYPE html>
   <li>Day 60: automatic soft-delete (data invisible to the application)</li>
   <li>Day 90: permanent physical deletion</li>
 </ul>
-<p>Retention periods are configurable per tenant via the <code>message_retention_days</code> setting.</p>
+<p>This policy is currently fixed for all tenants and is not yet configurable per tenant.</p>
 
 <h2>6. Security Measures</h2>
 <ul>
   <li>Encryption at rest: WhatsApp access tokens encrypted with Fernet (AES-128)</li>
-  <li>PII redaction: strict whitelist-based log filtering</li>
+  <li>PII redaction: automatic masking of recognized personal data patterns (international phone numbers, email addresses) via regex in all application logs</li>
   <li>Access control: role-based authentication (owner, manager, staff)</li>
   <li>Soft-delete: data recoverable within 30-day grace period</li>
 </ul>
+<p>Note: log redaction is based on pattern recognition and is a reasonable mitigation, not an absolute guarantee: it does not cover numeric identifiers without an international prefix, nor personal data in free-text fields that do not follow a recognizable format.</p>
 
 <h2>7. Data Subject Rights</h2>
 <p>Controllers may exercise data subject rights via the GDPR API:</p>
@@ -90,8 +96,15 @@ DPA_HTML = """<!DOCTYPE html>
       an AI assistant, with the option to be transferred to a human (HITL)</li>
 </ul>
 
-<h2>8. Contact</h2>
-<p>For DPA-related inquiries, contact the Data Protection Officer at: <strong>dpo@example.com</strong></p>
+<h2>8. Data Breach Notification</h2>
+<p>Without undue delay and in any case within 48 hours of becoming aware of a
+personal data breach affecting the Controller's data, the Processor notifies
+the Controller, providing the information available to enable the Controller
+to comply with its notification obligations under Article 33 GDPR and, where
+applicable, communication to data subjects under Article 34 GDPR.</p>
+
+<h2>9. Contact</h2>
+<p>For data protection inquiries, contact the provider through the service support channels.</p>
 </body>
 </html>"""
 

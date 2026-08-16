@@ -12,10 +12,11 @@ from src.models.schemas import RispostaOutput
 
 @pytest.fixture(autouse=True)
 def _no_real_embedding_model():
-    """Il path AI ora recupera il contesto RAG prima della risposta: il
+    """Il path AI ora calcola embedding per cache FAQ e retrieval RAG: il
     vettorizza reale carica il modello MiniLM (download in CI). Lo
     congeliamo con un embedding finto per tutti i test del processor."""
-    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]):
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]), \
+         patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]):
         yield
 
 
@@ -48,6 +49,10 @@ def mock_repo(sample_msg):
     repo.get_org_subscription_state = AsyncMock(return_value=None)
     repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
     repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
+    # Cache FAQ: default NESSUN hit (AsyncMock nudo restituirebbe un oggetto
+    # truthy che verrebbe scambiato per una risposta in cache).
+    repo.faq_cache_lookup = AsyncMock(return_value=None)
+    repo.faq_cache_store = AsyncMock(return_value=None)
     repo.pool = MagicMock()
     return repo
 
@@ -108,7 +113,7 @@ class TestInboundProcessor:
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert "assistente automatico" not in body
         assert body == "Ti passo una persona dello staff, un attimo!"
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
 
     async def test_ai_reply_sent_when_no_escalation(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -127,7 +132,7 @@ class TestInboundProcessor:
         assert payload_body.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
         assert payload_body.endswith("Siamo aperti dalle 12 alle 15.")
         mock_repo.escalate_to_human.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled")
 
     async def test_escalation_when_ai_requires_human(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -144,8 +149,13 @@ class TestInboundProcessor:
 
         mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
         mock_email.assert_called_once()
-        mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        # Il responder ha escalationato senza lasciare testo: il guardrail
+        # "risposta_vuota" lo sostituisce col fallback staff, che ora viene
+        # davvero inviato al cliente (prima: silenzio + solo email al titolare).
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "ti metto in contatto con lo staff" in body
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
 
     async def test_escalation_survives_email_failure(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -161,7 +171,7 @@ class TestInboundProcessor:
             await processor.process_next_batch()
 
         mock_repo.escalate_to_human.assert_awaited_once()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
         mock_email.assert_called_once()
 
     async def test_fast_path_reply_also_sent_via_whatsapp(
@@ -207,7 +217,7 @@ class TestInboundProcessor:
 
         call_count = 0
 
-        async def try_mark_race(message_id):
+        async def try_mark_race(message_id, handling_type=None):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
@@ -247,7 +257,7 @@ class TestInboundProcessor:
         mock_service.send_whatsapp_message.assert_awaited_once()
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert body == "Grazie per averci scritto, ti risponderemo al piu' presto."
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="suspended")
 
     async def test_suspended_org_blocks_new_booking(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -285,7 +295,7 @@ class TestInboundProcessor:
 
         booking_service.handle_reminder_reply.assert_awaited_once()
         mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="automation")
 
     async def test_decorate_with_disclosure_first_contact(
         self, app_config, mock_repo, mock_service
@@ -415,7 +425,317 @@ class TestInstagramDispatch:
 
         mock_ig_cls.assert_not_called()
         mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(ig_msg["id"])
+        mock_repo.try_mark_replied.assert_awaited_with(ig_msg["id"], handling_type="ai_handled")
+
+
+class TestGuardrailsProcessor:
+    """Task 12: guardrail post-LLM nel path WhatsApp reale."""
+
+    async def test_prezzo_allucinato_bloccato_e_escalated(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """La risposta cita 25 euro ma il RAG dice 15: block + fallback staff
+        + escalation HITL + usage event guardrail_block. Il fallback arriva
+        comunque al cliente (non lo lasciamo in silenzio)."""
+        mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
+        mock_repo.record_usage = AsyncMock()
+        mock_repo.search_similar = AsyncMock(return_value=[
+            {"id": uuid.uuid4(), "content": "Il menu' del giorno costa 15 euro",
+             "metadata": {}, "document_name": "menu.pdf"},
+        ])
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Il menu' del giorno costa 25 euro!", richiede_umano=False, motivo="info", categoria="info",
+             ))), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        # fallback staff inviato al cliente (con disclosure al primo contatto)
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "ti metto in contatto con lo staff" in body
+        assert "25 euro" not in body
+        # escalation + email al titolare
+        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
+        mock_email.assert_called_once()
+        # usage event del guardrail per iterare sui prompt
+        assert mock_repo.record_usage.await_count >= 1
+        guardrail_calls = [
+            c for c in mock_repo.record_usage.await_args_list
+            if c.args[1] == "guardrail_block"
+        ]
+        assert guardrail_calls, "manca l'usage event guardrail_block"
+        assert guardrail_calls[0].kwargs["metadata"]["motivo"] == "prezzo_non_verificato"
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+
+    async def test_prezzo_verificato_dal_rag_passa_e_viene_inviato(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        mock_repo.search_similar = AsyncMock(return_value=[
+            {"id": uuid.uuid4(), "content": "Il menu' del giorno costa 15 euro",
+             "metadata": {}, "document_name": "menu.pdf"},
+        ])
+        mock_repo.escalate_to_human = AsyncMock()
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Il menu' del giorno costa 15 euro, ti aspettiamo!", richiede_umano=False, motivo="info", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "15 euro" in body
+        mock_repo.escalate_to_human.assert_not_called()
+
+    async def test_risposta_lunga_tagliata_prima_dell_invio(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        testo_lungo = "Siamo aperti tutti i giorni con moltissima disponibilita'. " * 20
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta=testo_lungo, richiede_umano=False, motivo="info", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        # disclosure a parte, il corpo AI e' stato accorciato dal guardrail
+        assert len(body) < len(testo_lungo)
+
+    async def test_richiede_umano_con_testo_invia_messaggio_attesa(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Il responder che escalationa lasciando un messaggio di attesa ora
+        lo invia davvero (prima veniva scartato): il cliente non resta senza
+        risposta mentre lo staff prende in carico il ticket."""
+        mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Ti passo qualcuno dello staff per le allergie, un attimo!",
+                 richiede_umano=True, motivo="allergie", categoria="reclamo",
+             ))), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "qualcuno dello staff" in body
+        mock_repo.escalate_to_human.assert_awaited_once()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+
+    async def test_outbound_ai_marca_handling_type_ai_handled(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Il messaggio outbound generato dall'AI viene persistito con
+        handling_type='ai_handled' (serve a event_log/trigger e ai pulsanti
+        di feedback staff nel thread inbox)."""
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Siamo aperti dalle 12 alle 15.", richiede_umano=False, motivo="orari", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        kwargs = mock_service.send_whatsapp_message.call_args.kwargs
+        assert kwargs["handling_type"] == "ai_handled"
+
+
+    async def test_intent_classificato_passato_al_responder_e_al_logging(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Il classificatore (task 12) gira prima del responder: l'intent
+        arriva sia alla crew (routing del modello) sia nei metadata
+        dell'usage event, per iterare sui prompt."""
+        mock_repo.record_usage = AsyncMock()
+        mock_repo.search_similar = AsyncMock(return_value=[
+            {"content": "Il piatto costa 12 euro", "document_name": "menu.pdf"}
+        ])
+        captured = {}
+
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
+            captured["intent"] = intent
+            captured["variante"] = variante
+            return RispostaOutput(
+                risposta="Il piatto costa 12 euro.", richiede_umano=False, motivo="", categoria="info",
+            )
+
+        sample_msg["content_text"] = "Quanto costa il piatto del giorno?"
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", side_effect=fake_risposta):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        assert captured["intent"] == "faq"
+        ai_calls = [
+            c for c in mock_repo.record_usage.await_args_list
+            if c.args[1] == "ai_response"
+        ]
+        assert ai_calls, "manca l'usage event ai_response"
+        metadata = ai_calls[0].kwargs["metadata"]
+        assert metadata["intent"] == "faq"
+        assert metadata["intent_source"] == "heuristic"
+        # A/B: la variante del prompt (default 'control') finisce nei metadata
+        assert metadata["prompt_variant"] == "control"
+        assert captured["variante"] == "control"
+        # keyword sicura: il modello economico non viene speso
+        intent_calls = [
+            c for c in mock_repo.record_usage.await_args_list
+            if c.args[1] == "intent_classification"
+        ]
+        assert intent_calls == []
+
+
+    async def test_cache_hit_salta_il_responder(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Domanda FAQ gia' in cache: risposta servita senza chiamare l'LLM,
+        con usage event cache_hit e handling ai_handled."""
+        mock_repo.record_usage = AsyncMock()
+        mock_repo.faq_cache_lookup = AsyncMock(return_value={
+            "answer_text": "Siamo aperti dalle 12 alle 15.", "hit_count": 3,
+        })
+        sample_msg["content_text"] = "A che ora aprite la sera?"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai, \
+             patch("src.core.guardrails.faq_cache.cerca_in_cache", AsyncMock(return_value="Siamo aperti dalle 12 alle 15.")) as mock_cerca:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_cerca.assert_awaited_once()
+        mock_ai.assert_not_called()
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "Siamo aperti dalle 12 alle 15." in body
+        cache_calls = [
+            c for c in mock_repo.record_usage.await_args_list
+            if c.args[1] == "cache_hit"
+        ]
+        assert cache_calls, "manca l'usage event cache_hit"
+
+    async def test_risposta_faq_validata_restituita_va_in_cache(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Dopo una risposta FAQ inviata col guardrail ok, la coppia
+        domanda/risposta finisce in cache per i prossimi clienti."""
+        mock_repo.record_usage = AsyncMock()
+        mock_repo.search_similar = AsyncMock(return_value=[])
+        mock_repo.faq_cache_store = AsyncMock(return_value={"id": uuid.uuid4()})
+        sample_msg["content_text"] = "A che ora aprite la sera?"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]), \
+             patch("src.core.guardrails.faq_cache.cerca_in_cache", AsyncMock(return_value=None)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Siamo aperti dalle 12 alle 15.", richiede_umano=False, motivo="orari", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.faq_cache_store.assert_awaited_once()
+        args = mock_repo.faq_cache_store.await_args.args
+        assert "aprite" in args[1].lower()
+        assert args[2] == "Siamo aperti dalle 12 alle 15."
+
+    async def test_niente_cache_se_escalation(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Una risposta che finisce in escalation non inquina la cache."""
+        mock_repo.search_similar = AsyncMock(return_value=[])
+        mock_repo.faq_cache_store = AsyncMock()
+        mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"]})
+        sample_msg["content_text"] = "A che ora aprite la sera?"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]), \
+             patch("src.core.guardrails.faq_cache.cerca_in_cache", AsyncMock(return_value=None)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Ti passo lo staff", richiede_umano=True, motivo="reclamo", categoria="reclamo",
+             ))), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.faq_cache_store.assert_not_called()
+
+
+class TestFeedbackEmojiProcessor:
+    """Task 12: 👍/👎 dal cliente — feedback sull'ultima risposta AI,
+    mai una risposta generata dall'LLM."""
+
+    async def test_pollice_su_registra_feedback_e_non_genera(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        last_ai_msg = {"id": uuid.uuid4(), "handling_type": "ai_handled"}
+        mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=last_ai_msg)
+        mock_repo.registra_feedback = AsyncMock(
+            return_value={"id": uuid.uuid4(), "value": "up"}
+        )
+        sample_msg["content_text"] = "👍"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.get_last_ai_outbound_message.assert_awaited_once()
+        kwargs = mock_repo.registra_feedback.await_args.kwargs
+        assert kwargs["message_id"] == last_ai_msg["id"]
+        assert kwargs["source"] == "customer_emoji"
+        assert kwargs["value"] == "up"
+        mock_ai.assert_not_called()
+        mock_service.send_whatsapp_message.assert_not_called()
+        mock_service.fast_path_match.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+
+    async def test_pollice_giu_con_skin_tone(self, app_config, mock_repo, mock_service, sample_msg):
+        mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=None)
+        sample_msg["content_text"] = "👎🏽 "
+        processor = InboundProcessor(app_config, mock_repo, mock_service)
+        await processor.process_next_batch()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+
+    async def test_senza_risposta_ai_precedente_resto_gestito(
+        self, app_config, mock_repo, mock_service, sample_msg
+    ):
+        """👍 senza una risposta AI a cui riferirsi: nessun feedback da
+        scrivere, ma il messaggio non deve comunque finire all'LLM."""
+        mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=None)
+        mock_repo.registra_feedback = AsyncMock()
+        sample_msg["content_text"] = "👍"
+
+        with patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.registra_feedback.assert_not_called()
+        mock_ai.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+
+    async def test_testo_con_emoji_non_e_feedback(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """"'grazie 👍' contiene altro testo: flusso normale (AI path)."""
+        sample_msg["content_text"] = "grazie 👍"
+        mock_repo.get_last_ai_outbound_message = AsyncMock()
+        mock_repo.registra_feedback = AsyncMock()
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Prego!", richiede_umano=False, motivo="", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.registra_feedback.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled")
 
 
 class TestRagContestoWhatsapp:
@@ -433,7 +753,7 @@ class TestRagContestoWhatsapp:
         ])
         captured = {}
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Di giorno siamo aperti dalle 12:00.",
@@ -479,7 +799,7 @@ class TestRagContestoWhatsapp:
 
         mock_repo.search_similar = AsyncMock(side_effect=broken_search)
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Siamo aperti dalle 12:00.",
@@ -510,7 +830,7 @@ class TestRagContestoWhatsapp:
 
         mock_repo.search_similar = AsyncMock(side_effect=hanging_search)
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Siamo aperti dalle 12:00.",
@@ -521,8 +841,8 @@ class TestRagContestoWhatsapp:
         # iniettiamo un timeout breve solo nel test per renderlo veloce.
         real_retrieval = recupera_contesto_documenti
 
-        async def fast_retrieval(org_id, testo, repo):
-            return await real_retrieval(org_id, testo, repo, timeout=0.05)
+        async def fast_retrieval(org_id, testo, repo, q_emb=None):
+            return await real_retrieval(org_id, testo, repo, q_emb=q_emb, timeout=0.05)
 
         start = time.monotonic()
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
@@ -543,7 +863,7 @@ class TestRagContestoWhatsapp:
         mock_repo.search_similar = AsyncMock(return_value=[])
         captured = {}
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti=""):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Grazie della richiesta.",

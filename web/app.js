@@ -1905,6 +1905,66 @@ function chiudiThreadConversazione() {
   if (threadModal) threadModal.hidden = true;
 }
 
+/* ---------- Feedback 👍/👎 sulle risposte AI (task 12) ---------- */
+
+function creaControlliFeedback(messaggio) {
+  const wrap = document.createElement("div");
+  wrap.className = "thread-feedback";
+
+  const btnUp = document.createElement("button");
+  btnUp.type = "button";
+  btnUp.className = "thread-feedback-btn";
+  btnUp.textContent = "👍";
+  btnUp.title = "Risposta utile";
+
+  const btnDown = document.createElement("button");
+  btnDown.type = "button";
+  btnDown.className = "thread-feedback-btn";
+  btnDown.textContent = "👎";
+  btnDown.title = "Risposta da migliorare";
+
+  // Stato corrente: feedback del cliente (emoji) + voti staff.
+  const cliente = messaggio.feedback_customer;
+  const upStaff = messaggio.feedback_staff_up || 0;
+  const downStaff = messaggio.feedback_staff_down || 0;
+  if (cliente === "up") btnUp.classList.add("customer");
+  if (cliente === "down") btnDown.classList.add("customer");
+
+  const count = document.createElement("span");
+  count.className = "thread-feedback-count";
+  count.textContent = `${upStaff}/${downStaff}`;
+
+  const invia = async (value, premuto) => {
+    btnUp.disabled = true;
+    btnDown.disabled = true;
+    try {
+      const res = await apiFetch(
+        `${API_BASE}/api/inbox/messages/${encodeURIComponent(messaggio.id)}/feedback`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value }),
+        },
+      );
+      if (!res.ok) throw new Error(`Errore ${res.status}`);
+      premuto.classList.add("selected");
+      if (value === "up") count.textContent = `${upStaff + 1}/${downStaff}`;
+      else count.textContent = `${upStaff}/${downStaff + 1}`;
+    } catch (err) {
+      console.error("Feedback non inviato:", err);
+      btnUp.disabled = false;
+      btnDown.disabled = false;
+    }
+  };
+  btnUp.addEventListener("click", () => invia("up", btnUp));
+  btnDown.addEventListener("click", () => invia("down", btnDown));
+
+  wrap.appendChild(btnUp);
+  wrap.appendChild(btnDown);
+  wrap.appendChild(count);
+  return wrap;
+}
+
 async function apriThreadConversazione(ticket) {
   if (!threadModal || !threadMsgs) return;
   threadModalTitle.textContent = `Conversazione — ${ticket.phone_number || "cliente"}`;
@@ -1933,6 +1993,11 @@ async function apriThreadConversazione(ticket) {
       meta.textContent = m.direction === "outbound" ? `${quando} · ${status}` : quando;
       bubble.appendChild(text);
       bubble.appendChild(meta);
+      // Feedback 👍/👎 sulle risposte generate dall'AI (task 12 guardrails):
+      // aiuta a capire quali prompt funzionano meglio.
+      if (m.direction === "outbound" && m.handling_type === "ai_handled") {
+        bubble.appendChild(creaControlliFeedback(m));
+      }
       threadMsgs.appendChild(bubble);
     });
     threadFoot.textContent = `${data.total} messaggi nello storico`;

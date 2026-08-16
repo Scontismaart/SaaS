@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -89,8 +89,21 @@ class MessageListItem(BaseModel):
     status: str
     handling_type: Optional[str] = None
     created_at: str
+    feedback_customer: Optional[str] = None
+    feedback_staff_up: int = 0
+    feedback_staff_down: int = 0
 
 
 class MessageListResponse(BaseModel):
     messages: list[MessageListItem]
     total: int
+
+
+class FeedbackRequest(BaseModel):
+    value: Literal["up", "down"]
+
+
+class FeedbackResponse(BaseModel):
+    message_id: str
+    value: str
+    source: str = "staff_ui"

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import uuid
@@ -271,17 +272,21 @@ class Repository:
                 """, limit)
                 return [dict(r) for r in rows]
 
-    async def try_mark_replied(self, message_id):
+    async def try_mark_replied(self, message_id, handling_type: str | None = None):
         """Atomically marks a message as replied+handled. Returns the updated
         row if this call won the race, or None if another worker already marked
-        it. Call BEFORE sending the WhatsApp reply so only one worker proceeds."""
+        it. Call BEFORE sending the WhatsApp reply so only one worker proceeds.
+        handling_type va al trigger event_log: 'ai_handled' (AI gestita),
+        'escalated' (staff), 'automation' (fast path/reminder), 'opt_out',
+        'suspended'."""
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 UPDATE messages SET replied_at = NOW(), status = 'handled',
+                    handling_type = COALESCE($2, handling_type),
                     updated_at = NOW()
                 WHERE id = $1 AND replied_at IS NULL
                 RETURNING *
-            """, message_id)
+            """, message_id, handling_type)
             return dict(row) if row else None
 
     async def update_heartbeat(self, message_id):
@@ -523,6 +528,126 @@ class Repository:
                     r["metadata"] = json.loads(r["metadata"])
             return results
 
+    # ── Guardrails: cache FAQ semantica (task 12) ───────────────
+
+    @staticmethod
+    def _vec_str(embedding: list) -> str:
+        return "[" + ",".join(str(v) for v in embedding) + "]"
+
+    async def faq_cache_lookup(self, organization_id: str, embedding: list,
+                               max_distance: float = 0.08) -> dict | None:
+        """Risposta in cache per la domanda piu' simile (distanza cosine
+        <= max_distance, non scaduta). Aggiorna hit_count/last_used_at
+        atomicamente sulla riga vincente. None se nessun match. Il filtro
+        organization_id nella query e' la barriera tra tenant, come per il
+        retrieval RAG."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE faq_cache SET hit_count = hit_count + 1, last_used_at = NOW()
+                WHERE id = (
+                    SELECT id FROM faq_cache
+                    WHERE organization_id = $1::uuid
+                      AND expires_at > NOW()
+                      AND (question_embedding <=> $2::vector) <= $3
+                    ORDER BY question_embedding <=> $2::vector
+                    LIMIT 1
+                )
+                RETURNING *
+            """, organization_id, self._vec_str(embedding), max_distance)
+            return dict(row) if row else None
+
+    async def faq_cache_store(self, organization_id: str, question_text: str,
+                              answer_text: str, embedding: list,
+                              prompt_variant: str = "control",
+                              ttl_hours: int = 72) -> dict:
+        """Salva una coppia domanda/risposta con il suo embedding. La stessa
+        domanda (testo normalizzato) aggiorna risposta/embedding/scadenza."""
+        normalized = " ".join(question_text.lower().split())
+        question_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                INSERT INTO faq_cache (id, organization_id, question_text, question_hash,
+                                       question_embedding, answer_text, prompt_variant, expires_at)
+                VALUES ($1, $2::uuid, $3, $4, $5::vector, $6, $7,
+                        NOW() + ($8 || ' hours')::interval)
+                ON CONFLICT (organization_id, question_hash)
+                    DO UPDATE SET
+                        answer_text = EXCLUDED.answer_text,
+                        question_embedding = EXCLUDED.question_embedding,
+                        prompt_variant = EXCLUDED.prompt_variant,
+                        expires_at = EXCLUDED.expires_at
+                RETURNING *
+            """, uuid.uuid4(), organization_id, question_text, question_hash,
+                self._vec_str(embedding), answer_text, prompt_variant, str(ttl_hours))
+            return dict(row)
+
+    async def faq_cache_invalidate(self, organization_id: str) -> int:
+        """Svuota la cache dell'org (es. nuovo menu caricato: i prezzi
+        potrebbero essere cambiati). Ritorna le righe eliminate."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM faq_cache WHERE organization_id = $1::uuid",
+                organization_id,
+            )
+            return int(result.split()[-1]) if result else 0
+
+    # ── Guardrails: feedback 👍/👎 sulle risposte (task 12) ──────
+
+    async def get_last_ai_outbound_message(self, organization_id,
+                                           conversation_id) -> dict | None:
+        """Ultima risposta AI (handling_type='ai_handled') inviata nella
+        conversazione: e' il target naturale del feedback emoji cliente."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM messages
+                WHERE organization_id = $1::uuid
+                  AND conversation_id = $2::uuid
+                  AND direction = 'outbound'
+                  AND handling_type = 'ai_handled'
+                  AND deleted_at IS NULL
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, organization_id, conversation_id)
+            return dict(row) if row else None
+
+    async def get_message_org_scoped(self, organization_id, message_id) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM messages
+                WHERE id = $2::uuid AND organization_id = $1::uuid
+                  AND deleted_at IS NULL
+            """, organization_id, message_id)
+            return dict(row) if row else None
+
+    async def registra_feedback(self, organization_id, message_id, conversation_id,
+                                source: str, value: str,
+                                created_by_user_id=None) -> dict:
+        """Upsert del feedback su una risposta. Cliente: un solo feedback
+        per messaggio, l'ultima emoji vince. Staff: uno per operatore
+        (unique parziali della migration 031)."""
+        async with self.pool.acquire() as conn:
+            if source == "customer_emoji":
+                row = await conn.fetchrow("""
+                    INSERT INTO message_feedback
+                        (id, organization_id, message_id, conversation_id, source, value)
+                    VALUES ($1, $2::uuid, $3::uuid, $4::uuid, 'customer_emoji', $5)
+                    ON CONFLICT (message_id) WHERE source = 'customer_emoji'
+                        DO UPDATE SET value = EXCLUDED.value
+                    RETURNING *
+                """, uuid.uuid4(), organization_id, message_id, conversation_id, value)
+            else:
+                row = await conn.fetchrow("""
+                    INSERT INTO message_feedback
+                        (id, organization_id, message_id, conversation_id, source,
+                         value, created_by_user_id)
+                    VALUES ($1, $2::uuid, $3::uuid, $4::uuid, 'staff_ui', $5, $6::uuid)
+                    ON CONFLICT (message_id, created_by_user_id) WHERE source = 'staff_ui'
+                        DO UPDATE SET value = EXCLUDED.value
+                    RETURNING *
+                """, uuid.uuid4(), organization_id, message_id, conversation_id,
+                    value, created_by_user_id)
+            return dict(row)
+
     # ── HITL: Ticket State Machine ──────────────────────────────
 
     async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None) -> list[dict]:
@@ -614,18 +739,34 @@ class Repository:
         self, org_id: str, conversation_id: str, limit: int = 50, offset: int = 0
     ) -> list[dict]:
         """Storico messaggi di una conversazione per l'inbox HITL: ordine
-        cronologico ASC, soft-delete escluse (GDPR). total via window
+        cronologico ASC, soft-delete escluse (GDPR), feedback 👍/👎 per
+        messaggio (cliente + conteggi staff, task 12). total via window
         function per la paginazione lato UI."""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                """SELECT id, direction, message_type, content_text, status,
-                          handling_type, created_at,
+                """SELECT m.id, m.direction, m.message_type, m.content_text, m.status,
+                          m.handling_type, m.created_at,
+                          fc.feedback_customer,
+                          COALESCE(fs.up, 0) AS feedback_staff_up,
+                          COALESCE(fs.down, 0) AS feedback_staff_down,
                           COUNT(*) OVER() AS total
-                   FROM messages
-                   WHERE conversation_id = $1::uuid
-                     AND organization_id = $2::uuid
-                     AND deleted_at IS NULL
-                   ORDER BY created_at ASC
+                   FROM messages m
+                   LEFT JOIN LATERAL (
+                       SELECT value AS feedback_customer
+                       FROM message_feedback mf
+                       WHERE mf.message_id = m.id AND mf.source = 'customer_emoji'
+                       LIMIT 1
+                   ) fc ON TRUE
+                   LEFT JOIN LATERAL (
+                       SELECT COUNT(*) FILTER (WHERE value = 'up') AS up,
+                              COUNT(*) FILTER (WHERE value = 'down') AS down
+                       FROM message_feedback mf
+                       WHERE mf.message_id = m.id AND mf.source = 'staff_ui'
+                   ) fs ON TRUE
+                   WHERE m.conversation_id = $1::uuid
+                     AND m.organization_id = $2::uuid
+                     AND m.deleted_at IS NULL
+                   ORDER BY m.created_at ASC
                    LIMIT $3 OFFSET $4""",
                 conversation_id, org_id, limit, offset
             )

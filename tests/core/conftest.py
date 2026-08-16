@@ -117,6 +117,10 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/030_instagram_channel.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/031_guardrails_feedback_cache.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/032_search_path_hardening_new_triggers.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 
@@ -135,6 +139,7 @@ async def reset_db(pg_pool):
                 messages, conversations, contacts, whatsapp_templates,
                 whatsapp_accounts, organizations,
                 instagram_accounts,
+                faq_cache, message_feedback,
                 processed_stripe_events,
                 webhook_idempotency,
                 google_calendar_credentials,

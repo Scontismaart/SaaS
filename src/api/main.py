@@ -16,6 +16,7 @@ import logging
 from src.core.logging_filter import configure_logging
 
 configure_logging(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -696,6 +697,12 @@ async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: di
             user["organization_id"], record["id"], i, chunk, emb,
             {"fonte": doc.nome, "tipo": "upload", "document_id": str(record["id"])},
         )
+    # Nuova knowledge base -> le risposte FAQ in cache potrebbero essere
+    # superate (prezzi/orari cambiati): invalidazione (task 12).
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:  # pragma: no cover - la cache non deve rompere l'upload
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
     return {"detail": f"Indicizzati {len(chunks)} chunk da '{doc.nome}'.", "indicizzati": len(chunks), "id": str(record["id"])}
 
 
@@ -724,6 +731,10 @@ async def carica_file_documento(request: Request, file: UploadFile = File(...), 
             user["organization_id"], record["id"], i, chunk, emb,
             {"fonte": nome, "tipo": "documento", "document_id": str(record["id"])},
         )
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:  # pragma: no cover - la cache non deve rompere l'upload
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
     return {"detail": f"Indicizzati {len(chunks)} chunk da '{nome}'.", "indicizzati": len(chunks), "nome": nome, "id": str(record["id"])}
 
 
@@ -734,6 +745,10 @@ async def elimina_documento_api(documento_id: str, request: Request, user: dict 
     if not eliminati:
         raise HTTPException(status_code=404, detail="Documento non trovato.")
     await _audit(request, user, "documento_eliminato", target_table="documents", details={"documento_id": documento_id, "chunk_eliminati": eliminati})
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:  # pragma: no cover - la cache non deve rompere l'eliminazione
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
     return {"detail": "Documento rimosso dalla knowledge base.", "chunk_eliminati": eliminati}
 
 

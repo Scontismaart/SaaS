@@ -1,7 +1,8 @@
 import os
-import pytest
-import httpx
 from unittest.mock import patch
+
+import httpx
+import pytest
 
 API_KEY = "test-api-key-12345"
 
@@ -89,3 +90,22 @@ async def test_carica_file_org_scoped(async_client, sample_org, other_org):
     doc_id = resp.json()["id"]
     altra = await async_client.get("/api/documenti/elenco", headers=_headers(other_org["id"]))
     assert all(d["id"] != doc_id for d in altra.json()["documenti"])
+
+
+async def test_upload_documento_invalida_cache_faq(async_client, repo, pg_pool, sample_org):
+    """Task 12: nuovo documento = knowledge base cambiata = le risposte FAQ
+    in cache potrebbero essere superate (prezzi vecchi). L'upload svuota
+    la cache dell'org (e solo quella)."""
+    from src.whatsapp.repository import Repository as WhatsAppRepository
+
+    wrepo = WhatsAppRepository(pool=pg_pool)
+    await wrepo.faq_cache_store(str(sample_org["id"]), "quanto costa?", "8 euro", [0.1] * 384)
+
+    with patch("src.api.main.vettorizza", return_value=[[0.1] * 384]):
+        resp = await async_client.post("/api/documenti/carica", json={
+            "testo": "Nuovo listino: tutto a 10 euro.",
+            "nome": "nuovo-menu.txt",
+        }, headers=_headers(sample_org["id"]))
+    assert resp.status_code == 200
+
+    assert await wrepo.faq_cache_lookup(str(sample_org["id"]), [0.1] * 384) is None

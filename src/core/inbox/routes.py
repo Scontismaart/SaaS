@@ -9,6 +9,8 @@ from src.core.inbox.schemas import (
     AssignResponse,
     ClaimRequest,
     ClaimResponse,
+    FeedbackRequest,
+    FeedbackResponse,
     MessageListItem,
     MessageListResponse,
     ReplyRequest,
@@ -138,6 +140,9 @@ async def get_ticket_messages(
                 status=r["status"],
                 handling_type=r.get("handling_type"),
                 created_at=r["created_at"].isoformat(),
+                feedback_customer=r.get("feedback_customer"),
+                feedback_staff_up=r.get("feedback_staff_up") or 0,
+                feedback_staff_down=r.get("feedback_staff_down") or 0,
             )
             for r in rows
         ],
@@ -313,6 +318,7 @@ async def reply_to_ticket(
                 text=body.content,
                 ig_config=ig_config,
                 idempotency_key=body.idempotency_key,
+                handling_type="human",
             )
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Invio su Instagram fallito: {e}")
@@ -331,6 +337,7 @@ async def reply_to_ticket(
             meta_client=None,
             tenant_config=tenant_config,
             idempotency_key=body.idempotency_key,
+            handling_type="human",
         )
     except WhatsAppService.MessageUsageExceeded as e:
         raise HTTPException(status_code=429, detail=str(e))
@@ -338,3 +345,36 @@ async def reply_to_ticket(
         raise HTTPException(status_code=403, detail=str(e))
 
     return ReplyResponse(message_id=str(result["id"]), status=result.get("status", "queued"))
+
+
+@router.post("/messages/{message_id}/feedback", response_model=FeedbackResponse)
+async def feedback_message(
+    message_id: str,
+    body: FeedbackRequest,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    """Feedback staff 👍/👎 su una risposta inviata (task 12): il log dei
+    feedback, joinato con prompt_variant/intent negli usage events, e' la
+    base per iterare sui prompt. Idempotente per operatore: ri-votare
+    aggiorna il proprio giudizio."""
+    org_id = user["organization_id"]
+    operator_id = _require_user_id(user)
+    wrepo = _get_wrepo(request)
+    message = await wrepo.get_message_org_scoped(org_id, message_id)
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if message["direction"] != "outbound":
+        raise HTTPException(
+            status_code=422,
+            detail="Feedback solo su messaggi in uscita (risposte), non su messaggi del cliente",
+        )
+    row = await wrepo.registra_feedback(
+        organization_id=org_id,
+        message_id=message["id"],
+        conversation_id=str(message["conversation_id"]),
+        source="staff_ui",
+        value=body.value,
+        created_by_user_id=operator_id,
+    )
+    return FeedbackResponse(message_id=str(row["message_id"]), value=row["value"])

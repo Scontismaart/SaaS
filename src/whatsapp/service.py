@@ -45,6 +45,7 @@ class WhatsAppService:
         meta_client,
         tenant_config: TenantConfig,
         idempotency_key: str | None = None,
+        handling_type: str | None = None,
     ) -> dict:
         if idempotency_key:
             existing = await self.repo.check_idempotency(str(org_id), idempotency_key)
@@ -76,6 +77,7 @@ class WhatsAppService:
             content_text=payload.get("text", {}).get("body", ""),
             status="queued",
             idempotency_key=idempotency_key,
+            handling_type=handling_type,
         )
         if idempotency_key and str(msg["id"]) != str(msg_id):
             # Race genuina: un'altra richiesta con la stessa idempotency_key

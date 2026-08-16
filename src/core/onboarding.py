@@ -1,7 +1,9 @@
 from typing import Any
 
+from src.agents.prompts import assegna_variante
 from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
+from src.core.guardrails.validator import applica_guardrail, valida_risposta
 from src.models.schemas import (
     MessaggioInput,
     OnboardingProfileInput,
@@ -9,7 +11,6 @@ from src.models.schemas import (
     ProfiloAttivita,
     RispostaOutput,
 )
-
 
 VERTICAL_TEMPLATES: dict[str, dict[str, Any]] = {
     "ristorante": {
@@ -166,17 +167,22 @@ async def generate_preview(
     """Preview reale: costruisce il profilo dal payload del wizard e lo fa
     girare nel vero responder (crew + LLM), arricchito dal contesto RAG dei
     documenti dell'org. Se l'org non ha ancora documenti indicizzati il
-    contesto e' vuoto e la preview procede comunque (nessun errore)."""
+    contesto e' vuoto e la preview procede comunque (nessun errore).
+    Il guardrail post-LLM vale anche in preview: quello che il titolare
+    vede e' cioo che il responder farebbe davvero (task 12)."""
     profilo = build_business_profile(payload.profilo)
 
-    contesto_documenti = await recupera_contesto_documenti(
+    contesto = await recupera_contesto_documenti(
         organization_id, payload.messaggio, repo
     )
 
     messaggio = MessaggioInput(testo=payload.messaggio)
-    return await genera_risposta_async(
+    risposta = await genera_risposta_async(
         messaggio,
         profilo,
         billing=billing,
-        contesto_documenti=contesto_documenti,
+        contesto_documenti=contesto.testo,
+        variante=assegna_variante(organization_id),
     )
+    esito = valida_risposta(risposta, contesto.chunks, profilo)
+    return applica_guardrail(risposta, esito)

@@ -91,3 +91,97 @@ def test_budget_ratio_from_billing_snapshot():
     })
 
     assert ratio == 0.1
+
+
+def test_intent_faq_forza_cheap_anche_senza_keyword(monkeypatch):
+    """Task 12: il classificatore di intent dice 'faq' per un testo senza
+    keyword (es. 'me lo ripeti?') -> tier economico con reason esplicito."""
+    monkeypatch.setenv("OPENROUTER_MODEL_CHEAP", "cheap/model")
+    monkeypatch.setenv("OPENROUTER_MODEL_PREMIUM", "premium/model")
+
+    route = route_llm(
+        LLMRouteRequest(
+            task_type="customer_message",
+            user_text="me lo ripeti per favore",
+            remaining_budget_ratio=0.8,
+            intent="faq",
+        )
+    )
+
+    assert route.tier == "cheap"
+    assert route.model == "cheap/model"
+    assert route.reason == "intent_classified"
+
+
+def test_intent_booking_e_complaint_forzano_premium(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_MODEL_CHEAP", "cheap/model")
+    monkeypatch.setenv("OPENROUTER_MODEL_PREMIUM", "premium/model")
+
+    for intent in ("booking", "complaint", "out_of_scope"):
+        route = route_llm(
+            LLMRouteRequest(
+                task_type="customer_message",
+                user_text="una frase qualunque",
+                remaining_budget_ratio=0.8,
+                intent=intent,
+            )
+        )
+        assert route.tier == "premium"
+        assert route.reason == "intent_classified"
+
+
+def test_intent_chitchat_forza_cheap(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_MODEL_CHEAP", "cheap/model")
+    monkeypatch.setenv("OPENROUTER_MODEL_PREMIUM", "premium/model")
+
+    route = route_llm(
+        LLMRouteRequest(
+            task_type="customer_message",
+            user_text="una frase qualunque",
+            remaining_budget_ratio=0.8,
+            intent="chitchat",
+        )
+    )
+    assert route.tier == "cheap"
+    assert route.reason == "intent_classified"
+
+
+def test_intent_vince_sulle_keyword_ma_non_su_budget_e_force(monkeypatch):
+    """Precedenza: force_tier > budget_low > task_type premium > intent >
+    keyword. Il budget basso resta il tetto: anche una FAQ va sul cheap."""
+    monkeypatch.setenv("OPENROUTER_MODEL_CHEAP", "cheap/model")
+    monkeypatch.setenv("OPENROUTER_MODEL_PREMIUM", "premium/model")
+
+    low_budget = route_llm(
+        LLMRouteRequest(
+            task_type="customer_message",
+            user_text="A che ora aprite?",
+            remaining_budget_ratio=0.02,
+            intent="booking",
+        )
+    )
+    assert low_budget.reason == "budget_low"
+
+    forced = route_llm(
+        LLMRouteRequest(
+            task_type="customer_message",
+            user_text="A che ora aprite?",
+            force_tier="premium",
+            intent="faq",
+        )
+    )
+    assert forced.reason == "forced_premium"
+
+
+def test_intent_assente_comportamento_keyword_invariato(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_MODEL_CHEAP", "cheap/model")
+    monkeypatch.setenv("OPENROUTER_MODEL_PREMIUM", "premium/model")
+
+    route = route_llm(
+        LLMRouteRequest(
+            task_type="customer_message",
+            user_text="A che ora aprite?",
+            remaining_budget_ratio=0.8,
+        )
+    )
+    assert route.reason == "simple_faq"

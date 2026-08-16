@@ -203,14 +203,19 @@ secondo quanto previsto al §5(g), salvo quanto previsto al §9.3.
 ## 10. Nota su intelligenza artificiale e trasparenza (AI Act)
 
 10.1 Il Servizio genera risposte automatiche tramite un sistema di
-intelligenza artificiale. In relazione al Regolamento (UE) 2024/1689
-("AI Act"), le parti riconoscono che possono sussistere obblighi di
-trasparenza nei confronti degli utenti finali (es. informarli che stanno
-interagendo con un sistema automatizzato), la cui allocazione tra
-Titolare e Responsabile **deve essere definita con l'assistenza di un
-legale**, non essendo l'AI Act materia coincidente con il GDPR né oggetto
-esaustivo del presente Accordo. Il presente paragrafo ha valore
-meramente informativo e non costituisce adempimento di tali obblighi.
+intelligenza artificiale e, in conformità all'art. 50(1) del Regolamento
+(UE) 2024/1689 ("AI Act"), informa gli utenti finali che stanno interagendo
+con un sistema di IA al momento del primo contatto automatico: la prima
+risposta generata dal sistema verso ciascun contatto inizia con la dicitura
+"Sono l'assistente automatico di [attività], un sistema di intelligenza
+artificiale" e offre la possibilità di richiedere di parlare con una persona
+("OPERATORE"), che determina l'instradamento della conversazione a un
+operatore umano del Titolare (HITL).
+
+10.2 Resta a carico del Titolare ogni obbligo ulteriore previsto dall'AI Act
+che non sia specificamente adempiuto dal Servizio (es. nei confronti di
+utenti istituzionali o in relazione ad altri canali), da verificare con
+l'assistenza di un legale.
 
 ## 11. Audit
 
@@ -264,6 +269,7 @@ WhatsApp; utenti dell'organizzazione del Titolare (staff).
 | Recensioni | autore, testo recensione, bozza di risposta IA | Gestione reputazione online |
 | Documenti caricati dal Titolare | testo e relativa rappresentazione vettoriale | Risposte automatiche basate sui contenuti del Titolare (RAG) |
 | Consensi | stato opt-in/opt-out, log eventi di consenso | Rispetto delle preferenze di contatto |
+| Trasparenza IA | timestamp del primo invio della disclosure (ai_disclosure_sent_at) | Adempimento obblighi di trasparenza AI Act art. 50(1) |
 | Credenziali di integrazione | token OAuth Google, token WhatsApp (cifrati a riposo) | Integrazioni Calendar/Business Profile/WhatsApp |
 | Dati tecnici | timestamp, stato di consegna, log di utilizzo/fatturazione | Funzionamento e fatturazione del Servizio |
 

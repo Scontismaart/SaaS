@@ -87,6 +87,9 @@ from src.core.reviews.google_routes import router as reviews_google_router
 from src.whatsapp.repository import Repository as WhatsAppRepository
 from src.whatsapp.router import create_router as create_whatsapp_router
 from src.whatsapp.config import AppConfig as WhatsAppAppConfig
+from src.instagram.routes import router as instagram_account_router
+from src.instagram.router import create_router as create_instagram_router
+from src.instagram.repository import InstagramRepository
 
 
 @asynccontextmanager
@@ -123,10 +126,17 @@ async def lifespan(app: FastAPI):
             if whatsapp_app_config.app_secret and whatsapp_app_config.verify_token:
                 whatsapp_router = create_whatsapp_router(whatsapp_app_config, wrepo)
                 app.include_router(whatsapp_router)
+                # Instagram DM: stessa app Meta (stesso app_secret/verify_token),
+                # webhook dedicato /webhooks/instagram con lookup tenant su
+                # instagram_accounts (migration 030).
+                instagram_router = create_instagram_router(
+                    whatsapp_app_config, wrepo, InstagramRepository(pool=pool)
+                )
+                app.include_router(instagram_router)
             else:
                 print(
                     "[startup] META_APP_SECRET o META_VERIFY_TOKEN non configurati: "
-                    "webhook WhatsApp NON montato. Impostali in .env per riceverli."
+                    "webhook WhatsApp/Instagram NON montati. Impostali in .env per riceverli."
                 )
 
             from src.core.bookings import BookingService
@@ -187,6 +197,7 @@ app.include_router(bookings_router)
 app.include_router(calendar_router)
 app.include_router(reviews_router)
 app.include_router(reviews_google_router)
+app.include_router(instagram_account_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]
@@ -248,7 +259,7 @@ async def trace_id_middleware(request: Request, call_next):
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    if request.url.path in ("/api/health", "/webhooks/whatsapp", "/api/billing/webhook"):
+    if request.url.path in ("/api/health", "/webhooks/whatsapp", "/webhooks/instagram", "/api/billing/webhook"):
         return await call_next(request)
     now = time.time()
 

@@ -60,6 +60,7 @@ def _to_ticket_item(t: dict) -> TicketListItem:
         priorita=t.get("priorita") or "media",
         phone_number=t.get("phone_number"),
         last_message_preview=t.get("last_message_preview"),
+        canale=t.get("canale") or "whatsapp",
     )
 
 
@@ -228,9 +229,40 @@ async def reply_to_ticket(
             detail="Ticket non CLAIMED da te: fai il claim prima di rispondere",
         )
     if not conv.get("phone_number"):
-        raise HTTPException(status_code=422, detail="Contatto senza numero di telefono associato")
+        raise HTTPException(status_code=422, detail="Contatto senza identificatore associato")
 
     app_config = _get_app_config()
+
+    # Dispatch per canale: la reply di un ticket Instagram deve uscire su
+    # Instagram DM, non su WhatsApp (phone_number qui e' l'external id del
+    # contatto: numero WA o IG user id a seconda del canale).
+    if (conv.get("canale") or "whatsapp") == "instagram":
+        from src.instagram.repository import InstagramRepository
+        from src.instagram.config import load_instagram_config
+        from src.instagram.service import InstagramService
+
+        ig_config = await load_instagram_config(
+            uuid.UUID(str(org_id)),
+            app_config.encryption_key,
+            InstagramRepository(pool=request.app.state.pool),
+        )
+        if not ig_config:
+            raise HTTPException(
+                status_code=409,
+                detail="Account Instagram non configurato per questa organizzazione",
+            )
+        try:
+            result = await InstagramService(wrepo).send_instagram_message(
+                org_id=uuid.UUID(str(org_id)),
+                to_ig_id=conv["phone_number"],
+                text=body.content,
+                ig_config=ig_config,
+                idempotency_key=body.idempotency_key,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Invio su Instagram fallito: {e}")
+        return ReplyResponse(message_id=str(result["id"]), status=result.get("status", "queued"))
+
     tenant_config = await load_tenant_config(uuid.UUID(str(org_id)), app_config, wrepo)
     service = WhatsAppService(app_config, wrepo)
     payload = {"to": conv["phone_number"], "type": body.message_type, "text": {"body": body.content}}

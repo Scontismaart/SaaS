@@ -313,6 +313,111 @@ class TestInboundProcessor:
         assert out == "Gia' vista."
 
 
+class TestInstagramDispatch:
+    """Punto 10: un messaggio di conversazione canale instagram riceve la
+    risposta via Instagram DM, non via WhatsApp."""
+
+    def _ig_msg(self):
+        return {
+            "id": uuid.uuid4(), "organization_id": uuid.uuid4(),
+            "conversation_id": uuid.uuid4(),
+            "content": {"from": "ig-user-42"},
+            "content_text": "Ciao", "message_type": "text",
+            "canale": "instagram",
+        }
+
+    def _ig_config(self, org_id):
+        from src.instagram.config import InstagramTenantConfig
+        return InstagramTenantConfig(
+            organization_id=org_id, ig_user_id="17841400000000000", access_token="tok",
+        )
+
+    async def test_instagram_reply_dispatches_to_instagram_service(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        ig_msg = self._ig_msg()
+        mock_repo.claim_inbound_messages = AsyncMock(return_value=[ig_msg])
+        mock_send = AsyncMock(return_value={"id": uuid.uuid4(), "status": "sent"})
+        fake_ig_service = MagicMock()
+        fake_ig_service.send_instagram_message = mock_send
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Siamo aperti dalle 12 alle 15.", richiede_umano=False, motivo="orari", categoria="info",
+             ))), \
+             patch("src.instagram.config.load_instagram_config",
+                   AsyncMock(return_value=self._ig_config(ig_msg["organization_id"]))), \
+             patch("src.instagram.service.InstagramService", MagicMock(return_value=fake_ig_service)):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_send.assert_awaited_once()
+        kwargs = mock_send.call_args.kwargs
+        assert kwargs["to_ig_id"] == "ig-user-42"
+        assert "Siamo aperti" in kwargs["text"]
+        # il canale WhatsApp NON viene toccato
+        mock_service.send_whatsapp_message.assert_not_called()
+
+    async def test_whatsapp_reply_untouched_when_canale_whatsapp(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        sample_msg["canale"] = "whatsapp"
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Ok.", richiede_umano=False, motivo="", categoria="info",
+             ))), \
+             patch("src.instagram.service.InstagramService") as mock_ig_cls:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        mock_ig_cls.assert_not_called()
+
+    async def test_usage_metadata_channel_instagram(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        ig_msg = self._ig_msg()
+        mock_repo.claim_inbound_messages = AsyncMock(return_value=[ig_msg])
+        mock_repo.record_usage = AsyncMock()
+        mock_send = AsyncMock(return_value={"id": uuid.uuid4(), "status": "sent"})
+        fake_ig_service = MagicMock()
+        fake_ig_service.send_instagram_message = mock_send
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Ok.", richiede_umano=False, motivo="", categoria="info",
+             ))), \
+             patch("src.instagram.config.load_instagram_config",
+                   AsyncMock(return_value=self._ig_config(ig_msg["organization_id"]))), \
+             patch("src.instagram.service.InstagramService", MagicMock(return_value=fake_ig_service)):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        metadata = mock_repo.record_usage.await_args.kwargs["metadata"]
+        assert metadata["channel"] == "instagram"
+
+    async def test_missing_ig_account_does_not_crash(
+        self, app_config, mock_repo, mock_service, fake_tenant_config
+    ):
+        """Org senza account Instagram collegato: warning e nessun invio, ma
+        il messaggio resta processato senza eccezioni."""
+        ig_msg = self._ig_msg()
+        mock_repo.claim_inbound_messages = AsyncMock(return_value=[ig_msg])
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Ok.", richiede_umano=False, motivo="", categoria="info",
+             ))), \
+             patch("src.instagram.config.load_instagram_config", AsyncMock(return_value=None)), \
+             patch("src.instagram.service.InstagramService") as mock_ig_cls:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_ig_cls.assert_not_called()
+        mock_service.send_whatsapp_message.assert_not_called()
+        mock_repo.try_mark_replied.assert_awaited_with(ig_msg["id"])
+
+
 class TestRagContestoWhatsapp:
     """Il messaggio WhatsApp reale viaggia ora con il contesto RAG dei
     documenti dell'org (Punto 11)."""

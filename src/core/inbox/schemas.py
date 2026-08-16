@@ -37,6 +37,7 @@ class TicketListItem(BaseModel):
     priorita: str = "media"
     phone_number: Optional[str] = None
     last_message_preview: Optional[str] = None
+    canale: str = "whatsapp"
 
 
 class TicketListResponse(BaseModel):

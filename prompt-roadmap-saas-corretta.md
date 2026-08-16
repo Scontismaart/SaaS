@@ -39,16 +39,16 @@ Non sono teoria: sono i 3 bug/incidenti reali che hanno rallentato questo proget
 | 3 | Auth/autorizzazione | Fatto — JWT, ruoli, MFA/AAL2 su path sensibili |
 | 4 | Billing Stripe | Fatto — piani, webhook, sospensione robusta |
 | 5 | GDPR/compliance | Quasi — retention/encryption/.env.example ci sono, manca la bozza DPA (documento legale, non codice) |
-| 6 | HITL | Parziale — inbox + email escalation ci sono, manca assegnazione a membro team e SLA visibili |
+| 6 | HITL | Fatto — inbox + email escalation (task13) + SLA visibili (task13) + assegnazione a membro team con optimistic lock via `GET /api/inbox/team` e `POST /api/inbox/assign/{id}` (task15) |
 | 7 | Onboarding wizard | Fatto — migration 028 `onboarding_profiles` org-scoped + RLS, sync di `organizations.business_profile`, preview reale (crew + LLM + contesto RAG pgvector non bloccante), upload documenti nel wizard, auth frontend transitoria (X-API-Key + X-Organization-Id da localStorage) |
 | 8 | Prenotazioni standalone | Parziale — core solido (conferma/rifiuto/no-show/reminder), manca TheFork/Calendly e deposito Stripe |
 | 9 | Recensioni automatiche | Fatto — fetch Google reale, OAuth, bozza AI, approvazione, dedup, priorità unificata |
 | 10 | Canali aggiuntivi | Non iniziato (corretto: la roadmap dice di farlo dopo) |
 | 11 | RAG collegato al responder | Fatto — chromadb non piu' usato dal nostro codice (`requirements.txt` lo elenca solo come dipendenza transitiva di `crewai==1.15.4`, che lo importa a import-time: non e' disinstallabile); unico stack per i nostri documenti: pgvector; retrieval org-scoped condiviso (`src/core/documenti/rag_context.py`, k=3, timeout non bloccante) iniettato nel path WhatsApp reale da `inbound_processor`; resta solo `scripts/migrate_chromadb_to_pgvector.py` come utility di migrazione |
-| 12-14 | Guardrails, model routing, multilingua | Non affrontati |
-| 15 | Infra production-ready | Parziale — `docker-compose.yml` esiste solo in locale, mai committato; Redis assente; Sentry sì |
+| 12-14 | Guardrails, model routing, multilingua | 12 Guardrails: **Non affrontati** (esiste solo `_validate_output` di conformità allo schema Pydantic in `crew_runner.py`; mancano lunghezza/tono/anti-allucinazione, classificatore di intent separato, A/B test, feedback loop 👍/👎, cache FAQ). 13 Model routing: **Fatto** (PR#7: `src/core/llm_routing.py` — tier cheap/premium per FAQ/escalation, fallback automatici, budget ratio da billing Stripe). 14 Multilingua: **Parziale** — embeddings multilingue (`paraphrase-multilingual-MiniLM-L12-v2`) e QA "rispondi nella stessa lingua", ma nessun rilevamento automatico della lingua |
+| 15 | Infra production-ready | Parziale — `docker-compose.yml` committato (api + worker-inbound + worker-retry + supervisor + postgres-dev, healthcheck su /api/health, limiti memoria/CPU); Sentry attivo; `reindex_worker` NON esiste (solo i 3 worker run_*.py); Redis assente; niente backup automatici |
 | 16 | Debito tecnico | Fatto in gran parte — Pillow in requirements, route legacy sistemate, README/test/CI presenti |
-| 17-20 | Analytics report, white-label, landing page, PWA | Non toccati o solo abbozzati |
+| 17-20 | Analytics report, white-label, landing page, PWA | 17 Report vendibile: **Parziale** — report giornaliero AI già generato e servito (`/api/report`, `crew_runner_report.py`, svolto a orario da `scheduler.py`); mancano PDF settimanale via email, benchmark di settore, export CSV. 18 White-label: **Non iniziato**. 19 Landing page: **Fatto in gran parte** — asset committati (`web/landing page/landingpage.html`, `sempre-presentazione.md`, hero image + piani di design/spec in docs/superpowers); da collegare alla web app e completare caso d'uso. 20 PWA: **Non iniziato** — niente manifest.json/service worker |
 
 Questa tabella va aggiornata a mano man mano — non fidarsi delle descrizioni "cosa manca" nei blocchi originali sotto, che restano intatte perché descrivono correttamente come si presentava il problema quando è stato scritto, utile come contesto storico, non come stato attuale.
 
@@ -454,10 +454,13 @@ lingua corretta). Esegui con "executing-plans" e verifica con
 **Skill:** writing-plans → dispatching-parallel-agents → test-driven-development → executing-plans → verification-before-completion
 
 ```
-IMPORTANTE - verificato nell'audit: docker-compose.yml esiste solo in locale
-sul pc di sviluppo, non è mai stato committato su git. Prima di pianificare
-altro, committalo (o ricostruiscilo se perso) — oggi chiunque clona il repo
-pulito non ha modo di far girare l'app in locale.
+NOTA - verificato in audit: docker-compose.yml E' committato su origin/main
+(servizi: api + worker-inbound + worker-retry + supervisor + postgres-dev
+per lo sviluppo, healthcheck su /api/health, limiti memoria/CPU). Non va
+ricreato. Quello che manca davvero qui: Redis (rate limiting/code
+condivise multi-istanza), il worker reindex_worker (i 3 worker esistenti
+sono run_inbound_processor.py, run_retry_worker.py, run_supervisor.py) e i
+backup automatici di Postgres/pgvector.
 
 Usa "writing-plans" per pianificare la messa in produzione dell'infrastruttura:
 - Docker + docker-compose (API + Postgres + Redis)
@@ -618,8 +621,9 @@ useranno prevalentemente dal telefono:
 
 Conferma che il flusso HITL (punto 6) sia già implementato o pianificato in
 parallelo, dato che questa feature ne dipende direttamente (verificato:
-HITL è parziale, manca assegnazione team e SLA visibili — valuta se
-sufficiente per sbloccare questo punto o se va completato prima).
+HITL è completo — inbox, email escalation, SLA visibili e assegnazione a
+membro team sono tutti presenti su origin/main — quindi questo punto è
+sbloccato).
 
 Usa "writing-plans" per pianificare service worker, notifiche push e le
 azioni rapide. Usa "design-taste-frontend" e "minimalist-ui" per un'interfaccia
@@ -639,13 +643,15 @@ emulato.
 **Skill:** systematic-debugging (dove serve) → dispatching-parallel-agents → verification-before-completion
 
 ```
-NOTA: dei 6 quick win originali, i punti 1, 2, 4, 5, 6 risultano già
-sostanzialmente completati nell'audit più recente (README/.env.example
-esistono, .gitignore protegge i segreti, persistenza è su Postgres non
-SQLite-bridge, notifiche email su escalation esistono, template WhatsApp
-sono in uso). Verifica lo stato reale di ciascuno prima di rilanciarlo.
-Il punto 3 (RAG collegato) risulta ancora aperto — vedi punto 11 sopra,
-con la decisione ChromaDB vs pgvector ancora da prendere esplicitamente.
+NOTA: tutti e 6 i quick win originali risultano completati (verificato su
+origin/main): (1) README/.env.example esistono; (2) .gitignore protegge i
+segreti; (3) RAG collegato al responder — vedi punto 11 sopra, decisione
+RISOLTA (unico stack pgvector, chromadb è solo dipendenza transitiva di
+crewai); (4) persistenza su Postgres, non bridge SQLite; (5) notifiche
+email su escalation esistono (email_service.py + flusso HITL); (6)
+template WhatsApp sincronizzati (templates.py + webhook
+message_template_status_update). Non rilanciare nessuno di questi: sono
+chiusi.
 
 Voglio affrontare questi 6 quick win in parallelo, dato che sono
 indipendenti tra loro. Usa "dispatching-parallel-agents" per assegnarli a

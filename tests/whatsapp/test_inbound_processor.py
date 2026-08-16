@@ -246,6 +246,31 @@ class TestInboundProcessor:
         mock_service.send_whatsapp_message.assert_not_called()
         mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
 
+    async def test_decorate_with_disclosure_first_contact(
+        self, app_config, mock_repo, mock_service
+    ):
+        from src.whatsapp.inbound_processor import decorate_with_disclosure, DISCLOSURE_TEXT
+        mock_repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+        mock_repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
+        out = await decorate_with_disclosure(
+            str(uuid.uuid4()), "391234567890", "Siamo aperti.",
+            mock_repo, nome_attivita="Trattoria Test",
+        )
+        assert out.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
+        assert DISCLOSURE_TEXT.format(nome="Trattoria Test") in out
+        assert out.endswith("Siamo aperti.")
+
+    async def test_decorate_with_disclosure_second_contact(
+        self, app_config, mock_repo, mock_service
+    ):
+        from src.whatsapp.inbound_processor import decorate_with_disclosure
+        mock_repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+        mock_repo.mark_ai_disclosure_sent = AsyncMock(return_value=False)
+        out = await decorate_with_disclosure(
+            str(uuid.uuid4()), "391234567890", "Gia' vista.", mock_repo, nome_attivita="X"
+        )
+        assert out == "Gia' vista."
+
 
 class TestRagContestoWhatsapp:
     """Il messaggio WhatsApp reale viaggia ora con il contesto RAG dei

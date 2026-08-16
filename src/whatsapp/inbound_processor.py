@@ -23,6 +23,13 @@ HEARTBEAT_INTERVAL = 30
 # locale a un cliente casuale). La notifica vera va al gestore via email.
 ORG_SUSPENDED_REPLY = "Grazie per averci scritto, ti risponderemo al piu' presto."
 
+DISCLOSURE_TEXT = (
+    "Ciao! Sono l'assistente automatico di {nome}, un sistema di intelligenza "
+    "artificiale. Scrivi OPERATORE se vuoi parlare con una persona."
+)
+
+HUMAN_WAIT_REPLY = "Ti passo una persona dello staff, un attimo!"
+
 
 def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
     raw = raw or {}
@@ -42,6 +49,16 @@ def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> Pro
         servizi_principali=validated.servizi_principali or [],
         note_speciali=validated.note_speciali or [],
     )
+
+
+async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, repo,
+                                   nome_attivita: str = "Attivita") -> str:
+    """Prepende la disclosure AI al primo messaggio automatico per quel contatto."""
+    contact = await repo.get_or_create_contact(org_id, from_number)
+    sent = await repo.mark_ai_disclosure_sent(contact["id"])
+    if not sent:
+        return testo
+    return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
 
 
 class InboundProcessor:

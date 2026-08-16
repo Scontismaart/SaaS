@@ -105,6 +105,23 @@ class InboundProcessor:
             await self.repo.try_mark_replied(msg["id"])
             return
 
+        wants_human = await self.service.check_human_request(text)
+        if wants_human:
+            from_number = content.get("from", "")
+            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
+            if not await self.repo.try_mark_replied(msg["id"]):
+                return
+            await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY)
+            conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
+            if conv:
+                enqueue_escalation(
+                    org_id=str(org_id),
+                    conversation_id=str(msg["conversation_id"]),
+                    contact_name=from_number or "cliente",
+                    pool=self.repo.pool,
+                )
+            return
+
         if self.booking_service:
             booking_reply = await self.booking_service.handle_reminder_reply(
                 org_id, content.get("from", ""), text

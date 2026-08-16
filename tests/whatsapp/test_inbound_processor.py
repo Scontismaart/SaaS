@@ -57,6 +57,7 @@ def mock_service():
     service = AsyncMock()
     service.check_opt_out = AsyncMock(return_value={"is_opt_out": False, "confidence": "low"})
     service.fast_path_match = AsyncMock(return_value=None)
+    service.check_human_request = AsyncMock(return_value=False)
     service.MessageUsageExceeded = Exception
     return service
 
@@ -88,6 +89,26 @@ class TestInboundProcessor:
         processor = InboundProcessor(app_config, mock_repo, mock_service)
         await processor.process_next_batch()
         mock_service.fast_path_match.assert_not_called()
+
+    async def test_human_request_forces_escalation(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        mock_service.check_human_request = AsyncMock(return_value=True)
+        mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_service.fast_path_match.assert_not_called()
+        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
+        mock_email.assert_called_once()
+        # Nessuna disclosure sul messaggio di attesa (vedi spec §6)
+        assert mock_service.send_whatsapp_message.await_count == 1
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "assistente automatico" not in body
+        assert body == "Ti passo una persona dello staff, un attimo!"
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"])
 
     async def test_ai_reply_sent_when_no_escalation(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg

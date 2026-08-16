@@ -320,6 +320,19 @@ class Repository:
             )
             return row["consent_status"] if row else None
 
+    async def mark_ai_disclosure_sent(self, contact_id: uuid.UUID) -> bool:
+        """Atomicamente segna il contatto come destinatario della disclosure AI.
+        Ritorna True solo per il chiamante che vince la race (primo UPDATE);
+        False se la disclosure era gia' stata segnata o il contatto non esiste."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE contacts SET ai_disclosure_sent_at = NOW()
+                   WHERE id = $1::uuid AND ai_disclosure_sent_at IS NULL
+                   RETURNING id""",
+                contact_id,
+            )
+            return row is not None
+
     async def insert_delivery_attempt(self, message_id, next_retry_at):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""

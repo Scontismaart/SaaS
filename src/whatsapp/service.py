@@ -12,6 +12,11 @@ OPT_OUT_KEYWORDS = {
     "en": ["stop", "unsubscribe", "cancel", "opt out", "remove me"],
 }
 
+HUMAN_REQUEST_KEYWORDS = {
+    "it": ["operatore", "umano", "parlare con una persona", "persona reale", "staff"],
+    "en": ["operator", "human", "talk to a person", "real person"],
+}
+
 _FAST_PATH_GREETINGS = ["ciao", "buongiorno", "buonasera", "salve", "hey", "hello", "hi"]
 _FAST_PATH_THANKS = ["grazie", "grazie mille", "grazie tante", "perfetto", "ok grazie", "grazie arrivederci"]
 
@@ -133,6 +138,12 @@ class WhatsAppService:
             if keyword in normalized:
                 return {"is_opt_out": True, "confidence": "high"}
         return {"is_opt_out": False, "confidence": "low"}
+
+    async def check_human_request(self, text: str, lang: str = "it") -> bool:
+        """True se il messaggio esplicita la richiesta di parlare con una persona."""
+        normalized = _normalize_text(text)
+        keywords = HUMAN_REQUEST_KEYWORDS.get(lang, HUMAN_REQUEST_KEYWORDS["it"])
+        return any(kw in normalized for kw in keywords)
 
     async def fast_path_match(self, text: str, business_profile: dict) -> Optional[str]:
         normalized = _normalize_text(text)

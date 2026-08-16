@@ -134,6 +134,19 @@ class TestWhatsAppService:
         result = await service.fast_path_match("Quanto costa la pizza?", bp)
         assert result is None
 
+    async def test_check_human_request_keyword_it(self, app_config, mock_repo):
+        service = WhatsAppService(app_config, mock_repo)
+        assert await service.check_human_request("voglio parlare con un operatore") is True
+        assert await service.check_human_request("parlare con una persona") is True
+
+    async def test_check_human_request_keyword_en(self, app_config, mock_repo):
+        service = WhatsAppService(app_config, mock_repo)
+        assert await service.check_human_request("operator please", "en") is True
+
+    async def test_check_human_request_normal_message(self, app_config, mock_repo):
+        service = WhatsAppService(app_config, mock_repo)
+        assert await service.check_human_request("quanto costano i menu") is False
+
     async def test_message_usage_exceeded_blocks_send(self, app_config, mock_repo, mock_meta_client):
         mock_repo.check_message_usage = AsyncMock(return_value={"messages_used_this_period": 100, "messages_limit": 100})
         service = WhatsAppService(app_config, mock_repo)

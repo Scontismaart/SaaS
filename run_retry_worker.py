@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import asyncio
+import logging
 import os
 import asyncpg
 from src.whatsapp.config import AppConfig
 from src.whatsapp.repository import Repository
 from src.whatsapp.service import WhatsAppService
 from src.whatsapp.retry_worker import RetryWorker
+from src.core.logging_filter import configure_logging
+
+configure_logging(level=logging.INFO)
 
 
 async def main():

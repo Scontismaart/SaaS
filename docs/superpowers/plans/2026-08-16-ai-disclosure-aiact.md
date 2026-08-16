@@ -47,7 +47,7 @@ import asyncpg
 import pytest
 
 
-pytestmark = pytest.mark.usefixtures("override_reset_db")
+pytestmark = pytest.mark.usefixtures("reset_db")
 
 
 @pytest.fixture
@@ -68,8 +68,8 @@ async def disclosure_pool(postgres_container):
 
 
 @pytest.fixture(autouse=True)
-async def override_reset_db():
-    pass  # questo file ha pool e reset propri
+async def reset_db():
+    pass  # Shadow del conftest: questo file ha pool e reset propri
 
 
 @pytest.fixture(autouse=True)
@@ -330,7 +330,10 @@ In `tests/whatsapp/test_inbound_processor.py`, nella fixture `mock_repo` (riga 4
     repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
 ```
 
-Nota: `mock_repo` usa `AsyncMock`, quindi `mark_ai_disclosure_sent` ritorna di default `True` (primo contatto). I test esistenti che verificano il payload esatto (`test_ai_reply_sent_when_no_escalation`, riga 103) si aspettano `payload["text"]["body"] == "Siamo aperti dalle 12 alle 15."` — con la disclosure questo cambia. Aggiornare quel test per verificare che il body **inizia** con la disclosure approvata:
+Nota: `mock_repo` usa `AsyncMock`, quindi `mark_ai_disclosure_sent` ritorna di default `True` (primo contatto). I test esistenti che verificano il payload esatto si aspettano il body senza disclosure — con la disclosure questo cambia. Aggiornare entrambi:
+
+- `test_ai_reply_sent_when_no_escalation` (riga 103) per verificare che il body **inizia** con la disclosure approvata:
+- `test_fast_path_reply_also_sent_via_whatsapp` (riga 150) analogamente: il body del fast-path ora inizia con la disclosure (mock_repo segna sender su primo contatto):
 
 ```python
         payload_body = call_kwargs["payload"]["text"]["body"]
@@ -376,26 +379,30 @@ Expected: FAIL — `AssertionError` sul body (la disclosure non viene ancora pre
 
 - [ ] **Step 3: Implementare**
 
-In `_process_one`, nel ramo fast-path (riga 113-117), modificare per decorare prima di inviare:
+In `_process_one`, nel ramo fast-path (riga 113-117), modificare per decorare DENTRO il blocco del winner di `try_mark_replied` (race: solo chi vince invia CON disclosure; chi perde non marca mai il contatto):
 
 ```python
         fast_reply = await self.service.fast_path_match(text, business_profile_raw)
         if fast_reply:
             from_number = content.get("from", "")
             nome = (business_profile_raw or {}).get("nome") or "Attivita"
+            replied = await self.repo.try_mark_replied(msg["id"])
+            if not replied:
+                return
             decorated = await decorate_with_disclosure(org_id, from_number, fast_reply, self.repo, nome_attivita=nome)
-            if await self.repo.try_mark_replied(msg["id"]):
-                await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
+            await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
             return
 ```
 
-Nel ramo risposta AI (riga 206-207), decorare prima dell'invio:
+Nel ramo risposta AI (riga 206-207), stessa logica — decorare dentro il blocco del winner:
 
 ```python
+        replied = await self.repo.try_mark_replied(msg["id"])
+        if not replied:
+            return
         from_number = content.get("from", "")
         decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
-        if await self.repo.try_mark_replied(msg["id"]):
-            await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
+        await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
 ```
 
 - [ ] **Step 4: Verificare che passino**
@@ -435,11 +442,12 @@ In `tests/whatsapp/test_inbound_processor.py`, nella fixture `mock_service` (rig
 
 ```python
     async def test_human_request_forces_escalation(
-        self, app_config, mock_repo, mock_service, sample_msg
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
     ):
         mock_service.check_human_request = AsyncMock(return_value=True)
         mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"], "ticket_status": "PENDING_STAFF"})
-        with patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()) as mock_email:
             processor = InboundProcessor(app_config, mock_repo, mock_service)
             await processor.process_next_batch()
 
@@ -468,8 +476,9 @@ In `_process_one`, immediatamente dopo il blocco opt-out (riga 89) e prima di `i
         if wants_human:
             from_number = content.get("from", "")
             tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-            if await self.repo.try_mark_replied(msg["id"]):
-                await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY)
+            if not await self.repo.try_mark_replied(msg["id"]):
+                return
+            await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY)
             conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
             if conv:
                 enqueue_escalation(
@@ -566,3 +575,4 @@ git commit -m "docs(gdpr): disclosure AI Act documentata in DPA, DPA HTML e road
 - **Placeholder scan:** nessun TODO/TBD; ogni step ha codice concreto.
 - **Type consistency:** `decorate_with_disclosure(org_id, from_number, testo, repo, nome_attivita)` usata nello stesso modo in Task 3 e Task 4; `mark_ai_disclosure_sent -> bool` coerente; `check_human_request(text, lang) -> bool` coerente.
 - **Ordine pipeline:** opt-out → OPERATORE → reminder → sospesa → fast-path → AI (spec §6) rispettato nell'inserimento del Task 5 (dopo opt-out, prima di reminder).
+- **Fix pre-flight (approvati):** (1) Task 4 aggiorna anche `test_fast_path_reply_also_sent_via_whatsapp`; (2) test Task 5 patcha `load_tenant_config`; (3) disclosure decorata DENTRO il blocco del winner di `try_mark_replied` (evita che un worker perdente marcchi la disclosure mentre un altro invia senza); (4) fixture Test 1 `reset_db` shadow del conftest.

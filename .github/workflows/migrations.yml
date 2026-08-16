@@ -49,7 +49,7 @@ jobs:
           CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb AS $$
               SELECT '{}'::jsonb
           $$ LANGUAGE sql STABLE;
-      EOSQL
+          EOSQL
 
       - name: Apply whatsapp schema
         run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/whatsapp/schema.sql

@@ -313,6 +313,7 @@ async def reply_to_ticket(
                 text=body.content,
                 ig_config=ig_config,
                 idempotency_key=body.idempotency_key,
+                handling_type="human",
             )
         except Exception as e:
             raise HTTPException(status_code=502, detail=f"Invio su Instagram fallito: {e}")
@@ -331,6 +332,7 @@ async def reply_to_ticket(
             meta_client=None,
             tenant_config=tenant_config,
             idempotency_key=body.idempotency_key,
+            handling_type="human",
         )
     except WhatsAppService.MessageUsageExceeded as e:
         raise HTTPException(status_code=429, detail=str(e))

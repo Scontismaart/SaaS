@@ -271,17 +271,21 @@ class Repository:
                 """, limit)
                 return [dict(r) for r in rows]
 
-    async def try_mark_replied(self, message_id):
+    async def try_mark_replied(self, message_id, handling_type: str | None = None):
         """Atomically marks a message as replied+handled. Returns the updated
         row if this call won the race, or None if another worker already marked
-        it. Call BEFORE sending the WhatsApp reply so only one worker proceeds."""
+        it. Call BEFORE sending the WhatsApp reply so only one worker proceeds.
+        handling_type va al trigger event_log: 'ai_handled' (AI gestita),
+        'escalated' (staff), 'automation' (fast path/reminder), 'opt_out',
+        'suspended'."""
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 UPDATE messages SET replied_at = NOW(), status = 'handled',
+                    handling_type = COALESCE($2, handling_type),
                     updated_at = NOW()
                 WHERE id = $1 AND replied_at IS NULL
                 RETURNING *
-            """, message_id)
+            """, message_id, handling_type)
             return dict(row) if row else None
 
     async def update_heartbeat(self, message_id):

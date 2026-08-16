@@ -18,11 +18,14 @@ from src.core.llm_config import (
 from src.models.schemas import MessaggioInput, ProfiloAttivita, RispostaOutput
 
 
-def _route_request_for_message(messaggio: MessaggioInput, billing: dict | None = None) -> LLMRouteRequest:
+def _route_request_for_message(
+    messaggio: MessaggioInput, billing: dict | None = None, intent: str | None = None
+) -> LLMRouteRequest:
     return LLMRouteRequest(
         task_type="customer_message",
         user_text=messaggio.testo,
         remaining_budget_ratio=budget_ratio_from_billing(billing),
+        intent=intent,
     )
 
 
@@ -42,6 +45,7 @@ def genera_risposta(
     profilo: ProfiloAttivita,
     cronologia: list[tuple[str, str]] | None = None,
     billing: dict | None = None,
+    intent: str | None = None,
 ) -> RispostaOutput:
     """Esegue la crew su un singolo messaggio e restituisce l'output
     strutturato e validato.
@@ -51,7 +55,7 @@ def genera_risposta(
     un errore esplicito che una risposta silenziosamente sbagliata
     mandata a un cliente reale.
     """
-    route_request = _route_request_for_message(messaggio, billing)
+    route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)
     errors: list[str] = []
     for model in [route.model, *route.fallback_models]:
@@ -68,6 +72,7 @@ async def genera_risposta_async(
     profilo: ProfiloAttivita,
     billing: dict | None = None,
     contesto_documenti: str = "",
+    intent: str | None = None,
 ) -> RispostaOutput:
     """Versione asincrona di genera_risposta per essere usata da route
     FastAPI che girano in un event loop già attivo.
@@ -75,7 +80,7 @@ async def genera_risposta_async(
     Audit 3.3: limitata dal semaforo globale LLM_CONCURRENCY_SEM per non
     saturare il rate-limit/budget condiviso su OpenRouter quando piu'
     tenant generano risposte in parallelo."""
-    route_request = _route_request_for_message(messaggio, billing)
+    route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)
     errors: list[str] = []
     async with LLM_CONCURRENCY_SEM:

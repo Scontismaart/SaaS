@@ -42,6 +42,9 @@ class LLMRouteRequest:
     user_text: str = ""
     remaining_budget_ratio: float | None = None
     force_tier: LLMTier | None = None
+    # Intent gia' classificato (guardrail task 12): quando presente vince
+    # sulle keyword (non sulla forza di budget/force_tier/task_type premium).
+    intent: str | None = None
 
 
 @dataclass(frozen=True)
@@ -105,6 +108,16 @@ def route_llm(request: LLMRouteRequest) -> LLMRoute:
     elif request.task_type == "document_qa":
         tier = "cheap"
         reason = "document_qa"
+    elif request.intent in {"faq", "chitchat"}:
+        # Intent classificato (task 12): domande semplici e small talk non
+        # hanno bisogno del modello premium.
+        tier = "cheap"
+        reason = "intent_classified"
+    elif request.intent in {"booking", "complaint", "out_of_scope"}:
+        # Prenotazioni (structured output con date relative da risolvere) e
+        # reclami meritano il modello piu' capace.
+        tier = "premium"
+        reason = "intent_classified"
     elif _looks_like_escalation(request.user_text):
         tier = "premium"
         reason = "complex_or_escalation"

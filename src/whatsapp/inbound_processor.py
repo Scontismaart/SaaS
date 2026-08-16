@@ -1,18 +1,25 @@
 import asyncio
 import logging
 import uuid
+
 from pydantic import ValidationError
-from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
-from src.core.security_logger import security_audit
-from src.whatsapp.config import AppConfig, load_tenant_config
-from src.core.crew_runner import genera_risposta_async
-from src.core.bookings import SlotPienoError
-from src.core.notifications.email_service import enqueue_escalation
+
 from src.core.billing.suspension import is_org_suspended
+from src.core.bookings import SlotPienoError
+from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
+from src.core.guardrails.intent_classifier import classifica_intent
+from src.core.guardrails.validator import applica_guardrail, valida_risposta
+from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
+from src.core.notifications.email_service import enqueue_escalation
+from src.core.security_logger import security_audit
 from src.models.schemas import (
-    MessaggioInput, CanaleMessaggio, ProfiloAttivita, WhatsAppBusinessProfile,
+    CanaleMessaggio,
+    MessaggioInput,
+    ProfiloAttivita,
+    WhatsAppBusinessProfile,
 )
+from src.whatsapp.config import AppConfig, load_tenant_config
 
 logger = logging.getLogger(__name__)
 
@@ -106,16 +113,16 @@ class InboundProcessor:
                 matched_text=text,
             )
             security_audit("consent_opt_out", contact_id=str(contact["id"]), organization_id=str(org_id))
-            await self.repo.try_mark_replied(msg["id"])
+            await self.repo.try_mark_replied(msg["id"], handling_type="opt_out")
             return
 
         wants_human = await self.service.check_human_request(text)
         if wants_human:
             from_number = content.get("from", "")
             tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-            if not await self.repo.try_mark_replied(msg["id"]):
+            if not await self.repo.try_mark_replied(msg["id"], handling_type="escalated"):
                 return
-            await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY)
+            await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY, handling_type="automation")
             conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
             if conv:
                 enqueue_escalation(
@@ -131,7 +138,7 @@ class InboundProcessor:
                 org_id, content.get("from", ""), text
             )
             if booking_reply:
-                await self.repo.try_mark_replied(msg["id"])
+                await self.repo.try_mark_replied(msg["id"], handling_type="automation")
                 return
 
         state = await self.repo.get_org_subscription_state(org_id)
@@ -141,8 +148,8 @@ class InboundProcessor:
                 org_id, msg["id"],
             )
             tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-            if await self.repo.try_mark_replied(msg["id"]):
-                await self._send_ai_reply(org_id, msg, content, tenant_config, ORG_SUSPENDED_REPLY)
+            if await self.repo.try_mark_replied(msg["id"], handling_type="suspended"):
+                await self._send_ai_reply(org_id, msg, content, tenant_config, ORG_SUSPENDED_REPLY, handling_type="automation")
             return
 
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
@@ -157,7 +164,7 @@ class InboundProcessor:
         if fast_reply:
             from_number = content.get("from", "")
             nome = (business_profile_raw or {}).get("nome") or "Attivita"
-            replied = await self.repo.try_mark_replied(msg["id"])
+            replied = await self.repo.try_mark_replied(msg["id"], handling_type="ai_handled")
             if not replied:
                 return
             decorated = await decorate_with_disclosure(org_id, from_number, fast_reply, self.repo, nome_attivita=nome)
@@ -171,16 +178,57 @@ class InboundProcessor:
             id_conversazione=str(msg.get("conversation_id", "")),
         )
 
+        # Classificatore di intent (task 12): gira prima del responder e
+        # informa il routing del modello. Mai bloccante, mai solleva.
+        intent_result = await classifica_intent(text)
+        if intent_result.source == "llm":
+            try:
+                await self.repo.record_usage(
+                    org_id,
+                    "intent_classification",
+                    metadata={
+                        "intent": intent_result.intent,
+                        "confidence": intent_result.confidence,
+                        "message_id": str(msg["id"]),
+                    },
+                )
+            except Exception as e:
+                logger.warning("Intent usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
+
         heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
         try:
-            contesto_documenti = await recupera_contesto_documenti(
-                str(org_id), text, self.repo
-            )
+            contesto = await recupera_contesto_documenti(str(org_id), text, self.repo)
             risposta = await genera_risposta_async(
-                messaggio, profilo, billing=state, contesto_documenti=contesto_documenti
+                messaggio, profilo, billing=state, contesto_documenti=contesto.testo,
+                intent=intent_result.intent,
             )
         finally:
             heartbeat_task.cancel()
+
+        # Guardrail post-LLM (task 12): la risposta viene validata contro il
+        # contesto RAG prima di qualsiasi uso. "block" sostituisce il testo
+        # col fallback staff e forza richiede_umano -> escalation HITL.
+        esito = valida_risposta(risposta, contesto.chunks, profilo)
+        if esito.azione != "none":
+            risposta = applica_guardrail(risposta, esito)
+            if esito.azione == "block":
+                logger.warning(
+                    "guardrail block org_id=%s message_id=%s motivo=%s",
+                    org_id, msg["id"], esito.motivo,
+                )
+                try:
+                    await self.repo.record_usage(
+                        org_id,
+                        "guardrail_block",
+                        metadata={
+                            "motivo": esito.motivo,
+                            "violazioni": list(esito.violazioni),
+                            "conversation_id": str(msg.get("conversation_id", "")),
+                            "message_id": str(msg["id"]),
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("Guardrail usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
 
         try:
             route = route_llm(
@@ -188,6 +236,7 @@ class InboundProcessor:
                     task_type="customer_message",
                     user_text=text,
                     remaining_budget_ratio=budget_ratio_from_billing(state),
+                    intent=intent_result.intent,
                 )
             )
             await self.repo.record_usage(
@@ -199,6 +248,8 @@ class InboundProcessor:
                     "model": route.model,
                     "tier": route.tier,
                     "reason": route.reason,
+                    "intent": intent_result.intent,
+                    "intent_source": intent_result.source,
                     "conversation_id": str(msg.get("conversation_id", "")),
                     "message_id": str(msg["id"]),
                 },
@@ -242,6 +293,18 @@ class InboundProcessor:
                     logger.error("Booking creation from AI failed for org %s: %s", org_id, e)
 
         if risposta.richiede_umano:
+            # Il messaggio e' gestito: se il responder ha lasciato un testo
+            # di attesa lo inviamo (il cliente non resta in silenzio mentre
+            # lo staff prende in carico), poi escalation + email al titolare.
+            replied = await self.repo.try_mark_replied(msg["id"], handling_type="escalated")
+            if not replied:
+                return
+            if risposta.risposta:
+                from_number = content.get("from", "")
+                decorated = await decorate_with_disclosure(
+                    org_id, from_number, risposta.risposta, self.repo, profilo.nome
+                )
+                await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
             conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
             if conv:
                 enqueue_escalation(
@@ -250,20 +313,20 @@ class InboundProcessor:
                     contact_name=content.get("from", "cliente"),
                     pool=self.repo.pool,
                 )
-            await self.repo.try_mark_replied(msg["id"])
             return
 
-        replied = await self.repo.try_mark_replied(msg["id"])
+        replied = await self.repo.try_mark_replied(msg["id"], handling_type="ai_handled")
         if not replied:
             return
         from_number = content.get("from", "")
         decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
         await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
 
-    async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta):
+    async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta,
+                             handling_type="ai_handled"):
         canale = msg.get("canale") or "whatsapp"
         if canale == "instagram":
-            await self._send_instagram_reply(org_id, msg, content, testo_risposta)
+            await self._send_instagram_reply(org_id, msg, content, testo_risposta, handling_type=handling_type)
             return
         to_number = content.get("from", "")
         if not to_number or not tenant_config:
@@ -278,13 +341,15 @@ class InboundProcessor:
                 category="service",
                 meta_client=None,
                 tenant_config=tenant_config,
+                handling_type=handling_type,
             )
         except self.service.MessageUsageExceeded:
             logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
         except Exception as e:
             logger.error("Invio risposta AI fallito per messaggio %s: %s", msg["id"], e)
 
-    async def _send_instagram_reply(self, org_id, msg, content, testo_risposta):
+    async def _send_instagram_reply(self, org_id, msg, content, testo_risposta,
+                                    handling_type="ai_handled"):
         """Invio della risposta AI via Instagram DM. Se l'org non ha un
         account Instagram collegato (non dovrebbe accadere: il webhook
         arriva solo per account registrati) logga e non crasha."""
@@ -292,8 +357,8 @@ class InboundProcessor:
         if not to_ig_id:
             logger.warning("Impossibile inviare risposta AI Instagram per messaggio %s: mittente mancante", msg["id"])
             return
-        from src.instagram.repository import InstagramRepository
         from src.instagram.config import load_instagram_config
+        from src.instagram.repository import InstagramRepository
         from src.instagram.service import InstagramService
 
         try:
@@ -308,6 +373,7 @@ class InboundProcessor:
                 to_ig_id=to_ig_id,
                 text=testo_risposta,
                 ig_config=ig_config,
+                handling_type=handling_type,
             )
         except Exception as e:
             logger.error("Invio risposta AI Instagram fallito per messaggio %s: %s", msg["id"], e)

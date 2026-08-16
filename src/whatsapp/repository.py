@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import uuid
@@ -526,6 +527,69 @@ class Repository:
                 if isinstance(r.get("metadata"), str):
                     r["metadata"] = json.loads(r["metadata"])
             return results
+
+    # ── Guardrails: cache FAQ semantica (task 12) ───────────────
+
+    @staticmethod
+    def _vec_str(embedding: list) -> str:
+        return "[" + ",".join(str(v) for v in embedding) + "]"
+
+    async def faq_cache_lookup(self, organization_id: str, embedding: list,
+                               max_distance: float = 0.08) -> dict | None:
+        """Risposta in cache per la domanda piu' simile (distanza cosine
+        <= max_distance, non scaduta). Aggiorna hit_count/last_used_at
+        atomicamente sulla riga vincente. None se nessun match. Il filtro
+        organization_id nella query e' la barriera tra tenant, come per il
+        retrieval RAG."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE faq_cache SET hit_count = hit_count + 1, last_used_at = NOW()
+                WHERE id = (
+                    SELECT id FROM faq_cache
+                    WHERE organization_id = $1::uuid
+                      AND expires_at > NOW()
+                      AND (question_embedding <=> $2::vector) <= $3
+                    ORDER BY question_embedding <=> $2::vector
+                    LIMIT 1
+                )
+                RETURNING *
+            """, organization_id, self._vec_str(embedding), max_distance)
+            return dict(row) if row else None
+
+    async def faq_cache_store(self, organization_id: str, question_text: str,
+                              answer_text: str, embedding: list,
+                              prompt_variant: str = "control",
+                              ttl_hours: int = 72) -> dict:
+        """Salva una coppia domanda/risposta con il suo embedding. La stessa
+        domanda (testo normalizzato) aggiorna risposta/embedding/scadenza."""
+        normalized = " ".join(question_text.lower().split())
+        question_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                INSERT INTO faq_cache (id, organization_id, question_text, question_hash,
+                                       question_embedding, answer_text, prompt_variant, expires_at)
+                VALUES ($1, $2::uuid, $3, $4, $5::vector, $6, $7,
+                        NOW() + ($8 || ' hours')::interval)
+                ON CONFLICT (organization_id, question_hash)
+                    DO UPDATE SET
+                        answer_text = EXCLUDED.answer_text,
+                        question_embedding = EXCLUDED.question_embedding,
+                        prompt_variant = EXCLUDED.prompt_variant,
+                        expires_at = EXCLUDED.expires_at
+                RETURNING *
+            """, uuid.uuid4(), organization_id, question_text, question_hash,
+                self._vec_str(embedding), answer_text, prompt_variant, str(ttl_hours))
+            return dict(row)
+
+    async def faq_cache_invalidate(self, organization_id: str) -> int:
+        """Svuota la cache dell'org (es. nuovo menu caricato: i prezzi
+        potrebbero essere cambiati). Ritorna le righe eliminate."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM faq_cache WHERE organization_id = $1::uuid",
+                organization_id,
+            )
+            return int(result.split()[-1]) if result else 0
 
     # ── HITL: Ticket State Machine ──────────────────────────────
 

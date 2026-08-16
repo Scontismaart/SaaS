@@ -432,6 +432,18 @@ class CoreRepository:
             """, document_id, organization_id)
             return 1 if row else 0
 
+    async def faq_cache_invalidate(self, organization_id) -> int:
+        """Svuota la cache FAQ dell'org (migration 031): da chiamare quando
+        la knowledge base cambia (upload/eliminazione documento) perche' le
+        risposte in cache potrebbero contenere informazioni non piu' valide
+        (es. prezzi del menu aggiornati)."""
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM faq_cache WHERE organization_id = $1::uuid",
+                organization_id,
+            )
+            return int(result.split()[-1]) if result else 0
+
     # ── Onboarding ────────────────────────────────────────────
 
     @staticmethod

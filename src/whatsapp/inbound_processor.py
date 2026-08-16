@@ -8,6 +8,7 @@ from src.core.billing.suspension import is_org_suspended
 from src.core.bookings import SlotPienoError
 from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
+from src.core.guardrails import faq_cache
 from src.core.guardrails.intent_classifier import classifica_intent
 from src.core.guardrails.validator import applica_guardrail, valida_risposta
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
@@ -195,9 +196,45 @@ class InboundProcessor:
             except Exception as e:
                 logger.warning("Intent usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
 
+        # Cache FAQ semantica (task 12): le domande faq ripetute vengono
+        # servite senza passare dal responder. L'embedding calcolato qui
+        # viene riusato anche dal retrieval RAG sotto. Fail-open.
+        q_emb = None
+        if faq_cache.cache_enabled() and intent_result.intent == "faq":
+            try:
+                q_emb = await faq_cache.embedding_query(text)
+                cached_answer = await faq_cache.cerca_in_cache(
+                    str(org_id), text, self.repo, q_emb=q_emb
+                )
+            except Exception as e:
+                logger.warning("FAQ cache lookup failed for org %s msg %s: %s", org_id, msg["id"], e)
+                cached_answer = None
+            if cached_answer:
+                from_number = content.get("from", "")
+                replied = await self.repo.try_mark_replied(msg["id"], handling_type="ai_handled")
+                if not replied:
+                    return
+                decorated = await decorate_with_disclosure(
+                    org_id, from_number, cached_answer, self.repo, profilo.nome
+                )
+                await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
+                try:
+                    await self.repo.record_usage(
+                        org_id,
+                        "cache_hit",
+                        metadata={
+                            "conversation_id": str(msg.get("conversation_id", "")),
+                            "message_id": str(msg["id"]),
+                            "intent": intent_result.intent,
+                        },
+                    )
+                except Exception as e:
+                    logger.warning("Cache hit usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
+                return
+
         heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
         try:
-            contesto = await recupera_contesto_documenti(str(org_id), text, self.repo)
+            contesto = await recupera_contesto_documenti(str(org_id), text, self.repo, q_emb=q_emb)
             risposta = await genera_risposta_async(
                 messaggio, profilo, billing=state, contesto_documenti=contesto.testo,
                 intent=intent_result.intent,
@@ -321,6 +358,19 @@ class InboundProcessor:
         from_number = content.get("from", "")
         decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
         await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
+
+        # Popolamento cache FAQ (task 12): solo risposte di qualita' che
+        # sono arrivate al cliente — guardrail ok, no escalation, no
+        # prenotazione (quelle non sono FAQ). Fail-open, mai blocca l'invio.
+        if (faq_cache.cache_enabled() and intent_result.intent == "faq"
+                and esito.azione != "block" and not risposta.richiede_umano
+                and not (pren and pren.data and pren.ora and pren.coperti)):
+            try:
+                await faq_cache.salva_in_cache(
+                    str(org_id), text, risposta.risposta, self.repo, q_emb=q_emb
+                )
+            except Exception as e:
+                logger.warning("FAQ cache store failed for org %s msg %s: %s", org_id, msg["id"], e)
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta,
                              handling_type="ai_handled"):

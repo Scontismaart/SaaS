@@ -12,10 +12,11 @@ from src.models.schemas import RispostaOutput
 
 @pytest.fixture(autouse=True)
 def _no_real_embedding_model():
-    """Il path AI ora recupera il contesto RAG prima della risposta: il
+    """Il path AI ora calcola embedding per cache FAQ e retrieval RAG: il
     vettorizza reale carica il modello MiniLM (download in CI). Lo
     congeliamo con un embedding finto per tutti i test del processor."""
-    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]):
+    with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]), \
+         patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]):
         yield
 
 
@@ -48,6 +49,10 @@ def mock_repo(sample_msg):
     repo.get_org_subscription_state = AsyncMock(return_value=None)
     repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
     repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
+    # Cache FAQ: default NESSUN hit (AsyncMock nudo restituirebbe un oggetto
+    # truthy che verrebbe scambiato per una risposta in cache).
+    repo.faq_cache_lookup = AsyncMock(return_value=None)
+    repo.faq_cache_store = AsyncMock(return_value=None)
     repo.pool = MagicMock()
     return repo
 
@@ -582,6 +587,81 @@ class TestGuardrailsProcessor:
         assert intent_calls == []
 
 
+    async def test_cache_hit_salta_il_responder(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Domanda FAQ gia' in cache: risposta servita senza chiamare l'LLM,
+        con usage event cache_hit e handling ai_handled."""
+        mock_repo.record_usage = AsyncMock()
+        mock_repo.faq_cache_lookup = AsyncMock(return_value={
+            "answer_text": "Siamo aperti dalle 12 alle 15.", "hit_count": 3,
+        })
+        sample_msg["content_text"] = "A che ora aprite la sera?"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_ai, \
+             patch("src.core.guardrails.faq_cache.cerca_in_cache", AsyncMock(return_value="Siamo aperti dalle 12 alle 15.")) as mock_cerca:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_cerca.assert_awaited_once()
+        mock_ai.assert_not_called()
+        mock_service.send_whatsapp_message.assert_awaited_once()
+        body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
+        assert "Siamo aperti dalle 12 alle 15." in body
+        cache_calls = [
+            c for c in mock_repo.record_usage.await_args_list
+            if c.args[1] == "cache_hit"
+        ]
+        assert cache_calls, "manca l'usage event cache_hit"
+
+    async def test_risposta_faq_validata_restituita_va_in_cache(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Dopo una risposta FAQ inviata col guardrail ok, la coppia
+        domanda/risposta finisce in cache per i prossimi clienti."""
+        mock_repo.record_usage = AsyncMock()
+        mock_repo.search_similar = AsyncMock(return_value=[])
+        mock_repo.faq_cache_store = AsyncMock(return_value={"id": uuid.uuid4()})
+        sample_msg["content_text"] = "A che ora aprite la sera?"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]), \
+             patch("src.core.guardrails.faq_cache.cerca_in_cache", AsyncMock(return_value=None)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Siamo aperti dalle 12 alle 15.", richiede_umano=False, motivo="orari", categoria="info",
+             ))):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.faq_cache_store.assert_awaited_once()
+        args = mock_repo.faq_cache_store.await_args.args
+        assert "aprite" in args[1].lower()
+        assert args[2] == "Siamo aperti dalle 12 alle 15."
+
+    async def test_niente_cache_se_escalation(
+        self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
+    ):
+        """Una risposta che finisce in escalation non inquina la cache."""
+        mock_repo.search_similar = AsyncMock(return_value=[])
+        mock_repo.faq_cache_store = AsyncMock()
+        mock_repo.escalate_to_human = AsyncMock(return_value={"id": sample_msg["conversation_id"]})
+        sample_msg["content_text"] = "A che ora aprite la sera?"
+
+        with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \
+             patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]), \
+             patch("src.core.guardrails.faq_cache.cerca_in_cache", AsyncMock(return_value=None)), \
+             patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock(return_value=RispostaOutput(
+                 risposta="Ti passo lo staff", richiede_umano=True, motivo="reclamo", categoria="reclamo",
+             ))), \
+             patch("src.whatsapp.inbound_processor.enqueue_escalation", MagicMock()):
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+
+        mock_repo.faq_cache_store.assert_not_called()
+
+
 class TestRagContestoWhatsapp:
     """Il messaggio WhatsApp reale viaggia ora con il contesto RAG dei
     documenti dell'org (Punto 11)."""
@@ -685,8 +765,8 @@ class TestRagContestoWhatsapp:
         # iniettiamo un timeout breve solo nel test per renderlo veloce.
         real_retrieval = recupera_contesto_documenti
 
-        async def fast_retrieval(org_id, testo, repo):
-            return await real_retrieval(org_id, testo, repo, timeout=0.05)
+        async def fast_retrieval(org_id, testo, repo, q_emb=None):
+            return await real_retrieval(org_id, testo, repo, q_emb=q_emb, timeout=0.05)
 
         start = time.monotonic()
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)), \

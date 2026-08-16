@@ -596,6 +596,27 @@ class Repository:
             )
             return dict(row) if row else None
 
+    async def list_conversation_messages(
+        self, org_id: str, conversation_id: str, limit: int = 50, offset: int = 0
+    ) -> list[dict]:
+        """Storico messaggi di una conversazione per l'inbox HITL: ordine
+        cronologico ASC, soft-delete escluse (GDPR). total via window
+        function per la paginazione lato UI."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                """SELECT id, direction, message_type, content_text, status,
+                          handling_type, created_at,
+                          COUNT(*) OVER() AS total
+                   FROM messages
+                   WHERE conversation_id = $1::uuid
+                     AND organization_id = $2::uuid
+                     AND deleted_at IS NULL
+                   ORDER BY created_at ASC
+                   LIMIT $3 OFFSET $4""",
+                conversation_id, org_id, limit, offset
+            )
+            return [dict(r) for r in rows]
+
     async def escalate_to_human(self, conversation_id: str) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(

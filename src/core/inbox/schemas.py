@@ -78,3 +78,18 @@ class TeamMemberItem(BaseModel):
 
 class TeamListResponse(BaseModel):
     members: list[TeamMemberItem]
+
+
+class MessageListItem(BaseModel):
+    id: str
+    direction: str
+    message_type: str
+    content_text: Optional[str] = None
+    status: str
+    handling_type: Optional[str] = None
+    created_at: str
+
+
+class MessageListResponse(BaseModel):
+    messages: list[MessageListItem]
+    total: int

@@ -84,6 +84,7 @@ let notificationItems = {
   recensioni: [],
   prenotazioni: [],
   documenti: [],
+  inbox: [],
 };
 
 function leggiStatoNotifiche() {
@@ -118,16 +119,18 @@ function segnaNotificheViste(viewName) {
 
 async function aggiornaNotifiche() {
   try {
-    const [dashboardResponse, prenotazioniResponse, documentiResponse, reportResponse] = await Promise.all([
+    const [dashboardResponse, prenotazioniResponse, documentiResponse, reportResponse, inboxResponse] = await Promise.all([
       apiFetch(`${API_BASE}/api/dashboard`),
       apiFetch(`${API_BASE}/api/bookings`),
       apiFetch(`${API_BASE}/api/documenti/elenco`),
       apiFetch(`${API_BASE}/api/report/stato`),
+      apiFetch(`${API_BASE}/api/inbox/tickets`),
     ]);
     const eventi = dashboardResponse.ok ? await dashboardResponse.json() : [];
     const prenotazioni = prenotazioniResponse.ok ? await prenotazioniResponse.json() : [];
     const documenti = documentiResponse.ok ? (await documentiResponse.json()).documenti || [] : [];
     const report = reportResponse.ok ? await reportResponse.json() : { disponibile: false };
+    const inboxTickets = inboxResponse.ok ? (await inboxResponse.json()).tickets || [] : [];
     notificationItems = {
       panoramica: eventi.map((evento) => evento.id),
       assistente: eventi.filter((evento) => evento.tipo_evento === "messaggio").map((evento) => evento.id),
@@ -135,6 +138,9 @@ async function aggiornaNotifiche() {
       prenotazioni: prenotazioni.map((prenotazione) => prenotazione.id),
       documenti: documenti.map((documento) => documento.id),
       report: report.disponibile && report.id ? [report.id] : [],
+      inbox: inboxTickets
+        .filter((ticket) => ticket.ticket_status === "PENDING_STAFF" || ticket.ticket_status === "CLAIMED")
+        .map((ticket) => ticket.id),
     };
     const stato = leggiStatoNotifiche();
     if (!stato.inizializzato) {
@@ -199,7 +205,10 @@ navItems.forEach((btn) => {
       aggiornaDocumenti();
     }
     if (viewName === "inbox") {
+      avviaInboxPolling();
       caricaInbox();
+    } else {
+      fermaInboxPolling();
     }
   });
 });
@@ -1682,6 +1691,14 @@ function renderInboxCard(container, t, team) {
   const actions = document.createElement("div");
   actions.className = "inbox-actions";
 
+  const threadBtn = document.createElement("button");
+  threadBtn.type = "button";
+  threadBtn.className = "inbox-btn";
+  threadBtn.textContent = "Conversazione";
+  threadBtn.title = "Apri lo storico completo dei messaggi";
+  threadBtn.addEventListener("click", () => apriThreadConversazione(t));
+  actions.appendChild(threadBtn);
+
   if ((t.ticket_status === "PENDING_STAFF" || t.ticket_status === "CLAIMED") && team.length) {
     const assignWrap = document.createElement("div");
     assignWrap.className = "inbox-assign";
@@ -1854,6 +1871,99 @@ document.querySelectorAll("[data-priorita]").forEach((btn) => {
     caricaInbox();
   });
 });
+
+/* ---------- Thread conversazione (storico messaggi) ---------- */
+
+const threadModal = document.getElementById("thread-modal");
+const threadModalTitle = document.getElementById("thread-modal-title");
+const threadMsgs = document.getElementById("thread-msgs");
+const threadFoot = document.getElementById("thread-foot");
+
+const MESSAGE_STATUS_LABEL = {
+  received_pending_ai: "ricevuto",
+  processing: "in lavorazione",
+  handled: "gestito",
+  queued: "in coda",
+  sending_ambiguous: "invio incerto",
+  sent: "inviato",
+  delivered: "consegnato",
+  read: "letto",
+  failed: "non inviato",
+};
+
+function chiudiThreadConversazione() {
+  if (threadModal) threadModal.hidden = true;
+}
+
+async function apriThreadConversazione(ticket) {
+  if (!threadModal || !threadMsgs) return;
+  threadModalTitle.textContent = `Conversazione — ${ticket.phone_number || "cliente"}`;
+  threadMsgs.innerHTML = "";
+  threadFoot.textContent = "Caricamento messaggi...";
+  threadModal.hidden = false;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/inbox/tickets/${encodeURIComponent(ticket.id)}/messages?limit=200`);
+    if (!res.ok) throw new Error(`Errore ${res.status}`);
+    const data = await res.json();
+    const messages = data.messages || [];
+    if (!messages.length) {
+      threadFoot.textContent = "Nessun messaggio nello storico.";
+      return;
+    }
+    messages.forEach((m) => {
+      const bubble = document.createElement("div");
+      bubble.className = `thread-bubble ${m.direction === "outbound" ? "out" : "in"}`;
+      const text = document.createElement("p");
+      text.className = "thread-bubble-text";
+      text.textContent = m.content_text || `(messaggio ${m.message_type} senza testo)`;
+      const meta = document.createElement("span");
+      meta.className = "thread-bubble-meta";
+      const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
+      const quando = formatInboxDate(m.created_at);
+      meta.textContent = m.direction === "outbound" ? `${quando} · ${status}` : quando;
+      bubble.appendChild(text);
+      bubble.appendChild(meta);
+      threadMsgs.appendChild(bubble);
+    });
+    threadFoot.textContent = `${data.total} messaggi nello storico`;
+    threadMsgs.scrollTop = threadMsgs.scrollHeight;
+  } catch (err) {
+    console.error("Impossibile caricare la conversazione:", err);
+    threadFoot.textContent = "Impossibile caricare la conversazione.";
+  }
+}
+
+if (document.getElementById("thread-modal-close")) {
+  document.getElementById("thread-modal-close").addEventListener("click", chiudiThreadConversazione);
+}
+if (threadModal) {
+  threadModal.addEventListener("click", (e) => {
+    if (e.target === threadModal) chiudiThreadConversazione();
+  });
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && threadModal && !threadModal.hidden) chiudiThreadConversazione();
+});
+
+/* ---------- Auto-refresh inbox + polling ---------- */
+
+const INBOX_POLL_MS = 15000;
+let inboxPollTimer = null;
+
+function avviaInboxPolling() {
+  if (inboxPollTimer) return;
+  inboxPollTimer = setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    caricaInbox();
+  }, INBOX_POLL_MS);
+}
+
+function fermaInboxPolling() {
+  if (inboxPollTimer) {
+    clearInterval(inboxPollTimer);
+    inboxPollTimer = null;
+  }
+}
 
 /* ============================================================
    AVVIO

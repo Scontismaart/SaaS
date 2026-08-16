@@ -39,7 +39,7 @@ Non sono teoria: sono i 3 bug/incidenti reali che hanno rallentato questo proget
 | 3 | Auth/autorizzazione | Fatto — JWT, ruoli, MFA/AAL2 su path sensibili |
 | 4 | Billing Stripe | Fatto — piani, webhook, sospensione robusta |
 | 5 | GDPR/compliance | Quasi - retention/encryption/.env.example ci sono; bozza DPA in docs/superpowers/dpa/ (validazione legale ancora da fare); disclosure AI Act art. 50 al primo contatto implementata (migration 029, ai_disclosure_sent_at) |
-| 6 | HITL | Parziale — inbox + email escalation ci sono, manca assegnazione a membro team e SLA visibili |
+| 6 | HITL | Fatto — inbox completa (claim/assign/release/resolve/reply via WhatsApp Graph API con idempotenza), SLA e priorita' in API+UI, email escalation ai titolari; storico conversazione (`GET /api/inbox/tickets/{id}/messages` + thread in UI), badge Inbox in sidebar e auto-refresh 15s della vista aperta. Nota: claim/release/resolve/reply richiedono sessione JWT (le API key di servizio ora ricevono 403 esplicito, non piu' 500); il login JWT nella UI resta task pre-lancio (CHECKLIST-PRE-LANCIO). Push PWA rimandata al punto 20 |
 | 7 | Onboarding wizard | Fatto — migration 028 `onboarding_profiles` org-scoped + RLS, sync di `organizations.business_profile`, preview reale (crew + LLM + contesto RAG pgvector non bloccante), upload documenti nel wizard, auth frontend transitoria (X-API-Key + X-Organization-Id da localStorage) |
 | 8 | Prenotazioni standalone | Parziale — core solido (conferma/rifiuto/no-show/reminder), manca TheFork/Calendly e deposito Stripe |
 | 9 | Recensioni automatiche | Fatto — fetch Google reale, OAuth, bozza AI, approvazione, dedup, priorità unificata |

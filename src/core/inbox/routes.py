@@ -9,6 +9,8 @@ from src.core.inbox.schemas import (
     AssignResponse,
     ClaimRequest,
     ClaimResponse,
+    MessageListItem,
+    MessageListResponse,
     ReplyRequest,
     ReplyResponse,
     TeamListResponse,
@@ -37,6 +39,20 @@ def _get_app_config() -> AppConfig:
         postgres_dsn="",
         verify_token=os.environ.get("META_VERIFY_TOKEN", ""),
     )
+
+
+def _require_user_id(user: dict) -> str:
+    """Le azioni operative (claim/release/resolve/reply) attribuiscono il
+    ticket a un operatore: servono la sua identita'. Il path X-API-Key della
+    UI transitoria non propaga user_id (dependencies.py) — meglio un 403
+    esplicito del KeyError 500 che oggi nasconde il problema."""
+    user_id = user.get("user_id")
+    if not user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Azione richiede una sessione utente (JWT): l'API key di servizio puo' solo leggere l'inbox",
+        )
+    return str(user_id)
 
 
 def _to_ticket_item(t: dict) -> TicketListItem:
@@ -90,6 +106,44 @@ async def get_ticket(
     return _to_ticket_item(conv)
 
 
+@router.get("/tickets/{conversation_id}/messages", response_model=MessageListResponse)
+async def get_ticket_messages(
+    conversation_id: str,
+    request: Request,
+    limit: int = 50,
+    offset: int = 0,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    """Storico messaggi del ticket, in ordine cronologico: l'operatore non
+    risponde piu' alla cieca sull'ultimo preview. Paginazione limit/offset."""
+    org_id = user["organization_id"]
+    if limit < 1 or limit > 200 or offset < 0:
+        raise HTTPException(status_code=422, detail="limit deve essere 1-200 e offset >= 0")
+    wrepo = _get_wrepo(request)
+    conv = await wrepo.get_conversation(conversation_id)
+    if not conv or str(conv["organization_id"]) != str(org_id):
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    rows = await wrepo.list_conversation_messages(
+        org_id, conversation_id, limit=limit, offset=offset
+    )
+    total = rows[0]["total"] if rows else 0
+    return MessageListResponse(
+        messages=[
+            MessageListItem(
+                id=str(r["id"]),
+                direction=r["direction"],
+                message_type=r["message_type"],
+                content_text=r.get("content_text"),
+                status=r["status"],
+                handling_type=r.get("handling_type"),
+                created_at=r["created_at"].isoformat(),
+            )
+            for r in rows
+        ],
+        total=total,
+    )
+
+
 @router.post("/claim/{conversation_id}", response_model=ClaimResponse)
 async def claim_ticket(
     conversation_id: str,
@@ -102,7 +156,7 @@ async def claim_ticket(
     conv = await wrepo.get_conversation(conversation_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    result = await wrepo.claim_ticket(conversation_id, user["user_id"], expected_version=body.expected_version)
+    result = await wrepo.claim_ticket(conversation_id, _require_user_id(user), expected_version=body.expected_version)
     if not result:
         raise HTTPException(status_code=409, detail="Conflict: ticket already claimed or version mismatch")
     return ClaimResponse(
@@ -127,7 +181,7 @@ async def release_ticket(
     conv = await wrepo.get_conversation(conversation_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    result = await wrepo.release_ticket(conversation_id, user["user_id"])
+    result = await wrepo.release_ticket(conversation_id, _require_user_id(user))
     if not result:
         raise HTTPException(status_code=409, detail="Cannot release: not assigned to you or not CLAIMED")
     return {"ticket_status": result["ticket_status"], "version": result["version"]}
@@ -144,7 +198,7 @@ async def resolve_ticket(
     conv = await wrepo.get_conversation(conversation_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    result = await wrepo.resolve_ticket(conversation_id, user["user_id"])
+    result = await wrepo.resolve_ticket(conversation_id, _require_user_id(user))
     if not result:
         raise HTTPException(status_code=409, detail="Cannot resolve: not assigned to you or not CLAIMED")
     return {"ticket_status": result["ticket_status"], "version": result["version"]}
@@ -218,11 +272,12 @@ async def reply_to_ticket(
     involontaria dello stesso client (doppio click, retry dopo timeout
     apparente) restituisce il messaggio gia' inviato invece di duplicarlo."""
     org_id = user["organization_id"]
+    operator_id = _require_user_id(user)
     wrepo = _get_wrepo(request)
     conv = await wrepo.get_conversation(conversation_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    if conv["ticket_status"] != "CLAIMED" or str(conv.get("assigned_to")) != str(user["user_id"]):
+    if conv["ticket_status"] != "CLAIMED" or str(conv.get("assigned_to")) != operator_id:
         raise HTTPException(
             status_code=409,
             detail="Ticket non CLAIMED da te: fai il claim prima di rispondere",

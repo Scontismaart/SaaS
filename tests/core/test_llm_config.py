@@ -47,10 +47,10 @@ def test_crea_llm_groq_pass_through_senza_deny(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.setenv("GROQ_API_KEY", "gsk-test")
 
-    llm = crea_llm(model="groq/llama-3.3-70b-versatile")
+    llm = crea_llm(model="groq/openai/gpt-oss-20b")
 
     assert llm.is_litellm is True
-    assert llm.model == "groq/llama-3.3-70b-versatile"
+    assert llm.model == "groq/openai/gpt-oss-20b"
     assert "extra_body" not in llm.additional_params
 
 
@@ -60,10 +60,10 @@ def test_crea_llm_cerebras_pass_through_senza_deny(monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.setenv("CEREBRAS_API_KEY", "csk-test")
 
-    llm = crea_llm(model="cerebras/llama-3.3-70b")
+    llm = crea_llm(model="cerebras/gpt-oss-120b")
 
     assert llm.base_url == "https://api.cerebras.ai/v1"
-    assert llm.model == "llama-3.3-70b"
+    assert llm.model == "gpt-oss-120b"
     assert "extra_body" not in llm.additional_params
 
 
@@ -74,4 +74,4 @@ def test_crea_llm_richiede_la_chiave_del_provider(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
 
     with pytest.raises(RuntimeError, match="GROQ_API_KEY"):
-        crea_llm(model="groq/llama-3.3-70b-versatile")
+        crea_llm(model="groq/openai/gpt-oss-20b")

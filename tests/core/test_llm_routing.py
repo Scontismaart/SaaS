@@ -85,28 +85,30 @@ def test_fallback_models_keep_order_and_skip_primary(monkeypatch):
 
 
 def test_fallback_default_passa_per_altri_provider(monkeypatch):
-    """Task 13: la chain di fallback di default deve attraversare anche
-    provider no-training (Groq, Cerebras), non solo modelli OpenRouter."""
+    """Task 13: la chain di fallback di default attraversa anche provider
+    no-training (Groq), non solo modelli OpenRouter. Cerebras resta FUORI
+    dalla default chain perche' l'account non ha credito (tutti i modelli
+    rispondono 402): resta supportato da crea_llm, non dalla chain."""
     monkeypatch.delenv("OPENROUTER_MODEL_FALLBACKS", raising=False)
 
     fallbacks = get_route_fallback_models("openai/gpt-4o-mini")
     joined = ",".join(fallbacks)
 
     assert "groq/" in joined
-    assert "cerebras/" in joined
+    assert "cerebras/" not in joined
 
 
 def test_fallback_preserva_gli_id_prefissati(monkeypatch):
     monkeypatch.setenv(
         "OPENROUTER_MODEL_FALLBACKS",
-        "openai/gpt-4o-mini, groq/llama-3.3-70b-versatile, cerebras/llama-3.3-70b",
+        "openai/gpt-4o-mini, groq/openai/gpt-oss-20b, cerebras/gpt-oss-120b",
     )
 
     fallbacks = get_route_fallback_models("openai/gpt-4o-mini")
 
     assert fallbacks == [
-        "groq/llama-3.3-70b-versatile",
-        "cerebras/llama-3.3-70b",
+        "groq/openai/gpt-oss-20b",
+        "cerebras/gpt-oss-120b",
     ]
 
 

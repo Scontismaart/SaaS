@@ -84,6 +84,32 @@ def test_fallback_models_keep_order_and_skip_primary(monkeypatch):
     assert fallbacks == ["fallback/one", "fallback/two"]
 
 
+def test_fallback_default_passa_per_altri_provider(monkeypatch):
+    """Task 13: la chain di fallback di default deve attraversare anche
+    provider no-training (Groq, Cerebras), non solo modelli OpenRouter."""
+    monkeypatch.delenv("OPENROUTER_MODEL_FALLBACKS", raising=False)
+
+    fallbacks = get_route_fallback_models("openai/gpt-4o-mini")
+    joined = ",".join(fallbacks)
+
+    assert "groq/" in joined
+    assert "cerebras/" in joined
+
+
+def test_fallback_preserva_gli_id_prefissati(monkeypatch):
+    monkeypatch.setenv(
+        "OPENROUTER_MODEL_FALLBACKS",
+        "openai/gpt-4o-mini, groq/llama-3.3-70b-versatile, cerebras/llama-3.3-70b",
+    )
+
+    fallbacks = get_route_fallback_models("openai/gpt-4o-mini")
+
+    assert fallbacks == [
+        "groq/llama-3.3-70b-versatile",
+        "cerebras/llama-3.3-70b",
+    ]
+
+
 def test_budget_ratio_from_billing_snapshot():
     ratio = budget_ratio_from_billing({
         "messages_used_this_period": 90,

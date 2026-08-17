@@ -17,10 +17,17 @@ LLMTier = Literal["cheap", "premium"]
 
 _DEFAULT_CHEAP_MODEL = "openai/gpt-4o-mini"
 _DEFAULT_PREMIUM_MODEL = "openai/gpt-4.1"
+# Chain di fallback multi-provider (task 13). Gli id prefissati oltre a
+# OpenRouter ("groq/", "cerebras/") attraversano provider che NON addestrano
+# sui dati: requisito per tenere la promessa privacy della chain (vedi
+# crea_llm in llm_config.py). Non aggiungere provider da cui i dati dei
+# clienti potrebbero essere usati per training.
 _DEFAULT_FALLBACK_MODELS = (
     "openai/gpt-4o-mini,"
     "anthropic/claude-3.5-haiku,"
-    "google/gemini-flash-1.5"
+    "google/gemini-flash-1.5,"
+    "groq/llama-3.3-70b-versatile,"
+    "cerebras/llama-3.3-70b"
 )
 
 _FAQ_KEYWORDS = {

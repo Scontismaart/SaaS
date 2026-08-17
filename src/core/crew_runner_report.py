@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from src.agents.report_agent import crea_report_crew
+from src.core.llm_routing import LLMRouteRequest, route_llm
 from src.core.statistiche import calcola_statistiche
 from src.models.schemas import EventoDashboard, StatisticheReport, ReportOutput
 
@@ -21,10 +22,20 @@ def genera_report(storico: list[EventoDashboard]) -> ReportOutput:
             generato_il=datetime.now().isoformat(),
         )
 
-    crew = crea_report_crew(statistiche)
-    risultato = crew.kickoff()
+    route = route_llm(LLMRouteRequest(task_type="report"))
+    errors: list[str] = []
+    for model in [route.model, *route.fallback_models]:
+        try:
+            crew = crea_report_crew(statistiche, model=model)
+            output = crew.kickoff().pydantic
+            break
+        except Exception as exc:
+            errors.append(f"{model}: {exc}")
+    else:
+        raise RuntimeError(
+            "Tutti i modelli configurati hanno fallito. " + " | ".join(errors)
+        )
 
-    output = risultato.pydantic
     if output is None or not isinstance(output, ReportOutput):
         raise RuntimeError(
             "Il modello non ha restituito un output conforme a ReportOutput."

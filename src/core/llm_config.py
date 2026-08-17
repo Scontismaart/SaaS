@@ -21,12 +21,13 @@ from src.core.llm_routing import (
     route_llm,
 )
 
-# Modello di default: buon compromesso reasoning/costo per validazione
-# e generazione risposta. Cambialo qui se il modello viene ritirato
-# o vuoi provare un'alternativa (es. "qwen/qwen3-235b-a22b:free").
+# Modello di default (usato da crea_llm() quando chi chiama non passa ne'
+# model ne' route_request). NON usare endpoint ":free": i modelli gratuiti
+# possono addestrare sui dati (incluse le conversazioni reali dei clienti
+# inviate nei prompt). Il default e' un modello paid economico.
 MODELLO_DEFAULT = os.getenv(
     "OPENROUTER_MODEL",
-    "nvidia/nemotron-3-ultra-550b-a55b:free"
+    "openai/gpt-4o-mini"
 )
 
 # Numero di tentativi in caso di errore/rate limit del modello free.
@@ -52,6 +53,12 @@ def crea_llm(
     temperature bassa (0.4) di proposito: per un assistente che
     risponde a clienti reali vogliamo risposte più prevedibili,
     non creative.
+
+    Su OGNI chiamata viene negato l'uso dei dati per training
+    (extra_body provider.data_collection='deny' su OpenRouter):
+    se un endpoint servisse solo provider che addestrano, la
+    richiesta fallisce esplicitamente invece di "perdere" i dati.
+    Nessun interruttore: la protezione e' sempre attiva.
     """
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -69,6 +76,9 @@ def crea_llm(
         api_key=api_key,
         base_url="https://openrouter.ai/api/v1",
         temperature=temperature,
+        additional_params={
+            "extra_body": {"provider": {"data_collection": "deny"}},
+        },
     )
 
 

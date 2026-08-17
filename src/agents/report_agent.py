@@ -1,6 +1,6 @@
 from crewai import Agent, Task, Crew, Process
 
-from src.core.llm_config import crea_llm
+from src.core.llm_config import LLMRouteRequest, crea_llm
 from src.agents.prompts_report import (
     costruisci_system_prompt_report,
     costruisci_user_prompt_report,
@@ -8,7 +8,7 @@ from src.agents.prompts_report import (
 from src.models.schemas import StatisticheReport, ReportOutput
 
 
-def crea_report_agent() -> Agent:
+def crea_report_agent(model: str | None = None) -> Agent:
     return Agent(
         role="Analista business conversazioni clienti",
         goal=(
@@ -17,7 +17,11 @@ def crea_report_agent() -> Agent:
             "proattivi per il titolare dell'attività."
         ),
         backstory=costruisci_system_prompt_report(),
-        llm=crea_llm(temperature=0.5),
+        llm=crea_llm(
+            model=model,
+            temperature=0.5,
+            route_request=LLMRouteRequest(task_type="report"),
+        ),
         verbose=False,
         allow_delegation=False,
     )
@@ -38,8 +42,10 @@ def crea_report_task(agent: Agent, statistiche: StatisticheReport) -> Task:
     )
 
 
-def crea_report_crew(statistiche: StatisticheReport) -> Crew:
-    agent = crea_report_agent()
+def crea_report_crew(
+    statistiche: StatisticheReport, model: str | None = None
+) -> Crew:
+    agent = crea_report_agent(model=model)
     task = crea_report_task(agent, statistiche)
 
     return Crew(

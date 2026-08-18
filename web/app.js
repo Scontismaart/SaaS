@@ -1343,19 +1343,12 @@ async function aggiornaRiepilogo() {
 
 const docConteggio = document.getElementById("doc-conteggio");
 const docLibrary = document.getElementById("doc-library");
-const docIndicizzaBtn = document.getElementById("doc-indicizza-btn");
 const docQuery = document.getElementById("doc-query");
 const docChiediBtn = document.getElementById("doc-chiedi-btn");
 const docRisposta = document.getElementById("doc-risposta");
 const docRispostaText = document.getElementById("doc-risposta-text");
 const docFonti = document.getElementById("doc-fonti");
 const docFontiList = document.getElementById("doc-fonti-list");
-
-const docEmailServer = document.getElementById("doc-email-server");
-const docEmailIndirizzo = document.getElementById("doc-email-indirizzo");
-const docEmailPassword = document.getElementById("doc-email-password");
-const docEmailSalva = document.getElementById("doc-email-salva");
-const docConfigStatus = document.getElementById("doc-config-status");
 
 async function aggiornaConteggio() {
   try {
@@ -1415,73 +1408,6 @@ async function aggiornaDocumenti() {
     console.error("Impossibile caricare l'elenco documenti:", err);
   }
 }
-
-async function aggiornaConfigStatus() {
-  try {
-    const res = await apiFetch(`${API_BASE}/api/email/config`);
-    if (!res.ok) { docConfigStatus.textContent = ""; return; }
-    const data = await res.json();
-    if (data.configurazioni && data.configurazioni.length > 0) {
-      docEmailIndirizzo.value = data.configurazioni[0].indirizzo;
-      docEmailServer.value = data.configurazioni[0].imap_server;
-      docConfigStatus.textContent = `Email configurata: ${data.configurazioni[0].indirizzo}`;
-      docConfigStatus.style.color = "var(--sage)";
-    } else {
-      docConfigStatus.textContent = "Nessuna email configurata.";
-      docConfigStatus.style.color = "var(--ink-soft)";
-    }
-  } catch {
-    docConfigStatus.textContent = "";
-  }
-}
-
-docEmailSalva?.addEventListener("click", async () => {
-  const imap_server = docEmailServer.value.trim();
-  const indirizzo = docEmailIndirizzo.value.trim();
-  const app_password = docEmailPassword.value.trim();
-  if (!imap_server || !indirizzo || !app_password) {
-    docConfigStatus.textContent = "Compila tutti i campi.";
-    docConfigStatus.style.color = "var(--red)";
-    return;
-  }
-  docEmailSalva.disabled = true;
-  docEmailSalva.textContent = "Salvataggio\u2026";
-  try {
-    const res = await apiFetch(`${API_BASE}/api/email/configura`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imap_server, indirizzo, app_password, polling_minuti: 5 }),
-    });
-    if (!res.ok) throw new Error("Errore salvataggio");
-    const data = await res.json();
-    docConfigStatus.textContent = data.detail;
-    docConfigStatus.style.color = "var(--sage)";
-    docEmailPassword.value = "";
-    await aggiornaConteggio();
-  } catch {
-    docConfigStatus.textContent = "Errore nel salvataggio.";
-    docConfigStatus.style.color = "var(--red)";
-  } finally {
-    docEmailSalva.disabled = false;
-    docEmailSalva.textContent = "Salva e attiva polling";
-  }
-});
-
-docIndicizzaBtn?.addEventListener("click", async () => {
-  docIndicizzaBtn.disabled = true;
-  docIndicizzaBtn.textContent = "Controllo in corso\u2026";
-  try {
-    const res = await apiFetch(`${API_BASE}/api/email/check-now`, { method: "POST" });
-    const data = await res.json();
-    alert(data.detail);
-    await aggiornaConteggio();
-  } catch {
-    alert("Errore durante il controllo email.");
-  } finally {
-    docIndicizzaBtn.disabled = false;
-    docIndicizzaBtn.textContent = "Controlla email ora";
-  }
-});
 
 const docReindicizzaBtn = document.getElementById("doc-reindicizza-btn");
 const docReindicizzaProgress = document.getElementById("doc-reindicizza-progress");

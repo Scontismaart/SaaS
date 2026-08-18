@@ -55,6 +55,7 @@ from src.models.schemas import (
     ConfiguraEmailInput,
     DomandaInput,
     RispostaDocumento,
+    LINGUE_DISPONIBILI,
     MessaggioInput,
     RispostaOutput,
     RecensioneInput,
@@ -431,7 +432,10 @@ def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_
 
 @app.get("/api/onboarding/verticali")
 def onboarding_verticali(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return {"verticali": list_verticals()}
+    return {
+        "verticali": list_verticals(),
+        "lingue_disponibili": sorted(LINGUE_DISPONIBILI),
+    }
 
 
 @app.get("/api/onboarding/profilo")
@@ -494,6 +498,11 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
     repo = get_repo(request)
     org_id = user.get("organization_id")
     billing = await _get_billing_snapshot(repo, org_id)
+    # Lingue dell'org dal profilo onboarding: se non esiste ancora (onboarding
+    # non completato) si usano i default ["it"]/"it", nessun errore.
+    profilazione = await repo.get_onboarding_profile(org_id) or {}
+    lingue = profilazione.get("lingue_supportate") or None
+    lingua_default = profilazione.get("lingua_default") or None
     try:
         output = await asyncio.to_thread(
             lambda: genera_risposta_recensione(
@@ -501,6 +510,8 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
                 stelle=recensione.valutazione_stelle,
                 autore=recensione.autore,
                 billing=billing,
+                lingue_supportate=lingue,
+                lingua_default=lingua_default,
             )
         )
     except Exception as e:

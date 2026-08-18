@@ -1,4 +1,12 @@
-def costruisci_system_prompt_review() -> str:
+from src.agents.prompts import costruisci_blocco_lingue
+from src.models.schemas import LINGUA_DEFAULT
+
+
+def costruisci_system_prompt_review(
+    lingue_supportate: list[str] | None = None,
+    lingua_default: str = LINGUA_DEFAULT,
+) -> str:
+    blocco_lingue = costruisci_blocco_lingue(lingue_supportate, lingua_default)
     return (
         "Sei un esperto di gestione della reputazione online per attività "
         "locali (ristoranti, saloni, studi professionali).\n\n"
@@ -22,6 +30,7 @@ def costruisci_system_prompt_review() -> str:
         "- motivo: breve spiegazione della decisione.\n"
         "- categoria: classifica la recensione, es. 'reclamo_servizio', "
         "'qualita_cibo', 'ambiente', 'esperienza_positiva', 'generico'."
+        f"{blocco_lingue}"
     )
 
 

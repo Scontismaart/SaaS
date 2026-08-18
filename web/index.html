@@ -178,10 +178,11 @@
         <aside class="onboarding-rail" aria-label="Step onboarding">
           <button type="button" class="onboarding-step active" data-onboarding-step="0"><span>01</span>Attivita</button>
           <button type="button" class="onboarding-step" data-onboarding-step="1"><span>02</span>Voce e servizi</button>
-          <button type="button" class="onboarding-step" data-onboarding-step="2"><span>03</span>Escalation</button>
-          <button type="button" class="onboarding-step" data-onboarding-step="3"><span>04</span>WhatsApp</button>
-          <button type="button" class="onboarding-step" data-onboarding-step="4"><span>05</span>Documenti</button>
-          <button type="button" class="onboarding-step" data-onboarding-step="5"><span>06</span>Test</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="2"><span>03</span>Lingue</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="3"><span>04</span>Escalation</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="4"><span>05</span>WhatsApp</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="5"><span>06</span>Documenti</button>
+          <button type="button" class="onboarding-step" data-onboarding-step="6"><span>07</span>Test</button>
         </aside>
 
         <div class="onboarding-panel">
@@ -221,6 +222,15 @@
           </section>
 
           <section class="onboarding-page" data-onboarding-page="2" hidden>
+            <span class="onboarding-kicker">Multilingua</span>
+            <h2>In quali lingue parla il tuo assistente?</h2>
+            <p>Il bot rileva la lingua del cliente e risponde nella stessa lingua. L'italiano e' sempre attivo.</p>
+            <div class="escalation-list" id="lingue-grid"></div>
+            <label class="wizard-label" for="lingua-default">Lingua di default</label>
+            <select class="wizard-input" id="lingua-default"></select>
+          </section>
+
+          <section class="onboarding-page" data-onboarding-page="3" hidden>
             <span class="onboarding-kicker">Regole di prudenza</span>
             <h2>Quando passa a un umano?</h2>
             <p>Parti dalle regole consigliate per settore. Puoi aggiungerne altre.</p>
@@ -232,7 +242,7 @@
             </div>
           </section>
 
-          <section class="onboarding-page" data-onboarding-page="3" hidden>
+          <section class="onboarding-page" data-onboarding-page="4" hidden>
             <span class="onboarding-kicker">Canale</span>
             <h2>Collegamento WhatsApp Business</h2>
             <p>Per la demo segniamo lo step come pronto. In produzione qui entrano Meta App ID, numero e webhook.</p>
@@ -244,7 +254,7 @@
             </div>
           </section>
 
-          <section class="onboarding-page" data-onboarding-page="4" hidden>
+          <section class="onboarding-page" data-onboarding-page="5" hidden>
             <span class="onboarding-kicker">Knowledge base</span>
             <h2>Import menu e documenti</h2>
             <p>Carica qui i PDF e i documenti che l'assistente deve conoscere. Vengono indicizzati e usati come contesto nelle risposte.</p>
@@ -258,7 +268,7 @@
             <button type="button" class="report-refresh" id="onboarding-open-docs">Vai ai documenti</button>
           </section>
 
-          <section class="onboarding-page" data-onboarding-page="5" hidden>
+          <section class="onboarding-page" data-onboarding-page="6" hidden>
             <span class="onboarding-kicker">Prova guidata</span>
             <h2>Test conversazione</h2>
             <p>Salva il profilo e fai una domanda come cliente.</p>

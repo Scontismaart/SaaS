@@ -223,6 +223,18 @@ const onboardingState = {
   verticals: [],
   selectedVertical: "ristorante",
   extraRules: [],
+  lingue: ["it"],
+  linguaDefault: "it",
+  lingueDisponibili: ["it", "en", "fr", "de", "es"],
+  profileLoaded: false,
+};
+
+const LINGUE_DEFAULT_PER_VERTICALE = {
+  hotel_bnb: ["it", "en", "fr", "de", "es"],
+  ristorante: ["it", "en", "fr", "de", "es"],
+  centro_estetico: ["it", "en", "fr", "de"],
+  parrucchiere: ["it", "en", "fr"],
+  studio_medico_dentista: ["it", "en"],
 };
 
 const onboardingEls = {
@@ -234,6 +246,8 @@ const onboardingEls = {
   hours: document.getElementById("onboarding-hours"),
   tone: document.getElementById("onboarding-tone"),
   services: document.getElementById("onboarding-services"),
+  lingueGrid: document.getElementById("lingue-grid"),
+  linguaDefault: document.getElementById("lingua-default"),
   escalationList: document.getElementById("escalation-list"),
   extraRule: document.getElementById("onboarding-extra-rule"),
   addRule: document.getElementById("onboarding-add-rule"),
@@ -261,6 +275,48 @@ function righeDaTextarea(value) {
   return value.split("\n").map((r) => r.trim()).filter(Boolean);
 }
 
+function lingueSelezionate() {
+  const inputs = [...document.querySelectorAll(".onboarding-lang:checked")];
+  return inputs.length ? inputs.map((i) => i.value) : onboardingState.lingue;
+}
+
+function renderLingue() {
+  if (!onboardingEls.lingueGrid) return;
+  onboardingEls.lingueGrid.innerHTML = "";
+  onboardingState.lingueDisponibili.forEach((lang) => {
+    const label = document.createElement("label");
+    label.className = "wizard-check";
+    const checked = onboardingState.lingue.includes(lang);
+    const locked = lang === "it";
+    label.innerHTML = `<input class="onboarding-lang" type="checkbox" value="${lang}" ${checked ? "checked" : ""} ${locked ? "disabled" : ""}> ${lang.toUpperCase()}`;
+    label.querySelector("input").addEventListener("change", () => {
+      onboardingState.lingue = lingueSelezionate();
+      aggiornaDefaultLingua();
+    });
+    onboardingEls.lingueGrid.appendChild(label);
+  });
+  aggiornaDefaultLingua();
+}
+
+function aggiornaDefaultLingua() {
+  if (!onboardingEls.linguaDefault) return;
+  const selezionate = lingueSelezionate();
+  onboardingEls.linguaDefault.innerHTML = "";
+  selezionate.forEach((lang) => {
+    const opt = document.createElement("option");
+    opt.value = lang;
+    opt.textContent = lang.toUpperCase();
+    opt.selected = lang === onboardingState.linguaDefault;
+    onboardingEls.linguaDefault.appendChild(opt);
+  });
+  if (!selezionate.includes(onboardingState.linguaDefault)) {
+    onboardingState.linguaDefault = "it";
+    [...onboardingEls.linguaDefault.options].forEach((o) => {
+      o.selected = o.value === "it";
+    });
+  }
+}
+
 function profiloOnboarding() {
   const vertical = verticaleCorrente();
   return {
@@ -272,6 +328,8 @@ function profiloOnboarding() {
     regole_escalation: [...document.querySelectorAll(".onboarding-rule:checked")].map((input) => input.value),
     whatsapp_collegato: Boolean(onboardingEls.whatsapp?.checked),
     documenti_importati: Boolean(onboardingEls.docs?.checked),
+    lingue_supportate: lingueSelezionate(),
+    lingua_default: onboardingEls.linguaDefault?.value || onboardingState.linguaDefault,
   };
 }
 
@@ -283,10 +341,10 @@ function renderOnboardingStep() {
     page.hidden = Number(page.dataset.onboardingPage) !== onboardingState.step;
   });
   if (onboardingEls.progress) {
-    onboardingEls.progress.style.width = `${((onboardingState.step + 1) / 6) * 100}%`;
+    onboardingEls.progress.style.width = `${((onboardingState.step + 1) / 7) * 100}%`;
   }
   onboardingEls.prev.disabled = onboardingState.step === 0;
-  onboardingEls.next.textContent = onboardingState.step === 5 ? "Completa" : "Avanti";
+  onboardingEls.next.textContent = onboardingState.step === 6 ? "Completa" : "Avanti";
 }
 
 function renderVerticals() {
@@ -303,6 +361,10 @@ function renderVerticals() {
       onboardingEls.services.value = vertical.servizi.join("\n");
       onboardingEls.testMessage.value = vertical.esempio;
       onboardingState.extraRules = [];
+      if (!onboardingState.profileLoaded) {
+        onboardingState.lingue = LINGUE_DEFAULT_PER_VERTICALE[vertical.id] || ["it"];
+        renderLingue();
+      }
       renderVerticals();
       renderEscalationRules();
     });
@@ -341,6 +403,9 @@ async function caricaProfiloOnboarding() {
     onboardingEls.services.value = (record.servizi || []).join("\n");
     onboardingEls.whatsapp.checked = Boolean(record.whatsapp_collegato);
     onboardingEls.docs.checked = Boolean(record.documenti_importati);
+    onboardingState.profileLoaded = true;
+    onboardingState.lingue = record.lingue_supportate?.length ? record.lingue_supportate : ["it"];
+    onboardingState.linguaDefault = record.lingua_default || "it";
     document.getElementById("business-name").textContent = record.nome_attivita;
     document.getElementById("chat-business-name").textContent = record.nome_attivita;
   } catch {
@@ -364,6 +429,7 @@ async function inizializzaOnboarding() {
     if (!res.ok) throw new Error("Template verticali non disponibili");
     const data = await res.json();
     onboardingState.verticals = data.verticali || [];
+    onboardingState.lingueDisponibili = data.lingue_disponibili || ["it", "en", "fr", "de", "es"];
     const first = onboardingState.verticals[0];
     if (first) {
       onboardingState.selectedVertical = first.id;
@@ -374,6 +440,7 @@ async function inizializzaOnboarding() {
     await caricaProfiloOnboarding();
     renderVerticals();
     renderEscalationRules();
+    renderLingue();
     renderOnboardingStep();
     onboardingState.loaded = true;
   } catch (err) {
@@ -428,7 +495,7 @@ onboardingEls.prev?.addEventListener("click", () => {
 });
 
 onboardingEls.next?.addEventListener("click", async () => {
-  if (onboardingState.step < 5) {
+  if (onboardingState.step < 6) {
     onboardingState.step += 1;
     renderOnboardingStep();
     return;

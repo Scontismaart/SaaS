@@ -1,6 +1,6 @@
 from src.agents.review_agent import crea_review_crew
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
-from src.models.schemas import RispostaRecensioneOutput
+from src.models.schemas import LINGUA_DEFAULT, RispostaRecensioneOutput
 
 
 def genera_risposta_recensione(
@@ -8,6 +8,8 @@ def genera_risposta_recensione(
     stelle: int | None = None,
     autore: str = "",
     billing: dict | None = None,
+    lingue_supportate: list[str] | None = None,
+    lingua_default: str = LINGUA_DEFAULT,
 ) -> RispostaRecensioneOutput:
     route = route_llm(
         LLMRouteRequest(
@@ -19,7 +21,11 @@ def genera_risposta_recensione(
     errors: list[str] = []
     for model in [route.model, *route.fallback_models]:
         try:
-            crew = crea_review_crew(testo, stelle, autore, model=model)
+            crew = crea_review_crew(
+                testo, stelle, autore, model=model,
+                lingue_supportate=lingue_supportate,
+                lingua_default=lingua_default,
+            )
             risultato = crew.kickoff()
             break
         except Exception as exc:

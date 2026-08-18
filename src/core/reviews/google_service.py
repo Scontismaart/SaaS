@@ -151,12 +151,16 @@ class GoogleBusinessService:
             "autore": reviewer.get("displayName", ""),
         }
 
-    async def _genera_bozza(self, testo, stelle, autore):
+    async def _genera_bozza(self, testo, stelle, autore,
+                           lingue_supportate=None, lingua_default=None):
         """Generazione bozza isolata in un metodo — mockabile nei test
         come _build_service/_list_reviews, senza toccare il crew AI reale."""
         from src.core.crew_runner_review import genera_risposta_recensione
         return await asyncio.to_thread(
-            genera_risposta_recensione, testo=testo, stelle=stelle, autore=autore
+            genera_risposta_recensione,
+            testo=testo, stelle=stelle, autore=autore,
+            lingue_supportate=lingue_supportate,
+            lingua_default=lingua_default,
         )
 
     async def fetch_reviews(self, org_id, page_size=50):
@@ -181,6 +185,11 @@ class GoogleBusinessService:
         raw_reviews = await self._list_reviews(
             service, row["account_name"], row["location_name"], page_size=page_size
         )
+        # Lingue dell'org dal profilo onboarding (multilingua, task 14): se
+        # l'org non ha ancora completato l'onboarding si usano i default.
+        profilazione = await self.repo.get_onboarding_profile(org_id) or {}
+        lingue = profilazione.get("lingue_supportate")
+        lingua_default = profilazione.get("lingua_default")
         nuove = 0
         import asyncpg
         for raw in raw_reviews:
@@ -189,7 +198,9 @@ class GoogleBusinessService:
                 continue
             try:
                 output = await self._genera_bozza(
-                    m["testo"], m["valutazione_stelle"], m["autore"]
+                    m["testo"], m["valutazione_stelle"], m["autore"],
+                    lingue_supportate=lingue,
+                    lingua_default=lingua_default,
                 )
                 await self.repo.create_review(
                     organization_id=org_id,

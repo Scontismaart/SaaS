@@ -448,7 +448,7 @@ class CoreRepository:
 
     @staticmethod
     def _json_fields_onboarding(result: dict) -> dict:
-        for key in ("servizi", "regole_escalation", "profilo"):
+        for key in ("servizi", "regole_escalation", "profilo", "lingue_supportate"):
             if isinstance(result.get(key), str):
                 result[key] = json.loads(result[key])
         return result
@@ -463,7 +463,8 @@ class CoreRepository:
 
     async def save_onboarding_profile(self, organization_id, verticale, nome_attivita,
                                       orari, tono, servizi, regole_escalation,
-                                      whatsapp_collegato, documenti_importati, profilo):
+                                      whatsapp_collegato, documenti_importati, profilo,
+                                      lingue_supportate=None, lingua_default=None):
         """Upsert del profilo onboarding dell'org + sync atomico su
         organizations.business_profile in una sola transazione.
 
@@ -471,6 +472,10 @@ class CoreRepository:
         combaciano 1:1 con WhatsAppBusinessProfile, il formato che il responder
         WhatsApp reale si aspetta in organizations.business_profile
         (inbound_processor._profile_from_dict)."""
+        if lingue_supportate is None:
+            lingue_supportate = ["it"]
+        if lingua_default is None:
+            lingua_default = "it"
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow("""
@@ -478,8 +483,10 @@ class CoreRepository:
                                                      nome_attivita, orari, tono,
                                                      servizi, regole_escalation,
                                                      whatsapp_collegato,
-                                                     documenti_importati, profilo)
-                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9, $10::jsonb)
+                                                     documenti_importati, profilo,
+                                                     lingue_supportate, lingua_default)
+                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9,
+                            $10::jsonb, $11::jsonb, $12)
                     ON CONFLICT (organization_id) DO UPDATE SET
                         verticale = EXCLUDED.verticale,
                         nome_attivita = EXCLUDED.nome_attivita,
@@ -490,11 +497,14 @@ class CoreRepository:
                         whatsapp_collegato = EXCLUDED.whatsapp_collegato,
                         documenti_importati = EXCLUDED.documenti_importati,
                         profilo = EXCLUDED.profilo,
+                        lingue_supportate = EXCLUDED.lingue_supportate,
+                        lingua_default = EXCLUDED.lingua_default,
                         updated_at = NOW()
                     RETURNING *
                 """, organization_id, verticale, nome_attivita, orari, tono,
                 json.dumps(servizi), json.dumps(regole_escalation),
-                whatsapp_collegato, documenti_importati, json.dumps(profilo))
+                whatsapp_collegato, documenti_importati, json.dumps(profilo),
+                json.dumps(lingue_supportate), lingua_default)
                 await conn.execute(
                     "UPDATE organizations SET business_profile = $2::jsonb WHERE id = $1",
                     organization_id,

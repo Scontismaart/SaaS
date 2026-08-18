@@ -5,17 +5,21 @@ from src.agents.review_prompts import (
     costruisci_system_prompt_review,
     costruisci_user_prompt_review,
 )
-from src.models.schemas import RispostaRecensioneOutput
+from src.models.schemas import LINGUA_DEFAULT, RispostaRecensioneOutput
 
 
-def crea_review_agent(model: str | None = None) -> Agent:
+def crea_review_agent(
+    model: str | None = None,
+    lingue_supportate: list[str] | None = None,
+    lingua_default: str = LINGUA_DEFAULT,
+) -> Agent:
     return Agent(
         role="Esperto gestione reputazione online",
         goal=(
             "Analizzare recensioni dei clienti e produrre bozze di risposta "
             "professionali, misurate, mai difensive."
         ),
-        backstory=costruisci_system_prompt_review(),
+        backstory=costruisci_system_prompt_review(lingue_supportate, lingua_default),
         llm=crea_llm(
             model=model,
             temperature=0.3,
@@ -51,8 +55,11 @@ def crea_review_crew(
     stelle: int | None = None,
     autore: str = "",
     model: str | None = None,
+    lingue_supportate: list[str] | None = None,
+    lingua_default: str = LINGUA_DEFAULT,
 ) -> Crew:
-    agent = crea_review_agent(model=model)
+    agent = crea_review_agent(model=model, lingue_supportate=lingue_supportate,
+                              lingua_default=lingua_default)
     task = crea_review_task(agent, testo, stelle, autore)
 
     return Crew(

@@ -127,6 +127,9 @@ def build_business_profile(payload: OnboardingProfileInput) -> ProfiloAttivita:
         orari=payload.orari,
         servizi_principali=servizi,
         note_speciali=escalation,
+        lingue_supportate=payload.lingue_supportate,
+        lingua_default=payload.lingua_default,
+        verticale=payload.verticale,
     )
 
 
@@ -155,6 +158,8 @@ async def save_profile(
         payload.whatsapp_collegato,
         payload.documenti_importati,
         profile.model_dump(),
+        payload.lingue_supportate,
+        payload.lingua_default,
     )
 
 

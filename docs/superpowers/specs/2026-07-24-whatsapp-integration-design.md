@@ -95,7 +95,7 @@ La verifica avviene prima di qualunque altro processing (incluso tenant lookup),
 
 ## 3. Inbound processing pipeline (`inbound_processor.py`)
 
-Worker standalone (stesso pattern di `src/api/reindex_worker.py`). Loop:
+Worker standalone (stesso pattern dei runner `run_*.py` alla radice del repo). Loop:
 `SELECT ... FROM messages WHERE direction='inbound' AND status='received_pending_ai' LIMIT 10 FOR UPDATE SKIP LOCKED` → claim a `processing` + `claimed_at=NOW()` in transazione breve → processa fuori transazione.
 
 **Reaper (crash recovery)**: a ogni ciclo, prima del claim normale, resetta righe rimaste in `processing` oltre 5 minuti:

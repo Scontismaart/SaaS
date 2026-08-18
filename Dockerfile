@@ -34,10 +34,10 @@ ENV PATH=/home/appuser/.local/bin:$PATH \
 
 COPY --chown=appuser:appuser . .
 
-# data/ resta scrivibile a runtime (chroma, reindex_progress) ma non
-# porta segreti nell'immagine: in docker-compose viene montata come volume
-# esterno, questo mkdir e' solo fallback per run standalone.
-RUN mkdir -p data/chroma data/reindex_progress /home/appuser/.local/share && \
+# data/ resta scrivibile a runtime (chroma) ma non porta segreti
+# nell'immagine: in docker-compose viene montata come volume esterno,
+# questo mkdir e' solo fallback per run standalone.
+RUN mkdir -p data/chroma /home/appuser/.local/share && \
     chown -R appuser:appuser /app /home/appuser/.local
 
 USER appuser

@@ -7,7 +7,6 @@ services:
       - "8000:8000"
     volumes:
       - chroma_data:/app/data/chroma
-      - reindex_progress:/app/data/reindex_progress
     networks:
       - app_internal
     restart: unless-stopped
@@ -108,7 +107,6 @@ networks:
 
 volumes:
   chroma_data:
-  reindex_progress:
   pgdata_dev:
 
 # -- Nota secrets ------------------------------------------------------

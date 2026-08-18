@@ -1,7 +1,14 @@
 from datetime import datetime
 from enum import Enum
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+# Lingue supportate dal bot (task 14): lista chiusa, vocabolario massimo.
+# IT e' sempre inclusa ed e' la lingua di default; il Titolare restringe la
+# lista dal wizard onboarding. Il rilevamento lingua e' delegato al LLM nel
+# system prompt (nessuna libreria), la policy dipende dal verticale.
+LINGUE_DISPONIBILI = frozenset({"it", "en", "fr", "de", "es"})
+LINGUA_DEFAULT = "it"
 
 
 class CanaleMessaggio(str, Enum):
@@ -82,6 +89,13 @@ class ProfiloAttivita(BaseModel):
     orari: str
     servizi_principali: list[str] = Field(default_factory=list)
     note_speciali: list[str] = Field(default_factory=list)
+    # Multilingua (task 14): lingue supportate dall'attivita' e lingua di
+    # default. verticale (opzionale) serve al prompt per decidere la policy
+    # su lingue non supportate: best-effort ovunque, escalation a umano per
+    # studio_medico_dentista (conseguenze cliniche degli errori di traduzione).
+    lingue_supportate: list[str] = Field(default_factory=lambda: [LINGUA_DEFAULT])
+    lingua_default: str = LINGUA_DEFAULT
+    verticale: str | None = None
 
 
 VerticaleOnboarding = Literal[
@@ -103,6 +117,36 @@ class OnboardingProfileInput(BaseModel):
     regole_escalation: list[str] = Field(default_factory=list)
     whatsapp_collegato: bool = False
     documenti_importati: bool = False
+    # Multilingua (task 14): lista chiusa, "it" sempre inclusa e di default.
+    lingue_supportate: list[str] = Field(default_factory=lambda: [LINGUA_DEFAULT])
+    lingua_default: str = LINGUA_DEFAULT
+
+    @field_validator("lingue_supportate")
+    @classmethod
+    def _lingue_supportate_valide(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("almeno una lingua supportata")
+        sconosciute = set(value) - LINGUE_DISPONIBILI
+        if sconosciute:
+            raise ValueError(f"lingue non supportate: {sorted(sconosciute)}")
+        if LINGUA_DEFAULT not in value:
+            raise ValueError("'it' e' sempre inclusa tra le lingue supportate")
+        return list(dict.fromkeys(value))
+
+    @field_validator("lingua_default")
+    @classmethod
+    def _lingua_default_valida(cls, value: str) -> str:
+        if value not in LINGUE_DISPONIBILI:
+            raise ValueError(f"lingua di default non supportata: {value}")
+        return value
+
+    @model_validator(mode="after")
+    def _lingua_default_tra_supportate(self):
+        if self.lingua_default not in self.lingue_supportate:
+            raise ValueError(
+                f"lingua di default '{self.lingua_default}' non e' tra le lingue supportate"
+            )
+        return self
 
 
 class PreviewInput(BaseModel):
@@ -117,6 +161,11 @@ class WhatsAppBusinessProfile(BaseModel):
     orari: str | None = None
     servizi_principali: list[str] | None = None
     note_speciali: list[str] | None = None
+    # Multilingua (task 14): stessi campi di ProfiloAttivita, opzionali per
+    # compatibilita' con i business_profile salvati prima della migration 033.
+    lingue_supportate: list[str] | None = None
+    lingua_default: str | None = None
+    verticale: str | None = None
 
 
 VALID_STATI_RECENSIONE = frozenset({

@@ -6,7 +6,6 @@ One-shot scripts for migrating data from legacy storage to PostgreSQL multi-tena
 
 1. `migrate_airtable_to_bookings.py <org_id>`
 2. `migrate_chromadb_to_pgvector.py <org_id>`
-3. `migrate_email_configs.py <org_id>`
 
 ## Prerequisites
 
@@ -16,7 +15,6 @@ One-shot scripts for migrating data from legacy storage to PostgreSQL multi-tena
   - `AIRTABLE_API_KEY` (for bookings migration)
   - `AIRTABLE_BASE_ID` (for bookings migration)
 - ChromaDB data directory at `data/chroma/` (for documents migration)
-- Email config at `data/email_config.json` (for email configs migration)
 
 ## Verification
 
@@ -26,5 +24,4 @@ After each migration, verify row counts match:
 SELECT COUNT(*) FROM bookings;
 SELECT COUNT(*) FROM documents;
 SELECT COUNT(*) FROM document_chunks;
-SELECT COUNT(*) FROM email_configs;
 ```

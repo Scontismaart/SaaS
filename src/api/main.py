@@ -38,7 +38,6 @@ from src.core.scheduler import (
 )
 from src.core.crew_runner_report import genera_report as genera_report_completo
 from src.core.crew_runner_review import genera_risposta_recensione
-from src.core.email_config_store import carica_config, elenca_config, elimina_config, inizializza as init_email_store
 from src.core.documenti.embeddings import vettorizza
 from src.core.documenti.extractor import estrai_testo
 from src.core.documenti.qa_agent import rispondi
@@ -52,7 +51,6 @@ from src.core.onboarding import (
 from src.models.business_profile import PROFILI_DEMO
 from src.models.schemas import (
     CaricaDocumentoInput,
-    ConfiguraEmailInput,
     DomandaInput,
     RispostaDocumento,
     LINGUE_DISPONIBILI,
@@ -166,7 +164,6 @@ async def lifespan(app: FastAPI):
                 repo=InMemoryBookingRepo(),
                 whatsapp_service=None, app_config=None,
             )
-            init_email_store()
             _imposta_fonte_dati_per_scheduler()
     else:
         app.state.repo = None
@@ -178,7 +175,6 @@ async def lifespan(app: FastAPI):
             repo=InMemoryBookingRepo(),
             whatsapp_service=None, app_config=None,
         )
-        init_email_store()
         _imposta_fonte_dati_per_scheduler()
     imposta_pool(app.state.pool)
     avvia_scheduler()
@@ -638,29 +634,6 @@ def stato_report(user: dict = Depends(require_ruolo("owner", "manager", "staff")
     oggi = datetime.now().strftime("%Y-%m-%d")
     report = get_report_cache(oggi)
     return {"disponibile": report is not None, "id": f"report-{oggi}" if report else None}
-
-
-@app.get("/api/email/config")
-def elenca_configurazioni(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return {"configurazioni": elenca_config()}
-
-
-@app.delete("/api/email/config/{indirizzo}")
-async def rimuovi_configurazione(indirizzo: str, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
-    if elimina_config(indirizzo):
-        await _audit(request, user, "email_config_rimossa", target_table="email_configs", details={"indirizzo": indirizzo})
-        return {"detail": f"Configurazione per {indirizzo} rimossa."}
-    raise HTTPException(status_code=404, detail="Configurazione non trovata.")
-
-
-@app.post("/api/email/test")
-def test_email(user: dict = Depends(require_ruolo("owner", "manager"))):
-    return {"detail": "Integrazione email rimossa. Funzionalita' deprecata.", "trovate": 0}
-
-
-@app.post("/api/documenti/indicizza")
-def indicizza_documenti(user: dict = Depends(require_ruolo("owner", "manager"))):
-    return {"detail": "Indicizzazione email rimossa. Funzionalita' deprecata.", "trovate": 0, "indicizzate": 0}
 
 
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)

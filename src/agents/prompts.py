@@ -16,7 +16,7 @@ variante finisce nei metadata degli usage events per l'analisi.
 import hashlib
 import os
 
-from src.models.schemas import MessaggioInput, ProfiloAttivita
+from src.models.schemas import LINGUA_DEFAULT, MessaggioInput, ProfiloAttivita
 
 GIRO_MAX = 5
 
@@ -65,6 +65,47 @@ def formatta_cronologia(scambi: list[tuple[str, str]]) -> str:
         parti.append(f'Assistente: "{risp}"')
     parti.append("---")
     return "\n".join(parti)
+
+
+def costruisci_blocco_lingue(
+    lingue_supportate: list[str] | None = None,
+    lingua_default: str = LINGUA_DEFAULT,
+    verticale: str | None = None,
+) -> str:
+    """Blocco LINGUE per il system prompt (task 14).
+
+    Il rilevamento lingua e' delegato al LLM: nessuna libreria. Policy sulle
+    lingue NON supportate: best-effort (rispondo comunque nella lingua del
+    cliente) per tutti i verticali, ESCALATION a umano per
+    studio_medico_dentista (un errore di traduzione in ambito clinico ha
+    conseguenze diverse che in un ristorante). Con verticale=None la policy
+    e' sempre best-effort: usato dalle recensioni, dove non ha senso
+    "rifiutarsi" di abbozzare una risposta a un testo gia' pubblico.
+    """
+    lingue = lingue_supportate or [LINGUA_DEFAULT]
+    if not lingua_default:
+        lingua_default = LINGUA_DEFAULT
+    blocco = (
+        "\n\nLINGUE:\n"
+        f"- Lingue supportate dall'attivita': {', '.join(lingue)}.\n"
+        f"- Lingua di default: {lingua_default}.\n"
+        "- Rileva la lingua del messaggio del cliente e rispondi nella STESSA "
+        "lingua del cliente.\n"
+        "- Se il messaggio e' molto breve o ambiguo e la lingua non e' chiara, "
+        "usa la lingua di default.\n"
+    )
+    if verticale == "studio_medico_dentista":
+        blocco += (
+            "- Se il messaggio NON e' in una delle lingue supportate, NON rispondere "
+            "nel merito: imposta richiede_umano=True e scrivi un breve messaggio di "
+            "attesa nella lingua del cliente.\n"
+        )
+    else:
+        blocco += (
+            "- Se il messaggio e' in una lingua NON supportata, rispondi comunque "
+            "nella lingua del cliente (best effort).\n"
+        )
+    return blocco
 
 
 def costruisci_system_prompt(profilo: ProfiloAttivita, variante: str = "control") -> str:
@@ -117,6 +158,9 @@ Se mancano dati essenziali, imposta richiede_umano=True e spiega cosa manca.
 Le richieste per gruppi oltre 10 persone vanno SEMPRE escalate a umano.
 
 Rispondi SOLO con i campi richiesti dallo schema strutturato, nessun testo extra."""
+    testo += costruisci_blocco_lingue(
+        profilo.lingue_supportate, profilo.lingua_default, profilo.verticale
+    )
     extra = PROMPT_VARIANTS.get(variante, "")
     if extra:
         testo += extra

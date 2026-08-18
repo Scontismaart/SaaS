@@ -18,6 +18,7 @@ from src.core.notifications.email_service import enqueue_escalation
 from src.core.security_logger import security_audit
 from src.models.schemas import (
     CanaleMessaggio,
+    LINGUA_DEFAULT,
     MessaggioInput,
     ProfiloAttivita,
     WhatsAppBusinessProfile,
@@ -58,6 +59,9 @@ def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> Pro
         orari=validated.orari or "",
         servizi_principali=validated.servizi_principali or [],
         note_speciali=validated.note_speciali or [],
+        lingue_supportate=validated.lingue_supportate or [LINGUA_DEFAULT],
+        lingua_default=validated.lingua_default or LINGUA_DEFAULT,
+        verticale=validated.verticale,
     )
 
 

@@ -228,7 +228,7 @@ $input"
 
 run_manager() {
   [ -f "$PROMPTS_DIR/manager.txt" ] || die "prompt manager.txt mancante"
-  run_role "manager" "$PROMPTS_DIR/manager.txt" "$TASK_INPUT" "build"
+  run_role "manager" "$PROMPTS_DIR/manager.txt" "$TASK_INPUT" "manager"
 }
 
 run_implementer() {
@@ -245,18 +245,18 @@ run_redteam() {
     local pids=()
     local i
     for i in $(seq 1 "$n"); do
-      run_role "redteam-$i" "$PROMPTS_DIR/redteam.txt" "$TASK_INPUT" "build" &
+      run_role "redteam-$i" "$PROMPTS_DIR/redteam.txt" "$TASK_INPUT" "redteam" &
       pids+=("$!")
     done
     for pid in "${pids[@]}"; do wait "$pid"; done
   else
-    run_role "redteam" "$PROMPTS_DIR/redteam.txt" "$TASK_INPUT" "build"
+    run_role "redteam" "$PROMPTS_DIR/redteam.txt" "$TASK_INPUT" "redteam"
   fi
 }
 
 run_arbiter() {
   [ -f "$PROMPTS_DIR/arbiter.txt" ] || die "prompt arbiter.txt mancante"
-  run_role "arbiter" "$PROMPTS_DIR/arbiter.txt" "$TASK_INPUT" "build"
+  run_role "arbiter" "$PROMPTS_DIR/arbiter.txt" "$TASK_INPUT" "arbiter"
 }
 
 # Esegue i test e distingue:

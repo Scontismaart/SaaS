@@ -1,6 +1,6 @@
 ---
 description: Agente implementer del sistema multi-agente. Usalo per implementare task seguendo il piano approvato con TDD e verifica reale. Attivazione: implementa task, scrivi codice, esegui i test.
-mode: subagent
+mode: primary
 model: opencode/deepseek-v4-flash-free
 temperature: 0.2
 permission:

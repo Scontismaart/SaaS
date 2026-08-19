@@ -26,7 +26,18 @@ src/logs/
 .zcode/*.local.json
 
 # Tooling locale di editor/agenti AI - mai nel repo del prodotto
-.opencode/
+.opencode/*
+!.opencode/agents/
+!.opencode/agents/**
 .claude/
 .zcode/
 graphify-out/
+
+# Artefatti runtime dell'infrastruttura multi-agente (mai versionare:
+# metriche, log, piani/review/decisioni per-run). knowledge reale in
+# .agent/memory/ resta tracciata.
+.agent/state/
+.agent/plans/
+.agent/reviews/
+.agent/decisions/
+.agent/evaluations/

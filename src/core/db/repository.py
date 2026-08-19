@@ -1,7 +1,8 @@
 import json
 import uuid
-import asyncpg
 from datetime import date, datetime, time
+
+import asyncpg
 
 
 class CoreRepository:
@@ -15,6 +16,15 @@ class CoreRepository:
                              richiede_intervento=False, id_conversazione=None,
                              contact_id=None, richiede_deposito=False,
                              completata_at=None, tipo_evento=""):
+        """Crea una nuova prenotazione (booking) e la inserisce nella tabella bookings.
+
+        `data` e `ora` sono accettati anche come stringhe ISO (es. "2026-08-19", "20:00")
+        e convertiti in `date`/`time` prima dell'INSERT. I parametri opzionali
+        (telefono, note, stato, origine, richiede_intervento, id_conversazione,
+        contact_id, richiede_deposito, completata_at, tipo_evento) completano la riga.
+
+        Ritorna il dict della riga inserita (RETURNING *), incluso l'id generato.
+        """
         if isinstance(data, str):
             data = date.fromisoformat(data)
         if isinstance(ora, str):

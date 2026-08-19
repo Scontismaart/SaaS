@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 2cm; }
+  body {
+    font-family: Liberation Sans, sans-serif;
+    font-size: 11pt;
+    color: #222;
+    line-height: 1.5;
+  }
+  .header {
+    text-align: center;
+    border-bottom: 3px solid #2563eb;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  .header h1 { color: #2563eb; margin: 0 0 4px 0; font-size: 22pt; }
+  .header .subtitle { color: #666; font-size: 11pt; }
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    background: #f9fafb;
+  }
+  .kpi-card h3 {
+    margin: 0 0 12px 0;
+    color: #2563eb;
+    font-size: 13pt;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 8px;
+  }
+  .kpi-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+  }
+  .kpi-label { color: #555; }
+  .kpi-value { font-weight: bold; color: #111; }
+  .kpi-highlight {
+    font-size: 24pt;
+    font-weight: bold;
+    color: #2563eb;
+    text-align: center;
+    margin: 8px 0;
+  }
+  .benchmark-placeholder {
+    background: #fef3c7;
+    border: 1px dashed #d97706;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    color: #92400e;
+    margin-bottom: 24px;
+  }
+  .footer {
+    margin-top: 32px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 9pt;
+    color: #999;
+    text-align: center;
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+  th { background: #f3f4f6; font-weight: 600; font-size: 10pt; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Report Settimanale</h1>
+  <div class="subtitle">
+    {{ nome_attivita }}
+    &mdash; {{ periodo_inizio }} / {{ periodo_fine }}
+  </div>
+</div>
+
+<div class="kpi-grid">
+
+  <!-- Messaggi -->
+  <div class="kpi-card">
+    <h3>&#128172; Messaggi</h3>
+    <div class="kpi-highlight">{{ messaggi.percentuale_ai }}%</div>
+    <div style="text-align:center; color:#555; margin-bottom:8px;">gestiti dall'AI</div>
+    <div class="kpi-row">
+      <span class="kpi-label">Totale messaggi</span>
+      <span class="kpi-value">{{ messaggi.totale }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">Gestiti da AI</span>
+      <span class="kpi-value">{{ messaggi.gestiti_da_ai }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">Escalati a umano</span>
+      <span class="kpi-value">{{ messaggi.escalati_a_umano }}</span>
+    </div>
+    {% if messaggi.tempo_medio_risposta_secondi is not none %}
+    <div class="kpi-row">
+      <span class="kpi-label">Tempo medio risposta</span>
+      <span class="kpi-value">{{ tempo_risposta_fmt }}</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Prenotazioni -->
+  <div class="kpi-card">
+    <h3>&#128197; Prenotazioni</h3>
+    <div class="kpi-highlight">{{ prenotazioni.totale }}</div>
+    <div style="text-align:center; color:#555; margin-bottom:8px;">generate questa settimana</div>
+    <div class="kpi-row">
+      <span class="kpi-label">Confermate</span>
+      <span class="kpi-value">{{ prenotazioni.confermate }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">Completate</span>
+      <span class="kpi-value">{{ prenotazioni.completate }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">Cancellate</span>
+      <span class="kpi-value">{{ prenotazioni.cancellate }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">No-show</span>
+      <span class="kpi-value">{{ prenotazioni.no_show }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">Da WhatsApp</span>
+      <span class="kpi-value">{{ prenotazioni.da_whatsapp }}</span>
+    </div>
+  </div>
+
+  <!-- Recensioni -->
+  <div class="kpi-card">
+    <h3>&#11088; Recensioni</h3>
+    <div class="kpi-highlight">{{ recensioni.percentuale_risposta }}%</div>
+    <div style="text-align:center; color:#555; margin-bottom:8px;">con risposta</div>
+    <div class="kpi-row">
+      <span class="kpi-label">Totale recensioni</span>
+      <span class="kpi-value">{{ recensioni.totale }}</span>
+    </div>
+    <div class="kpi-row">
+      <span class="kpi-label">Con risposta</span>
+      <span class="kpi-value">{{ recensioni.con_risposta }}</span>
+    </div>
+    {% if recensioni.media_stelle is not none %}
+    <div class="kpi-row">
+      <span class="kpi-label">Media stelle</span>
+      <span class="kpi-value">{{ recensioni.media_stelle }} / 5</span>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Benchmark placeholder -->
+  <div class="kpi-card">
+    <h3>&#128200; Benchmark di settore</h3>
+    <div class="benchmark-placeholder">
+      <strong>Disponibile prossimamente</strong><br>
+      Confronto con la media del tuo settore &mdash; fase 2.
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  Report generato automaticamente il {{ generato_il }} &mdash; Melpis
+</div>
+
+</body>
+</html>

@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 # Lingue supportate dal bot (task 14): lista chiusa, vocabolario massimo.
@@ -235,3 +236,44 @@ class ReportOutput(BaseModel):
     analisi_testuale: str
     suggerimenti: list[str] = Field(default_factory=list)
     generato_il: str
+
+
+# ── KPI settimanali (task 17 — analytics e report vendibili) ──
+
+
+class KPIMessaggi(BaseModel):
+    """Metriche messaggi per il report settimanale."""
+    totale: int = 0
+    gestiti_da_ai: int = 0
+    escalati_a_umano: int = 0
+    percentuale_ai: float = 0.0
+    tempo_medio_risposta_secondi: float | None = None
+
+
+class KPIPrenotazioni(BaseModel):
+    """Metriche prenotazioni per il report settimanale."""
+    totale: int = 0
+    confermate: int = 0
+    cancellate: int = 0
+    no_show: int = 0
+    completate: int = 0
+    da_whatsapp: int = 0
+
+
+class KPIRecensioni(BaseModel):
+    """Metriche recensioni per il report settimanale."""
+    totale: int = 0
+    con_risposta: int = 0
+    percentuale_risposta: float = 0.0
+    media_stelle: float | None = None
+
+
+class KPISettimanali(BaseModel):
+    """Contenitore KPI per il report settimanale."""
+    periodo_inizio: str
+    periodo_fine: str
+    nome_attivita: str = ""
+    messaggi: KPIMessaggi = Field(default_factory=KPIMessaggi)
+    prenotazioni: KPIPrenotazioni = Field(default_factory=KPIPrenotazioni)
+    recensioni: KPIRecensioni = Field(default_factory=KPIRecensioni)
+

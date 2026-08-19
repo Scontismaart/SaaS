@@ -200,6 +200,24 @@ async def _suspension_notice_job(pool):
         logger.info("suspension=notice_enqueued count=%d", len(claimed))
 
 
+def _run_weekly_report():
+    pool = _pool()
+    asyncio.run(_weekly_report_job(pool))
+
+
+async def _weekly_report_job(pool):
+    """Genera e invia il report settimanale per tutte le org attive.
+    Idempotente: un report gia' inviato per lo stesso periodo non viene
+    reinviato (weekly_report_log con constraint UNIQUE)."""
+    from src.core.report.weekly_report import genera_report_tutte_le_org
+    risultati = await genera_report_tutte_le_org(pool)
+    logger = __import__("logging").getLogger(__name__)
+    inviati = sum(1 for r in risultati if r.get("esito") == "inviato")
+    errori = sum(1 for r in risultati if r.get("esito") == "errore")
+    logger.info("report_settimanale=completato inviati=%d errori=%d totale=%d",
+                inviati, errori, len(risultati))
+
+
 def avvia_scheduler():
     global _scheduler
     if _scheduler is not None:
@@ -262,8 +280,15 @@ def avvia_scheduler():
         name="Notifica email org con trial scaduto",
         replace_existing=True,
     )
+    _scheduler.add_job(
+        _run_weekly_report,
+        CronTrigger(day_of_week="mon", hour=8, minute=30),
+        id="report_settimanale",
+        name="Report settimanale PDF via email (tutti i tenant attivi)",
+        replace_existing=True,
+    )
     _scheduler.start()
-    print("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00, suspension notice 08:00.")
+    print("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00, suspension notice 08:00, report settimanale lun 08:30.")
 
 
 def ferma_scheduler():

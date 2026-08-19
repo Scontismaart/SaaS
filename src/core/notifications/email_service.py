@@ -1,13 +1,13 @@
-import os
-import smtplib
 import asyncio
 import logging
+import os
+import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
-from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
+
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
 from src.core.db.repository import CoreRepository
-
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,23 @@ _worker_task: asyncio.Task | None = None
 
 
 @dataclass
+class EmailAttachment:
+    """Allegato binario (es. PDF) per un'email."""
+    filename: str
+    content: bytes
+    maintype: str = "application"
+    subtype: str = "pdf"
+
+
+@dataclass
 class EmailEvent:
     org_id: str
     subject: str
     body: str
     pool: object  # asyncpg pool
+    html_body: str | None = None
+    attachments: list[EmailAttachment] | None = None
+
 
 
 def _get_smtp_config() -> dict | None:
@@ -56,6 +68,20 @@ async def _send_with_retry(event: EmailEvent) -> None:
     msg["From"] = config["from_addr"]
     msg["To"] = ", ".join(o["email"] for o in owners)
     msg.set_content(event.body)
+
+    # Corpo HTML alternativo (es. report con formattazione)
+    if event.html_body:
+        msg.add_alternative(event.html_body, subtype="html")
+
+    # Allegati binari (es. PDF report settimanale)
+    if event.attachments:
+        for att in event.attachments:
+            msg.add_attachment(
+                att.content,
+                maintype=att.maintype,
+                subtype=att.subtype,
+                filename=att.filename,
+            )
 
     loop = asyncio.get_running_loop()
 

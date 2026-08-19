@@ -804,3 +804,84 @@ class CoreRepository:
             organization_id = uuid.UUID(organization_id)
         async with self.pool.acquire() as conn:
             await conn.execute("DELETE FROM organizations WHERE id = $1", organization_id)
+
+    # ── GDPR export tokens (migration 034) ─────────────────────
+
+    async def save_export_token(
+        self, token: str, organization_id: uuid.UUID | str,
+        data: dict, expires_at: datetime,
+    ) -> None:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO gdpr_export_tokens (token, org_id, data, expires_at)
+                VALUES ($1, $2, $3::jsonb, $4)
+            """, token, organization_id, json.dumps(data), expires_at)
+
+    async def consume_export_token(
+        self, token: str,
+    ) -> tuple[str, dict] | None:
+        """Consuma un token di export in modo atomico e one-shot.
+
+        DELETE ... RETURNING garantisce che con piu' worker concorrenti
+        SOLO una replica possa consumare lo stesso token. Ritorna
+        ("ok", data) se valido, ("expired", None) se esiste ma scaduto
+        (e lo rimuove), None se mai esistito.
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                DELETE FROM gdpr_export_tokens
+                WHERE token = $1 AND expires_at > NOW()
+                RETURNING data
+            """, token)
+            if row is not None:
+                data = row["data"]
+                if isinstance(data, str):
+                    data = json.loads(data)
+                return ("ok", data)
+            scaduto = await conn.fetchrow(
+                "DELETE FROM gdpr_export_tokens WHERE token = $1 RETURNING 1",
+                token,
+            )
+            if scaduto is not None:
+                return ("expired", None)
+            return None
+
+    async def cleanup_expired_export_tokens(self) -> int:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM gdpr_export_tokens WHERE expires_at <= NOW()"
+            )
+            return int(result.split()[-1]) if result else 0
+
+    # ── DPA/ToS acceptance (migration 035) ──────────────────────
+
+    async def get_dpa_acceptance(
+        self, organization_id: uuid.UUID | str,
+    ) -> dict | None:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT dpa_accepted_at, tos_accepted_at, dpa_version "
+                "FROM organizations WHERE id = $1",
+                organization_id,
+            )
+            return dict(row) if row else None
+
+    async def accept_dpa(
+        self, organization_id: uuid.UUID | str, version: str,
+    ) -> dict | None:
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE organizations
+                SET dpa_accepted_at = NOW(),
+                    tos_accepted_at = NOW(),
+                    dpa_version = $2
+                WHERE id = $1
+                RETURNING dpa_accepted_at, tos_accepted_at, dpa_version
+            """, organization_id, version)
+            return dict(row) if row else None

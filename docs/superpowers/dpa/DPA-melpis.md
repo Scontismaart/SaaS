@@ -1,4 +1,4 @@
-> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Questo documento è stato redatto
+﻿> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Questo documento è stato redatto
 > sulla base di un audit tecnico verificato del codice sorgente (sub-responsabili
 > reali, misure di sicurezza reali, retention reale). Non sostituisce la
 > consulenza di un avvocato o DPO. Prima di farlo accettare a clienti reali,
@@ -7,7 +7,7 @@
 > giuridica del legittimo interesse (§4.2) e sugli obblighi AI Act (§10).
 
 # Accordo sul Trattamento dei Dati (DPA)
-## Allegato ai Termini di Servizio — WhatsApp AI Responder
+## Allegato ai Termini di Servizio — Melpis
 
 **Ultimo aggiornamento:** [DATA] — versione bozza 0.1
 **Titolare del trattamento (ai fini del presente Accordo):** il Cliente B2B
@@ -31,7 +31,7 @@ Regolamento (UE) 2016/679 ("GDPR"), tra cui in particolare:
   Titolare secondo le istruzioni documentate di quest'ultimo.
 - **Sub-responsabile**: soggetto terzo autorizzato dal Fornitore a trattare
   Dati Personali per l'esecuzione del Servizio (Allegato B).
-- **Servizio**: la piattaforma SaaS "WhatsApp AI Responder", che genera
+- **Servizio**: la piattaforma SaaS "Melpis", che genera
   risposte automatiche ai messaggi WhatsApp ricevuti dai contatti/clienti
   finali del Titolare, tramite intelligenza artificiale.
 

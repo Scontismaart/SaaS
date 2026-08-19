@@ -1,18 +1,18 @@
-> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Bozza redatta sulla base di un
+﻿> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Bozza redatta sulla base di un
 > audit tecnico verificato del codice sorgente e in allineamento con
-> `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md`. Prima di farla accettare
+> `docs/superpowers/dpa/DPA-melpis.md`. Prima di farla accettare
 > a clienti reali va fatta rivedere da un professionista qualificato,
 > in particolare sulle sezioni indicate con [REV]. I segnaposto fra
 > parentesi quadre vanno compilati con i dati reali del Fornitore.
 
-# Termini di Servizio — WhatsApp AI Responder
+# Termini di Servizio — Melpis
 
 **Versione bozza 0.1 — ultimo aggiornamento [DATA]**
 
 ## 1. Definizioni e ambito
 
 1.1 Il presente documento disciplina l'utilizzo della piattaforma SaaS
-"WhatsApp AI Responder" (il "Servizio"), erogata da [RAGIONE SOCIALE
+"Melpis" (il "Servizio"), erogata da [RAGIONE SOCIALE
 FORNITORE] ("Fornitore", "noi"), con sede in [INDIRIZZO], P.IVA [P.IVA].
 
 1.2 Il Servizio consente al cliente (il "Cliente") di: (a) collegare un
@@ -163,5 +163,5 @@ di supporto del Servizio all'indirizzo segnalato in sede di sottoscrizione.
 ## Allegato — DPA
 
 Il presente documento è integrato dall'Accordo sul Trattamento dei Dati
-(DPA) allegato, disponibile in `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md`
+(DPA) allegato, disponibile in `docs/superpowers/dpa/DPA-melpis.md`
 e servito dal Servizio alla rotta `/api/gdpr/dpa`.

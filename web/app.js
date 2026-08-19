@@ -65,8 +65,78 @@ async function apiFetch(url, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (cred.apiKey) headers["X-API-Key"] = cred.apiKey;
   if (cred.organizationId) headers["X-Organization-Id"] = cred.organizationId;
-  return fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 428) {
+    await mostraModalDpa();
+  }
+  return res;
 }
+
+/* ============================================================
+   DPA / TERMINI — ACCETTAZIONE (migration 035)
+   ============================================================ */
+
+let dpaModalPromise = null;
+
+async function mostraModalDpa() {
+  if (!dpaModalPromise) {
+    dpaModalPromise = (async () => {
+      try {
+        const statusRes = await apiFetch(`${API_BASE}/api/gdpr/acceptance-status`);
+        if (!statusRes.ok) return false;
+        const status = await statusRes.json();
+        if (!status.needs_acceptance) return false;
+        const dpaRes = await fetch(`${API_BASE}/api/gdpr/dpa`);
+        const dpaHtml = dpaRes.ok ? await dpaRes.text() : "<p>Documento non disponibile.</p>";
+        document.getElementById("dpa-content").innerHTML = dpaHtml;
+        document.getElementById("dpa-version").textContent = status.current_version || "";
+        document.getElementById("dpa-error").textContent = "";
+        document.getElementById("dpa-check").checked = false;
+        document.getElementById("dpa-accept").disabled = true;
+        document.getElementById("dpa-modal").hidden = false;
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+  }
+  return dpaModalPromise;
+}
+
+document.getElementById("dpa-check")?.addEventListener("change", (e) => {
+  document.getElementById("dpa-accept").disabled = !e.target.checked;
+});
+
+document.getElementById("dpa-accept")?.addEventListener("click", async () => {
+  const btn = document.getElementById("dpa-accept");
+  btn.disabled = true;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/gdpr/accept`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dpa: true, tos: true }),
+    });
+    if (!res.ok) {
+      document.getElementById("dpa-error").textContent = "Accettazione non riuscita, riprova.";
+      document.getElementById("dpa-error").style.color = "var(--red)";
+      btn.disabled = !document.getElementById("dpa-check").checked;
+      return;
+    }
+    document.getElementById("dpa-modal").hidden = true;
+    dpaModalPromise = null;
+    await inizializzaOnboarding();
+  } catch {
+    document.getElementById("dpa-error").textContent = "Errore di rete, riprova.";
+    document.getElementById("dpa-error").style.color = "var(--red)";
+    btn.disabled = !document.getElementById("dpa-check").checked;
+  }
+});
+
+document.getElementById("dpa-decline")?.addEventListener("click", () => {
+  document.getElementById("dpa-error").textContent =
+    "Per continuare a usare la piattaforma devi accettare Termini e DPA.";
+  document.getElementById("dpa-error").style.color = "var(--red)";
+});
 
 /* ============================================================
    SIDEBAR / NAVIGATION
@@ -419,6 +489,7 @@ async function inizializzaOnboarding() {
     return;
   }
   if (!assicuraCredenziali()) return;
+  await mostraModalDpa();
   try {
     const res = await apiFetch(`${API_BASE}/api/onboarding/verticali`);
     if (res.status === 401) {

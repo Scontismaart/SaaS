@@ -507,7 +507,7 @@ git commit -m "feat(whatsapp): escape hatch OPERATORE forza escalation a umano"
 ### Task 6: Coerenza documentale (DPA, DPA HTML, roadmap)
 
 **Files:**
-- Modify: `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md` (§10 e Allegato A)
+- Modify: `docs/superpowers/dpa/DPA-melpis.md` (§10 e Allegato A)
 - Modify: `src/core/gdpr/routes.py` (DPA_HTML, sezione 7 Data Subject Rights)
 - Modify: `prompt-roadmap-saas-corretta.md` (riga 41 Punto 5 / nota AI Act)
 
@@ -515,7 +515,7 @@ git commit -m "feat(whatsapp): escape hatch OPERATORE forza escalation a umano"
 
 - [ ] **Step 1: Aggiornare il DPA markdown §10**
 
-Sostituire in `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md` l'attuale §10.1 (righe 205-213) con:
+Sostituire in `docs/superpowers/dpa/DPA-melpis.md` l'attuale §10.1 (righe 205-213) con:
 
 ```markdown
 10.1 Il Servizio genera risposte automatiche tramite un sistema di
@@ -536,7 +536,7 @@ l'assistenza di un legale.
 
 - [ ] **Step 2: Aggiornare Allegato A del DPA**
 
-In `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md`, Allegato A (riga 266: riga "Consensi"), aggiungere dopo la riga "Consensi":
+In `docs/superpowers/dpa/DPA-melpis.md`, Allegato A (riga 266: riga "Consensi"), aggiungere dopo la riga "Consensi":
 
 ```markdown
 | Trasparenza IA | timestamp del primo invio della disclosure (ai_disclosure_sent_at) | Adempimento obblighi di trasparenza AI Act art. 50(1) |
@@ -563,7 +563,7 @@ GDPR/trasparenza AI — retention/export/delete/consenso + DPA bozza (docs/super
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/superpowers/dpa/DPA-whatsapp-ai-responder.md src/core/gdpr/routes.py prompt-roadmap-saas-corretta.md
+git add docs/superpowers/dpa/DPA-melpis.md src/core/gdpr/routes.py prompt-roadmap-saas-corretta.md
 git commit -m "docs(gdpr): disclosure AI Act documentata in DPA, DPA HTML e roadmap"
 ```
 

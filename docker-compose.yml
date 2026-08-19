@@ -1,7 +1,7 @@
 services:
   api:
     build: .
-    image: whatsapp-ai-responder:latest
+    image: melpis:latest
     env_file: .env
     ports:
       - "8000:8000"
@@ -21,7 +21,7 @@ services:
 
   worker-inbound:
     build: .
-    image: whatsapp-ai-responder:latest
+    image: melpis:latest
     env_file: .env
     command: ["python", "run_inbound_processor.py"]
     volumes:
@@ -39,7 +39,7 @@ services:
 
   worker-retry:
     build: .
-    image: whatsapp-ai-responder:latest
+    image: melpis:latest
     env_file: .env
     command: ["python", "run_retry_worker.py"]
     volumes:
@@ -62,7 +62,7 @@ services:
   # quando i worker che li hanno presi in carico non sono piu' vivi.
   supervisor:
     build: .
-    image: whatsapp-ai-responder:latest
+    image: melpis:latest
     env_file: .env
     command: ["python", "run_supervisor.py"]
     networks:

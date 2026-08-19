@@ -1,8 +1,8 @@
-# Sempre — L'assistente WhatsApp che non stacca mai
+# Melpis — L'assistente WhatsApp che non stacca mai
 
-## Cos'è Sempre
+## Cos'è Melpis
 
-Sempre è un assistente AI per WhatsApp Business che risponde automaticamente ai clienti, gestisce prenotazioni e appuntamenti, e passa le richieste complesse al personale umano. Progettato per attività di servizio (ristoranti, saloni, bar, studi professionali, spa) che non possono stare attaccate al telefono mentre lavorano.
+Melpis è un assistente AI per WhatsApp Business che risponde automaticamente ai clienti, gestisce prenotazioni e appuntamenti, e passa le richieste complesse al personale umano. Progettato per attività di servizio (ristoranti, saloni, bar, studi professionali, spa) che non possono stare attaccate al telefono mentre lavorano.
 
 ---
 
@@ -129,4 +129,4 @@ Tutti i piani includono:
 
 ## Demo
 
-Sempre funziona anche senza database in modalità demo. Collegando un database PostgreSQL si attivano tutte le funzionalità multi-tenant, webhook WhatsApp reali, e pagamenti Stripe.
+Melpis funziona anche senza database in modalità demo. Collegando un database PostgreSQL si attivano tutte le funzionalità multi-tenant, webhook WhatsApp reali, e pagamenti Stripe.

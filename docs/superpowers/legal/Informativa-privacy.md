@@ -1,10 +1,10 @@
-> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Bozza redatta in allineamento
-> con `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md` (in particolare §2.2)
+﻿> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Bozza redatta in allineamento
+> con `docs/superpowers/dpa/DPA-melpis.md` (in particolare §2.2)
 > e con i Termini di Servizio. Da far rivedere da un professionista
 > qualificato prima della pubblicazione. I segnaposto fra parentesi quadre
 > vanno compilati con i dati reali del Fornitore.
 
-# Informativa Privacy — WhatsApp AI Responder
+# Informativa Privacy — Melpis
 ## Informativa sul trattamento dei dati relativi all'account del Cliente
 
 **Versione bozza 0.1 — ultimo aggiornamento [DATA]**

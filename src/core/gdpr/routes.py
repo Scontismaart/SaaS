@@ -1,7 +1,10 @@
 import json
 import logging
+import os
 import secrets
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -16,17 +19,29 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/gdpr", tags=["gdpr"])
 
+# ── DPA versioning (migration 035) ────────────────────────────
+# Etichetta del documento attualmente in vigore. Al prossimo cambio del
+# DPA (nuovo sub-processor, retention diversa) basta bumpare questa
+# costante: i tenant con dpa_version < nuova versione vengono bloccati
+# con HTTP 428 fino a ri-accettazione.
+DPA_VERSION = "2026-07"
 
-# ── In-memory export token store ──────────────────────────────
+# ── Rate limit generazione export token ───────────────────────
+# I token servono per esfiltrare PII: limitiamo quante richieste di
+# export puo' fare una singola org nell'arco di un'ora. Stato in-memory
+# per processo (stesso pattern del rate limiter globale in main.py).
+EXPORT_LIMIT_PER_ORG = int(os.getenv("GDPR_EXPORT_RATE_LIMIT", "5"))
+EXPORT_LIMIT_WINDOW_SECONDS = 3600
+_export_rate_windows: dict[str, list[float]] = defaultdict(list)
 
-_export_tokens: dict[str, dict] = {}
 
-
-def _generate_export_token(org_id: str, data: dict) -> tuple[str, datetime]:
-    token = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(minutes=15)
-    _export_tokens[token] = {"org_id": org_id, "data": data, "expires": expires}
-    return token, expires
+def _export_rate_exceeded(org_id: str, now: float) -> bool:
+    window = _export_rate_windows[org_id]
+    window[:] = [t for t in window if t > now - EXPORT_LIMIT_WINDOW_SECONDS]
+    if len(window) >= EXPORT_LIMIT_PER_ORG:
+        return True
+    window.append(now)
+    return False
 
 
 # ── Task 7: DPA template ──────────────────────────────────────
@@ -39,11 +54,11 @@ DPA_HTML = """<!DOCTYPE html>
 <p><strong>Last updated:</strong> July 2026</p>
 
 <h2>1. Parties</h2>
-<p><strong>Data Controller:</strong> The organization subscribing to the WhatsApp AI Responder service.</p>
-<p><strong>Data Processor:</strong> WhatsApp AI Responder (the platform provider).</p>
+<p><strong>Data Controller:</strong> The organization subscribing to the Melpis service.</p>
+<p><strong>Data Processor:</strong> Melpis (the platform provider).</p>
 
 <h2>2. Scope &amp; Purpose</h2>
-<p>This DPA governs the processing of personal data by the Processor on behalf of the Controller in connection with the WhatsApp AI Responder service, including automated message handling, AI-driven responses, booking management, and customer communication.</p>
+<p>This DPA governs the processing of personal data by the Processor on behalf of the Controller in connection with the Melpis service, including automated message handling, AI-driven responses, booking management, and customer communication.</p>
 
 <h2>3. Categories of Data Processed</h2>
 <ul>
@@ -112,6 +127,66 @@ applicable, communication to data subjects under Article 34 GDPR.</p>
 @router.get("/dpa", response_class=HTMLResponse)
 async def get_dpa():
     return DPA_HTML
+
+
+# ── Task: DPA/ToS acceptance (migration 035) ──────────────────
+# Il guard backend (src/core/auth/dependencies.py) risponde HTTP 428 finche'
+# l'org non ha accettato la versione corrente; questi endpoint servono al
+# frontend per leggere lo stato e registrare l'accettazione.
+
+class DpaAcceptInput(BaseModel):
+    dpa: bool = True
+    tos: bool = True
+
+    @field_validator("dpa", "tos")
+    @classmethod
+    def validate_booleans(cls, v):
+        if not isinstance(v, bool):
+            raise ValueError("dpa/tos devono essere booleani")
+        return v
+
+
+@router.get("/acceptance-status")
+async def acceptance_status(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    repo: CoreRepository = request.app.state.repo
+    org_id = user["organization_id"]
+    row = await repo.get_dpa_acceptance(org_id)
+    if row is None:
+        raise HTTPException(404, "Organizzazione non trovata")
+    dpa_accepted = row["dpa_accepted_at"] is not None
+    tos_accepted = row["tos_accepted_at"] is not None
+    return {
+        "dpa_accepted": dpa_accepted,
+        "tos_accepted": tos_accepted,
+        "dpa_version": row["dpa_version"] if dpa_accepted else None,
+        "current_version": DPA_VERSION,
+        "needs_acceptance": not (dpa_accepted and tos_accepted)
+        or row["dpa_version"] != DPA_VERSION,
+    }
+
+
+@router.post("/accept")
+async def accept_dpa(
+    body: DpaAcceptInput,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    repo: CoreRepository = request.app.state.repo
+    org_id = user["organization_id"]
+    row = await repo.accept_dpa(org_id, DPA_VERSION)
+    if row is None:
+        raise HTTPException(404, "Organizzazione non trovata")
+    await audit_log(repo, organization_id=org_id, action="dpa.accept",
+                    auth_user_id=user.get("auth_user_id"),
+                    details={"version": DPA_VERSION, "dpa": body.dpa, "tos": body.tos})
+    return {
+        "dpa_accepted": True,
+        "tos_accepted": True,
+        "dpa_version": row["dpa_version"],
+    }
 
 
 # ── Task 8: Consent preference center ─────────────────────────
@@ -185,8 +260,26 @@ async def gdpr_export(
 ):
     repo: CoreRepository = request.app.state.repo
     org_id = user["organization_id"]
+
+    # Piggyback cleanup: togliamo i token scaduti delle org prima di
+    # generarne di nuovi (indice su expires_at rende il DELETE veloce).
+    try:
+        await repo.cleanup_expired_export_tokens()
+    except Exception as e:
+        logger.warning("gdpr export cleanup fallito: %s", e)
+
+    if _export_rate_exceeded(str(org_id), time.time()):
+        raise HTTPException(
+            429,
+            "Troppe richieste di export: riprova più tardi (max "
+            f"{EXPORT_LIMIT_PER_ORG}/ora).",
+        )
+
     data = await _export_tenant_data(repo, org_id)
-    token, expires = _generate_export_token(str(org_id), data)
+    token = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(minutes=15)
+    await repo.save_export_token(token, org_id, data, expires)
+
     download_url = str(request.base_url) + f"api/gdpr/download/{token}"
 
     await audit_log(repo, organization_id=org_id, action="gdpr.export",
@@ -197,15 +290,16 @@ async def gdpr_export(
 
 
 @router.get("/download/{token}")
-async def gdpr_download(token: str):
-    if token not in _export_tokens:
+async def gdpr_download(token: str, request: Request):
+    repo: CoreRepository | None = getattr(request.app.state, "repo", None)
+    if repo is None:
         raise HTTPException(404, "Export token not found or expired")
-    meta = _export_tokens[token]
-    if datetime.now(timezone.utc) > meta["expires"]:
-        del _export_tokens[token]
+    esito = await repo.consume_export_token(token)
+    if esito is None:
+        raise HTTPException(404, "Export token not found or expired")
+    status, data = esito
+    if status == "expired":
         raise HTTPException(410, "Export token expired")
-    data = meta["data"]
-    del _export_tokens[token]
     return data
 
 

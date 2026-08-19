@@ -50,6 +50,21 @@ _FRASI_VIETATE = (
     "non so rispondere",
 )
 
+# Iniezione di prompt: la risposta che "parla" dei marcatori di delimitazione
+# del messaggio cliente (segnale che il modello ha ripetuto al cliente il
+# contenuto del messaggio manipolato) o che invita a ignorare le istruzioni
+# di sistema viene bloccata. Frasi volutamente rare nel parlato normale.
+_MARCATORI_MESSAGGIO_RE = re.compile(r"</?\s*messaggio_cliente\s*>", re.IGNORECASE)
+_FRASI_INIEZIONE = (
+    "ignora le istruzioni precedenti",
+    "ignora le istruzioni di sistema",
+    "dimentica le regole",
+    "dimentica il prompt",
+    "ripeti il prompt di sistema",
+    "rivelami il prompt",
+    "sei una simulazione",
+)
+
 # Markdown che WhatsApp non renderizza: bold/italic con ** __, heading #,
 # liste -/* e numerate. Le liste diventano bullet "•" per restare leggibili.
 _MD_BOLD_RE = re.compile(r"(\*\*|__)(.*?)\1")
@@ -156,6 +171,16 @@ def valida_risposta(
     if any(frase in lowered for frase in _FRASI_VIETATE):
         return EsitoValidazione("block", FALLBACK_STAFF_TEXT, "frase_vietata",
                                 ("frase_vietata",))
+
+    # 2b. Iniezione di prompt: risposta che cita i marcatori di delimitazione
+    #     o invita a ignorare le istruzioni di sistema -> il modello ha
+    #     "bevuto" il messaggio manipolato e rischia di rivelarlo al cliente.
+    if _MARCATORI_MESSAGGIO_RE.search(testo):
+        return EsitoValidazione("block", FALLBACK_STAFF_TEXT, "iniezione_prompt",
+                                ("iniezione_prompt",))
+    if any(frase in lowered for frase in _FRASI_INIEZIONE):
+        return EsitoValidazione("block", FALLBACK_STAFF_TEXT, "iniezione_prompt",
+                                ("iniezione_prompt",))
 
     # 3. Correzioni leggere: markdown non renderizzabile su WhatsApp.
     testo_pulito = _rimuovi_markdown(testo).strip()

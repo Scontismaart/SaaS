@@ -1,4 +1,4 @@
-# Checklist pre-lancio — whatsapp-ai-responder
+# Checklist pre-lancio — Melpis
 
 File vivo: aggiungiamo qui ogni cosa da testare/verificare prima di poter
 lanciare il progetto in produzione. Non cancellare le voci fatte, spuntarle

@@ -1,8 +1,8 @@
-# Report gap legali residui — WhatsApp AI Responder
+﻿# Report gap legali residui — Melpis
 
 **Data:** 2026-08-16
 **Stato:** documento di lavoro per la review legale — non sostituisce la consulenza di un avvocato o DPO.
-**Documenti correlati:** DPA (`docs/superpowers/dpa/DPA-whatsapp-ai-responder.md`), bozze ToS e Informativa privacy (`docs/superpowers/legal/`), rotta pubblica `/api/gdpr/dpa`.
+**Documenti correlati:** DPA (`docs/superpowers/dpa/DPA-melpis.md`), bozze ToS e Informativa privacy (`docs/superpowers/legal/`), rotta pubblica `/api/gdpr/dpa`.
 
 ## 1. Executive summary
 

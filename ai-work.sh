@@ -23,6 +23,8 @@
 # Opzioni:
 #   -S|-M|-L|-XL   livello di complessità (default: rilevamento automatico)
 #   @file.md       descrizione del task letta dal file
+#   --dry-run      valida la meccanica (preflight, working tree pulito, baseline
+#                  lint, branch) e si ferma senza invocare alcun agente/LLM
 #
 # Ambiente (override facoltativi):
 #   AI_MODEL       modello usato dagli agenti (default: opencode/deepseek-v4-flash-free)
@@ -48,6 +50,7 @@ STAMP="$(date +%Y-%m-%d)"
 LOGFILE="$AGENT_DIR/state/ai-work.log"
 LEVEL=""
 TASK_ARG=""
+DRY_RUN=0
 
 # ----------------------------------------------------------------------------
 # Utility
@@ -376,6 +379,7 @@ while [ $# -gt 0 ]; do
     -M) LEVEL="M" ;;
     -L) LEVEL="L" ;;
     -XL) LEVEL="XL" ;;
+    --dry-run) DRY_RUN=1 ;;
     @*) TASK_ARG="$1" ;;
     -*) die "opzione sconosciuta: $1 (usa -S|-M|-L|-XL)" ;;
     *) TASK_ARG="$1" ;;
@@ -432,6 +436,11 @@ if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
   git checkout "$BRANCH"
 else
   git checkout -b "$BRANCH"
+fi
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  log "DRY-RUN completato: preflight, working tree pulito, baseline lint e branch ($BRANCH) validati. Nessun agente invocato."
+  exit 0
 fi
 
 # 1. manager pianifica (TUTTI i livelli tranne S)

@@ -51,6 +51,7 @@ LOGFILE="$AGENT_DIR/state/ai-work.log"
 LEVEL=""
 TASK_ARG=""
 DRY_RUN=0
+BASE_BRANCH=""
 
 # ----------------------------------------------------------------------------
 # Utility
@@ -432,6 +433,12 @@ capture_lint_baseline
 
 # branch
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "non sei in un repository git"
+BASE_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ -z "$BASE_BRANCH" ] || [ "$BASE_BRANCH" = "HEAD" ]; then
+  log "AVVISO: branch di partenza non rilevato (detached HEAD o vuoto), base PR impostata su 'main'"
+  BASE_BRANCH="main"
+fi
+log "Branch base (per PR): $BASE_BRANCH"
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
   git checkout "$BRANCH"
 else
@@ -488,12 +495,12 @@ if command -v gh >/dev/null 2>&1; then
 - Livello di complessità: $LEVEL
 - Branch: \`$BRANCH\`
 - Orchestrato da \`ai-work.sh\`" \
-    --base main --head "$BRANCH" \
+    --base "$BASE_BRANCH" --head "$BRANCH" \
     || log "gh pr create non riuscito — crea la PR manualmente"
 else
   echo ""
   echo "gh non disponibile. Crea la PR manualmente:"
-  echo "  gh pr create --title \"$TASK_TITLE\" --body \"Task livello $LEVEL\" --base main --head \"$BRANCH\""
+  echo "  gh pr create --title \"$TASK_TITLE\" --body \"Task livello $LEVEL\" --base \"$BASE_BRANCH\" --head \"$BRANCH\""
 fi
 
 log "Pipeline completata. Branch: $BRANCH"

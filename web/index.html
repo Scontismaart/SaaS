@@ -37,6 +37,13 @@
 .accesso-modal h3 { margin:0 0 4px; font-size:1.05rem; }
 .accesso-help { margin:0 0 16px; font-size:.82rem; color:var(--muted); line-height:1.5; }
 .accesso-modal label { display:block; font:600 .76rem/1 "Inter",sans-serif; color:var(--ink-soft); margin:14px 0 6px; }
+.dpa-content { max-height:38vh; overflow:auto; border:1px solid var(--line); border-radius:8px; padding:12px; margin:12px 0 4px; font:.8rem/1.55 "Inter",sans-serif; color:var(--ink); background:var(--surface); }
+.dpa-content h1 { font-size:1.05rem; margin:0 0 6px; }
+.dpa-content h2 { font-size:.95rem; margin:14px 0 4px; }
+.dpa-content table { border-collapse:collapse; width:100%; margin:6px 0; }
+.dpa-content td, .dpa-content th { border:1px solid var(--line); padding:4px 6px; font-size:.75rem; text-align:left; }
+.dpa-check-label { display:flex !important; gap:8px; align-items:flex-start; font:600 .78rem/1.3 "Inter",sans-serif; color:var(--ink-soft); margin:12px 0 4px !important; }
+.dpa-check-label input { margin-top:2px; }
 .accesso-modal .wizard-input { width:100%; }
 </style>
 </head>
@@ -633,6 +640,23 @@
     <div class="onboarding-actions">
       <button type="button" class="report-refresh" data-accesso-close>Annulla</button>
       <button type="button" class="review-analyze" id="accesso-save">Salva</button>
+    </div>
+  </div>
+</div>
+
+<div class="accesso-modal-backdrop" id="dpa-modal" hidden>
+  <div class="accesso-modal">
+    <h3>Accettazione Termini e DPA</h3>
+    <p class="accesso-help">Per utilizzare la piattaforma Melpis devi accettare i <strong>Termini di Servizio</strong> e il <strong>Data Processing Agreement (DPA)</strong>. Il testo completo del DPA è riportato qui sotto.</p>
+    <div class="dpa-content" id="dpa-content" tabindex="0" aria-label="Contenuto del Data Processing Agreement"></div>
+    <label class="dpa-check-label">
+      <input type="checkbox" id="dpa-check">
+      <span>Ho letto e accetto i Termini di Servizio e il Data Processing Agreement (versione <span id="dpa-version"></span>).</span>
+    </label>
+    <p class="doc-config-status" id="dpa-error"></p>
+    <div class="onboarding-actions">
+      <button type="button" class="report-refresh" id="dpa-decline">Rifiuta</button>
+      <button type="button" class="review-analyze" id="dpa-accept" disabled>Accetta e continua</button>
     </div>
   </div>
 </div>

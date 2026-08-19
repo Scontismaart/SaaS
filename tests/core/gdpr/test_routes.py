@@ -188,19 +188,58 @@ class TestDataRights:
         assert data["organization_id"] == str(org_id)
         assert len(data["contacts"]) >= 1
 
-    async def test_download_expired_token_returns_410(self, async_client, org_id):
-        from src.core.gdpr.routes import _export_tokens
-        _export_tokens["expired_test_token"] = {
-            "org_id": str(org_id),
-            "data": {"test": True},
-            "expires": __import__("datetime").datetime(2020, 1, 1, tzinfo=__import__("datetime").timezone.utc),
-        }
+    async def test_download_expired_token_returns_410(self, async_client, org_id, repo):
+        from datetime import datetime, timezone
+        await repo.save_export_token(
+            "expired_test_token", org_id, {"test": True},
+            datetime(2020, 1, 1, tzinfo=timezone.utc),
+        )
         resp = await async_client.get("/api/gdpr/download/expired_test_token")
         assert resp.status_code == 410
 
     async def test_download_nonexistent_token_returns_404(self, async_client):
         resp = await async_client.get("/api/gdpr/download/nonexistent")
         assert resp.status_code == 404
+
+    async def test_token_survives_restart(self, async_client, org_id, repo):
+        """Il token vive nel DB, non in memoria: una nuova istanza repo
+        (simula restart del processo) deve riuscire a consumarlo."""
+        from datetime import datetime, timedelta, timezone
+        await repo.save_export_token(
+            "persist_token", org_id, {"pippo": 1},
+            datetime.now(timezone.utc) + timedelta(minutes=15),
+        )
+        fresh_repo = type(repo)(pool=repo.pool)
+        esito = await fresh_repo.consume_export_token("persist_token")
+        assert esito is not None
+        status, data = esito
+        assert status == "ok"
+        assert data == {"pippo": 1}
+
+    async def test_download_token_is_one_shot(self, async_client, org_id, repo):
+        """Il consumo e' atomico: il secondo download dello stesso token
+        deve fallire (404), anche via una nuova istanza repo."""
+        resp = await async_client.get("/api/gdpr/export", headers=_headers(org_id))
+        assert resp.status_code == 200
+        download_url = resp.json()["download_url"].replace("http://test", "")
+
+        first = await async_client.get(download_url)
+        assert first.status_code == 200
+
+        second = await async_client.get(download_url)
+        assert second.status_code == 404
+
+    async def test_export_rate_limit(self, async_client, org_id, repo):
+        """Rate limit sulla generazione token: oltre la soglia (default 5/ora)
+        l'export risponde 429. Reset del contatore per isolare il test."""
+        from src.core.gdpr import routes as gdpr_routes
+        gdpr_routes._export_rate_windows.clear()
+        statuses = []
+        for _ in range(6):
+            resp = await async_client.get("/api/gdpr/export", headers=_headers(org_id))
+            statuses.append(resp.status_code)
+        assert statuses[:5] == [200] * 5
+        assert statuses[5] == 429
 
     async def test_delete_no_auth(self, async_client):
         resp = await async_client.post("/api/gdpr/delete")
@@ -221,3 +260,75 @@ class TestDataRights:
         data = resp.json()
         assert data["retention_days"] == 60
         assert data["purge_after_days"] == 30
+
+
+# ── DPA/ToS acceptance (migration 035) ────────────────────────
+
+class TestDpaAcceptance:
+    async def test_acceptance_status_no_auth(self, async_client):
+        resp = await async_client.get("/api/gdpr/acceptance-status")
+        assert resp.status_code == 401
+
+    async def test_acceptance_status_not_accepted(self, async_client, org_id):
+        resp = await async_client.get("/api/gdpr/acceptance-status",
+                                      headers=_headers(org_id))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["dpa_accepted"] is False
+        assert data["tos_accepted"] is False
+        assert data["needs_acceptance"] is True
+        assert data["current_version"] == "2026-07"
+
+    async def test_accept_sets_timestamp_and_version(self, async_client, org_id, repo):
+        resp = await async_client.post("/api/gdpr/accept",
+                                       json={"dpa": True, "tos": True},
+                                       headers=_headers(org_id))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["dpa_accepted"] is True
+        assert data["dpa_version"] == "2026-07"
+        row = await repo.get_dpa_acceptance(org_id)
+        assert row["dpa_accepted_at"] is not None
+        assert row["tos_accepted_at"] is not None
+
+    async def test_status_after_accept(self, async_client, org_id):
+        resp = await async_client.post("/api/gdpr/accept", json={},
+                                       headers=_headers(org_id))
+        assert resp.status_code == 200
+        resp = await async_client.get("/api/gdpr/acceptance-status",
+                                      headers=_headers(org_id))
+        data = resp.json()
+        assert data["dpa_accepted"] is True
+        assert data["needs_acceptance"] is False
+
+    async def test_428_gate_blocks_unaccepted_org(self, async_client, org_id):
+        resp = await async_client.get(
+            "/api/dashboard",
+            headers={"Authorization": "Bearer dummy",
+                     "X-Organization-Id": str(org_id)},
+        )
+        assert resp.status_code == 428
+        assert resp.json()["dpa_required"] is True
+
+    async def test_428_gate_bypass_when_accepted(self, async_client, org_id, repo, monkeypatch):
+        monkeypatch.setenv("SUPABASE_URL", "")
+        await repo.accept_dpa(org_id, "2026-07")
+        resp = await async_client.get(
+            "/api/dashboard",
+            headers={"Authorization": "Bearer dummy",
+                     "X-Organization-Id": str(org_id)},
+        )
+        # Il middleware passa; poi il handler fallisce la verifica JWT
+        # (Bearer fittizio) con 403 — ma comunque NON 428.
+        assert resp.status_code != 428
+
+    async def test_428_gate_exempts_gdpr_paths(self, async_client, org_id, monkeypatch):
+        monkeypatch.setenv("SUPABASE_URL", "")
+        resp = await async_client.get(
+            "/api/gdpr/acceptance-status",
+            headers={"Authorization": "Bearer dummy",
+                     "X-Organization-Id": str(org_id)},
+        )
+        # Arriva al handler (API key assente -> 401 da require_ruolo),
+        # non viene bloccato dal gate 428.
+        assert resp.status_code != 428

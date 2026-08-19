@@ -1,4 +1,4 @@
-# whatsapp-ai-responder
+# melpis
 
 Risponditore WhatsApp AI multi-tenant: un SaaS che risponde automaticamente ai messaggi dei clienti via LLM, con guardrails, inbox con intervento umano (HITL), automazione delle recensioni Google, prenotazioni, wizard di onboarding, funzioni GDPR e supporto multilingua (it/en/fr/de/es).
 

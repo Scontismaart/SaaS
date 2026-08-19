@@ -117,7 +117,7 @@ Note:
 
 ## 8. Coerenza documentale
 
-- **DPA** `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md` §10: aggiornare da "meramente informativo e non costituisce adempimento" a: il Servizio informa gli utenti finali al primo contatto automatico (testo di disclosure + possibilità di contattare una persona), ai sensi dell'art. 50(1) AI Act. Aggiornare l'Allegato A (riga "Contenuto comunicazioni" o nuova riga "Trasparenza IA") per includere la finalità di trasparenza.
+- **DPA** `docs/superpowers/dpa/DPA-melpis.md` §10: aggiornare da "meramente informativo e non costituisce adempimento" a: il Servizio informa gli utenti finali al primo contatto automatico (testo di disclosure + possibilità di contattare una persona), ai sensi dell'art. 50(1) AI Act. Aggiornare l'Allegato A (riga "Contenuto comunicazioni" o nuova riga "Trasparenza IA") per includere la finalità di trasparenza.
 - **DPA HTML** `src/core/gdpr/routes.py` (§7 diritti): aggiungere menzione della disclosure per coerenza col documento markdown.
 - **Roadmap** `prompt-roadmap-saas-corretta.md`: aggiornare Punto 12 Guardrails o annotazione AI Act se presente.
 

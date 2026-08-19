@@ -1,8 +1,8 @@
-# "Sempre" Landing Page Implementation Plan
+﻿# "Melpis" Landing Page Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rewrite `web/landing page/landing.html` from "Modern Operator" dark-orange theme to "Sempre" brand with carbon/ivory/sage palette.
+**Goal:** Rewrite `web/landing page/landing.html` from "Modern Operator" dark-orange theme to "Melpis" brand with carbon/ivory/sage palette.
 
 **Architecture:** Single static HTML file with Tailwind CSS (CDN), AOS animations (CDN), Lucide icons (CDN), and minimal inline `<style>` for custom fonts and WhatsApp mockup. Zero build step.
 
@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Brand name: "Sempre" — not "Evergreen" or "Modern Operator"
+- Brand name: "Melpis" — not "Evergreen" or "Modern Operator"
 - Palette: Carbone `#1A1A1E` bg, Avorio `#F5F0EB` text, Verde salvia `#7BA88F` accent, `#222120` social section bg
 - Button text color: Carbone `#1A1A1E` (contrast WCAG on salvia bg)
 - No hamburger menu, no nav links — just logo left + CTA right
@@ -36,7 +36,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sempre — Il tuo assistente clienti su WhatsApp</title>
+  <title>Melpis — Il tuo assistente clienti su WhatsApp</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -77,7 +77,7 @@ Tailwind config in the `<script>` block:
 ```html
 <nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-md bg-[#1A1A1E]/80">
   <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-    <span class="font-serif text-2xl font-semibold tracking-tight">Sempre</span>
+    <span class="font-serif text-2xl font-semibold tracking-tight">Melpis</span>
     <a href="#" class="inline-block bg-salvia text-carbone px-5 py-2.5 rounded-full text-sm font-semibold hover:scale-105 transition-all">Prova gratis 7 giorni</a>
   </div>
 </nav>
@@ -109,7 +109,7 @@ git commit -m "feat(landing): scaffold with navbar + brand palette"
           <span class="text-salvia">Mentre tu lavori.</span>
         </h1>
         <p class="text-lg md:text-xl text-[#F5F0EB]/70 max-w-xl leading-relaxed">
-          Sempre risponde ai tuoi clienti su WhatsApp in tempo reale, gestisce prenotazioni e recensioni, e ti avvisa solo quando serve davvero. L'assistente instancabile per ristoranti, saloni e attività locali.
+          Melpis risponde ai tuoi clienti su WhatsApp in tempo reale, gestisce prenotazioni e recensioni, e ti avvisa solo quando serve davvero. L'assistente instancabile per ristoranti, saloni e attività locali.
         </p>
         <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
       </div>
@@ -121,7 +121,7 @@ git commit -m "feat(landing): scaffold with navbar + brand palette"
               <i data-lucide="message-circle" class="w-4 h-4 text-salvia"></i>
             </div>
             <div>
-              <p class="text-sm font-medium">Sempre</p>
+              <p class="text-sm font-medium">Melpis</p>
               <p class="text-xs text-[#F5F0EB]/50">Online</p>
             </div>
           </div>
@@ -186,7 +186,7 @@ git commit -m "feat(landing): hero section with 2-col layout + chat mockup"
     </div>
     <!-- Bridge -->
     <p class="text-xl font-semibold text-[#F5F0EB] leading-relaxed pt-12 border-t border-[#F5F0EB]/10">
-      Con <span class="text-salvia">Sempre</span>, non devi più scegliere tra servire chi hai davanti e rispondere a chi ti scrive.
+      Con <span class="text-salvia">Melpis</span>, non devi più scegliere tra servire chi hai davanti e rispondere a chi ti scrive.
     </p>
   </div>
 </section>
@@ -215,7 +215,7 @@ git commit -m "feat(landing): problem section with data point + bridge"
       <div data-aos="fade-up">
         <i data-lucide="message-circle" class="w-8 h-8 text-salvia mb-4"></i>
         <h3 class="font-serif text-2xl mb-2">Risposte WhatsApp in tempo reale</h3>
-        <p class="text-[#F5F0EB]/60 text-lg leading-relaxed">Mentre sei in servizio, Sempre risponde ai clienti su WhatsApp. Veloce, preciso, in italiano.</p>
+        <p class="text-[#F5F0EB]/60 text-lg leading-relaxed">Mentre sei in servizio, Melpis risponde ai clienti su WhatsApp. Veloce, preciso, in italiano.</p>
       </div>
       <!-- Feature 2 -->
       <div data-aos="fade-up" data-aos-delay="100">
@@ -264,7 +264,7 @@ git commit -m "feat(landing): killer features invisible grid"
         <span class="absolute -top-8 -left-4 font-serif text-9xl font-bold text-salvia/10 select-none pointer-events-none leading-none">1</span>
         <div class="relative z-10">
           <h3 class="font-serif text-2xl mb-3">Colleghi</h3>
-          <p class="text-[#F5F0EB]/60 text-lg leading-relaxed">Colleghi Sempre al tuo account WhatsApp Business in 2 click. Nessun cavo, nessun tecnico.</p>
+          <p class="text-[#F5F0EB]/60 text-lg leading-relaxed">Colleghi Melpis al tuo account WhatsApp Business in 2 click. Nessun cavo, nessun tecnico.</p>
         </div>
       </div>
       <!-- Step 2 -->
@@ -280,7 +280,7 @@ git commit -m "feat(landing): killer features invisible grid"
         <span class="absolute -top-8 -left-4 font-serif text-9xl font-bold text-salvia/10 select-none pointer-events-none leading-none">3</span>
         <div class="relative z-10">
           <h3 class="font-serif text-2xl mb-3">Lavori</h3>
-          <p class="text-[#F5F0EB]/60 text-lg leading-relaxed">Sempre gestisce i messaggi, le prenotazioni e le recensioni. Tu fai quello che sai fare meglio.</p>
+          <p class="text-[#F5F0EB]/60 text-lg leading-relaxed">Melpis gestisce i messaggi, le prenotazioni e le recensioni. Tu fai quello che sai fare meglio.</p>
         </div>
       </div>
     </div>
@@ -319,7 +319,7 @@ git commit -m "feat(landing): how it works with watermark numbers"
     <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-16" data-aos="fade-up">
       <div>
         <p class="font-serif text-6xl text-salvia font-bold">500+</p>
-        <p class="text-[#F5F0EB]/60 text-lg">attività usano Sempre</p>
+        <p class="text-[#F5F0EB]/60 text-lg">attività usano Melpis</p>
       </div>
       <div>
         <p class="font-serif text-6xl text-salvia font-bold">10.000+</p>
@@ -330,7 +330,7 @@ git commit -m "feat(landing): how it works with watermark numbers"
     <div class="relative max-w-2xl mx-auto" data-aos="fade-up">
       <span class="absolute -top-12 -left-4 font-serif text-8xl text-salvia/10 select-none pointer-events-none leading-none">&ldquo;</span>
       <div class="relative z-10">
-        <p class="text-xl italic text-[#F5F0EB]/80 leading-relaxed mb-4">"Non ho più perso una prenotazione da quando uso Sempre."</p>
+        <p class="text-xl italic text-[#F5F0EB]/80 leading-relaxed mb-4">"Non ho più perso una prenotazione da quando uso Melpis."</p>
         <p class="text-sm text-[#F5F0EB]/50">Marco Rossi, Ristorante Al Portico</p>
       </div>
     </div>
@@ -356,7 +356,7 @@ git commit -m "feat(landing): social proof with numbers + testimonial + sectors"
 <section class="py-32 md:py-40 text-center">
   <div class="max-w-3xl mx-auto px-6" data-aos="fade-up">
     <h2 class="font-serif text-4xl md:text-5xl font-semibold mb-6 text-balance">Pronto a non perdere più un cliente?</h2>
-    <p class="text-lg md:text-xl text-[#F5F0EB]/60 mb-10 leading-relaxed">Prova Sempre gratis per 7 giorni. Nessuna carta di credito. Attivazione in 5 minuti.</p>
+    <p class="text-lg md:text-xl text-[#F5F0EB]/60 mb-10 leading-relaxed">Prova Melpis gratis per 7 giorni. Nessuna carta di credito. Attivazione in 5 minuti.</p>
     <a href="#" class="inline-block bg-salvia text-carbone px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition-all">Inizia la prova gratuita &rarr;</a>
     <p class="text-sm text-[#F5F0EB]/40 mt-6">Funziona con WhatsApp Business. Assistenza inclusa.</p>
   </div>
@@ -374,7 +374,7 @@ git commit -m "feat(landing): social proof with numbers + testimonial + sectors"
       <a href="#" class="hover:text-[#F5F0EB]/70 transition-colors">Chi siamo</a>
       <a href="#" class="hover:text-[#F5F0EB]/70 transition-colors">Contatti</a>
     </div>
-    <p class="text-sm text-[#F5F0EB]/30">Sempre &mdash; &copy; 2026</p>
+    <p class="text-sm text-[#F5F0EB]/30">Melpis &mdash; &copy; 2026</p>
   </div>
 </footer>
 ```

@@ -123,6 +123,10 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/033_multilingua_lingue_profilo.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/034_export_tokens.sql") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/035_dpa_acceptance.sql") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 
@@ -146,7 +150,8 @@ async def reset_db(pg_pool):
                 webhook_idempotency,
                 google_calendar_credentials,
                 google_business_credentials,
-                oauth_nonces
+                oauth_nonces,
+                gdpr_export_tokens
             CASCADE
         """)
 

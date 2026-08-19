@@ -329,6 +329,13 @@ class TestRealJwtPropagatesUserId:
                 "INSERT INTO organizations (id, name) VALUES ($1, 'Jwt Org') RETURNING id",
                 uuid.uuid4()
             )
+            # L'org deve aver accettato DPA/ToS corrente, altrimenti il
+            # middleware di compliance (migration 035) risponde 428.
+            await conn.execute(
+                "UPDATE organizations SET dpa_accepted_at = NOW(), "
+                "tos_accepted_at = NOW(), dpa_version = '2026-07' WHERE id = $1",
+                org["id"]
+            )
             auth_user = await conn.fetchrow(
                 "INSERT INTO auth.users (email) VALUES ($1) RETURNING id",
                 "jwt-owner@test.com"

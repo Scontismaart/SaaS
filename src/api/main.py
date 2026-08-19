@@ -79,7 +79,7 @@ from src.core.calendar.routes import router as calendar_router
 from src.core.auth.audit import audit_log
 from src.core.billing.routes import router as billing_router
 from src.core.billing.config import BillingConfig
-from src.core.gdpr.routes import router as gdpr_router
+from src.core.gdpr.routes import router as gdpr_router, DPA_VERSION
 from src.core.inbox.routes import router as inbox_router
 from src.core.bookings.routes import router as bookings_router
 from src.core.reviews.routes import router as reviews_router
@@ -186,7 +186,7 @@ async def lifespan(app: FastAPI):
     await close_http_client()
 
 
-app = FastAPI(title="WhatsApp AI Responder - Demo API", lifespan=lifespan)
+app = FastAPI(title="Melpis - Demo API", lifespan=lifespan)
 
 app.include_router(billing_router)
 app.include_router(gdpr_router)
@@ -288,6 +288,59 @@ async def rate_limit_middleware(request: Request, call_next):
                 content={"detail": "Limite globale chiamate AI raggiunto. Riprova tra poco."},
             )
 
+    return await call_next(request)
+
+
+# ── DPA/ToS acceptance gate (migration 035) ─────────────────────
+# Compliance GDPR: un utente autenticato (JWT Supabase) non puo' usare
+# la dashboard finche' la sua organizzazione non ha accettato la versione
+# corrente di DPA e ToS. Risponde HTTP 428 (Precondition Required) che il
+# frontend intercetta e traduce nel modal di accettazione.
+# Esclusi di proposito:
+#  - /api/gdpr/* : servono per vedere e accettare il DPA stesso;
+#  - /webhooks/* : chiamate da terze parti (Meta/Stripe), non user-initiated;
+#  - API key     : chiamate service-to-service, non soggette a consenso;
+#  - repo assente: demo mode senza DATABASE_URL (nessuna org da verificare).
+DPA_EXEMPT_PREFIXES = ("/api/gdpr", "/webhooks", "/api/health")
+
+
+@app.middleware("http")
+async def dpa_acceptance_middleware(request: Request, call_next):
+    path = request.url.path
+    if not path.startswith("/api/"):
+        return await call_next(request)
+    if any(path.startswith(p) for p in DPA_EXEMPT_PREFIXES):
+        return await call_next(request)
+    # Solo sessioni utente (JWT Bearer), non service-to-service (X-API-Key).
+    auth = request.headers.get("Authorization")
+    if not auth or not auth.startswith("Bearer "):
+        return await call_next(request)
+    org_id = request.headers.get("X-Organization-Id")
+    if not org_id:
+        return await call_next(request)
+    repo = getattr(request.app.state, "repo", None)
+    if repo is None:
+        return await call_next(request)
+    try:
+        row = await repo.get_dpa_acceptance(org_id)
+    except Exception:
+        # Se il check fallisce non blocchiamo tutto: il path handler avra'
+        # comunque la sua auth piu' rigorosa.
+        return await call_next(request)
+    accepted = (
+        row is not None
+        and row["dpa_accepted_at"] is not None
+        and row["tos_accepted_at"] is not None
+        and row["dpa_version"] == DPA_VERSION
+    )
+    if not accepted:
+        return JSONResponse(
+            status_code=428,
+            content={
+                "detail": "Accetta i Termini e il DPA per continuare.",
+                "dpa_required": True,
+            },
+        )
     return await call_next(request)
 
 

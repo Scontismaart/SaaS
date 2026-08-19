@@ -66,7 +66,7 @@ a runtime. Passi:
    `Dockerfile` alla radice; `.dockerignore` esclude già segreti, `docs/`,
    `tests/`, `web/`, `scripts/`).
 2. **Creare il progetto in Coolify**:
-   - Source: repo GitHub `Scontismaart/SaaS` → branch `main`.
+   - Source: repo GitHub `Scontismaart/melpis` → branch `main`.
    - Build Pack: `Dockerfile` (è presente alla radice).
    - Port: `8000` (esposta da `api`; i 3 worker e il supervisor non hanno
      porta pubblica).

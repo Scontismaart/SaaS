@@ -5,7 +5,7 @@ import threading
 import uuid
 import asyncpg
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 
@@ -634,6 +634,76 @@ def stato_report(user: dict = Depends(require_ruolo("owner", "manager", "staff")
     oggi = datetime.now().strftime("%Y-%m-%d")
     report = get_report_cache(oggi)
     return {"disponibile": report is not None, "id": f"report-{oggi}" if report else None}
+
+
+@app.get("/api/report/settimanale")
+async def report_settimanale(
+    forza: bool = False,
+    request: Request = None,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    """Genera (e invia via email) il report settimanale per l'organizzazione
+    dell'utente. Idempotente: non reinvia se gia' inviato per lo stesso
+    periodo, a meno che forza=true."""
+    from src.core.report.weekly_report import genera_e_invia_report_settimanale
+
+    pool = getattr(request.app.state, "pool", None)
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database non disponibile")
+
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organizzazione non trovata")
+
+    try:
+        risultato = await genera_e_invia_report_settimanale(pool, str(org_id), forza=forza)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Errore generazione report: {e}")
+
+    return risultato
+
+
+@app.get("/api/report/csv")
+async def export_csv_prenotazioni(
+    da: str = None,
+    a: str = None,
+    request: Request = None,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    """Export CSV delle prenotazioni completate nel periodo.
+    Default: ultima settimana (lunedi-domenica precedente)."""
+    from src.core.report.csv_export import get_prenotazioni_completate, genera_csv
+    from src.core.report.weekly_report import _calcola_periodo_settimanale
+    from fastapi.responses import Response
+
+    pool = getattr(request.app.state, "pool", None)
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database non disponibile")
+
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organizzazione non trovata")
+
+    # Date del periodo: default = settimana precedente
+    if da and a:
+        try:
+            inizio = date.fromisoformat(da)
+            fine = date.fromisoformat(a)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato date non valido (YYYY-MM-DD)")
+    else:
+        inizio, fine = _calcola_periodo_settimanale()
+
+    prenotazioni = await get_prenotazioni_completate(pool, str(org_id), inizio, fine)
+    csv_bytes = genera_csv(prenotazioni)
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="prenotazioni-{inizio.isoformat()}.csv"',
+        },
+    )
 
 
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)

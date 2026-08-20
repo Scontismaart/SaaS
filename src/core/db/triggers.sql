@@ -8,13 +8,14 @@ CREATE OR REPLACE FUNCTION log_message_event() RETURNS trigger AS $$
 BEGIN
   IF NEW.direction = 'inbound' AND NEW.status = 'handled' THEN
     INSERT INTO event_log (organization_id, source_table, source_id, tipo_evento, priorita,
-                           testo_originale, gestito_da_ai, dettagli)
+                           testo_originale, gestito_da_ai, dettagli, created_at)
     VALUES (
       NEW.organization_id, 'messages', NEW.id, 'messaggio',
       CASE WHEN NEW.handling_type = 'escalated' THEN 'alta' ELSE 'media' END,
       NEW.content_text,
       NEW.handling_type = 'ai_handled',
-      jsonb_build_object('conversation_id', NEW.conversation_id, 'handling_type', NEW.handling_type)
+      jsonb_build_object('conversation_id', NEW.conversation_id, 'handling_type', NEW.handling_type),
+      NEW.created_at
     );
   END IF;
   RETURN NEW;
@@ -30,13 +31,14 @@ CREATE TRIGGER trg_log_message_event
 CREATE OR REPLACE FUNCTION log_review_event() RETURNS trigger AS $$
 BEGIN
   INSERT INTO event_log (organization_id, source_table, source_id, tipo_evento, priorita,
-                         testo_originale, gestito_da_ai, dettagli)
+                         testo_originale, gestito_da_ai, dettagli, created_at)
   VALUES (
     NEW.organization_id, 'reviews', NEW.id, 'recensione',
     CASE WHEN NEW.valutazione_stelle IS NOT NULL AND NEW.valutazione_stelle <= 2 THEN 'alta' ELSE 'bassa' END,
     NEW.testo,
     TRUE,
-    jsonb_build_object('valutazione_stelle', NEW.valutazione_stelle, 'fonte', NEW.fonte)
+    jsonb_build_object('valutazione_stelle', NEW.valutazione_stelle, 'fonte', NEW.fonte),
+    NEW.created_at
   );
   RETURN NEW;
 END;

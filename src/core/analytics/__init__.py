@@ -1,0 +1,1 @@
+# Analytics — calcolo KPI deterministici

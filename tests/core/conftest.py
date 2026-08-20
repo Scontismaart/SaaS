@@ -8,6 +8,13 @@ import uuid
 
 CI = os.getenv("CI")
 
+# Migrazioni 036/037 lette a livello di modulo (fuori da funzioni async)
+# per non aggiungere errori ASYNC230 come i `with open` del fixture pg_pool.
+with open("src/core/db/migrations/036_weekly_report_log.sql", encoding="utf-8") as f:
+    _WEEKLY_REPORT_LOG_SQL = f.read()
+with open("src/core/db/migrations/037_weekly_report_log_status.sql", encoding="utf-8") as f:
+    _WEEKLY_REPORT_LOG_STATUS_SQL = f.read()
+
 if CI:
     _dsn = (
         f"postgresql://{os.getenv('PGUSER','postgres')}"
@@ -56,73 +63,77 @@ async def pg_pool(postgres_container):
                 SELECT '{}'::jsonb
             $$ LANGUAGE sql STABLE;
         """)
-        with open("src/whatsapp/schema.sql") as f:
+        with open("src/whatsapp/schema.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/schema.sql") as f:
+        with open("src/core/db/schema.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/triggers.sql") as f:
+        with open("src/core/db/triggers.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/002_auth_tables.sql") as f:
+        with open("src/core/db/migrations/002_auth_tables.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/003_billing.sql") as f:
+        with open("src/core/db/migrations/003_billing.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/004_gdpr.sql") as f:
+        with open("src/core/db/migrations/004_gdpr.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/005_gdpr_consent.sql") as f:
+        with open("src/core/db/migrations/005_gdpr_consent.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/006_hitl.sql") as f:
+        with open("src/core/db/migrations/006_hitl.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/007_booking_standalone.sql") as f:
+        with open("src/core/db/migrations/007_booking_standalone.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/010_dead_letter.sql") as f:
+        with open("src/core/db/migrations/010_dead_letter.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/012_reply_guard.sql") as f:
+        with open("src/core/db/migrations/012_reply_guard.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/013_webhook_idempotency.sql") as f:
+        with open("src/core/db/migrations/013_webhook_idempotency.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/014_contact_fk_strategy.sql") as f:
+        with open("src/core/db/migrations/014_contact_fk_strategy.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/015_org_fk_strategy.sql") as f:
+        with open("src/core/db/migrations/015_org_fk_strategy.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/016_org_timezone.sql") as f:
+        with open("src/core/db/migrations/016_org_timezone.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/017_advisor_followup.sql") as f:
+        with open("src/core/db/migrations/017_advisor_followup.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/018_advisor_followup_2.sql") as f:
+        with open("src/core/db/migrations/018_advisor_followup_2.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/019_google_calendar_credentials.sql") as f:
+        with open("src/core/db/migrations/019_google_calendar_credentials.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/020_add_google_event_id.sql") as f:
+        with open("src/core/db/migrations/020_add_google_event_id.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/021_oauth_nonces.sql") as f:
+        with open("src/core/db/migrations/021_oauth_nonces.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/022_reviews_ext.sql") as f:
+        with open("src/core/db/migrations/022_reviews_ext.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/023_fix_review_priority_trigger.sql") as f:
+        with open("src/core/db/migrations/023_fix_review_priority_trigger.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
         # 024 e' opzionale (hnsw index): se pgvector non supporta hnsw,
         # ignoriamo l'errore senza bloccare i test.
         try:
-            with open("src/core/db/migrations/024_hnsw_index.sql") as f:
+            with open("src/core/db/migrations/024_hnsw_index.sql", encoding="utf-8") as f:
                 await conn.execute(f.read())
         except asyncpg.UndefinedObjectError:
             pass
-        with open("src/core/db/migrations/025_suspension_notified.sql") as f:
+        with open("src/core/db/migrations/025_suspension_notified.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/026_google_business_credentials.sql") as f:
+        with open("src/core/db/migrations/026_google_business_credentials.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/027_sla.sql") as f:
+        with open("src/core/db/migrations/027_sla.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/028_onboarding_profiles.sql") as f:
+        with open("src/core/db/migrations/028_onboarding_profiles.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/030_instagram_channel.sql") as f:
+        with open("src/core/db/migrations/030_instagram_channel.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/031_guardrails_feedback_cache.sql") as f:
+        with open("src/core/db/migrations/031_guardrails_feedback_cache.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/032_search_path_hardening_new_triggers.sql") as f:
+        with open("src/core/db/migrations/032_search_path_hardening_new_triggers.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
-        with open("src/core/db/migrations/033_multilingua_lingue_profilo.sql") as f:
+        with open("src/core/db/migrations/033_multilingua_lingue_profilo.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/038_event_log_created_at.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
+        await conn.execute(_WEEKLY_REPORT_LOG_SQL)
+        await conn.execute(_WEEKLY_REPORT_LOG_STATUS_SQL)
     yield pool
     await pool.close()
 
@@ -146,7 +157,8 @@ async def reset_db(pg_pool):
                 webhook_idempotency,
                 google_calendar_credentials,
                 google_business_credentials,
-                oauth_nonces
+                oauth_nonces,
+                weekly_report_log
             CASCADE
         """)
 

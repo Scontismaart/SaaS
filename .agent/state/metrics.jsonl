@@ -1,0 +1,14 @@
+{"timestamp":"2026-08-19T09:16:23Z","step":"implementer","livello":"S","esito":"pass","durata_sec":54.00}
+{"timestamp":"2026-08-19T09:19:30Z","step":"test","livello":"S","esito":"pass","durata_sec":187.00}
+{"timestamp":"2026-08-19T09:19:31Z","step":"lint","livello":"S","esito":"pass","durata_sec":1.00}
+{"timestamp":"2026-08-19T10:07:39Z","step":"implementer","livello":"S","esito":"pass","durata_sec":74.00}
+{"timestamp":"2026-08-19T10:11:20Z","step":"test","livello":"S","esito":"pass","durata_sec":221.00}
+{"timestamp":"2026-08-19T10:11:21Z","step":"lint","livello":"S","esito":"pass","durata_sec":0.00}
+{"timestamp":"2026-08-19T10:13:52Z","step":"implementer","livello":"S","esito":"pass","durata_sec":110.00}
+{"timestamp":"2026-08-19T10:17:24Z","step":"test","livello":"S","esito":"pass","durata_sec":212.00}
+{"timestamp":"2026-08-19T10:17:25Z","step":"lint","livello":"S","esito":"pass","durata_sec":0.00}
+{"timestamp":"2026-08-19T11:20:21Z","step":"manager","livello":"M","esito":"pass","durata_sec":198.00}
+{"timestamp":"2026-08-19T11:28:44Z","step":"implementer","livello":"M","esito":"pass","durata_sec":503.00}
+{"timestamp":"2026-08-19T11:32:27Z","step":"test","livello":"M","esito":"pass","durata_sec":223.00}
+{"timestamp":"2026-08-19T11:36:42Z","step":"redteam","livello":"M","esito":"pass","durata_sec":254.00}
+{"timestamp":"2026-08-19T12:54:49Z","step":"manager","livello":"M","esito":"pass","durata_sec":427.00}

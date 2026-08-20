@@ -8,6 +8,9 @@ che sono disponibili nel Docker (Debian) ma non su Windows.
 Questi test vengono skippati se weasyprint non e' importabile.
 """
 
+import io
+import re
+
 import pytest
 
 try:
@@ -28,6 +31,22 @@ from src.models.schemas import (
     KPIRecensioni,
     KPISettimanali,
 )
+
+
+def _estrai_testo_pdf(pdf_bytes: bytes) -> str:
+    """Estrae il testo visibile dal PDF.
+
+    WeasyPrint comprime gli stream di contenuto con FlateDecode, quindi i
+    raw bytes non contengono il testo in chiaro: va estratto dalle pagine.
+    pypdf e' gia' una dipendenza del progetto (vedi src/core/documenti/
+    extractor.py); normalizziamo il whitespace per robustezza contro
+    interruzioni di riga/parola.
+    """
+    from pypdf import PdfReader
+
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    testo = "\n".join(page.extract_text() or "" for page in reader.pages)
+    return re.sub(r"\s+", " ", testo)
 
 
 @pytest.fixture
@@ -75,20 +94,19 @@ def test_pdf_header_valido(kpi_esempio):
 
 
 def test_pdf_contiene_nome_attivita(kpi_esempio):
-    """Il PDF contiene il nome dell'attivita' (verificato nel raw bytes)."""
+    """Il PDF contiene il nome dell'attivita' (testo estratto dalle pagine)."""
     pdf_bytes = genera_pdf(kpi_esempio)
-    # weasyprint incorpora il testo nel PDF — cerchiamo nel contenuto
-    # Nota: il testo potrebbe essere compresso, ma in genere i nomi
-    # brevi sono leggibili nel raw PDF.
-    assert b"Ristorante Da Mario" in pdf_bytes or b"Report Settimanale" in pdf_bytes
+    testo = _estrai_testo_pdf(pdf_bytes)
+    assert "Ristorante Da Mario" in testo or "Report Settimanale" in testo
 
 
 def test_pdf_contiene_periodo(kpi_esempio):
-    """Il PDF contiene le date del periodo."""
+    """Il PDF contiene le date del periodo (testo estratto dalle pagine)."""
     pdf_bytes = genera_pdf(kpi_esempio)
+    testo = _estrai_testo_pdf(pdf_bytes)
     # Cerchiamo almeno uno dei due formati (il template usa il formato
     # ISO passato come variabile)
-    assert b"2026-08-11" in pdf_bytes or b"11/08" in pdf_bytes
+    assert "2026-08-11" in testo or "11/08" in testo
 
 
 def test_pdf_con_kpi_vuoti():

@@ -13,23 +13,50 @@ from src.models.schemas import (
     KPISettimanali,
 )
 
+# Fonte unificata degli analytics (FIX 1 redteam punto 17):
+# i conteggi messaggi leggono da event_log, la stessa proiezione derivata
+# da trigger che alimenta il dashboard (src/core/db/triggers.sql). Il
+# trigger log_message_event registra solo i messaggi inbound gestiti
+# (status='handled'), quindi i numeri coincidono con calcola_statistiche
+# sullo storico eventi (verifica di equivalenza in test_kpi_integration.py).
+
 
 async def calcola_kpi_messaggi(pool, org_id: str, inizio: date, fine: date) -> KPIMessaggi:
-    """KPI messaggi inbound nel periodo: totale, gestiti da AI, escalati, tempo medio risposta."""
+    """KPI messaggi inbound nel periodo: totale, gestiti da AI, escalati, tempo medio risposta.
+
+    Conteggi (totale/gestiti/escalati) da event_log; il tempo medio di
+    risposta resta su messages perche' event_log non espone replied_at.
+    """
     async with pool.acquire() as conn:
         row = await conn.fetchrow("""
             SELECT
-                COUNT(*) AS totale,
-                COUNT(*) FILTER (WHERE handling_type = 'ai_handled') AS gestiti_da_ai,
-                COUNT(*) FILTER (WHERE handling_type = 'escalated') AS escalati,
-                EXTRACT(EPOCH FROM AVG(replied_at - created_at))
-                    FILTER (WHERE replied_at IS NOT NULL)
-                    AS avg_risposta_sec
-            FROM messages
-            WHERE organization_id = $1
-              AND direction = 'inbound'
-              AND created_at >= $2
-              AND created_at < $3 + INTERVAL '1 day'
+                (SELECT COUNT(*) FROM event_log
+                 WHERE organization_id = $1
+                   AND source_table = 'messages'
+                   AND tipo_evento = 'messaggio'
+                   AND created_at >= ($2::timestamp AT TIME ZONE 'UTC')
+                   AND created_at < (($3::timestamp + INTERVAL '1 day') AT TIME ZONE 'UTC')) AS totale,
+                (SELECT COUNT(*) FROM event_log
+                 WHERE organization_id = $1
+                   AND source_table = 'messages'
+                   AND tipo_evento = 'messaggio'
+                   AND gestito_da_ai
+                   AND created_at >= ($2::timestamp AT TIME ZONE 'UTC')
+                   AND created_at < (($3::timestamp + INTERVAL '1 day') AT TIME ZONE 'UTC')) AS gestiti_da_ai,
+                (SELECT COUNT(*) FROM event_log
+                 WHERE organization_id = $1
+                   AND source_table = 'messages'
+                   AND tipo_evento = 'messaggio'
+                   AND NOT gestito_da_ai
+                   AND created_at >= ($2::timestamp AT TIME ZONE 'UTC')
+                   AND created_at < (($3::timestamp + INTERVAL '1 day') AT TIME ZONE 'UTC')) AS escalati,
+                (SELECT EXTRACT(EPOCH FROM AVG(replied_at - created_at))
+                 FROM messages
+                 WHERE organization_id = $1
+                   AND direction = 'inbound'
+                   AND replied_at IS NOT NULL
+                   AND created_at >= ($2::timestamp AT TIME ZONE 'UTC')
+                   AND created_at < (($3::timestamp + INTERVAL '1 day') AT TIME ZONE 'UTC')) AS avg_risposta_sec
         """, org_id, inizio, fine)
 
     totale = row["totale"] or 0
@@ -60,8 +87,8 @@ async def calcola_kpi_prenotazioni(pool, org_id: str, inizio: date, fine: date) 
                 COUNT(*) FILTER (WHERE origine = 'WhatsApp') AS da_whatsapp
             FROM bookings
             WHERE organization_id = $1
-              AND created_at >= $2
-              AND created_at < $3 + INTERVAL '1 day'
+              AND created_at >= ($2::timestamp AT TIME ZONE 'UTC')
+              AND created_at < (($3::timestamp + INTERVAL '1 day') AT TIME ZONE 'UTC')
         """, org_id, inizio, fine)
 
     return KPIPrenotazioni(
@@ -88,8 +115,8 @@ async def calcola_kpi_recensioni(pool, org_id: str, inizio: date, fine: date) ->
                 ) AS media_stelle
             FROM reviews
             WHERE organization_id = $1
-              AND created_at >= $2
-              AND created_at < $3 + INTERVAL '1 day'
+              AND created_at >= ($2::timestamp AT TIME ZONE 'UTC')
+              AND created_at < (($3::timestamp + INTERVAL '1 day') AT TIME ZONE 'UTC')
         """, org_id, inizio, fine)
 
     totale = row["totale"] or 0

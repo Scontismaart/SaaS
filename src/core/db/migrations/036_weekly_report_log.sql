@@ -16,18 +16,23 @@ CREATE TABLE IF NOT EXISTS weekly_report_log (
 
 ALTER TABLE weekly_report_log ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY weekly_report_log_org_member ON weekly_report_log
-    FOR ALL USING (
-        organization_id IN (
-            SELECT om.organization_id FROM organization_memberships om
-            JOIN user_profiles up ON up.id = om.user_id
-            WHERE up.auth_user_id = auth.uid()
-        )
-    )
-    WITH CHECK (
-        organization_id IN (
-            SELECT om.organization_id FROM organization_memberships om
-            JOIN user_profiles up ON up.id = om.user_id
-            WHERE up.auth_user_id = auth.uid()
-        )
-    );
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'weekly_report_log_org_member') THEN
+        CREATE POLICY weekly_report_log_org_member ON weekly_report_log
+            FOR ALL USING (
+                organization_id IN (
+                    SELECT om.organization_id FROM organization_memberships om
+                    JOIN user_profiles up ON up.id = om.user_id
+                    WHERE up.auth_user_id = auth.uid()
+                )
+            )
+            WITH CHECK (
+                organization_id IN (
+                    SELECT om.organization_id FROM organization_memberships om
+                    JOIN user_profiles up ON up.id = om.user_id
+                    WHERE up.auth_user_id = auth.uid()
+                )
+            );
+    END IF;
+END $$;

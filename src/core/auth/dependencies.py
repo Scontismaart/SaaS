@@ -8,6 +8,8 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, Header, HTTPException, Request
 
+from src.core.auth.api_key_guard import api_key_request_allowed
+
 JWT_ALGORITHM = "RS256"
 JWKS_CACHE: dict[str, Any] = {"keys": None, "expires_at": 0}
 HTTP_CLIENT: httpx.AsyncClient | None = None
@@ -128,6 +130,8 @@ async def get_current_user(
         # hmac.compare_digest confronta in tempo costante.
         if not expected or not hmac.compare_digest(key, expected):
             raise HTTPException(status_code=403, detail="API Key non valida")
+        if not api_key_request_allowed(request):
+            raise HTTPException(status_code=403, detail="API Key non consentita da questa rete")
         return {
             "auth_user_id": None,
             "organization_id": None,

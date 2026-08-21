@@ -1,10 +1,8 @@
 import os
 import json
-import time
 import threading
 import uuid
 import asyncpg
-from collections import defaultdict
 from datetime import date, datetime
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
@@ -20,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import JSONResponse
 
 from src.core.notifications.email_service import start_worker, stop_worker as stop_email_worker
@@ -72,8 +71,11 @@ if _sentry_dsn:
         profiles_sample_rate=0.1,
     )
 
+from src.core.auth.csrf import validate_csrf_request
 from src.core.auth.dependencies import get_repo, require_ruolo, close_http_client
 from src.core.auth.routes import router as auth_router
+from src.core.rate_limit import close_rate_limiter, get_rate_limiter, reset_memory_rate_limiter
+from src.core.security.docs import is_production, require_docs_access
 from src.core.db.repository import CoreRepository
 from src.core.calendar import GoogleCalendarService
 from src.core.calendar.routes import router as calendar_router
@@ -101,7 +103,7 @@ async def lifespan(app: FastAPI):
     app.state.billing_config = BillingConfig(
         stripe_trial_days=int(os.getenv("STRIPE_TRIAL_DAYS", "7")),
     )
-    rate_windows.clear()
+    reset_memory_rate_limiter()
     start_worker()
     dsn = os.getenv("DATABASE_URL")
     if dsn:
@@ -190,9 +192,34 @@ async def lifespan(app: FastAPI):
     if app.state.pool:
         await app.state.pool.close()
     await close_http_client()
+    await close_rate_limiter()
 
 
-app = FastAPI(title="WhatsApp AI Responder - Demo API", lifespan=lifespan)
+app = FastAPI(
+    title="WhatsApp AI Responder - Demo API",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+
+@app.get("/openapi.json", include_in_schema=False)
+async def protected_openapi(request: Request):
+    require_docs_access(request)
+    return app.openapi()
+
+
+@app.get("/docs", include_in_schema=False)
+async def protected_docs(request: Request):
+    require_docs_access(request)
+    return get_swagger_ui_html(openapi_url="/openapi.json", title=f"{app.title} - Docs")
+
+
+@app.get("/redoc", include_in_schema=False)
+async def protected_redoc(request: Request):
+    require_docs_access(request)
+    return get_redoc_html(openapi_url="/openapi.json", title=f"{app.title} - ReDoc")
 
 app.include_router(billing_router)
 app.include_router(gdpr_router)
@@ -217,40 +244,27 @@ app.add_middleware(
     allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "X-Organization-Id", "X-API-Key", "Content-Type"],
+    allow_headers=["Authorization", "X-Organization-Id", "X-API-Key", "X-CSRF-Token", "Content-Type"],
 )
 
 # ── Rate limiting ──────────────────────────────────────────────
-# LIMITAZIONE NOTA: lo stato (rate_windows) e' un dict in-memory locale a
-# QUESTO processo. Se l'app viene eseguita con piu' worker (es. `uvicorn
-# --workers N` o piu' repliche/pod), ogni processo mantiene il proprio
-# contatore indipendente: un tenant potrebbe quindi superare il limite
-# effettivo fino a un fattore N senza che nessun singolo processo se ne
-# accorga. Per un rate limiting corretto in un deployment multi-processo
-# o multi-istanza serve uno store condiviso (es. Redis) — vedi sezione
-# "Futuro" nel design doc (docs/superpowers/specs/2026-07-24-auth-authorization-design.md).
 RATE_LIMIT_LIMIT = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 LLM_GLOBAL_RATE_LIMIT = int(os.getenv("LLM_GLOBAL_RATE_LIMIT", "200"))
 LLM_GLOBAL_RATE_WINDOW = int(os.getenv("LLM_GLOBAL_RATE_WINDOW_SECONDS", "60"))
 LLM_ROUTES = {"/api/messaggio", "/api/recensione", "/api/documenti/chiedi"}
-rate_windows: dict[str, list[float]] = defaultdict(list)
 
 
-def _rate_limit_check(key: str, now: float, limit: int | None = None,
-                       window_seconds: int | None = None) -> bool:
+async def _rate_limit_check(key: str, limit: int | None = None,
+                            window_seconds: int | None = None) -> bool:
     """True se key ha superato il limite nella finestra corrente.
     Se limit/window_seconds sono None, usa i valori globali."""
     if limit is None:
         limit = RATE_LIMIT_LIMIT
     if window_seconds is None:
         window_seconds = RATE_LIMIT_WINDOW
-    window = rate_windows[key]
-    window[:] = [t for t in window if t > now - window_seconds]
-    if len(window) >= limit:
-        return True
-    window.append(now)
-    return False
+    limiter = await get_rate_limiter()
+    return await limiter.hit(key, limit, window_seconds)
 
 
 @app.middleware("http")
@@ -266,11 +280,10 @@ async def trace_id_middleware(request: Request, call_next):
 async def rate_limit_middleware(request: Request, call_next):
     if request.url.path in ("/api/health", "/webhooks/whatsapp", "/webhooks/instagram", "/api/billing/webhook"):
         return await call_next(request)
-    now = time.time()
 
     # Limite per tenant (o IP se non autenticato)
     tenant = request.headers.get("X-Organization-Id") or request.client.host
-    if _rate_limit_check(f"tenant:{tenant}", now):
+    if await _rate_limit_check(f"tenant:{tenant}"):
         return JSONResponse(
             status_code=429,
             content={"detail": "Rate limit superato per l'organizzazione. Riprova tra poco."},
@@ -279,7 +292,7 @@ async def rate_limit_middleware(request: Request, call_next):
     # Limite per utente/credenziale (Bearer JWT o X-API-Key), indipendente dal tenant:
     # evita che un singolo utente saturi la finestra condivisa dell'organizzazione.
     user_token = request.headers.get("Authorization") or request.headers.get("X-API-Key")
-    if user_token and _rate_limit_check(f"user:{user_token}", now):
+    if user_token and await _rate_limit_check(f"user:{user_token}"):
         return JSONResponse(
             status_code=429,
             content={"detail": "Rate limit superato per l'utente. Riprova tra poco."},
@@ -289,12 +302,20 @@ async def rate_limit_middleware(request: Request, call_next):
     # dal tenant/utente — protegge il budget OpenRouter condiviso da un
     # "noisy neighbor" fatto di molti tenant piccoli.
     if request.url.path in LLM_ROUTES:
-        if _rate_limit_check("llm:global", now, LLM_GLOBAL_RATE_LIMIT, LLM_GLOBAL_RATE_WINDOW):
+        if await _rate_limit_check("llm:global", LLM_GLOBAL_RATE_LIMIT, LLM_GLOBAL_RATE_WINDOW):
             return JSONResponse(
                 status_code=429,
                 content={"detail": "Limite globale chiamate AI raggiunto. Riprova tra poco."},
             )
 
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    ok, detail = validate_csrf_request(request)
+    if not ok:
+        return JSONResponse(status_code=403, content={"detail": detail})
     return await call_next(request)
 
 

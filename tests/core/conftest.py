@@ -62,6 +62,18 @@ async def pg_pool(postgres_container):
             CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb AS $$
                 SELECT '{}'::jsonb
             $$ LANGUAGE sql STABLE;
+            
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
+                    CREATE ROLE anon;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+                    CREATE ROLE authenticated;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
+                    CREATE ROLE service_role;
+                END IF;
+            END $$;
         """)
         with open("src/whatsapp/schema.sql", encoding="utf-8") as f:
             await conn.execute(f.read())

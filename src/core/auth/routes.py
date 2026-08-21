@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from src.core.auth import bff
+from src.core.auth.csrf import clear_csrf_token, issue_csrf_token
 from src.core.auth.dependencies import get_organization_context
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -67,6 +68,7 @@ def _set_session_cookies(response: Response, data: dict) -> None:
 def _clear_session_cookies(response: Response) -> None:
     for name in (bff.access_cookie_name(), bff.refresh_cookie_name()):
         response.delete_cookie(name, path="/")
+    clear_csrf_token(response)
 
 
 @router.post("/login")
@@ -80,7 +82,8 @@ async def login(body: LoginRequest, request: Request, response: Response):
         raise
     _record_login_success(ip)
     _set_session_cookies(response, data)
-    return {"ok": True, "email": body.email.strip()}
+    csrf_token = issue_csrf_token(response)
+    return {"ok": True, "email": body.email.strip(), "csrf_token": csrf_token}
 
 
 @router.post("/refresh")
@@ -92,7 +95,8 @@ async def refresh(request: Request, response: Response):
     user_key = hashlib.sha256(rt.encode()).hexdigest()
     data = await bff.refresh(rt, user_key)
     _set_session_cookies(response, data)
-    return {"ok": True}
+    csrf_token = issue_csrf_token(response)
+    return {"ok": True, "csrf_token": csrf_token}
 
 
 @router.post("/logout")

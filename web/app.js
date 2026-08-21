@@ -22,15 +22,34 @@ function _sanitize(v) {
   return String(v == null ? "" : v);
 }
 
+function leggiCookie(nome) {
+  return document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${nome}=`))
+    ?.slice(nome.length + 1) || "";
+}
+
+function csrfToken() {
+  return decodeURIComponent(leggiCookie("__Host-wa_csrf") || leggiCookie("wa_csrf"));
+}
+
 async function apiFetch(url, options = {}) {
-  let res = await fetch(url, { ...options, credentials: "include" });
+  const method = (options.method || "GET").toUpperCase();
+  const headers = { ...(options.headers || {}) };
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const token = csrfToken();
+    if (token) headers["X-CSRF-Token"] = token;
+  }
+  let res = await fetch(url, { ...options, headers, credentials: "include" });
   if (res.status === 401 && !url.includes("/api/auth/")) {
     const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
       method: "POST",
+      headers: csrfToken() ? { "X-CSRF-Token": csrfToken() } : {},
       credentials: "include",
     });
     if (refreshRes.ok) {
-      res = await fetch(url, { ...options, credentials: "include" });
+      res = await fetch(url, { ...options, headers, credentials: "include" });
     } else {
       sessione = null;
       aggiornaBottoneAccesso();
@@ -95,9 +114,8 @@ async function faiLogin(email, password) {
 
 async function faiLogout() {
   try {
-    await fetch(`${API_BASE}/api/auth/logout`, {
+    await apiFetch(`${API_BASE}/api/auth/logout`, {
       method: "POST",
-      credentials: "include",
     });
   } catch { /* best effort */ }
   sessione = null;

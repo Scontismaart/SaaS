@@ -18,6 +18,43 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 5
+    depends_on:
+      valkey:
+        condition: service_started
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey_data:/data
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: "0.1"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backup-drill:
+    build: .
+    image: whatsapp-ai-responder:latest
+    env_file: .env
+    command: ["python", "run_backup_restore_drill.py"]
+    volumes:
+      - backups:/app/backups
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.2"
+    healthcheck:
+      disable: true
+    depends_on:
+      api:
+        condition: service_healthy
 
   worker-inbound:
     build: .
@@ -108,6 +145,8 @@ networks:
 volumes:
   chroma_data:
   pgdata_dev:
+  valkey_data:
+  backups:
 
 # -- Nota secrets ------------------------------------------------------
 # .env passato via env_file: NON finisce nell'immagine (e' in

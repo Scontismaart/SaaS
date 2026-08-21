@@ -80,9 +80,12 @@ class TestLogin:
             json={"email": "owner@test.com", "password": "segretissima"},
         )
         assert resp.status_code == 200
-        assert resp.json() == {"ok": True, "email": "owner@test.com"}
+        assert resp.json()["ok"] is True
+        assert resp.json()["email"] == "owner@test.com"
+        assert resp.json()["csrf_token"]
         assert "wa_at" in resp.cookies
         assert "wa_rt" in resp.cookies
+        assert "wa_csrf" in resp.cookies
         # BFF: il token NON deve mai comparire nel body della risposta
         assert "access_token" not in resp.text
 
@@ -180,7 +183,8 @@ class TestRefresh:
 
         monkeypatch.setattr(bff_module, "refresh", fake_refresh)
         resp = await bff_client.post(
-            "/api/auth/refresh", headers={"Cookie": "wa_rt=old-refresh-token"}
+            "/api/auth/refresh",
+            headers={"Cookie": "wa_rt=old-refresh-token; wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
         )
         assert resp.status_code == 200
         assert calls == ["old-refresh-token"]
@@ -244,7 +248,8 @@ class TestLogout:
 
         monkeypatch.setattr(bff_module, "logout", fake_logout)
         resp = await bff_client.post(
-            "/api/auth/logout", headers={"Cookie": "wa_at=at.1; wa_rt=rt.1"}
+            "/api/auth/logout",
+            headers={"Cookie": "wa_at=at.1; wa_rt=rt.1; wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
         )
         assert resp.status_code == 200
         assert revoked == ["at.1"]
@@ -252,6 +257,7 @@ class TestLogout:
         # i cookie di sessione vengono scaduti (Max-Age=0 o expiry nel passato)
         assert any("wa_at" in c and "Max-Age=0" in c for c in set_cookies)
         assert any("wa_rt" in c and "Max-Age=0" in c for c in set_cookies)
+        assert any("wa_csrf" in c and "Max-Age=0" in c for c in set_cookies)
 
 
 class TestTenantIsolation:

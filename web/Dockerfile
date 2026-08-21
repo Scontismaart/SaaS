@@ -12,6 +12,7 @@ FROM nginx:1.27-alpine AS runtime
 # Copia SOLO i file statici serviti. Mai COPY . : nginx.conf, Dockerfile e
 # eventuali asset "landing" non devono finire nel docroot scaricabile.
 COPY index.html style.css app.js /usr/share/nginx/html/
+COPY vendor/ /usr/share/nginx/html/vendor/
 COPY config.template.js /usr/share/nginx/html/config.template.js
 
 # Genera config.js dal template con envsubst. MELPIS_API_BASE vuota (default)

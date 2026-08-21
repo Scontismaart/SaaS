@@ -1,72 +1,143 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = window.MELPIS_API_BASE ?? "http://localhost:8000";
 const PROFILO_ID = "trattoria_da_mario";
 
 /* ============================================================
-   AUTENTICAZIONE (transitoria)
+   AUTENTICAZIONE — BFF (task18)
    ============================================================
-   NB: auth "transitoria" verso il backend — API key + Organization ID
-   salvati nel localStorage del browser e inviati come header X-API-Key /
-   X-Organization-Id. Da sostituire con sessione Supabase (JWT) prima del
-   lancio multi-tenant pubblico: vedi docs/CHECKLIST-PRE-LANCIO.md.
-   In produzione il backend va esposto SOLO su HTTPS.
+   Il frontend NON gestisce token: invia email+password a
+   /api/auth/login, il backend (BFF) scambia le credenziali con
+   Supabase Auth e salva la sessione in cookie HttpOnly+Secure+
+   SameSite=Strict. Il JS manda solo fetch con credentials: i
+   cookie viaggiano da soli, mai token in localStorage o header.
+   Su 401 si tenta un refresh (/api/auth/refresh) e si riprova
+   una volta; se anche il refresh fallisce si torna al login.
    ============================================================ */
 
-const CRED_STORAGE_KEY = "melpis-credentials-v1";
+let sessione = null; // { email, organization_id, ruolo } | null
 
-function leggiCredenziali() {
-  try {
-    return JSON.parse(localStorage.getItem(CRED_STORAGE_KEY) || "null") || {};
-  } catch {
-    return {};
+function _sanitize(v) {
+  if (typeof DOMPurify !== "undefined") {
+    return DOMPurify.sanitize(v == null ? "" : String(v));
+  }
+  return String(v == null ? "" : v);
+}
+
+async function apiFetch(url, options = {}) {
+  let res = await fetch(url, { ...options, credentials: "include" });
+  if (res.status === 401 && !url.includes("/api/auth/")) {
+    const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (refreshRes.ok) {
+      res = await fetch(url, { ...options, credentials: "include" });
+    } else {
+      sessione = null;
+      aggiornaBottoneAccesso();
+      apriConfigAccesso();
+    }
+  }
+  return res;
+}
+
+function aggiornaBottoneAccesso() {
+  const btn = document.getElementById("accesso-btn");
+  if (!btn) return;
+  if (sessione) {
+    btn.textContent = sessione.email || "Esci";
+    btn.title = "Esci";
+  } else {
+    btn.textContent = "Accedi";
+    btn.title = "Accedi";
   }
 }
 
-function salvaCredenziali(apiKey, organizationId) {
-  localStorage.setItem(CRED_STORAGE_KEY, JSON.stringify({ apiKey, organizationId }));
-}
-
-function assicuraCredenziali() {
-  const cred = leggiCredenziali();
-  if (cred.apiKey && cred.organizationId) return true;
-  apriConfigAccesso();
-  return false;
+async function caricaSessione() {
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+    if (!res.ok) {
+      sessione = null;
+      aggiornaBottoneAccesso();
+      return false;
+    }
+    sessione = await res.json();
+    aggiornaBottoneAccesso();
+    return true;
+  } catch {
+    sessione = null;
+    aggiornaBottoneAccesso();
+    return false;
+  }
 }
 
 function apriConfigAccesso() {
-  const cred = leggiCredenziali();
-  document.getElementById("accesso-api-key").value = cred.apiKey || "";
-  document.getElementById("accesso-org-id").value = cred.organizationId || "";
-  document.getElementById("accesso-error").textContent = "";
   document.getElementById("accesso-modal").hidden = false;
+  document.getElementById("accesso-error").textContent = "";
 }
 
 function chiudiConfigAccesso() {
   document.getElementById("accesso-modal").hidden = true;
 }
 
-document.getElementById("accesso-btn")?.addEventListener("click", apriConfigAccesso);
-document.getElementById("accesso-save")?.addEventListener("click", () => {
-  const apiKey = document.getElementById("accesso-api-key").value.trim();
-  const organizationId = document.getElementById("accesso-org-id").value.trim();
-  if (!apiKey || !organizationId) {
-    document.getElementById("accesso-error").textContent = "Compila entrambi i campi.";
-    return;
+async function faiLogin(email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Credenziali non valide.");
   }
-  salvaCredenziali(apiKey, organizationId);
-  chiudiConfigAccesso();
-  inizializzaOnboarding();
-});
-document.querySelectorAll("[data-accesso-close]").forEach((el) => {
-  el.addEventListener("click", chiudiConfigAccesso);
+  await caricaSessione();
+}
+
+async function faiLogout() {
+  try {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch { /* best effort */ }
+  sessione = null;
+  aggiornaBottoneAccesso();
+}
+
+document.getElementById("accesso-btn")?.addEventListener("click", () => {
+  if (sessione) {
+    faiLogout().then(() => {
+      window.location.reload();
+    });
+  } else {
+    apriConfigAccesso();
+  }
 });
 
-async function apiFetch(url, options = {}) {
-  const cred = leggiCredenziali();
-  const headers = { ...(options.headers || {}) };
-  if (cred.apiKey) headers["X-API-Key"] = cred.apiKey;
-  if (cred.organizationId) headers["X-Organization-Id"] = cred.organizationId;
-  return fetch(url, { ...options, headers });
-}
+document.getElementById("accesso-save")?.addEventListener("click", async () => {
+  const email = document.getElementById("accesso-email").value.trim();
+  const password = document.getElementById("accesso-password").value;
+  const errEl = document.getElementById("accesso-error");
+  if (!email || !password) {
+    errEl.textContent = "Compila entrambi i campi.";
+    return;
+  }
+  const btn = document.getElementById("accesso-save");
+  btn.disabled = true;
+  try {
+    await faiLogin(email, password);
+    chiudiConfigAccesso();
+    window.location.reload();
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.querySelectorAll("[data-accesso-close]").forEach((el) => {
+  el.addEventListener("click", () => chiudiConfigAccesso());
+});
 
 /* ============================================================
    SIDEBAR / NAVIGATION
@@ -79,12 +150,13 @@ const views = document.querySelectorAll(".view");
 const NOTIFICATION_STORAGE_KEY = "restaurant-dashboard-notifications-v1";
 const notificationBadges = document.querySelectorAll("[data-notification-badge]");
 let notificationItems = {
-  panoramica: [],
-  assistente: [],
-  recensioni: [],
-  prenotazioni: [],
-  documenti: [],
-  inbox: [],
+  panoramica: 0,
+  assistente: 0,
+  recensioni: 0,
+  prenotazioni: 0,
+  documenti: 0,
+  report: 0,
+  inbox: 0,
 };
 
 function leggiStatoNotifiche() {
@@ -102,8 +174,9 @@ function salvaStatoNotifiche(stato) {
 function aggiornaBadgeNotifiche(stato) {
   notificationBadges.forEach((badge) => {
     const key = badge.dataset.notificationBadge;
-    const viste = new Set(stato.viste?.[key] || []);
-    const nonViste = (notificationItems[key] || []).filter((id) => !viste.has(id)).length;
+    const totale = Number(notificationItems[key] || 0);
+    const viste = Number(stato.viste?.[key] || 0);
+    const nonViste = Math.max(0, totale - viste);
     badge.textContent = nonViste > 99 ? "99+" : String(nonViste);
     badge.hidden = nonViste === 0;
   });
@@ -112,40 +185,32 @@ function aggiornaBadgeNotifiche(stato) {
 function segnaNotificheViste(viewName) {
   const stato = leggiStatoNotifiche();
   stato.viste = stato.viste || {};
-  stato.viste[viewName] = [...(notificationItems[viewName] || [])];
+  stato.viste[viewName] = notificationItems[viewName] || 0;
   salvaStatoNotifiche(stato);
   aggiornaBadgeNotifiche(stato);
 }
 
 async function aggiornaNotifiche() {
   try {
-    const [dashboardResponse, prenotazioniResponse, documentiResponse, reportResponse, inboxResponse] = await Promise.all([
-      apiFetch(`${API_BASE}/api/dashboard`),
-      apiFetch(`${API_BASE}/api/bookings`),
-      apiFetch(`${API_BASE}/api/documenti/elenco`),
+    const [summaryResponse, reportResponse] = await Promise.all([
+      apiFetch(`${API_BASE}/api/ui/summary`),
       apiFetch(`${API_BASE}/api/report/stato`),
-      apiFetch(`${API_BASE}/api/inbox/tickets`),
     ]);
-    const eventi = dashboardResponse.ok ? await dashboardResponse.json() : [];
-    const prenotazioni = prenotazioniResponse.ok ? await prenotazioniResponse.json() : [];
-    const documenti = documentiResponse.ok ? (await documentiResponse.json()).documenti || [] : [];
+    const summary = summaryResponse.ok ? await summaryResponse.json() : {};
     const report = reportResponse.ok ? await reportResponse.json() : { disponibile: false };
-    const inboxTickets = inboxResponse.ok ? (await inboxResponse.json()).tickets || [] : [];
     notificationItems = {
-      panoramica: eventi.map((evento) => evento.id),
-      assistente: eventi.filter((evento) => evento.tipo_evento === "messaggio").map((evento) => evento.id),
-      recensioni: eventi.filter((evento) => evento.tipo_evento === "recensione").map((evento) => evento.id),
-      prenotazioni: prenotazioni.map((prenotazione) => prenotazione.id),
-      documenti: documenti.map((documento) => documento.id),
-      report: report.disponibile && report.id ? [report.id] : [],
-      inbox: inboxTickets
-        .filter((ticket) => ticket.ticket_status === "PENDING_STAFF" || ticket.ticket_status === "CLAIMED")
-        .map((ticket) => ticket.id),
+      panoramica: Number(summary.inbox_attivi || 0) + Number(summary.recensioni_da_approvare || 0),
+      assistente: 0,
+      recensioni: summary.recensioni_da_approvare || 0,
+      prenotazioni: summary.prenotazioni || 0,
+      documenti: summary.documenti || 0,
+      report: report.disponibile ? 1 : 0,
+      inbox: summary.inbox_attivi || 0,
     };
     const stato = leggiStatoNotifiche();
     if (!stato.inizializzato) {
       stato.inizializzato = true;
-      Object.entries(notificationItems).forEach(([key, ids]) => { stato.viste[key] = ids; });
+      stato.viste = { ...notificationItems };
       salvaStatoNotifiche(stato);
     }
     aggiornaBadgeNotifiche(stato);
@@ -288,7 +353,7 @@ function renderLingue() {
     label.className = "wizard-check";
     const checked = onboardingState.lingue.includes(lang);
     const locked = lang === "it";
-    label.innerHTML = `<input class="onboarding-lang" type="checkbox" value="${lang}" ${checked ? "checked" : ""} ${locked ? "disabled" : ""}> ${lang.toUpperCase()}`;
+    label.innerHTML = `<input class="onboarding-lang" type="checkbox" value="${_sanitize(lang)}" ${checked ? "checked" : ""} ${locked ? "disabled" : ""}> ${_sanitize(lang.toUpperCase())}`;
     label.querySelector("input").addEventListener("change", () => {
       onboardingState.lingue = lingueSelezionate();
       aggiornaDefaultLingua();
@@ -354,7 +419,7 @@ function renderVerticals() {
     card.type = "button";
     card.className = "vertical-card";
     card.classList.toggle("active", vertical.id === onboardingState.selectedVertical);
-    card.innerHTML = `<strong>${vertical.label}</strong><span>${vertical.servizi.slice(0, 3).join(", ")}</span>`;
+    card.innerHTML = `<strong>${_sanitize(vertical.label)}</strong><span>${_sanitize(vertical.servizi.slice(0, 3).join(", "))}</span>`;
     card.addEventListener("click", () => {
       onboardingState.selectedVertical = vertical.id;
       onboardingEls.tone.value = vertical.tono;
@@ -379,7 +444,7 @@ function renderEscalationRules() {
   rules.forEach((rule) => {
     const label = document.createElement("label");
     label.className = "wizard-check";
-    label.innerHTML = `<input class="onboarding-rule" type="checkbox" value="${rule.replaceAll('"', "&quot;")}" checked> ${rule}`;
+    label.innerHTML = `<input class="onboarding-rule" type="checkbox" value="${_sanitize(rule.replaceAll('"', "&quot;"))}" checked> ${_sanitize(rule)}`;
     onboardingEls.escalationList.appendChild(label);
   });
 }
@@ -418,11 +483,14 @@ async function inizializzaOnboarding() {
     renderOnboardingStep();
     return;
   }
-  if (!assicuraCredenziali()) return;
+  if (!sessione) {
+    apriConfigAccesso();
+    return;
+  }
   try {
     const res = await apiFetch(`${API_BASE}/api/onboarding/verticali`);
     if (res.status === 401) {
-      onboardingEls.status.textContent = "Credenziali non valide: verifica API key e Organization ID.";
+      onboardingEls.status.textContent = "Sessione scaduta: effettua di nuovo il login.";
       onboardingEls.status.style.color = "var(--red)";
       return;
     }
@@ -873,9 +941,9 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
       item.className = "booking-row";
       const ora = String(p.ora || "").slice(0, 5);
       item.innerHTML = `
-        <time class="booking-row-time">${ora || "--:--"}</time>
-        <div class="booking-row-main"><strong>${p.nome_cliente || "Cliente"}</strong><span>${p.coperti || "?"} coperti${p.telefono ? ` Â· ${p.telefono}` : ""}</span></div>
-        <span class="booking-row-status" style="--booking-color:${colorePrenotazione(p.stato)}">${p.stato || "In attesa"}</span>`;
+        <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
+        <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` Â· ${_sanitize(p.telefono)}` : ""}</span></div>
+        <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
       bookingDayList.appendChild(item);
     });
   };
@@ -904,8 +972,8 @@ async function aggiornaSemaforo(data = null) {
       item.classList.add("availability-item", `availability-${slot.stato}`);
       item.innerHTML = `
         <span class="availability-dot"></span>
-        <span class="availability-hour">${slot.ora}</span>
-        <span class="availability-seats">${slot.coperti_liberi}/${slot.coperti_massimi} liberi</span>
+        <span class="availability-hour">${_sanitize(slot.ora)}</span>
+        <span class="availability-seats">${_sanitize(slot.coperti_liberi)}/${_sanitize(slot.coperti_massimi)} liberi</span>
       `;
       availabilityList.appendChild(item);
     });
@@ -923,7 +991,7 @@ async function aggiornaImpostazioniPrenotazioni() {
     const capienze = data.capienze_orarie || {};
     bookingOpenHours = capienze;
     bookingSettingsGrid.innerHTML = (data.fasce_orarie || []).map((ora) => `
-      <label class="booking-setting"><span>${ora}</span><input type="number" min="0" max="500" data-capacity-hour="${ora}" value="${capienze[ora] ?? 40}"></label>
+      <label class="booking-setting"><span>${_sanitize(ora)}</span><input type="number" min="0" max="500" data-capacity-hour="${_sanitize(ora)}" value="${_sanitize(capienze[ora] ?? 40)}"></label>
     `).join("");
   } catch (err) {
     console.error("Impossibile caricare le impostazioni prenotazioni:", err);
@@ -1151,7 +1219,7 @@ async function aggiornaTrends() {
       items.push(`
         <li class="trend-item">
           <span class="trend-icon trend-topic">â†—</span>
-          <div class="trend-body"><span class="trend-label">Argomento ricorrente: ${cat.replace(/_/g, " ")}</span></div>
+          <div class="trend-body"><span class="trend-label">Argomento ricorrente: ${_sanitize(cat.replace(/_/g, " "))}</span></div>
         </li>`);
     });
 
@@ -1159,7 +1227,7 @@ async function aggiornaTrends() {
       items.push(`
         <li class="trend-item">
           <span class="trend-icon trend-new">âœ¦</span>
-          <div class="trend-body"><span class="trend-label">Parola chiave: "${kw}"</span></div>
+          <div class="trend-body"><span class="trend-label">Parola chiave: "${_sanitize(kw)}"</span></div>
         </li>`);
     });
 
@@ -1194,7 +1262,7 @@ const reportEmptyHint = document.getElementById("report-empty-hint");
 async function aggiornaReport(forza = false) {
   try {
     const url = `${API_BASE}/api/report${forza ? "?forza=true" : ""}`;
-    const res = await fetch(url);
+    const res = await apiFetch(url);
     if (!res.ok) return;
     const report = await res.json();
     reportSection.hidden = false;
@@ -1537,7 +1605,7 @@ docChiediBtn.addEventListener("click", async () => {
       data.fonti.forEach((f) => {
         const li = document.createElement("li");
         li.classList.add("doc-fonti-item");
-        li.innerHTML = `<strong>${f.documento}</strong> <span class="doc-fonti-score">(score: ${f.score})</span><br><span class="doc-fonti-estratto">${f.estratto}</span>`;
+        li.innerHTML = `<strong>${_sanitize(f.documento)}</strong> <span class="doc-fonti-score">(score: ${_sanitize(f.score)})</span><br><span class="doc-fonti-estratto">${_sanitize(f.estratto)}</span>`;
         docFontiList.appendChild(li);
       });
     } else {
@@ -2037,12 +2105,19 @@ function fermaInboxPolling() {
    AVVIO
    ============================================================ */
 
-aggiornaRiepilogo();
-aggiornaPrioritari();
-aggiornaReport();
-aggiornaConteggio();
-aggiornaNotifiche();
-setInterval(aggiornaNotifiche, 30000);
-if (document.getElementById("booking-date")) {
-  document.getElementById("booking-date").value = oggiIso();
-}
+(async function avvia() {
+  const loggato = await caricaSessione();
+  if (!loggato) {
+    apriConfigAccesso();
+    return;
+  }
+  aggiornaRiepilogo();
+  aggiornaPrioritari();
+  aggiornaReport();
+  aggiornaConteggio();
+  aggiornaNotifiche();
+  setInterval(aggiornaNotifiche, 30000);
+  if (document.getElementById("booking-date")) {
+    document.getElementById("booking-date").value = oggiIso();
+  }
+})();

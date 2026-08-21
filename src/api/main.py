@@ -73,6 +73,7 @@ if _sentry_dsn:
     )
 
 from src.core.auth.dependencies import get_repo, require_ruolo, close_http_client
+from src.core.auth.routes import router as auth_router
 from src.core.db.repository import CoreRepository
 from src.core.calendar import GoogleCalendarService
 from src.core.calendar.routes import router as calendar_router
@@ -106,7 +107,12 @@ async def lifespan(app: FastAPI):
     if dsn:
         import asyncpg
         try:
-            pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=5)
+            # Task18 Fase 4: max_size configurabile via env (scalabilità).
+            # Default 5 come prima; con più worker/replica o carico alto,
+            # aumenta senza toccare codice. Per picchi reali valutare un
+            # pooler (Supavisor/pgBouncer) — vedi report task18.
+            db_pool_max = int(os.getenv("DB_POOL_MAX_SIZE", "5"))
+            pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=db_pool_max)
             app.state.repo = CoreRepository(pool=pool)
             app.state.pool = pool
             print("[startup] Database pool created successfully.")
@@ -196,6 +202,7 @@ app.include_router(calendar_router)
 app.include_router(reviews_router)
 app.include_router(reviews_google_router)
 app.include_router(instagram_account_router)
+app.include_router(auth_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]
@@ -732,6 +739,18 @@ async def conteggio_documenti(request: Request, user: dict = Depends(require_ruo
 async def elenco_documenti(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     repo = get_repo(request)
     return {"documenti": await repo.list_sources(user["organization_id"])}
+
+
+@app.get("/api/ui/summary")
+async def ui_summary(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    """Conteggi org-scoped per il polling del frontend (task18 Fase 3).
+
+    Sostituisce le chiamate pesanti di aggiornaNotifiche (bookings,
+    documenti/elenco, inbox/tickets, recensioni) con un unico COUNT al DB.
+    org-scoped: l'organization_id viene dalla membership JWT server-side.
+    """
+    repo = get_repo(request)
+    return await repo.get_ui_summary(user["organization_id"])
 
 
 @app.post("/api/documenti/carica")

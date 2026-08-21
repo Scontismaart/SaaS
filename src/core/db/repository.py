@@ -403,6 +403,35 @@ class CoreRepository:
             )
             return [dict(r) for r in rows]
 
+    async def get_ui_summary(self, organization_id):
+        """Conteggi org-scoped per il polling leggero del frontend (task18
+        Fase 3): un solo round-trip al DB invece delle N chiamate pesanti
+        che faceva aggiornaNotifiche (bookings+documenti+inbox+recensioni).
+        Tutti i COUNT sono filtrati per organization_id: nessuna leak tra
+        tenant."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT
+                  (SELECT COUNT(*) FROM conversations
+                   WHERE organization_id = $1 AND deleted_at IS NULL
+                     AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')) AS inbox_attivi,
+                  (SELECT COUNT(*) FROM bookings
+                   WHERE organization_id = $1) AS prenotazioni,
+                  (SELECT COUNT(*) FROM documents
+                   WHERE organization_id = $1) AS documenti,
+                  (SELECT COUNT(*) FROM reviews
+                   WHERE organization_id = $1 AND stato = 'bozza_generata') AS recensioni_da_approvare
+            """, organization_id)
+            inbox_ids = await conn.fetch("""
+                SELECT id FROM conversations
+                WHERE organization_id = $1 AND deleted_at IS NULL
+                  AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')
+                ORDER BY pending_staff_at ASC NULLS LAST
+            """, organization_id)
+            result = dict(row)
+            result["inbox_attivi_ids"] = [str(r["id"]) for r in inbox_ids]
+            return result
+
     async def count_chunks(self, organization_id):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -594,6 +623,19 @@ class CoreRepository:
                 WHERE up.auth_user_id = $1 AND om.organization_id = $2::uuid
             """, auth_user_id, organization_id)
             return dict(row) if row else None
+
+    async def get_memberships_by_auth(self, auth_user_id: str) -> list[dict]:
+        """Tutti i membership dell'utente. Fonte unica per la risoluzione del
+        tenant server-side (task18): l'org NON si deduce più da un header
+        client, ma dall'identità nel JWT validato."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT om.ruolo, om.organization_id, up.id as user_id
+                FROM organization_memberships om
+                JOIN user_profiles up ON up.id = om.user_id
+                WHERE up.auth_user_id = $1
+            """, auth_user_id)
+            return [dict(r) for r in rows]
 
     # ── Billing ──────────────────────────────────────────────────
 

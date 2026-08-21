@@ -1,3 +1,4 @@
+import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -5,6 +6,13 @@ import httpx
 from src.api.main import app
 
 API_KEY = "test-api-key-12345"
+
+@pytest.fixture(autouse=True)
+def set_env():
+    os.environ["API_KEY_SERVICE"] = API_KEY
+    os.environ["STRIPE_SECRET_KEY"] = "sk_test_1234567890"
+    os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test"
+    yield
 
 @pytest.fixture
 async def async_client(repo, pg_pool):

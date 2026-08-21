@@ -52,8 +52,8 @@ async def run_backup_restore_drill(
             conn_src = await asyncpg.connect(database_url)
             org_count_pre = await conn_src.fetchval("SELECT count(*) FROM organizations")
             await conn_src.close()
-        except Exception:
-            org_count_pre = 0
+        except Exception as e:
+            raise RuntimeError(f"Impossibile leggere il conteggio dal database sorgente: {e}")
 
         # Execute dump and restore via subprocess (assuming pg_dump/restore are in PATH inside the container)
         await asyncio.to_thread(_run, ["pg_dump", "--format=custom", "--no-owner", "--file", str(backup_path), database_url])

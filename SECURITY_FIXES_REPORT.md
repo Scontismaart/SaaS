@@ -21,6 +21,7 @@ Questo file descrive nel dettaglio le modifiche apportate per risolvere le due c
 1. **Verifica Sostanziale dell'Integrità Dati (`src/core/backup/drill.py`)**:
    - Abbandonato `subprocess` via `psql` per i conteggi in favore di connessioni dirette con `asyncpg` (il driver core del progetto).
    - Lo script ora registra il numero di righe nella tabella `organizations` del database sorgente **prima** di effettuare il dump.
+   - **(Fix Aggiuntivo):** Rimossa la cattura silenziosa (`except Exception`) durante la lettura pre-dump. Se il database sorgente è irraggiungibile o la query fallisce, il drill ora lancia esplicitamente un errore e fallisce inviando l'alert Sentry, invece di impostare tacitamente `org_count_pre = 0` (che invalidava silenziosamente i check successivi rendendoli inefficaci).
    - Dopo il ripristino, lo script esegue vere query di `COUNT(*)` su `organizations` e `user_profiles` del database di verifica.
    - Viene lanciata un'eccezione critica (che triggera gli alert Sentry preesistenti) se:
      - Le organizzazioni post-restore sono inferiori a quelle pre-dump (sintomo di un restore troncato/parziale).

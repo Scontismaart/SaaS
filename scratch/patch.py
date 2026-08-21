@@ -1,105 +1,24 @@
-import asyncio
-import logging
-import uuid
+import re
+import sys
 
-from pydantic import ValidationError
+def main():
+    path = "src/whatsapp/inbound_processor.py"
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
 
-from src.agents.prompts import assegna_variante
-from src.core.billing.suspension import is_org_suspended
-from src.core.bookings import SlotPienoError
-from src.core.crew_runner import genera_risposta_async
-from src.core.documenti.rag_context import recupera_contesto_documenti
-from src.core.guardrails import faq_cache
-from src.core.guardrails.feedback import rileva_feedback_emoji
-from src.core.guardrails.intent_classifier import classifica_intent
-from src.core.guardrails.validator import applica_guardrail, valida_risposta
-from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
-from src.core.notifications.email_service import enqueue_escalation
-from src.core.security_logger import security_audit
-from src.models.schemas import (
-    CanaleMessaggio,
-    LINGUA_DEFAULT,
-    MessaggioInput,
-    ProfiloAttivita,
-    WhatsAppBusinessProfile,
-)
-from src.whatsapp.config import AppConfig, load_tenant_config
+    # Find the start of _process_one
+    start_idx = content.find("    async def _process_one(self, msg: dict):")
+    if start_idx == -1:
+        print("Could not find _process_one")
+        sys.exit(1)
 
-logger = logging.getLogger(__name__)
+    # Find the end of _process_one by looking for the next def at the same indent
+    end_idx = content.find("    async def _handle_feedback_emoji", start_idx)
+    if end_idx == -1:
+        print("Could not find _handle_feedback_emoji")
+        sys.exit(1)
 
-HEARTBEAT_INTERVAL = 30
-
-# Messaggio neutro per il cliente finale quando l'org e' sospesa: nessuna
-# menzione di abbonamenti/fatturazione (esporrebbe lo stato di billing del
-# locale a un cliente casuale). La notifica vera va al gestore via email.
-ORG_SUSPENDED_REPLY = "Grazie per averci scritto, ti risponderemo al piu' presto."
-
-DISCLOSURE_TEXT = (
-    "Ciao! Sono l'assistente automatico di {nome}, un sistema di intelligenza "
-    "artificiale. Scrivi OPERATORE se vuoi parlare con una persona."
-)
-
-HUMAN_WAIT_REPLY = "Ti passo una persona dello staff, un attimo!"
-
-
-def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
-    raw = raw or {}
-    try:
-        validated = WhatsAppBusinessProfile.model_validate(raw)
-    except ValidationError as e:
-        logger.error("business_profile validation failed", extra={
-            "errors": e.errors(),
-            "raw": raw,
-        })
-        validated = WhatsAppBusinessProfile()
-    return ProfiloAttivita(
-        nome=validated.nome or fallback_name,
-        tipo_attivita=validated.tipo_attivita or "attivita commerciale",
-        tono=validated.tono or "cordiale e professionale",
-        orari=validated.orari or "",
-        servizi_principali=validated.servizi_principali or [],
-        note_speciali=validated.note_speciali or [],
-        lingue_supportate=validated.lingue_supportate or [LINGUA_DEFAULT],
-        lingua_default=validated.lingua_default or LINGUA_DEFAULT,
-        verticale=validated.verticale,
-    )
-
-
-async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, repo,
-                                   nome_attivita: str = "Attivita") -> str:
-    """Prepende la disclosure AI al primo messaggio automatico per quel contatto."""
-    contact = await repo.get_or_create_contact(org_id, from_number)
-    sent = await repo.mark_ai_disclosure_sent(contact["id"])
-    if not sent:
-        return testo
-    return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
-
-
-class InboundProcessor:
-    def __init__(self, app_config: AppConfig, repo, service, booking_service=None):
-        self.app_config = app_config
-        self.repo = repo
-        self.service = service
-        self.booking_service = booking_service
-
-    async def process_next_batch(self):
-        await self.repo.reap_stale_claims()
-        messages = await self.repo.claim_inbound_messages(limit=10)
-        for msg in messages:
-            try:
-                await self._process_one(msg)
-            except Exception as e:
-                logger.error("Error processing message %s: %s", msg["id"], e)
-
-    async def _heartbeat_loop(self, msg_id):
-        try:
-            while True:
-                await asyncio.sleep(HEARTBEAT_INTERVAL)
-                await self.repo.update_heartbeat(msg_id)
-        except asyncio.CancelledError:
-            pass
-
-    async def _process_one(self, msg: dict):
+    new_method = """    async def _process_one(self, msg: dict):
         org_id = msg["organization_id"]
         text = msg.get("content_text", "")
         content = msg.get("content", {})
@@ -395,83 +314,12 @@ class InboundProcessor:
             except Exception as e:
                 logger.warning("FAQ cache store failed for org %s msg %s: %s", org_id, msg["id"], e)
 
-    async def _handle_feedback_emoji(self, org_id, msg, value: str):
-        """Registra il 👍/👎 del cliente sull'ultima risposta AI della
-        conversazione e chiude il messaggio senza generare risposta. Se non
-        c'e' una risposta AI recente il feedback non ha target, ma il
-        messaggio resta comunque gestito (un pollice non va mai all'LLM)."""
-        try:
-            ultimo_ai = await self.repo.get_last_ai_outbound_message(
-                org_id, str(msg["conversation_id"])
-            )
-            if ultimo_ai:
-                await self.repo.registra_feedback(
-                    organization_id=org_id,
-                    message_id=ultimo_ai["id"],
-                    conversation_id=str(msg["conversation_id"]),
-                    source="customer_emoji",
-                    value=value,
-                )
-                logger.info(
-                    "feedback cliente %s su risposta AI %s (org %s)",
-                    value, ultimo_ai["id"], org_id,
-                )
-        except Exception as e:
-            logger.error("Registrazione feedback emoji fallita msg %s: %s", msg["id"], e)
-        await self.repo.try_mark_replied(msg["id"], handling_type="feedback")
+"""
 
-    async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta,
-                             handling_type="ai_handled"):
-        canale = msg.get("canale") or "whatsapp"
-        if canale == "instagram":
-            await self._send_instagram_reply(org_id, msg, content, testo_risposta, handling_type=handling_type)
-            return
-        to_number = content.get("from", "")
-        if not to_number or not tenant_config:
-            logger.warning("Impossibile inviare risposta AI per messaggio %s: numero o tenant_config mancante", msg["id"])
-            return
-        payload = {"to": to_number, "type": "text", "text": {"body": testo_risposta}}
-        try:
-            await self.service.send_whatsapp_message(
-                org_id=org_id,
-                to_number=to_number,
-                payload=payload,
-                category="service",
-                meta_client=None,
-                tenant_config=tenant_config,
-                handling_type=handling_type,
-            )
-        except self.service.MessageUsageExceeded:
-            logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
-        except Exception as e:
-            logger.error("Invio risposta AI fallito per messaggio %s: %s", msg["id"], e)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(content[:start_idx] + new_method + content[end_idx:])
+        
+    print("Done")
 
-    async def _send_instagram_reply(self, org_id, msg, content, testo_risposta,
-                                    handling_type="ai_handled"):
-        """Invio della risposta AI via Instagram DM. Se l'org non ha un
-        account Instagram collegato (non dovrebbe accadere: il webhook
-        arriva solo per account registrati) logga e non crasha."""
-        to_ig_id = content.get("from", "")
-        if not to_ig_id:
-            logger.warning("Impossibile inviare risposta AI Instagram per messaggio %s: mittente mancante", msg["id"])
-            return
-        from src.instagram.config import load_instagram_config
-        from src.instagram.repository import InstagramRepository
-        from src.instagram.service import InstagramService
-
-        try:
-            ig_config = await load_instagram_config(
-                org_id, self.app_config.encryption_key, InstagramRepository(self.repo.pool)
-            )
-            if not ig_config:
-                logger.warning("Org %s: account Instagram non configurato, risposta AI non inviata", org_id)
-                return
-            await InstagramService(self.repo).send_instagram_message(
-                org_id=org_id,
-                to_ig_id=to_ig_id,
-                text=testo_risposta,
-                ig_config=ig_config,
-                handling_type=handling_type,
-            )
-        except Exception as e:
-            logger.error("Invio risposta AI Instagram fallito per messaggio %s: %s", msg["id"], e)
+if __name__ == "__main__":
+    main()

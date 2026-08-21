@@ -938,7 +938,7 @@ class Repository:
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
-                    "SELECT id, billed_at, ai_reply_cache, sent_at FROM messages WHERE id = $1::uuid FOR UPDATE",
+                    "SELECT id, billed_at, ai_reply_cache, sent_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid FOR UPDATE",
                     msg_id
                 )
                 if not row:
@@ -946,6 +946,12 @@ class Repository:
 
                 if row["sent_at"] is not None:
                     return {"status": "already_sent"}
+
+                if row["quota_exceeded_at"] is not None:
+                    return {"status": "quota_exceeded"}
+                    
+                if row["processing_at"] is not None and row["ai_reply_cache"] is None:
+                    return {"status": "currently_processing"}
 
                 if row["billed_at"] is None:
                     updated_org = await conn.fetchrow("""
@@ -965,6 +971,11 @@ class Repository:
                     await conn.execute(
                         "UPDATE messages SET billed_at = now() WHERE id = $1::uuid",
                         msg_id
+                    )
+                    
+                if row["ai_reply_cache"] is None:
+                    await conn.execute(
+                        "UPDATE messages SET processing_at = now() WHERE id = $1::uuid", msg_id
                     )
 
                 return {"status": "claimed", "ai_reply_cache": row["ai_reply_cache"]}

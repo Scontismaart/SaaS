@@ -111,6 +111,9 @@ class InboundProcessor:
         if claim_result.get("status") == "already_sent":
             return
             
+        if claim_result.get("status") == "currently_processing":
+            logger.info("Message %s is currently being processed by another worker. Yielding.", msg["id"])
+            return
         if claim_result.get("status") == "quota_exceeded":
             tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
             replied = await self.repo.try_mark_replied(msg["id"], handling_type="quota_exceeded")

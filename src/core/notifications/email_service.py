@@ -146,9 +146,9 @@ def enqueue_escalation(
     ))
 
 
-SUSPENSION_NOTICE_SUBJECT = "Sempre — servizio sospeso"
+SUSPENSION_NOTICE_SUBJECT = "Melpis — servizio sospeso"
 SUSPENSION_NOTICE_BODY = (
-    "Il tuo abbonamento a Sempre e' sospeso.\n\n"
+    "Il tuo abbonamento a Melpis e' sospeso.\n\n"
     "Da questo momento il risponditore automatico non risponde piu' ai tuoi "
     "clienti su WhatsApp e le prenotazioni via WhatsApp sono sospese.\n"
     "Le prenotazioni gia' confermate restano valide.\n\n"

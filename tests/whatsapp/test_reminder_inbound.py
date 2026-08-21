@@ -27,6 +27,19 @@ def app_config():
 def mock_repo():
     repo = AsyncMock()
     repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.claim_message_and_check_quota = AsyncMock(return_value={
+        "status": "claimed",
+        "ai_reply_cache": None,
+        "billed_at": None,
+        "sent_at": None,
+        "quota_exceeded_at": None,
+        "processing_at": None,
+    })
+    repo.save_outbound_dedup = AsyncMock()
+    repo.get_outbound_dedup = AsyncMock(return_value=None)
+    repo.mark_message_sent = AsyncMock()
+    repo.save_ai_reply = AsyncMock()
+    repo.try_mark_replied = AsyncMock(return_value=True)
     repo.pool = MagicMock()
     return repo
 

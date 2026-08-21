@@ -1,7 +1,6 @@
 import os
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
+from unittest.mock import MagicMock, patch
 import httpx
 from src.api.main import app
 
@@ -23,7 +22,6 @@ async def async_client(repo, pg_pool):
         yield client
 
 async def test_cancellation_downgrades_to_readonly(async_client, repo, sample_org):
-    import stripe
     # setup organization with active subscription
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_123",

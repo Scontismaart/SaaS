@@ -232,21 +232,39 @@ class TestInboundProcessor:
             "content_text": "Ciao", "message_type": "text",
         }
 
-        call_count = 0
+        claim_count = 0
 
-        async def try_mark_race(message_id, handling_type=None):
-            nonlocal call_count
-            call_count += 1
-            if call_count == 1:
-                return {"id": race_msg["id"], "status": "handled", "replied_at": datetime.now()}
-            return None
+        async def fake_claim(message_id, org_id):
+            nonlocal claim_count
+            claim_count += 1
+            if claim_count == 1:
+                return {
+                    "status": "claimed",
+                    "ai_reply_cache": None,
+                    "billed_at": None,
+                    "sent_at": None,
+                    "quota_exceeded_at": None,
+                    "processing_at": None,
+                }
+            return {"status": "currently_processing"}
 
         repo = AsyncMock()
         repo.claim_inbound_messages = AsyncMock(return_value=[race_msg])
         repo.reap_stale_claims = AsyncMock(return_value=[])
-        repo.try_mark_replied = AsyncMock(side_effect=try_mark_race)
+        repo.claim_message_and_check_quota = AsyncMock(side_effect=fake_claim)
+        repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+        repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
+        repo.faq_cache_lookup = AsyncMock(return_value=None)
+        repo.faq_cache_store = AsyncMock(return_value=None)
+        repo.get_outbound_dedup = AsyncMock(return_value=None)
+        repo.save_outbound_dedup = AsyncMock()
+        repo.save_ai_reply = AsyncMock()
+        repo.check_booking_exists = AsyncMock(return_value=False)
+        repo.mark_message_sent = AsyncMock()
+        repo.record_usage = AsyncMock()
         repo.update_heartbeat = AsyncMock()
         repo.get_org_subscription_state = AsyncMock(return_value=None)
+        repo.get_org_business_profile = AsyncMock(return_value={})
         repo.pool = MagicMock()
 
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)):

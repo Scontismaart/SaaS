@@ -11,6 +11,10 @@ async def disclosure_pool(postgres_container):
     dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
     pool = await asyncpg.create_pool(dsn=dsn, min_size=2, max_size=10)
     async with pool.acquire() as conn:
+        await conn.execute("""
+            DROP SCHEMA IF EXISTS public CASCADE;
+            CREATE SCHEMA public;
+        """)
         with open("src/whatsapp/schema.sql") as f:
             await conn.execute(f.read())
         with open("src/core/db/migrations/004_gdpr.sql") as f:

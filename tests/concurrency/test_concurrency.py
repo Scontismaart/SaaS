@@ -60,16 +60,9 @@ CREATE TABLE messages (
 """
 
 
-@pytest.fixture(scope="session")
-def postgres_container():
-    from testcontainers.postgres import PostgresContainer
-    with PostgresContainer("postgres:16") as pg:
-        yield pg
-
 @pytest.fixture
-async def pool(postgres_container):
-    dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
-    pool = await asyncpg.create_pool(dsn, min_size=5, max_size=20)
+async def pool():
+    pool = await asyncpg.create_pool(DB_DSN, min_size=5, max_size=20)
     async with pool.acquire() as conn:
         await conn.execute(SCHEMA)
     yield pool
@@ -167,7 +160,7 @@ async def process_message_once(pool: asyncpg.Pool, msg_id, org_id):
         else:
             reply = reply_cache
 
-        meta_id = await fake_send_to_meta(pool, msg_id, reply)
+        await fake_send_to_meta(pool, msg_id, reply)
         await conn.execute(
             "UPDATE messages SET sent_at = now() WHERE id = $1", msg_id
         )

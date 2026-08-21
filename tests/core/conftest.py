@@ -15,29 +15,22 @@ with open("src/core/db/migrations/036_weekly_report_log.sql", encoding="utf-8") 
 with open("src/core/db/migrations/037_weekly_report_log_status.sql", encoding="utf-8") as f:
     _WEEKLY_REPORT_LOG_STATUS_SQL = f.read()
 
-if CI:
-    _dsn = (
-        f"postgresql://{os.getenv('PGUSER','postgres')}"
-        f":{os.getenv('PGPASSWORD','test')}"
-        f"@{os.getenv('PGHOST','localhost')}"
-        f":{os.getenv('PGPORT','5432')}"
-        f"/{os.getenv('PGDATABASE','test')}"
-    )
+_dsn = os.getenv(
+    "TEST_DB_DSN",
+    f"postgresql://{os.getenv('PGUSER','test')}"
+    f":{os.getenv('PGPASSWORD','test')}"
+    f"@{os.getenv('PGHOST','localhost')}"
+    f":{os.getenv('PGPORT','55432')}"
+    f"/{os.getenv('PGDATABASE','p0_concurrency_test')}"
+)
 
-    @pytest.fixture(scope="session")
-    def postgres_container():
-        class _FakeContainer:
-            @staticmethod
-            def get_connection_url():
-                return _dsn
-        return _FakeContainer()
-else:
-    from testcontainers.postgres import PostgresContainer
-
-    @pytest.fixture(scope="session")
-    def postgres_container():
-        with PostgresContainer(image="pgvector/pgvector:0.7.4-pg16") as pg:
-            yield pg
+@pytest.fixture(scope="session")
+def postgres_container():
+    class _FakeContainer:
+        @staticmethod
+        def get_connection_url():
+            return _dsn
+    return _FakeContainer()
 
 
 @pytest.fixture
@@ -74,6 +67,8 @@ async def pg_pool(postgres_container):
                     CREATE ROLE service_role;
                 END IF;
             END $$;
+            DROP SCHEMA IF EXISTS public CASCADE;
+            CREATE SCHEMA public;
         """)
         with open("src/whatsapp/schema.sql", encoding="utf-8") as f:
             await conn.execute(f.read())

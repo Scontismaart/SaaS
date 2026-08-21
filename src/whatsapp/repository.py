@@ -973,12 +973,19 @@ class Repository:
                         msg_id
                     )
                     
-                if row["ai_reply_cache"] is None:
+                cache_val = row["ai_reply_cache"]
+                if isinstance(cache_val, str):
+                    try:
+                        cache_val = json.loads(cache_val)
+                    except Exception:
+                        cache_val = {"text": cache_val, "richiede_umano": False}
+
+                if cache_val is None:
                     await conn.execute(
                         "UPDATE messages SET processing_at = now() WHERE id = $1::uuid", msg_id
                     )
 
-                return {"status": "claimed", "ai_reply_cache": row["ai_reply_cache"]}
+                return {"status": "claimed", "ai_reply_cache": cache_val}
 
     async def check_booking_exists(self, msg_id: str, org_id: str) -> bool:
         async with self.pool.acquire() as conn:
@@ -988,11 +995,19 @@ class Repository:
             )
             return bool(row)
 
-    async def save_ai_reply(self, msg_id: str, reply: str) -> None:
+    async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False, motivo: str = "") -> None:
+        if isinstance(reply, dict):
+            payload = reply
+        else:
+            payload = {
+                "text": reply,
+                "richiede_umano": richiede_umano,
+                "motivo": motivo,
+            }
         async with self.pool.acquire() as conn:
             await conn.execute(
-                "UPDATE messages SET ai_reply_cache = $2, ai_reply_generated_at = now() WHERE id = $1::uuid",
-                msg_id, reply
+                "UPDATE messages SET ai_reply_cache = $2::jsonb, ai_reply_generated_at = now() WHERE id = $1::uuid",
+                msg_id, json.dumps(payload)
             )
 
     async def mark_message_sent(self, msg_id: str, meta_message_id: str) -> None:

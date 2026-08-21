@@ -22,24 +22,28 @@ class CoreRepository:
             ora = time(int(ore), int(minuti))
         async with self.pool.acquire() as conn:
             if source_message_id:
-                row = await conn.fetchrow("""
-                    INSERT INTO bookings (id, organization_id, contact_id,
-                                          nome_cliente, telefono, data, ora, coperti,
-                                          note, stato, origine, richiede_intervento,
-                                          id_conversazione, richiede_deposito, completata_at,
-                                          tipo_evento, source_message_id)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-                    ON CONFLICT (organization_id, source_message_id) DO NOTHING
-                    RETURNING *
-                """, uuid.uuid4(), organization_id, contact_id,
-                nome_cliente, telefono, data, ora, coperti,
-                note, stato, origine, richiede_intervento,
-                id_conversazione, richiede_deposito, completata_at, tipo_evento, source_message_id)
+                try:
+                    row = await conn.fetchrow("""
+                        INSERT INTO bookings (id, organization_id, contact_id,
+                                              nome_cliente, telefono, data, ora, coperti,
+                                              note, stato, origine, richiede_intervento,
+                                              id_conversazione, richiede_deposito, completata_at,
+                                              tipo_evento, source_message_id)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                        ON CONFLICT (organization_id, source_message_id) WHERE source_message_id IS NOT NULL
+                            DO NOTHING
+                        RETURNING *
+                    """, uuid.uuid4(), organization_id, contact_id,
+                    nome_cliente, telefono, data, ora, coperti,
+                    note, stato, origine, richiede_intervento,
+                    id_conversazione, richiede_deposito, completata_at, tipo_evento, source_message_id)
+                except asyncpg.exceptions.UniqueViolationError:
+                    row = None
                 if not row:
                     row = await conn.fetchrow("""
                         SELECT * FROM bookings WHERE organization_id = $1 AND source_message_id = $2
                     """, organization_id, source_message_id)
-                return dict(row)
+                return dict(row) if row else None
             else:
                 row = await conn.fetchrow("""
                     INSERT INTO bookings (id, organization_id, contact_id,

@@ -1,8 +1,6 @@
 import uuid
 from unittest.mock import AsyncMock, patch
-import pytest
 from src.whatsapp.inbound_processor import InboundProcessor
-from tests.whatsapp.test_inbound_processor import mock_repo, mock_service, fake_tenant_config, sample_msg
 
 class TestP0Blockers:
     async def test_booking_idempotency_on_crash(self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg):

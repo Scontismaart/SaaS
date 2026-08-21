@@ -8,29 +8,22 @@ import pytest
 
 CI = os.getenv("CI")
 
-if CI:
-    _dsn = (
-        f"postgresql://{os.getenv('PGUSER','postgres')}"
-        f":{os.getenv('PGPASSWORD','test')}"
-        f"@{os.getenv('PGHOST','localhost')}"
-        f":{os.getenv('PGPORT','5432')}"
-        f"/{os.getenv('PGDATABASE','test')}"
-    )
+_dsn = os.getenv(
+    "TEST_DB_DSN",
+    f"postgresql://{os.getenv('PGUSER','test')}"
+    f":{os.getenv('PGPASSWORD','test')}"
+    f"@{os.getenv('PGHOST','localhost')}"
+    f":{os.getenv('PGPORT','55432')}"
+    f"/{os.getenv('PGDATABASE','p0_concurrency_test')}"
+)
 
-    @pytest.fixture(scope="session")
-    def postgres_container():
-        class _FakeContainer:
-            @staticmethod
-            def get_connection_url():
-                return _dsn
-        return _FakeContainer()
-else:
-    from testcontainers.postgres import PostgresContainer
-
-    @pytest.fixture(scope="session")
-    def postgres_container():
-        with PostgresContainer("postgres:16") as pg:
-            yield pg
+@pytest.fixture(scope="session")
+def postgres_container():
+    class _FakeContainer:
+        @staticmethod
+        def get_connection_url():
+            return _dsn
+    return _FakeContainer()
 
 
 @pytest.fixture
@@ -38,6 +31,10 @@ async def pg_pool(postgres_container):
     dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
     pool = await asyncpg.create_pool(dsn=dsn, min_size=2, max_size=10)
     async with pool.acquire() as conn:
+        await conn.execute("""
+            DROP SCHEMA IF EXISTS public CASCADE;
+            CREATE SCHEMA public;
+        """)
         with open("src/whatsapp/schema.sql") as f:
             await conn.execute(f.read())
         with open("src/core/db/migrations/004_gdpr.sql") as f:

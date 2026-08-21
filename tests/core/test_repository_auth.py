@@ -46,3 +46,34 @@ async def test_get_membership_by_auth_wrong_org(repo, pg_pool, sample_org, other
         """, sample_org["id"], up_row["id"])
     result = await repo.get_membership_by_auth(str(auth_user_id), str(other_org["id"]))
     assert result is None
+
+
+async def test_get_memberships_by_auth_multiple(repo, pg_pool, sample_org, other_org):
+    auth_user_id = uuid.uuid4()
+    async with pg_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO auth.users (id, email) VALUES ($1, 'multi@test.com')",
+            auth_user_id,
+        )
+        up_row = await conn.fetchrow(
+            "SELECT id FROM user_profiles WHERE auth_user_id = $1", auth_user_id
+        )
+        await conn.execute("""
+            INSERT INTO organization_memberships (organization_id, user_id, ruolo)
+            VALUES ($1, $2, 'owner')
+        """, sample_org["id"], up_row["id"])
+        await conn.execute("""
+            INSERT INTO organization_memberships (organization_id, user_id, ruolo)
+            VALUES ($1, $2, 'staff')
+        """, other_org["id"], up_row["id"])
+    memberships = await repo.get_memberships_by_auth(str(auth_user_id))
+    assert len(memberships) == 2
+    roles = {m["ruolo"] for m in memberships}
+    orgs = {str(m["organization_id"]) for m in memberships}
+    assert roles == {"owner", "staff"}
+    assert orgs == {str(sample_org["id"]), str(other_org["id"])}
+
+
+async def test_get_memberships_by_auth_empty(repo):
+    memberships = await repo.get_memberships_by_auth(str(uuid.uuid4()))
+    assert memberships == []

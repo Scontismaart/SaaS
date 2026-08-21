@@ -1,13 +1,14 @@
 import hmac
 import os
 import time
-import httpx
 from pathlib import Path
 from typing import Any
-from fastapi import Header, HTTPException, Depends, Request
-from typing import Optional
-from dotenv import load_dotenv
 
+import httpx
+from dotenv import load_dotenv
+from fastapi import Depends, Header, HTTPException, Request
+
+from src.core.auth.api_key_guard import api_key_request_allowed
 
 JWT_ALGORITHM = "RS256"
 JWKS_CACHE: dict[str, Any] = {"keys": None, "expires_at": 0}
@@ -64,7 +65,7 @@ async def _get_supabase_jwks() -> list[dict]:
 
 
 async def verify_supabase_jwt(token: str) -> dict:
-    from jose import jwt, JWTError
+    from jose import JWTError, jwt
     from jose.constants import Algorithms
 
     jwks = await _get_supabase_jwks()
@@ -91,19 +92,26 @@ async def verify_supabase_jwt(token: str) -> dict:
 
 
 async def get_token(
-    authorization: Optional[str] = Header(None),
-    x_api_key: Optional[str] = Header(None),
-) -> Optional[str]:
+    request: Request,
+    authorization: str | None = Header(None),
+    x_api_key: str | None = Header(None),
+) -> str | None:
     if authorization:
         return authorization.removeprefix("Bearer ")
     if x_api_key:
         return f"apikey:{x_api_key}"
+    # BFF (task18): sessione in cookie HttpOnly+Secure+SameSite=Strict.
+    # L'access token viaggia nel cookie, mai nel JS/localStorage.
+    from src.core.auth import bff
+    cookie_token = request.cookies.get(bff.access_cookie_name())
+    if cookie_token:
+        return cookie_token
     return None
 
 
 async def get_current_user(
     request: Request,
-    token: Optional[str] = Depends(get_token),
+    token: str | None = Depends(get_token),
 ) -> dict:
     if token is None:
         if not is_demo_mode():
@@ -122,6 +130,8 @@ async def get_current_user(
         # hmac.compare_digest confronta in tempo costante.
         if not expected or not hmac.compare_digest(key, expected):
             raise HTTPException(status_code=403, detail="API Key non valida")
+        if not api_key_request_allowed(request):
+            raise HTTPException(status_code=403, detail="API Key non consentita da questa rete")
         return {
             "auth_user_id": None,
             "organization_id": None,
@@ -131,6 +141,7 @@ async def get_current_user(
     payload = await verify_supabase_jwt(token)
     return {
         "auth_user_id": payload["sub"],
+        "email": payload.get("email"),
         "organization_id": None,
         "ruolo": None,
         "source": "jwt",
@@ -156,20 +167,35 @@ async def get_organization_context(
 ) -> dict:
     if current_user["source"] in ("api_key", "anonymous"):
         return {**current_user, "organization_id": x_organization_id}
-    if not x_organization_id:
-        return current_user
+    # Task18: risoluzione tenant server-side dall'identità nel JWT validato.
+    # L'header X-Organization-Id NON è più fonte di fiducia per l'org: la
+    # membership si ricava dal DB. Con 1 solo membership l'org è univoca e
+    # l'header è ignorato del tutto. Con più membership l'header può solo
+    # selezionare TRA le org di cui l'utente è davvero membro (mai fiducia
+    # cieca su un id arbitrario).
     repo = get_repo(request)
-    membership = await repo.get_membership_by_auth(
-        current_user["auth_user_id"], x_organization_id
-    )
-    if not membership:
-        raise HTTPException(403, "Non sei membro di questa organizzazione")
-    return {
-        **current_user,
-        "organization_id": x_organization_id,
-        "ruolo": membership["ruolo"],
-        "user_id": str(membership["user_id"]),
-    }
+    memberships = await repo.get_memberships_by_auth(current_user["auth_user_id"])
+    if not memberships:
+        raise HTTPException(403, "Non sei membro di nessuna organizzazione")
+    if len(memberships) == 1:
+        m = memberships[0]
+        return {
+            **current_user,
+            "organization_id": str(m["organization_id"]),
+            "ruolo": m["ruolo"],
+            "user_id": str(m["user_id"]),
+        }
+    if not x_organization_id:
+        raise HTTPException(403, "Seleziona un'organizzazione")
+    for m in memberships:
+        if str(m["organization_id"]) == x_organization_id:
+            return {
+                **current_user,
+                "organization_id": x_organization_id,
+                "ruolo": m["ruolo"],
+                "user_id": str(m["user_id"]),
+            }
+    raise HTTPException(403, "Non sei membro di questa organizzazione")
 
 
 def require_ruolo(*ruoli: str):

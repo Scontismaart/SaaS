@@ -14,16 +14,28 @@ from src.core.auth.dependencies import (
 
 class TestGetToken:
     async def test_no_token_returns_none(self):
-        result = await get_token(authorization=None, x_api_key=None)
+        result = await get_token(request=_fake_request(), authorization=None, x_api_key=None)
         assert result is None
 
     async def test_bearer_token_extracted(self):
-        result = await get_token(authorization="Bearer my.jwt.token", x_api_key=None)
+        result = await get_token(request=_fake_request(), authorization="Bearer my.jwt.token", x_api_key=None)
         assert result == "my.jwt.token"
 
     async def test_api_key_prefixed(self):
-        result = await get_token(authorization=None, x_api_key="sk-test-123")
+        result = await get_token(request=_fake_request(), authorization=None, x_api_key="sk-test-123")
         assert result == "apikey:sk-test-123"
+
+    async def test_bff_cookie_token(self):
+        import src.core.auth.bff as bff_module
+        class FakeReq:
+            class _App:
+                class _State:
+                    repo = None
+                state = _State()
+            app = _App()
+            cookies = {bff_module.access_cookie_name(): "cookie.jwt.token"}
+        result = await get_token(request=FakeReq(), authorization=None, x_api_key=None)
+        assert result == "cookie.jwt.token"
 
 
 class TestGetCurrentUser:
@@ -57,10 +69,19 @@ class TestGetCurrentUser:
         assert exc.value.status_code == 403
 
 
-def _fake_request(repo=None):
+def _fake_request(repo=None, cookies=None):
+    class FakeClient:
+        host = "127.0.0.1"
+
     class FakeRequest:
-        app = type("App", (), {"state": type("State", (), {"repo": repo})()})()
-    return FakeRequest()
+        app = type("App", (), {"state": type("State", (), {"repo": None})()})()
+        client = FakeClient()
+        headers = {}
+    
+    req = FakeRequest()
+    req.app.state.repo = repo
+    req.cookies = cookies or {}
+    return req
 
 
 class TestGetOrganizationContext:
@@ -74,33 +95,75 @@ class TestGetOrganizationContext:
         assert result["organization_id"] == "org-123"
         assert result["source"] == "api_key"
 
-    async def test_no_org_id_returns_unchanged(self):
+    async def test_no_memberships_raises_403(self):
+        mock_repo = AsyncMock()
+        mock_repo.get_memberships_by_auth.return_value = []
         user = {"source": "jwt", "auth_user_id": str(uuid.uuid4()), "ruolo": None}
-        result = await get_organization_context(
-            request=_fake_request(),
-            current_user=user,
-            x_organization_id=None,
-        )
-        assert result == user
+        with pytest.raises(HTTPException) as exc:
+            await get_organization_context(
+                request=_fake_request(repo=mock_repo),
+                current_user=user,
+                x_organization_id=None,
+            )
+        assert exc.value.status_code == 403
 
-    async def test_valid_membership_returns_role(self):
+    async def test_single_membership_resolves_without_header(self):
         org_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
         auth_user_id = str(uuid.uuid4())
         mock_repo = AsyncMock()
-        mock_repo.get_membership_by_auth.return_value = {"ruolo": "manager", "organization_id": org_id, "user_id": str(uuid.uuid4())}
+        mock_repo.get_memberships_by_auth.return_value = [
+            {"ruolo": "manager", "organization_id": org_id, "user_id": user_id}
+        ]
         user = {"source": "jwt", "auth_user_id": auth_user_id, "ruolo": None}
         result = await get_organization_context(
             request=_fake_request(repo=mock_repo),
             current_user=user,
-            x_organization_id=org_id,
+            x_organization_id=None,
         )
         assert result["ruolo"] == "manager"
         assert result["organization_id"] == org_id
-        mock_repo.get_membership_by_auth.assert_awaited_once_with(auth_user_id, org_id)
+        assert result["user_id"] == user_id
+        mock_repo.get_memberships_by_auth.assert_awaited_once_with(auth_user_id)
 
-    async def test_no_membership_raises_403(self):
+    async def test_multi_membership_selects_validated_org(self):
+        org_a = str(uuid.uuid4())
+        org_b = str(uuid.uuid4())
         mock_repo = AsyncMock()
-        mock_repo.get_membership_by_auth.return_value = None
+        mock_repo.get_memberships_by_auth.return_value = [
+            {"ruolo": "owner", "organization_id": org_a, "user_id": str(uuid.uuid4())},
+            {"ruolo": "staff", "organization_id": org_b, "user_id": str(uuid.uuid4())},
+        ]
+        user = {"source": "jwt", "auth_user_id": str(uuid.uuid4()), "ruolo": None}
+        result = await get_organization_context(
+            request=_fake_request(repo=mock_repo),
+            current_user=user,
+            x_organization_id=org_b,
+        )
+        assert result["organization_id"] == org_b
+        assert result["ruolo"] == "staff"
+
+    async def test_multi_membership_without_header_raises_403(self):
+        mock_repo = AsyncMock()
+        mock_repo.get_memberships_by_auth.return_value = [
+            {"ruolo": "owner", "organization_id": str(uuid.uuid4()), "user_id": str(uuid.uuid4())},
+            {"ruolo": "staff", "organization_id": str(uuid.uuid4()), "user_id": str(uuid.uuid4())},
+        ]
+        user = {"source": "jwt", "auth_user_id": str(uuid.uuid4()), "ruolo": None}
+        with pytest.raises(HTTPException) as exc:
+            await get_organization_context(
+                request=_fake_request(repo=mock_repo),
+                current_user=user,
+                x_organization_id=None,
+            )
+        assert exc.value.status_code == 403
+
+    async def test_multi_membership_org_not_member_raises_403(self):
+        mock_repo = AsyncMock()
+        mock_repo.get_memberships_by_auth.return_value = [
+            {"ruolo": "owner", "organization_id": str(uuid.uuid4()), "user_id": str(uuid.uuid4())},
+            {"ruolo": "staff", "organization_id": str(uuid.uuid4()), "user_id": str(uuid.uuid4())},
+        ]
         user = {"source": "jwt", "auth_user_id": str(uuid.uuid4()), "ruolo": None}
         with pytest.raises(HTTPException) as exc:
             await get_organization_context(

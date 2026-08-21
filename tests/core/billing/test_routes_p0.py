@@ -7,7 +7,9 @@ from src.api.main import app
 API_KEY = "test-api-key-12345"
 
 @pytest.fixture
-async def async_client(repo):
+async def async_client(repo, pg_pool):
+    app.state.repo = repo
+    app.state.pool = pg_pool
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client

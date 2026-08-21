@@ -27,6 +27,10 @@ import uuid
 import asyncpg
 import pytest
 
+DB_DSN = os.environ.get(
+    "TEST_DB_DSN",
+    "postgresql://test:test@localhost:55432/p0_concurrency_test",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -34,8 +38,8 @@ import pytest
 # ---------------------------------------------------------------------------
 
 SCHEMA = """
-DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS organizations;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS organizations CASCADE;
 
 CREATE TABLE organizations (
     id UUID PRIMARY KEY,
@@ -55,6 +59,12 @@ CREATE TABLE messages (
 );
 """
 
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    from testcontainers.postgres import PostgresContainer
+    with PostgresContainer("postgres:16") as pg:
+        yield pg
 
 @pytest.fixture
 async def pool(postgres_container):

@@ -9,8 +9,8 @@ async def test_get_organization_billing_defaults(repo, sample_org):
     result = await repo.get_organization_billing(sample_org["id"])
     assert result["subscription_status"] == "incomplete"
     assert result["messages_used_this_period"] == 0
-    assert result["messages_limit"] == 5000
-    assert result["plan"] == 5000
+    assert result["messages_limit"] is None
+    assert result["plan"] is None
 
 
 async def test_update_organization_billing(repo, sample_org):
@@ -95,4 +95,4 @@ async def test_get_organization_by_stripe_customer(repo, sample_org):
 
 async def test_get_organization_by_stripe_customer_not_found(repo):
     result = await repo.get_organization_by_stripe_customer("cus_nonexistent")
-    assert result == 5000
+    assert result is None

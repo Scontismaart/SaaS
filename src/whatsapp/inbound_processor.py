@@ -446,8 +446,10 @@ class InboundProcessor:
             )
         except self.service.MessageUsageExceeded:
             logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
+            raise
         except Exception as e:
             logger.error("Invio risposta AI fallito per messaggio %s: %s", msg["id"], e)
+            raise
 
     async def _send_instagram_reply(self, org_id, msg, content, testo_risposta,
                                     handling_type="ai_handled"):
@@ -478,3 +480,4 @@ class InboundProcessor:
             )
         except Exception as e:
             logger.error("Invio risposta AI Instagram fallito per messaggio %s: %s", msg["id"], e)
+            raise

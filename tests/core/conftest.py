@@ -93,7 +93,13 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/007_booking_standalone.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/008_rls_hardening.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/009_rls_write_check.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
         with open("src/core/db/migrations/010_dead_letter.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/011_search_path_hardening.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
         with open("src/core/db/migrations/012_reply_guard.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
@@ -146,6 +152,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         await conn.execute(_WEEKLY_REPORT_LOG_SQL)
         await conn.execute(_WEEKLY_REPORT_LOG_STATUS_SQL)
+        with open("src/core/db/migrations/039_rls_public_exposed_tables.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

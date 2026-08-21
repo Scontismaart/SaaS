@@ -22,8 +22,8 @@ def test_health_check(monkeypatch):
 def test_rate_limit_llm_global(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
-    import src.api.main as main_mod
-    main_mod.rate_windows.clear()
+    import src.core.rate_limit as rate_limit_mod
+    rate_limit_mod.reset_memory_rate_limiter()
     monkeypatch.setattr("src.api.main.LLM_GLOBAL_RATE_LIMIT", 2)
     monkeypatch.setattr("src.api.main.LLM_GLOBAL_RATE_WINDOW", 99999)
     from fastapi.testclient import TestClient

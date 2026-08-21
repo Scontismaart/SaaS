@@ -70,8 +70,14 @@ class TestGetCurrentUser:
 
 
 def _fake_request(repo=None, cookies=None):
+    class FakeClient:
+        host = "127.0.0.1"
+
     class FakeRequest:
         app = type("App", (), {"state": type("State", (), {"repo": None})()})()
+        client = FakeClient()
+        headers = {}
+    
     req = FakeRequest()
     req.app.state.repo = repo
     req.cookies = cookies or {}

@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 from src.whatsapp.repository import Repository
@@ -227,7 +227,7 @@ async def test_insert_and_update_delivery_attempt(repo: Repository, pg_pool):
     conv = await repo.get_or_create_conversation(org_id, contact["id"])
     msg = await repo.upsert_message(uuid.uuid4(), org_id, conv["id"], "wamid.da.1", "outbound", "text",
                                       {"text": {"body": "Ciao"}}, "Ciao", "queued")
-    attempt = await repo.insert_delivery_attempt(msg["id"], next_retry_at=datetime.utcnow())
+    attempt = await repo.insert_delivery_attempt(msg["id"], next_retry_at=datetime.now(timezone.utc))
     assert attempt["status"] == "pending"
     updated = await repo.update_delivery_attempt(attempt["id"], "succeeded", error_details=None)
     assert updated["status"] == "succeeded"

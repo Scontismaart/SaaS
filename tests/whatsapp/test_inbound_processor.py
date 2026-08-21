@@ -54,7 +54,24 @@ def mock_repo(sample_msg):
     repo.faq_cache_lookup = AsyncMock(return_value=None)
     repo.faq_cache_store = AsyncMock(return_value=None)
     repo.pool = MagicMock()
+    repo.claim_message_and_check_quota = AsyncMock(return_value={
+        "status": "claimed", 
+        "ai_reply_cache": None,
+        "billed_at": None,
+        "sent_at": None,
+        "quota_exceeded_at": None,
+        "processing_at": None
+    })
+    repo.get_outbound_dedup = AsyncMock(return_value=None)
+    repo.save_outbound_dedup = AsyncMock()
+    repo.save_ai_reply = AsyncMock()
+    repo.check_booking_exists = AsyncMock(return_value=False)
+    repo.mark_message_sent = AsyncMock()
+    repo.escalate_to_human = AsyncMock(return_value={"id": str(uuid.uuid4()), "ticket_status": "PENDING_STAFF"})
+    repo.record_usage = AsyncMock()
+    repo.get_org_business_profile = AsyncMock(return_value={})
     return repo
+
 
 
 @pytest.fixture

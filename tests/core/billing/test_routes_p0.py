@@ -1,3 +1,16 @@
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+import httpx
+from src.api.main import app
+
+API_KEY = "test-api-key-12345"
+
+@pytest.fixture
+async def async_client(repo):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
 
 async def test_cancellation_downgrades_to_readonly(async_client, repo, sample_org):
     import stripe

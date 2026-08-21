@@ -27,10 +27,6 @@ import uuid
 import asyncpg
 import pytest
 
-DB_DSN = os.environ.get(
-    "TEST_DB_DSN",
-    "postgresql://test:test@localhost:55432/p0_concurrency_test",
-)
 
 
 # ---------------------------------------------------------------------------
@@ -61,8 +57,9 @@ CREATE TABLE messages (
 
 
 @pytest.fixture
-async def pool():
-    pool = await asyncpg.create_pool(DB_DSN, min_size=5, max_size=20)
+async def pool(postgres_container):
+    dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
+    pool = await asyncpg.create_pool(dsn, min_size=5, max_size=20)
     async with pool.acquire() as conn:
         await conn.execute(SCHEMA)
     yield pool

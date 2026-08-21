@@ -292,8 +292,8 @@ class CoreRepository:
                 return dict(updated)
 
     async def get_review_analytics(self, organization_id, giorni=90):
-        from datetime import datetime, timedelta
-        cutoff = datetime.utcnow() - timedelta(days=giorni)
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc) - timedelta(days=giorni)
         async with self.pool.acquire() as conn:
             sentiment_trend = await conn.fetch("""
                 SELECT DATE(created_at) AS giorno,

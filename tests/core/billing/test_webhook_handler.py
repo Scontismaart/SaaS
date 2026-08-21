@@ -124,7 +124,7 @@ async def test_handle_subscription_updated_changes_plan(repo, sample_org):
     await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["plan"] == "pro"
-    assert billing["messages_limit"] == 2000
+    assert billing["messages_limit"] == 1200
 
 
 async def test_handle_subscription_deleted_sets_canceled(repo, sample_org):

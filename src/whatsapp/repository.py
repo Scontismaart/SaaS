@@ -468,6 +468,22 @@ class Repository:
             """)
             return int(result.split()[-1]) if result else 0
 
+    async def get_outbound_dedup(self, message_id: uuid.UUID) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT response_text FROM outbound_dedup
+                WHERE message_id = $1
+            """, message_id)
+            return dict(row) if row else None
+
+    async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO outbound_dedup (message_id, organization_id, response_text)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (message_id) DO UPDATE SET response_text = EXCLUDED.response_text
+            """, message_id, org_id, response_text)
+
     async def check_message_usage(self, org_id: uuid.UUID) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -482,14 +498,14 @@ class Repository:
                 return await self._increment_message_usage(conn, org_id)
         return await self._increment_message_usage(conn, org_id)
 
-    async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int:
+    async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int | None:
         row = await conn.fetchrow("""
             UPDATE organizations
             SET messages_used_this_period = messages_used_this_period + 1
-            WHERE id = $1
+            WHERE id = $1 AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
             RETURNING messages_used_this_period
         """, org_id)
-        return row["messages_used_this_period"] if row else 0
+        return row["messages_used_this_period"] if row else None
 
     async def upsert_template(self, organization_id, name, language, category, status, components):
         async with self.pool.acquire() as conn:

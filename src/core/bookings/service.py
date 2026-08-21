@@ -115,7 +115,7 @@ class BookingService:
 
     async def create_booking(self, org_id, nome_cliente, data, ora, coperti,
                               telefono="", note="", tipo_evento="", origine="Dashboard",
-                              richiede_intervento=False, id_conversazione=""):
+                              richiede_intervento=False, id_conversazione="", source_message_id=None):
         disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
         if coperti > disp.coperti_liberi:
             raise SlotPienoError(
@@ -132,6 +132,7 @@ class BookingService:
             richiede_deposito=richiede_dep,
             richiede_intervento=richiede_intervento,
             id_conversazione=id_conversazione or None,
+            source_message_id=source_message_id,
         )
         if self.calendar_service:
             try:

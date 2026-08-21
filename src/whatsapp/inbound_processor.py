@@ -107,6 +107,26 @@ class InboundProcessor:
         # opt-out, OPERATORE, AI, escalation sono channel-agnostic, cambia
         # solo l'invio della risposta (dispatch in _send_ai_reply).
         canale = msg.get("canale") or "whatsapp"
+        
+        current_usage = await self.repo.increment_message_usage(org_id)
+        if current_usage is None:
+            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
+            replied = await self.repo.try_mark_replied(msg["id"], handling_type="quota_exceeded")
+            if replied:
+                await self._send_ai_reply(
+                    org_id, msg, content, tenant_config, 
+                    "Stiamo ricevendo troppe richieste, attendi l'operatore.", 
+                    handling_type="quota_exceeded"
+                )
+                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
+                if conv:
+                    enqueue_escalation(
+                        org_id=str(org_id),
+                        conversation_id=str(msg["conversation_id"]),
+                        contact_name=content.get("from", "cliente"),
+                        pool=self.repo.pool,
+                    )
+            return
 
         opt_out = await self.service.check_opt_out(text)
         if opt_out["is_opt_out"]:
@@ -187,6 +207,15 @@ class InboundProcessor:
             return
 
         profilo = _profile_from_dict(business_profile_raw)
+        
+        # Outbox Pattern (P0-2)
+        dedup = await self.repo.get_outbound_dedup(msg["id"])
+        if dedup:
+            from_number = content.get("from", "")
+            await self._send_ai_reply(org_id, msg, content, tenant_config, dedup["response_text"])
+            await self.repo.try_mark_replied(msg["id"], handling_type="ai_handled")
+            return
+
         messaggio = MessaggioInput(
             testo=text,
             canale=CanaleMessaggio(canale),
@@ -370,12 +399,15 @@ class InboundProcessor:
                 )
             return
 
+        from_number = content.get("from", "")
+        decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
+        
+        await self.repo.save_outbound_dedup(msg["id"], org_id, decorated)
+        await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
+
         replied = await self.repo.try_mark_replied(msg["id"], handling_type="ai_handled")
         if not replied:
             return
-        from_number = content.get("from", "")
-        decorated = await decorate_with_disclosure(org_id, from_number, risposta.risposta, self.repo, profilo.nome)
-        await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
 
         # Popolamento cache FAQ (task 12): solo risposte di qualita' che
         # sono arrivate al cliente — guardrail ok, no escalation, no

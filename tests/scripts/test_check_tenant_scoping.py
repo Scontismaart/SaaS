@@ -91,6 +91,19 @@ def test_bare_system_scope_name_skips_function(tmp_path):
     assert check_file(path) == []
 
 
+def test_attribute_form_system_scope_skips_function(tmp_path):
+    source = (
+        "from src.core.db import scoping as db\n"
+        "\n"
+        "\n"
+        '@db.system_scope("worker globale di retention")\n'
+        "async def purge_old_messages(conn):\n"
+        '    await conn.execute("DELETE FROM messages WHERE created_at < now()")\n'
+    )
+    path = _write_module(tmp_path, source)
+    assert check_file(path) == []
+
+
 def test_allowlisted_function_is_skipped(tmp_path, monkeypatch):
     path = _write_module(tmp_path, BAD_SOURCE)
     monkeypatch.setitem(

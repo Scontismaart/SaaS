@@ -5,7 +5,7 @@ import uuid
 
 from cryptography.fernet import Fernet
 
-from src.core.db.scoping import TenantScopedRepository
+from src.core.db.scoping import TenantScopedRepository, system_scope
 
 STATUS_RANK = {
     "queued": 0,
@@ -28,6 +28,7 @@ class Repository(TenantScopedRepository):
     def __init__(self, pool):
         self.pool = pool
 
+    @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_phone_number_id(self, phone_number_id: str):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -40,6 +41,7 @@ class Repository(TenantScopedRepository):
             """, phone_number_id)
             return dict(row) if row else None
 
+    @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_waba_id(self, waba_id: str):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -264,6 +266,7 @@ class Repository(TenantScopedRepository):
                 organization_id=organization_id,
             )
 
+    @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
     async def claim_inbound_messages(self, limit=10):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
@@ -310,6 +313,7 @@ class Repository(TenantScopedRepository):
                 message_id, organization_id,
             )
 
+    @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
     async def claim_delivery_attempts(self, limit=10):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
@@ -366,6 +370,7 @@ class Repository(TenantScopedRepository):
             )
             return row is not None
 
+    @system_scope("tabella indiretta (via messages), solo worker")
     async def insert_delivery_attempt(self, message_id, next_retry_at):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -375,6 +380,7 @@ class Repository(TenantScopedRepository):
             """, uuid.uuid4(), message_id, next_retry_at)
             return dict(row)
 
+    @system_scope("tabella indiretta (via messages), solo worker")
     async def update_delivery_attempt(self, attempt_id, status, error_details=None):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -385,6 +391,7 @@ class Repository(TenantScopedRepository):
             """, attempt_id, status, json.dumps(error_details) if error_details else None)
             return dict(row) if row else None
 
+    @system_scope("retry worker: org letta dal payload e riusata a valle")
     async def reconstruct_payload_for_retry(self, message_id):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -397,6 +404,7 @@ class Repository(TenantScopedRepository):
                 result["content"] = json.loads(result["content"])
             return result
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def reap_stale_claims(self, timeout_minutes=15, dead_letter_threshold=3):
         """Libera i claim rimasti bloccati oltre timeout_minutes.
 
@@ -439,6 +447,7 @@ class Repository(TenantScopedRepository):
             """, str(timeout_minutes))
             return [dict(r) for r in dead] + [dict(r) for r in msgs] + [dict(r) for r in attempts]
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def delete_expired_messages(self, retention_days: int = 60) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
@@ -448,6 +457,7 @@ class Repository(TenantScopedRepository):
             """, str(retention_days))
             return int(result.split()[-1]) if result else 0
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def purge_soft_deleted_messages(self, grace_days: int = 30) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
@@ -457,6 +467,7 @@ class Repository(TenantScopedRepository):
             """, str(grace_days))
             return int(result.split()[-1]) if result else 0
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def cleanup_empty_conversations(self) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""

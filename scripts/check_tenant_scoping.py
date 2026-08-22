@@ -57,6 +57,8 @@ def _is_system_scope(fn) -> bool:
         target = dec.func if isinstance(dec, ast.Call) else dec
         if isinstance(target, ast.Name) and target.id == "system_scope":
             return True
+        if isinstance(target, ast.Attribute) and target.attr == "system_scope":
+            return True
     return False
 
 

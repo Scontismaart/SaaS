@@ -51,6 +51,7 @@ class RetryWorker:
                 access_token=tenant.access_token,
                 payload=payload.get("content", {}),
                 meta_client=client,
+                organization_id=org_id,
             )
             await self.repo.update_delivery_attempt(attempt["id"], "succeeded")
         except Exception as e:

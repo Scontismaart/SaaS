@@ -1,8 +1,20 @@
 import json
 import logging
+import uuid
 from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
+
+
+def _valid_org_uuid(value) -> bool:
+    """True solo se value e' un UUID valido (fail-closed per lo scope org)."""
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 PRICE_TO_PLAN: dict[str, str] = {}
 PRODUCT_TO_PLAN: dict[str, str] = {}
@@ -70,14 +82,23 @@ async def _handle_checkout_completed(conn, repo, data, event_id, trial_days):
         metadata = data.get("metadata") or {}
         booking_id = metadata.get("booking_id")
         org_id = metadata.get("organization_id")
-        if booking_id and org_id:
+        if booking_id:
+            # Fail-closed: senza uno scope organization_id valido NON si
+            # tocca il booking (Invariante #1). Skip completo: nemmeno la
+            # dedup, cosi' l'evento non risulta consumato.
+            if not _valid_org_uuid(org_id):
+                logger.warning(
+                    "stripe_webhook=checkout_org_scope_invalid event_id=%s "
+                    "booking_id=%s", event_id, booking_id,
+                )
+                return None
             if not await repo.process_stripe_event_in_tx(conn, event_id, org_id):
                 return {"action": "duplicate", "status": "skipped", "organization_id": org_id}
             await conn.execute("""
                 UPDATE bookings SET payment_status = 'paid', payment_link = $1,
                     updated_at = NOW()
-                WHERE id = $2
-            """, data.get("id"), booking_id)
+                WHERE id = $2 AND organization_id = $3
+            """, data.get("id"), booking_id, org_id)
             return {"action": "deposit_paid", "booking_id": booking_id, "organization_id": org_id}
         return None
 

@@ -145,7 +145,7 @@ async def test_invio_senza_owner_non_invia():
 
     assert result["esito"] == "no_destinatari"
     mock_segna.assert_awaited_once()
-    stato = mock_segna.call_args[0][2]
+    stato = mock_segna.call_args[0][3]
     assert stato == "failed"
 
 
@@ -190,7 +190,7 @@ async def test_invio_riuscito_marca_sent():
     assert result["esito"] == "inviato"
     mock_send.assert_awaited_once()
     mock_segna.assert_awaited_once()
-    stato = mock_segna.call_args[0][2]
+    stato = mock_segna.call_args[0][3]
     assert stato == "sent"
 
 
@@ -215,7 +215,7 @@ async def test_errore_permanente_marca_failed_e_raise():
         await genera_e_invia_report_settimanale(pool, "org-1")
 
     mock_segna.assert_awaited_once()
-    assert mock_segna.call_args[0][2] == "failed"
+    assert mock_segna.call_args[0][3] == "failed"
     mock_alert.assert_called_once()
     # Nessun retry per errori permanenti: un solo tentativo
     assert mock_genera.call_count == 1
@@ -244,5 +244,5 @@ async def test_errore_transiente_retry_poi_failed():
     # 3 tentativi totali (1 + 2 retry esterni) per sole eccezioni transienti
     assert mock_genera.call_count == 3
     mock_segna.assert_awaited_once()
-    assert mock_segna.call_args[0][2] == "failed"
+    assert mock_segna.call_args[0][3] == "failed"
     mock_alert.assert_called_once()

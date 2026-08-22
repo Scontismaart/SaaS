@@ -18,8 +18,8 @@ async def send_reminders_for_org(service, org_id, org_timezone: str = "Europe/Ro
                 await conn.execute("""
                     UPDATE bookings SET reminder_status = 'sent',
                         reminder_sent_at = NOW(), updated_at = NOW()
-                    WHERE id = $1
-                """, b["id"])
+                    WHERE organization_id = $2 AND id = $1
+                """, b["id"], org_id)
             msg = (f"Ciao {b['nome_cliente']}! Confermi la prenotazione di domani "
                    f"alle {b['ora']} per {b['coperti']} persone? "
                    f"Rispondi 'Si' per confermare o 'No' per annullare.")

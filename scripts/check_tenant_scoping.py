@@ -36,7 +36,11 @@ DEFAULT_TARGETS = [
 # Eccezioni revisionate a mano: chiave "{percorso}::{funzione}", valore =
 # motivo obbligatorio. Aggiungere SOLO dopo aver verificato che l'accesso
 # cross-tenant sia intenzionale; ogni voce appare nella reportistica CI.
-ALLOWLISTED_FUNCTIONS: dict[str, str] = {}
+ALLOWLISTED_FUNCTIONS: dict[str, str] = {
+    "src/core/db/repository.py::list_reviews":
+        "clausole dinamiche: la lista parte SEMPRE da 'organization_id = $1' "
+        "(costruita a L234+); falso positivo del check per-literal",
+}
 
 _SQL_KEYWORD_RE = re.compile(r"\b(select|insert|update|delete)\b", re.IGNORECASE)
 _DYNAMIC_TABLE_RE = re.compile(r"(?:from|join|into|update)\s*$", re.IGNORECASE)

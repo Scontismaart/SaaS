@@ -47,6 +47,10 @@ jobs:
         continue-on-error: true  # TODO: 98 errori preesistenti in tutto il repo, fuori scope task9
         run: ruff check src/ tests/
 
+      - name: Tenant scoping check (guard dog)
+        continue-on-error: true  # tolto in Task 7 quando le violazioni baseline sono a zero
+        run: python scripts/check_tenant_scoping.py
+
       - name: Run tests
         env:
           CI: true

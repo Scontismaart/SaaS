@@ -1,9 +1,12 @@
 import os
 import uuid
+
 from cryptography.fernet import Fernet
 
+from src.core.db.scoping import TenantScopedRepository
 
-class InstagramRepository:
+
+class InstagramRepository(TenantScopedRepository):
     """Accesso dati per il canale Instagram. Convive con WhatsAppRepository
     sullo stesso pool asyncpg: tabelle condivise (messages/conversations,
     identita' contatto = external id in contacts.phone_number) piu' la

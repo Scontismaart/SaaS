@@ -5,6 +5,8 @@ import uuid
 
 from cryptography.fernet import Fernet
 
+from src.core.db.scoping import TenantScopedRepository
+
 STATUS_RANK = {
     "queued": 0,
     "processing": 0,
@@ -22,7 +24,7 @@ def apply_status_update(current_status: str, new_status: str) -> bool:
     return STATUS_RANK.get(new_status, 0) > STATUS_RANK.get(current_status, 0)
 
 
-class Repository:
+class Repository(TenantScopedRepository):
     def __init__(self, pool):
         self.pool = pool
 

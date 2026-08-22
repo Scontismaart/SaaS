@@ -1,10 +1,13 @@
 import json
 import uuid
-import asyncpg
 from datetime import date, datetime, time
 
+import asyncpg
 
-class CoreRepository:
+from src.core.db.scoping import TenantScopedRepository
+
+
+class CoreRepository(TenantScopedRepository):
     def __init__(self, pool):
         self.pool = pool
 

@@ -5,6 +5,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
+from src.core.db.scoping import system_scope
 from src.models.schemas import ReportOutput
 
 _report_cache: dict[str, ReportOutput] = {}
@@ -125,6 +126,7 @@ def _run_calendar_sync():
     asyncio.run(_calendar_sync_job(pool))
 
 
+@system_scope("worker queue: enumerazione org con sync calendar abilitata")
 async def _calendar_sync_job(pool):
     encryption_key = os.getenv("ENCRYPTION_KEY", "")
     if not encryption_key:

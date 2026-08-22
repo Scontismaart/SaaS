@@ -31,6 +31,7 @@ DEFAULT_TARGETS = [
     "src/core/bookings/reminder_job.py",
     "src/core/calendar/service.py",
     "src/core/report/weekly_report.py",
+    "src/core/scheduler.py",
 ]
 
 # Eccezioni revisionate a mano: chiave "{percorso}::{funzione}", valore =

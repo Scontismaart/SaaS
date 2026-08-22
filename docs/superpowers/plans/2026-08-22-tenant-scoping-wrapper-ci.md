@@ -185,7 +185,7 @@ Motivi obbligatori (verbatim):
 - instagram: `"tenant-resolution: lookup da webhook Meta (ig_user_id platform-unique)"`
 
 Steps:
-- [ ] Applica i 16 decorator con i motivi sopra
+- [ ] Applica i 15 decorator con i motivi sopra
 - [ ] Run: `python scripts/check_tenant_scoping.py` → confronta con baseline: violazioni residue = SOLO i 4 siti legacy (Task 7)
 - [ ] Run: `pytest tests/ -x -q` smoke → PASS
 - [ ] Commit: `chore: mark intentional cross-tenant repository methods system_scope`
@@ -214,7 +214,7 @@ Checklist QA (ogni punto con evidenza nel report):
 1. **Fail esplicito:** `scoped_conn(None)` → MissingOrganizationIdError; metodo migrato senza org → TypeError; statement senza filtro → TenantScopeViolation (test già in Task 1/4 — verifica esecuzione)
 2. **Isolamento 2 org:** i 4 test regressione Task 4 verdi + `test_search_similar_isolato` (chunk org_b non ritornato a org_a)
 3. **Guard-dog reale:** script sui target → exit 0; crea `scratch/test_violation_repo.py` con query deliberata senza filtro → script exit 1 con report → cancella file
-4. **Completezza:** `grep -c "system_scope" src/**/repository.py` = 16 attese; nessun metodo della lista Fase 1 nel vecchio pattern; audit f-string SQL nei file scansionati (inventario: update_message_status migrato, list_reviews/update_review org nel testo statico, update_organization_billing root PK — nessun altro senza allowlist)
+4. **Completezza:** `grep -c "system_scope" src/**/repository.py` = 15 attese; nessun metodo della lista Fase 1 nel vecchio pattern; audit f-string SQL nei file scansionati (inventario: update_message_status migrato, list_reviews/update_review org nel testo statico, update_organization_billing root PK — nessun altro senza allowlist)
 5. Suite completa: `pytest -v --tb=short` (TEST_DB_DSN) → PASS
 6. `graphify update .`
 
@@ -235,4 +235,4 @@ Steps:
 | Check CI su repository layer + 4 legacy | script + step ci.yml + exit 0 finale |
 | 5 criticità: fix + test dedicati ciascuna | matrice Task 4, tutti verdi |
 | Guard-dog blocca davvero | QA-3: violazione deliberata → exit 1 |
-| Nessuna funzione dimenticata | script exit 0 = prova formale + conteggio system_scope = 16 |
+| Nessuna funzione dimenticata | script exit 0 = prova formale + conteggio system_scope = 15 + scheduler.py nei DEFAULT_TARGETS |

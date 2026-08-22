@@ -1,0 +1,15 @@
+services:
+  postgres-test:
+    image: pgvector/pgvector:0.7.4-pg16
+    container_name: postgres-p0-test
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: p0_concurrency_test
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d p0_concurrency_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10

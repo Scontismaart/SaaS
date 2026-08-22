@@ -34,7 +34,7 @@ from src.whatsapp.repository import Repository as WhatsAppRepository
 
 DB_DSN = os.environ.get(
     "TEST_DB_DSN",
-    "postgresql://test:test@localhost:55432/p0_concurrency_test",
+    f"postgresql://{os.getenv('PGUSER', 'test')}:{os.getenv('PGPASSWORD', 'test')}@{os.getenv('PGHOST', 'localhost')}:{os.getenv('PGPORT', '55432')}/{os.getenv('PGDATABASE', 'p0_concurrency_test')}",
 )
 
 WEBHOOK_SECRET = "whsec_test_cancellation_secret_xyz123"

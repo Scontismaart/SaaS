@@ -224,7 +224,7 @@ class InboundProcessor:
         profilo = _profile_from_dict(business_profile_raw)
         
         # Outbox Pattern (P0-2) legacy handled by sent_at in claim_message_and_check_quota
-        dedup = await self.repo.get_outbound_dedup(msg["id"])
+        dedup = await self.repo.get_outbound_dedup(msg["organization_id"], msg["id"])
         if dedup:
             from_number = content.get("from", "")
             try:

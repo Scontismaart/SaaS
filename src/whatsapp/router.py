@@ -256,9 +256,9 @@ async def _handle_template_status_update(repo, value, entry_id=None):
         logger.warning("Unknown waba_id for template status update: %s", waba_id)
         return
     await repo.update_template_status(
+        organization_id=org_data["organization_id"],
         name=value.message_template_name,
         language=value.message_template_language,
         status=value.message_template_status,
-        reason=getattr(value, "reason", None),
-        organization_id=org_data["organization_id"],
+        rejected_reason=getattr(value, "reason", None),
     )

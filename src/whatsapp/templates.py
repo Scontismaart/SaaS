@@ -31,13 +31,14 @@ class TemplateSyncer:
                     components=tpl.get("components", []),
                 )
 
-    async def process_push_update(self, event: dict):
+    async def process_push_update(self, event: dict, organization_id):
         status = event.get("message_template_status", "PENDING")
         await self.repo.update_template_status(
+            organization_id=organization_id,
             name=event.get("message_template_name"),
             language=event.get("message_template_language"),
             status=status,
-            reason=event.get("reason"),
+            rejected_reason=event.get("reason"),
         )
 
     async def _get_access_token(self, org_id: uuid.UUID) -> str:

@@ -130,15 +130,15 @@ class TestTicketRepository:
         assert tickets == []
 
     async def test_get_conversation_found(self, repo):
-        _, _, conv = await self._create_test_data(repo)
-        result = await repo.get_conversation(str(conv["id"]))
+        org, _, conv = await self._create_test_data(repo)
+        result = await repo.get_conversation(str(conv["id"]), str(org["id"]))
         assert result is not None
         assert result["id"] == conv["id"]
         assert result["ticket_status"] == "AI_ACTIVE"
         assert result["version"] == 1
 
     async def test_get_conversation_not_found(self, repo):
-        result = await repo.get_conversation(str(uuid.uuid4()))
+        result = await repo.get_conversation(str(uuid.uuid4()), str(uuid.uuid4()))
         assert result is None
 
     async def test_escalate_to_human_success(self, repo):

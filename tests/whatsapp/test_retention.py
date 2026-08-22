@@ -52,10 +52,17 @@ async def msg_id(org_id, conv_id, repo):
     return _make
 
 
+async def _soft_delete_message(repo, mid):
+    # Repository.soft_delete_message e' stato rimosso (dead code cross-tenant):
+    # il setup usa lo stesso SQL inline, semanticamente identico.
+    async with repo.pool.acquire() as conn:
+        await conn.execute("UPDATE messages SET deleted_at = NOW() WHERE id = $1", mid)
+
+
 @pytest.mark.asyncio
 async def test_soft_delete_message_excluded(repo, org_id, msg_id):
     mid = await msg_id()
-    await repo.soft_delete_message(mid)
+    await _soft_delete_message(repo, mid)
     async with repo.pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM messages WHERE id = $1", mid)
     assert row["deleted_at"] is not None
@@ -65,13 +72,13 @@ async def test_soft_delete_message_excluded(repo, org_id, msg_id):
 async def test_soft_deleted_messages_not_claimed(repo, org_id, msg_id, conv_id):
     cvid = await conv_id()
     mid = await msg_id(cvid)
-    await repo.soft_delete_message(mid)
+    await _soft_delete_message(repo, mid)
     async with repo.pool.acquire() as conn:
         await conn.execute(
             "UPDATE messages SET direction = 'inbound', status = 'received_pending_ai', deleted_at = NULL WHERE id = $1",
             mid,
         )
-        await repo.soft_delete_message(mid)
+        await conn.execute("UPDATE messages SET deleted_at = NOW() WHERE id = $1", mid)
     claimed = await repo.claim_inbound_messages(limit=10)
     assert mid not in [c["id"] for c in claimed]
 
@@ -94,7 +101,7 @@ async def test_delete_expired_messages(repo, org_id, msg_id, conv_id):
 async def test_purge_soft_deleted_messages(repo, org_id, msg_id, conv_id):
     cvid = await conv_id()
     mid = await msg_id(cvid)
-    await repo.soft_delete_message(mid)
+    await _soft_delete_message(repo, mid)
     async with repo.pool.acquire() as conn:
         await conn.execute(
             "UPDATE messages SET deleted_at = NOW() - INTERVAL '31 days' WHERE id = $1", mid
@@ -110,7 +117,7 @@ async def test_purge_soft_deleted_messages(repo, org_id, msg_id, conv_id):
 async def test_cleanup_empty_conversations(repo, org_id, msg_id, conv_id):
     cvid = await conv_id()
     mid = await msg_id(cvid)
-    await repo.soft_delete_message(mid)
+    await _soft_delete_message(repo, mid)
     cleaned = await repo.cleanup_empty_conversations()
     assert cleaned >= 1
     async with repo.pool.acquire() as conn:

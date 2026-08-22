@@ -568,13 +568,6 @@ class CoreRepository(TenantScopedRepository):
                 )
             return self._json_fields_onboarding(dict(row))
 
-    async def list_onboarding_profiles(self):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM onboarding_profiles ORDER BY nome_attivita"
-            )
-            return [self._json_fields_onboarding(dict(r)) for r in rows]
-
     # ── Email configs ─────────────────────────────────────────
 
     async def add_email_config(self, organization_id, indirizzo, is_active=True):

@@ -159,7 +159,7 @@ class Repository(TenantScopedRepository):
                               message_type, content, content_text, status, handling_type=None,
                               idempotency_key=None, conn=None):
         if conn is None:
-            async with self.pool.acquire() as conn:
+            async with self.scoped_conn(organization_id) as conn:
                 return await self._upsert_message(conn, id, organization_id, conversation_id,
                     wam_id, direction, message_type, content, content_text, status,
                     handling_type, idempotency_key)
@@ -198,8 +198,11 @@ class Repository(TenantScopedRepository):
             json.dumps(content), content_text, status, handling_type)
         if row:
             return dict(row)
-        row = await conn.fetchrow("SELECT * FROM messages WHERE wam_id = $1", wam_id)
-        return dict(row)
+        row = await conn.fetchrow(
+            "SELECT * FROM messages WHERE wam_id = $1 AND organization_id = $2",
+            wam_id, organization_id,
+        )
+        return dict(row) if row else None
 
     async def update_message_status(self, message_id, new_status, wam_id=None, error_code=None,
                                       error_title=None, error_details=None, biz_opaque_callback_data=None):
@@ -427,18 +430,6 @@ class Repository(TenantScopedRepository):
             """, str(timeout_minutes))
             return [dict(r) for r in dead] + [dict(r) for r in msgs] + [dict(r) for r in attempts]
 
-    async def soft_delete_message(self, message_id: uuid.UUID) -> None:
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE messages SET deleted_at = NOW() WHERE id = $1", message_id)
-
-    async def soft_delete_conversation(self, conversation_id: uuid.UUID) -> None:
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE conversations SET deleted_at = NOW() WHERE id = $1", conversation_id)
-
-    async def soft_delete_contact(self, contact_id: uuid.UUID) -> None:
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE contacts SET deleted_at = NOW() WHERE id = $1", contact_id)
-
     async def delete_expired_messages(self, retention_days: int = 60) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
@@ -470,12 +461,12 @@ class Repository(TenantScopedRepository):
             """)
             return int(result.split()[-1]) if result else 0
 
-    async def get_outbound_dedup(self, message_id: uuid.UUID) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def get_outbound_dedup(self, organization_id, message_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow("""
                 SELECT response_text FROM outbound_dedup
-                WHERE message_id = $1
-            """, message_id)
+                WHERE message_id = $2 AND organization_id = $1
+            """, organization_id, message_id)
             return dict(row) if row else None
 
     async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
@@ -713,8 +704,8 @@ class Repository(TenantScopedRepository):
             )
             return [dict(r) for r in rows]
 
-    async def get_conversation(self, conversation_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def get_conversation(self, conversation_id: str, organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """WITH enriched AS (
                        SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
@@ -746,10 +737,10 @@ class Repository(TenantScopedRepository):
                            ORDER BY m.created_at DESC
                            LIMIT 1
                        ) lm ON TRUE
-                       WHERE c.id = $1::uuid AND c.deleted_at IS NULL
+                       WHERE c.organization_id = $2::uuid AND c.id = $1::uuid AND c.deleted_at IS NULL
                    )
                    SELECT * FROM enriched""",
-                conversation_id
+                conversation_id, organization_id
             )
             return dict(row) if row else None
 
@@ -918,23 +909,18 @@ class Repository(TenantScopedRepository):
             )
             return dict(row) if row else None
 
-    async def update_template_status(self, name=None, language=None, status=None, reason=None, organization_id=None):
-        async with self.pool.acquire() as conn:
-            parts = ["status = $3", "updated_at = NOW()"]
-            params = [name, language, status]
-            idx = 4
-            if reason:
-                parts.append(f"rejected_reason = ${idx}")
-                params.append(reason)
-                idx += 1
-            if organization_id:
-                parts.append(f"organization_id = ${idx}")
-                params.append(organization_id)
-                idx += 1
-            await conn.execute(
-                f"UPDATE whatsapp_templates SET {', '.join(parts)} WHERE name = $1 AND language = $2",
-                *params
-            )
+    async def update_template_status(self, organization_id, name, language, status,
+                                      rejected_reason=None):
+        """Aggiorna lo stato del template SOLO entro l'organizzazione:
+        organization_id e' obbligatorio e va in WHERE (mai nel SET)."""
+        async with self.scoped_conn(organization_id) as conn:
+            await conn.execute("""
+                UPDATE whatsapp_templates
+                SET status = $3,
+                    rejected_reason = COALESCE($4, rejected_reason),
+                    updated_at = NOW()
+                WHERE organization_id = $1 AND name = $2 AND language = $5
+            """, organization_id, name, status, rejected_reason, language)
 
     async def claim_message_and_check_quota(self, msg_id: str, org_id: str) -> dict:
         async with self.pool.acquire() as conn:

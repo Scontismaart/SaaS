@@ -233,7 +233,7 @@ class TestSla:
         wrepo = WRepo(pool=pg_pool)
         await wrepo.escalate_to_human(str(conv["id"]))
 
-        row = await wrepo.get_conversation(str(conv["id"]))
+        row = await wrepo.get_conversation(str(conv["id"]), str(org["id"]))
         assert row["sla_minutes"] == 45
         assert row["is_overdue"] is False
         assert row["phone_number"] == "+393991234567"

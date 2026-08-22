@@ -45,7 +45,8 @@ async def test_contact_default_consent(repo, contact):
 @pytest.mark.asyncio
 async def test_consent_status_deleted_contact_returns_none(repo, contact):
     c = await contact()
-    await repo.soft_delete_contact(c["id"])
+    async with repo.pool.acquire() as conn:
+        await conn.execute("UPDATE contacts SET deleted_at = NOW() WHERE id = $1", c["id"])
     status = await repo.get_contact_consent(c["id"])
     assert status is None
 

@@ -103,7 +103,7 @@ async def get_ticket(
 ):
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     return _to_ticket_item(conv)
@@ -123,7 +123,7 @@ async def get_ticket_messages(
     if limit < 1 or limit > 200 or offset < 0:
         raise HTTPException(status_code=422, detail="limit deve essere 1-200 e offset >= 0")
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     rows = await wrepo.list_conversation_messages(
@@ -159,7 +159,7 @@ async def claim_ticket(
 ):
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     result = await wrepo.claim_ticket(conversation_id, _require_user_id(user), expected_version=body.expected_version)
@@ -184,7 +184,7 @@ async def release_ticket(
 ):
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     result = await wrepo.release_ticket(conversation_id, _require_user_id(user))
@@ -201,7 +201,7 @@ async def resolve_ticket(
 ):
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     result = await wrepo.resolve_ticket(conversation_id, _require_user_id(user))
@@ -241,7 +241,7 @@ async def assign_ticket(
     tre partner non possono sovrascriversi a vicenda."""
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -254,7 +254,7 @@ async def assign_ticket(
     )
     if not result:
         raise HTTPException(status_code=409, detail="Conflict: ticket status or version mismatch")
-    enriched = await wrepo.get_conversation(conversation_id) or result
+    enriched = await wrepo.get_conversation(conversation_id, org_id) or result
     return AssignResponse(
         id=str(result["id"]),
         ticket_status=result["ticket_status"],
@@ -280,7 +280,7 @@ async def reply_to_ticket(
     org_id = user["organization_id"]
     operator_id = _require_user_id(user)
     wrepo = _get_wrepo(request)
-    conv = await wrepo.get_conversation(conversation_id)
+    conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
     if conv["ticket_status"] != "CLAIMED" or str(conv.get("assigned_to")) != operator_id:

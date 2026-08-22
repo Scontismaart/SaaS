@@ -5,6 +5,8 @@ import uuid
 
 from cryptography.fernet import Fernet
 
+from src.core.db.scoping import TenantScopedRepository, system_scope
+
 STATUS_RANK = {
     "queued": 0,
     "processing": 0,
@@ -22,10 +24,11 @@ def apply_status_update(current_status: str, new_status: str) -> bool:
     return STATUS_RANK.get(new_status, 0) > STATUS_RANK.get(current_status, 0)
 
 
-class Repository:
+class Repository(TenantScopedRepository):
     def __init__(self, pool):
         self.pool = pool
 
+    @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_phone_number_id(self, phone_number_id: str):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -38,6 +41,7 @@ class Repository:
             """, phone_number_id)
             return dict(row) if row else None
 
+    @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_waba_id(self, waba_id: str):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -157,7 +161,7 @@ class Repository:
                               message_type, content, content_text, status, handling_type=None,
                               idempotency_key=None, conn=None):
         if conn is None:
-            async with self.pool.acquire() as conn:
+            async with self.scoped_conn(organization_id) as conn:
                 return await self._upsert_message(conn, id, organization_id, conversation_id,
                     wam_id, direction, message_type, content, content_text, status,
                     handling_type, idempotency_key)
@@ -196,13 +200,20 @@ class Repository:
             json.dumps(content), content_text, status, handling_type)
         if row:
             return dict(row)
-        row = await conn.fetchrow("SELECT * FROM messages WHERE wam_id = $1", wam_id)
-        return dict(row)
+        row = await conn.fetchrow(
+            "SELECT * FROM messages WHERE wam_id = $1 AND organization_id = $2",
+            wam_id, organization_id,
+        )
+        return dict(row) if row else None
 
     async def update_message_status(self, message_id, new_status, wam_id=None, error_code=None,
-                                      error_title=None, error_details=None, biz_opaque_callback_data=None):
-        async with self.pool.acquire() as conn:
-            current = await conn.fetchrow("SELECT status FROM messages WHERE id = $1", message_id)
+                                      error_title=None, error_details=None, biz_opaque_callback_data=None,
+                                      *, organization_id):
+        async with self.scoped_conn(organization_id) as conn:
+            current = await conn.fetchrow(
+                "SELECT status FROM messages WHERE id = $1 AND organization_id = $2::uuid",
+                message_id, organization_id,
+            )
             if not current:
                 return None
             if not apply_status_update(current["status"], new_status):
@@ -234,24 +245,28 @@ class Repository:
                 set_parts.append("read_at = NOW()")
             set_parts.append("updated_at = NOW()")
             row = await conn.fetchrow(
-                f"UPDATE messages SET {', '.join(set_parts)} WHERE id = $1 RETURNING *",
-                *params
+                f"UPDATE messages SET {', '.join(set_parts)} WHERE id = $1 AND organization_id = ${idx}::uuid RETURNING *",
+                *params, organization_id
             )
             return dict(row) if row else None
 
     async def update_message_status_by_wam_id(self, wam_id, new_status, error_code=None,
-                                                error_title=None, error_details=None):
-        async with self.pool.acquire() as conn:
+                                                error_title=None, error_details=None,
+                                                *, organization_id):
+        async with self.scoped_conn(organization_id) as conn:
             current = await conn.fetchrow(
-                "SELECT id, status FROM messages WHERE wam_id = $1", wam_id
+                "SELECT id, status FROM messages WHERE wam_id = $1 AND organization_id = $2::uuid",
+                wam_id, organization_id,
             )
             if not current:
                 return None
             return await self.update_message_status(
                 current["id"], new_status, wam_id=wam_id,
                 error_code=error_code, error_title=error_title, error_details=error_details,
+                organization_id=organization_id,
             )
 
+    @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
     async def claim_inbound_messages(self, limit=10):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
@@ -272,31 +287,33 @@ class Repository:
                 """, limit)
                 return [dict(r) for r in rows]
 
-    async def try_mark_replied(self, message_id, handling_type: str | None = None):
+    async def try_mark_replied(self, message_id, handling_type: str | None = None, *,
+                               organization_id):
         """Atomically marks a message as replied+handled. Returns the updated
         row if this call won the race, or None if another worker already marked
         it. Call BEFORE sending the WhatsApp reply so only one worker proceeds.
         handling_type va al trigger event_log: 'ai_handled' (AI gestita),
         'escalated' (staff), 'automation' (fast path/reminder), 'opt_out',
         'suspended'."""
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow("""
                 UPDATE messages SET replied_at = NOW(), status = 'handled',
                     handling_type = COALESCE($2, handling_type),
                     updated_at = NOW()
-                WHERE id = $1 AND replied_at IS NULL
+                WHERE id = $1 AND organization_id = $3::uuid AND replied_at IS NULL
                 RETURNING *
-            """, message_id, handling_type)
+            """, message_id, handling_type, organization_id)
             return dict(row) if row else None
 
-    async def update_heartbeat(self, message_id):
+    async def update_heartbeat(self, message_id, organization_id):
         """Periodic heartbeat — tells the reaper this claim is still alive."""
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(organization_id) as conn:
             await conn.execute(
-                "UPDATE messages SET heartbeat_at = NOW() WHERE id = $1",
-                message_id,
+                "UPDATE messages SET heartbeat_at = NOW() WHERE id = $1 AND organization_id = $2::uuid",
+                message_id, organization_id,
             )
 
+    @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
     async def claim_delivery_attempts(self, limit=10):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
@@ -316,8 +333,9 @@ class Repository:
                 return [dict(r) for r in rows]
 
     async def record_consent_event(self, contact_id, event_type, method,
-                                     triggering_message_id=None, matched_text=None):
-        async with self.pool.acquire() as conn:
+                                     triggering_message_id=None, matched_text=None, *,
+                                     organization_id):
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow("""
                 INSERT INTO contact_consent_log (id, contact_id, event_type, method,
                                                   triggering_message_id, matched_text)
@@ -327,31 +345,32 @@ class Repository:
             new_status = "granted" if event_type == "opt_in" else "withdrawn"
             await conn.execute("""
                 UPDATE contacts SET consent_status = $1, consent_updated_at = NOW()
-                WHERE id = $2
-            """, new_status, contact_id)
+                WHERE id = $2 AND organization_id = $3::uuid
+            """, new_status, contact_id, organization_id)
             return dict(row)
 
-    async def get_contact_consent(self, contact_id) -> str | None:
-        async with self.pool.acquire() as conn:
+    async def get_contact_consent(self, contact_id, organization_id) -> str | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
-                "SELECT consent_status FROM contacts WHERE id = $1 AND deleted_at IS NULL",
-                contact_id,
+                "SELECT consent_status FROM contacts WHERE id = $1 AND organization_id = $2::uuid AND deleted_at IS NULL",
+                contact_id, organization_id,
             )
             return row["consent_status"] if row else None
 
-    async def mark_ai_disclosure_sent(self, contact_id: uuid.UUID) -> bool:
+    async def mark_ai_disclosure_sent(self, contact_id: uuid.UUID, organization_id) -> bool:
         """Atomicamente segna il contatto come destinatario della disclosure AI.
         Ritorna True solo per il chiamante che vince la race (primo UPDATE);
         False se la disclosure era gia' stata segnata o il contatto non esiste."""
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE contacts SET ai_disclosure_sent_at = NOW()
-                   WHERE id = $1::uuid AND ai_disclosure_sent_at IS NULL
+                   WHERE id = $1::uuid AND organization_id = $2::uuid AND ai_disclosure_sent_at IS NULL
                    RETURNING id""",
-                contact_id,
+                contact_id, organization_id,
             )
             return row is not None
 
+    @system_scope("tabella indiretta (via messages), solo worker")
     async def insert_delivery_attempt(self, message_id, next_retry_at):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -361,6 +380,7 @@ class Repository:
             """, uuid.uuid4(), message_id, next_retry_at)
             return dict(row)
 
+    @system_scope("tabella indiretta (via messages), solo worker")
     async def update_delivery_attempt(self, attempt_id, status, error_details=None):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -371,6 +391,7 @@ class Repository:
             """, attempt_id, status, json.dumps(error_details) if error_details else None)
             return dict(row) if row else None
 
+    @system_scope("retry worker: org letta dal payload e riusata a valle")
     async def reconstruct_payload_for_retry(self, message_id):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -383,6 +404,7 @@ class Repository:
                 result["content"] = json.loads(result["content"])
             return result
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def reap_stale_claims(self, timeout_minutes=15, dead_letter_threshold=3):
         """Libera i claim rimasti bloccati oltre timeout_minutes.
 
@@ -425,18 +447,7 @@ class Repository:
             """, str(timeout_minutes))
             return [dict(r) for r in dead] + [dict(r) for r in msgs] + [dict(r) for r in attempts]
 
-    async def soft_delete_message(self, message_id: uuid.UUID) -> None:
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE messages SET deleted_at = NOW() WHERE id = $1", message_id)
-
-    async def soft_delete_conversation(self, conversation_id: uuid.UUID) -> None:
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE conversations SET deleted_at = NOW() WHERE id = $1", conversation_id)
-
-    async def soft_delete_contact(self, contact_id: uuid.UUID) -> None:
-        async with self.pool.acquire() as conn:
-            await conn.execute("UPDATE contacts SET deleted_at = NOW() WHERE id = $1", contact_id)
-
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def delete_expired_messages(self, retention_days: int = 60) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
@@ -446,6 +457,7 @@ class Repository:
             """, str(retention_days))
             return int(result.split()[-1]) if result else 0
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def purge_soft_deleted_messages(self, grace_days: int = 30) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
@@ -455,6 +467,7 @@ class Repository:
             """, str(grace_days))
             return int(result.split()[-1]) if result else 0
 
+    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
     async def cleanup_empty_conversations(self) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
@@ -468,12 +481,12 @@ class Repository:
             """)
             return int(result.split()[-1]) if result else 0
 
-    async def get_outbound_dedup(self, message_id: uuid.UUID) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def get_outbound_dedup(self, organization_id, message_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow("""
                 SELECT response_text FROM outbound_dedup
-                WHERE message_id = $1
-            """, message_id)
+                WHERE message_id = $2 AND organization_id = $1
+            """, organization_id, message_id)
             return dict(row) if row else None
 
     async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
@@ -711,8 +724,8 @@ class Repository:
             )
             return [dict(r) for r in rows]
 
-    async def get_conversation(self, conversation_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def get_conversation(self, conversation_id: str, organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """WITH enriched AS (
                        SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
@@ -744,10 +757,10 @@ class Repository:
                            ORDER BY m.created_at DESC
                            LIMIT 1
                        ) lm ON TRUE
-                       WHERE c.id = $1::uuid AND c.deleted_at IS NULL
+                       WHERE c.organization_id = $2::uuid AND c.id = $1::uuid AND c.deleted_at IS NULL
                    )
                    SELECT * FROM enriched""",
-                conversation_id
+                conversation_id, organization_id
             )
             return dict(row) if row else None
 
@@ -788,8 +801,8 @@ class Repository:
             )
             return [dict(r) for r in rows]
 
-    async def escalate_to_human(self, conversation_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def escalate_to_human(self, conversation_id: str, organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE conversations
                    SET ticket_status = 'PENDING_STAFF',
@@ -797,15 +810,17 @@ class Repository:
                        updated_at = NOW(),
                        version = version + 1
                    WHERE id = $1::uuid
+                     AND organization_id = $2::uuid
                      AND ticket_status NOT IN ('PENDING_STAFF', 'CLAIMED', 'RESOLVED')
                      AND deleted_at IS NULL
                    RETURNING *""",
-                conversation_id
+                conversation_id, organization_id
             )
             return dict(row) if row else None
 
-    async def claim_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def claim_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int,
+                           organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE conversations
                    SET ticket_status = 'CLAIMED',
@@ -814,16 +829,18 @@ class Repository:
                        updated_at = NOW(),
                        version = version + 1
                    WHERE id = $1::uuid
+                     AND organization_id = $4::uuid
                      AND version = $3
                      AND ticket_status = 'PENDING_STAFF'
                      AND deleted_at IS NULL
                    RETURNING *""",
-                conversation_id, staff_user_id, expected_version
+                conversation_id, staff_user_id, expected_version, organization_id
             )
             return dict(row) if row else None
 
-    async def release_ticket(self, conversation_id: str, staff_user_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def release_ticket(self, conversation_id: str, staff_user_id: str,
+                             organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE conversations
                    SET ticket_status = 'PENDING_STAFF',
@@ -832,16 +849,18 @@ class Repository:
                        updated_at = NOW(),
                        version = version + 1
                    WHERE id = $1::uuid
+                     AND organization_id = $3::uuid
                      AND assigned_to = $2::uuid
                      AND ticket_status = 'CLAIMED'
                      AND deleted_at IS NULL
                    RETURNING *""",
-                conversation_id, staff_user_id
+                conversation_id, staff_user_id, organization_id
             )
             return dict(row) if row else None
 
-    async def resolve_ticket(self, conversation_id: str, staff_user_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def resolve_ticket(self, conversation_id: str, staff_user_id: str,
+                             organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE conversations
                    SET ticket_status = 'RESOLVED',
@@ -850,11 +869,12 @@ class Repository:
                        updated_at = NOW(),
                        version = version + 1
                    WHERE id = $1::uuid
+                     AND organization_id = $3::uuid
                      AND assigned_to = $2::uuid
                      AND ticket_status = 'CLAIMED'
                      AND deleted_at IS NULL
                    RETURNING *""",
-                conversation_id, staff_user_id
+                conversation_id, staff_user_id, organization_id
             )
             return dict(row) if row else None
 
@@ -872,12 +892,13 @@ class Repository:
             """, org_id)
             return [dict(r) for r in rows]
 
-    async def assign_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int) -> dict | None:
+    async def assign_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int,
+                            organization_id) -> dict | None:
         """Assegna (o riassegna) un ticket a un membro del team. Funziona sia
         su PENDING_STAFF sia su CLAIMED (da qualcun altro): la riassegnazione
         non richiede prima un release. Optimistic lock su version contro la
         race con claim/release/resolve concorrenti."""
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE conversations
                    SET ticket_status = 'CLAIMED',
@@ -886,25 +907,26 @@ class Repository:
                        updated_at = NOW(),
                        version = version + 1
                    WHERE id = $1::uuid
+                     AND organization_id = $4::uuid
                      AND version = $3
                      AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')
                      AND deleted_at IS NULL
                    RETURNING *""",
-                conversation_id, staff_user_id, expected_version
+                conversation_id, staff_user_id, expected_version, organization_id
             )
             return dict(row) if row else None
 
-    async def set_conversation_ai_active(self, conversation_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
+    async def set_conversation_ai_active(self, conversation_id: str, organization_id) -> dict | None:
+        async with self.scoped_conn(organization_id) as conn:
             row = await conn.fetchrow(
                 """UPDATE conversations
                    SET ticket_status = 'AI_ACTIVE',
                        assigned_to = NULL,
                        updated_at = NOW(),
                        version = version + 1
-                   WHERE id = $1::uuid AND deleted_at IS NULL
+                   WHERE id = $1::uuid AND organization_id = $2::uuid AND deleted_at IS NULL
                    RETURNING *""",
-                conversation_id
+                conversation_id, organization_id
             )
             return dict(row) if row else None
 
@@ -916,30 +938,25 @@ class Repository:
             )
             return dict(row) if row else None
 
-    async def update_template_status(self, name=None, language=None, status=None, reason=None, organization_id=None):
-        async with self.pool.acquire() as conn:
-            parts = ["status = $3", "updated_at = NOW()"]
-            params = [name, language, status]
-            idx = 4
-            if reason:
-                parts.append(f"rejected_reason = ${idx}")
-                params.append(reason)
-                idx += 1
-            if organization_id:
-                parts.append(f"organization_id = ${idx}")
-                params.append(organization_id)
-                idx += 1
-            await conn.execute(
-                f"UPDATE whatsapp_templates SET {', '.join(parts)} WHERE name = $1 AND language = $2",
-                *params
-            )
+    async def update_template_status(self, organization_id, name, language, status,
+                                      rejected_reason=None):
+        """Aggiorna lo stato del template SOLO entro l'organizzazione:
+        organization_id e' obbligatorio e va in WHERE (mai nel SET)."""
+        async with self.scoped_conn(organization_id) as conn:
+            await conn.execute("""
+                UPDATE whatsapp_templates
+                SET status = $3,
+                    rejected_reason = COALESCE($4, rejected_reason),
+                    updated_at = NOW()
+                WHERE organization_id = $1 AND name = $2 AND language = $5
+            """, organization_id, name, status, rejected_reason, language)
 
     async def claim_message_and_check_quota(self, msg_id: str, org_id: str) -> dict:
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(org_id) as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
-                    "SELECT id, billed_at, ai_reply_cache, sent_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid FOR UPDATE",
-                    msg_id
+                    "SELECT id, billed_at, ai_reply_cache, sent_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE",
+                    msg_id, org_id
                 )
                 if not row:
                     return {"status": "not_found"}
@@ -949,7 +966,7 @@ class Repository:
 
                 if row["quota_exceeded_at"] is not None:
                     return {"status": "quota_exceeded"}
-                    
+
                 if row["processing_at"] is not None and row["ai_reply_cache"] is None:
                     return {"status": "currently_processing"}
 
@@ -963,16 +980,16 @@ class Repository:
 
                     if not updated_org:
                         await conn.execute(
-                            "UPDATE messages SET quota_exceeded_at = now() WHERE id = $1::uuid",
-                            msg_id
+                            "UPDATE messages SET quota_exceeded_at = now() WHERE id = $1::uuid AND organization_id = $2::uuid",
+                            msg_id, org_id
                         )
                         return {"status": "quota_exceeded"}
 
                     await conn.execute(
-                        "UPDATE messages SET billed_at = now() WHERE id = $1::uuid",
-                        msg_id
+                        "UPDATE messages SET billed_at = now() WHERE id = $1::uuid AND organization_id = $2::uuid",
+                        msg_id, org_id
                     )
-                    
+
                 cache_val = row["ai_reply_cache"]
                 if isinstance(cache_val, str):
                     try:
@@ -982,7 +999,7 @@ class Repository:
 
                 if cache_val is None:
                     await conn.execute(
-                        "UPDATE messages SET processing_at = now() WHERE id = $1::uuid", msg_id
+                        "UPDATE messages SET processing_at = now() WHERE id = $1::uuid AND organization_id = $2::uuid", msg_id, org_id
                     )
 
                 return {"status": "claimed", "ai_reply_cache": cache_val}
@@ -995,7 +1012,8 @@ class Repository:
             )
             return bool(row)
 
-    async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False, motivo: str = "") -> None:
+    async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False,
+                            motivo: str = "", *, organization_id) -> None:
         if isinstance(reply, dict):
             payload = reply
         else:
@@ -1004,15 +1022,15 @@ class Repository:
                 "richiede_umano": richiede_umano,
                 "motivo": motivo,
             }
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(organization_id) as conn:
             await conn.execute(
-                "UPDATE messages SET ai_reply_cache = $2::jsonb, ai_reply_generated_at = now() WHERE id = $1::uuid",
-                msg_id, json.dumps(payload)
+                "UPDATE messages SET ai_reply_cache = $2::jsonb, ai_reply_generated_at = now() WHERE id = $1::uuid AND organization_id = $3::uuid",
+                msg_id, json.dumps(payload), organization_id
             )
 
-    async def mark_message_sent(self, msg_id: str, meta_message_id: str) -> None:
-        async with self.pool.acquire() as conn:
+    async def mark_message_sent(self, msg_id: str, meta_message_id: str, organization_id) -> None:
+        async with self.scoped_conn(organization_id) as conn:
             await conn.execute(
-                "UPDATE messages SET sent_at = now(), meta_message_id = $2 WHERE id = $1::uuid",
-                msg_id, str(meta_message_id)
+                "UPDATE messages SET sent_at = now(), meta_message_id = $2 WHERE id = $1::uuid AND organization_id = $3::uuid",
+                msg_id, str(meta_message_id), organization_id
             )

@@ -195,6 +195,7 @@ async def _handle_status_update(repo, org_id, status):
                     error_code=str(errors[0]["code"]) if errors else None,
                     error_title=errors[0]["title"] if errors else None,
                     error_details=errors,
+                    organization_id=org_id,
                 )
             return
         await repo.update_message_status(
@@ -203,6 +204,7 @@ async def _handle_status_update(repo, org_id, status):
             error_code=str(errors[0]["code"]) if errors else None,
             error_title=errors[0]["title"] if errors else None,
             error_details=errors,
+            organization_id=org_id,
         )
         return
 
@@ -212,6 +214,7 @@ async def _handle_status_update(repo, org_id, status):
             error_code=str(errors[0]["code"]) if errors else None,
             error_title=errors[0]["title"] if errors else None,
             error_details=errors,
+            organization_id=org_id,
         )
 
 
@@ -256,9 +259,9 @@ async def _handle_template_status_update(repo, value, entry_id=None):
         logger.warning("Unknown waba_id for template status update: %s", waba_id)
         return
     await repo.update_template_status(
+        organization_id=org_data["organization_id"],
         name=value.message_template_name,
         language=value.message_template_language,
         status=value.message_template_status,
-        reason=getattr(value, "reason", None),
-        organization_id=org_data["organization_id"],
+        rejected_reason=getattr(value, "reason", None),
     )

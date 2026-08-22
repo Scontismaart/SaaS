@@ -169,9 +169,11 @@ class GoogleCalendarService:
         try:
             async with self.repo.pool.acquire() as conn:
                 await conn.execute(
-                    "UPDATE bookings SET google_event_id = $2, updated_at = NOW() WHERE id = $1",
+                    "UPDATE bookings SET google_event_id = $2, updated_at = NOW() "
+                    "WHERE organization_id = $3 AND id = $1",
                     booking["id"],
                     event_id,
+                    org_id,
                 )
         except Exception:
             logger.exception(
@@ -242,8 +244,10 @@ class GoogleCalendarService:
             )
         async with self.repo.pool.acquire() as conn:
             await conn.execute(
-                "UPDATE bookings SET google_event_id = NULL, updated_at = NOW() WHERE id = $1",
+                "UPDATE bookings SET google_event_id = NULL, updated_at = NOW() "
+                "WHERE organization_id = $2 AND id = $1",
                 booking["id"],
+                org_id,
             )
         return event_id
 

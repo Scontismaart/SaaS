@@ -51,7 +51,7 @@ async def _make_contact(repo) -> dict:
             uuid.uuid4(),
         )
         contact = await conn.fetchrow(
-            "INSERT INTO contacts (id, organization_id, phone_number) VALUES ($1, $2, $3) RETURNING id",
+            "INSERT INTO contacts (id, organization_id, phone_number) VALUES ($1, $2, $3) RETURNING id, organization_id",
             uuid.uuid4(), org["id"], "+391234567891",
         )
     return dict(contact)
@@ -60,7 +60,7 @@ async def _make_contact(repo) -> dict:
 class TestMarkAiDisclosureSent:
     async def test_first_call_returns_true_and_sets_timestamp(self, repo):
         contact = await _make_contact(repo)
-        result = await repo.mark_ai_disclosure_sent(contact["id"])
+        result = await repo.mark_ai_disclosure_sent(contact["id"], contact["organization_id"])
         assert result is True
         async with repo.pool.acquire() as conn:
             row = await conn.fetchrow("SELECT ai_disclosure_sent_at FROM contacts WHERE id = $1", contact["id"])
@@ -68,11 +68,11 @@ class TestMarkAiDisclosureSent:
 
     async def test_second_call_returns_false(self, repo):
         contact = await _make_contact(repo)
-        first = await repo.mark_ai_disclosure_sent(contact["id"])
-        second = await repo.mark_ai_disclosure_sent(contact["id"])
+        first = await repo.mark_ai_disclosure_sent(contact["id"], contact["organization_id"])
+        second = await repo.mark_ai_disclosure_sent(contact["id"], contact["organization_id"])
         assert first is True
         assert second is False
 
     async def test_missing_contact_returns_false(self, repo):
-        result = await repo.mark_ai_disclosure_sent(uuid.uuid4())
+        result = await repo.mark_ai_disclosure_sent(uuid.uuid4(), uuid.uuid4())
         assert result is False

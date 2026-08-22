@@ -199,7 +199,7 @@ async def test_opt_out_finalizes_safely_without_external_call(base_app_config, f
 
     mock_repo.record_consent_event.assert_awaited_once()
     mock_service.send_whatsapp_message.assert_not_awaited()
-    mock_repo.try_mark_replied.assert_awaited_once_with(msg_id, handling_type="opt_out")
+    mock_repo.try_mark_replied.assert_awaited_once_with(msg_id, handling_type="opt_out", organization_id=org_id)
 
 
 @pytest.mark.asyncio
@@ -234,5 +234,5 @@ async def test_all_successful_flows_finalize_properly(base_app_config, fake_tena
         await processor._process_one(msg)
 
     mock_service.send_whatsapp_message.assert_awaited_once()
-    mock_repo.mark_message_sent.assert_awaited_once_with(msg_id, "wamid_12345")
-    mock_repo.try_mark_replied.assert_awaited_once_with(msg_id, handling_type="ai_handled")
+    mock_repo.mark_message_sent.assert_awaited_once_with(msg_id, "wamid_12345", org_id)
+    mock_repo.try_mark_replied.assert_awaited_once_with(msg_id, handling_type="ai_handled", organization_id=org_id)

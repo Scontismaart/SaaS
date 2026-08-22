@@ -130,36 +130,36 @@ class TestTicketRepository:
         assert tickets == []
 
     async def test_get_conversation_found(self, repo):
-        _, _, conv = await self._create_test_data(repo)
-        result = await repo.get_conversation(str(conv["id"]))
+        org, _, conv = await self._create_test_data(repo)
+        result = await repo.get_conversation(str(conv["id"]), str(org["id"]))
         assert result is not None
         assert result["id"] == conv["id"]
         assert result["ticket_status"] == "AI_ACTIVE"
         assert result["version"] == 1
 
     async def test_get_conversation_not_found(self, repo):
-        result = await repo.get_conversation(str(uuid.uuid4()))
+        result = await repo.get_conversation(str(uuid.uuid4()), str(uuid.uuid4()))
         assert result is None
 
     async def test_escalate_to_human_success(self, repo):
-        _, _, conv = await self._create_test_data(repo)
-        result = await repo.escalate_to_human(str(conv["id"]))
+        org, _, conv = await self._create_test_data(repo)
+        result = await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         assert result is not None
         assert result["ticket_status"] == "PENDING_STAFF"
         assert result["pending_staff_at"] is not None
         assert result["version"] == 2
 
     async def test_escalate_to_human_already_escalated(self, repo):
-        _, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
-        result = await repo.escalate_to_human(str(conv["id"]))
+        org, _, conv = await self._create_test_data(repo)
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        result = await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         assert result is None
 
     async def test_claim_ticket_success(self, repo):
         org, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         staff_id = await self._create_staff(repo, org["id"])
-        result = await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2)
+        result = await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2, organization_id=str(org["id"]))
         assert result is not None
         assert result["ticket_status"] == "CLAIMED"
         assert str(result["assigned_to"]) == staff_id
@@ -169,22 +169,22 @@ class TestTicketRepository:
     async def test_claim_ticket_optimistic_lock_fail(self, repo):
         org, _, conv = await self._create_test_data(repo)
         other_id = await self._create_staff(repo, org["id"])
-        await repo.escalate_to_human(str(conv["id"]))
-        result = await repo.claim_ticket(str(conv["id"]), other_id, expected_version=1)
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        result = await repo.claim_ticket(str(conv["id"]), other_id, expected_version=1, organization_id=str(org["id"]))
         assert result is None
 
     async def test_claim_ticket_wrong_current_status(self, repo):
         org, _, conv = await self._create_test_data(repo)
         staff_id = await self._create_staff(repo, org["id"])
-        result = await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=1)
+        result = await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=1, organization_id=str(org["id"]))
         assert result is None
 
     async def test_release_ticket_success(self, repo):
         org, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         staff_id = await self._create_staff(repo, org["id"])
-        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2)
-        result = await repo.release_ticket(str(conv["id"]), staff_id)
+        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2, organization_id=str(org["id"]))
+        result = await repo.release_ticket(str(conv["id"]), staff_id, str(org["id"]))
         assert result is not None
         assert result["ticket_status"] == "PENDING_STAFF"
         assert result["assigned_to"] is None
@@ -192,19 +192,19 @@ class TestTicketRepository:
 
     async def test_release_ticket_wrong_user(self, repo):
         org, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         staff_id = await self._create_staff(repo, org["id"])
         other_id = await self._create_staff(repo, org["id"])
-        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2)
-        result = await repo.release_ticket(str(conv["id"]), other_id)
+        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2, organization_id=str(org["id"]))
+        result = await repo.release_ticket(str(conv["id"]), other_id, str(org["id"]))
         assert result is None
 
     async def test_resolve_ticket_success(self, repo):
         org, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         staff_id = await self._create_staff(repo, org["id"])
-        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2)
-        result = await repo.resolve_ticket(str(conv["id"]), staff_id)
+        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2, organization_id=str(org["id"]))
+        result = await repo.resolve_ticket(str(conv["id"]), staff_id, str(org["id"]))
         assert result is not None
         assert result["ticket_status"] == "RESOLVED"
         assert result["resolved_at"] is not None
@@ -213,17 +213,17 @@ class TestTicketRepository:
 
     async def test_resolve_ticket_not_assigned_to_user(self, repo):
         org, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
         staff_id = await self._create_staff(repo, org["id"])
         other_id = await self._create_staff(repo, org["id"])
-        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2)
-        result = await repo.resolve_ticket(str(conv["id"]), other_id)
+        await repo.claim_ticket(str(conv["id"]), staff_id, expected_version=2, organization_id=str(org["id"]))
+        result = await repo.resolve_ticket(str(conv["id"]), other_id, str(org["id"]))
         assert result is None
 
     async def test_set_conversation_ai_active(self, repo):
-        _, _, conv = await self._create_test_data(repo)
-        await repo.escalate_to_human(str(conv["id"]))
-        result = await repo.set_conversation_ai_active(str(conv["id"]))
+        org, _, conv = await self._create_test_data(repo)
+        await repo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        result = await repo.set_conversation_ai_active(str(conv["id"]), str(org["id"]))
         assert result is not None
         assert result["ticket_status"] == "AI_ACTIVE"
         assert result["assigned_to"] is None

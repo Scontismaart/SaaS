@@ -169,9 +169,10 @@ async def update_consent_prefs(
 
     event_type = "opt_in" if body.consent_status == "granted" else "opt_out" if body.consent_status == "withdrawn" else None
     if event_type:
-        await wrepo.record_consent_event(contact["id"], event_type, "manual_staff")
+        await wrepo.record_consent_event(contact["id"], event_type, "manual_staff",
+                                         organization_id=org_id)
 
-    new_status = await wrepo.get_contact_consent(contact["id"])
+    new_status = await wrepo.get_contact_consent(contact["id"], org_id)
     return {"phone_number": body.phone_number, "consent_status": new_status}
 
 

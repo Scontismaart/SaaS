@@ -257,7 +257,12 @@ class TestRouter:
         sig = _sign_body(body, app_config.app_secret)
         resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
         assert resp.status_code == 200
-        mock_repo.update_message_status_by_wam_id.assert_awaited_with("wamid.bad.callback", "delivered", error_code=None, error_title=None, error_details=None)
+        webhook_org = mock_repo.get_org_by_phone_number_id.return_value["organization_id"]
+        mock_repo.update_message_status_by_wam_id.assert_awaited_with(
+            "wamid.bad.callback", "delivered",
+            error_code=None, error_title=None, error_details=None,
+            organization_id=webhook_org,
+        )
         mock_repo.update_message_status.assert_awaited()
         assert any("webhook_invalid_callback_data" in r.message for r in caplog.records)
 

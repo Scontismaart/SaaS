@@ -72,7 +72,7 @@ async def test_claim_sent_non_reclamabile(pg_pool):
     """Se il report e' gia' stato inviato (sent), non si puo' reclamare."""
     org_id = await _crea_org(pg_pool)
     claim_id = await _claim_periodo(pg_pool, org_id, INIZIO, FINE)
-    await _segna_stato(pg_pool, claim_id, "sent", destinatari=["o@x.it"])
+    await _segna_stato(pg_pool, org_id, claim_id, "sent", destinatari=["o@x.it"])
     nuovo = await _claim_periodo(pg_pool, org_id, INIZIO, FINE)
     assert nuovo is None
 
@@ -82,7 +82,7 @@ async def test_claim_failed_reclamabile(pg_pool):
     """Un claim fallito (failed) puo' essere reclamato e torna 'pending'."""
     org_id = await _crea_org(pg_pool)
     primo = await _claim_periodo(pg_pool, org_id, INIZIO, FINE)
-    await _segna_stato(pg_pool, primo, "failed", motivo="SMTP giu'")
+    await _segna_stato(pg_pool, org_id, primo, "failed", motivo="SMTP giu'")
 
     secondo = await _claim_periodo(pg_pool, org_id, INIZIO, FINE)
     assert secondo is not None

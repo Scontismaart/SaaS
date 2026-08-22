@@ -145,6 +145,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/038_event_log_created_at.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/041_outbound_dedup.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
         await conn.execute(_WEEKLY_REPORT_LOG_SQL)
         await conn.execute(_WEEKLY_REPORT_LOG_STATUS_SQL)
         with open("src/core/db/migrations/039_rls_public_exposed_tables.sql", encoding="utf-8") as f:
@@ -173,6 +175,7 @@ async def reset_db(pg_pool):
                 google_calendar_credentials,
                 google_business_credentials,
                 oauth_nonces,
+                outbound_dedup,
                 weekly_report_log
             CASCADE
         """)

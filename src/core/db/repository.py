@@ -1,10 +1,13 @@
 import json
 import uuid
-import asyncpg
 from datetime import date, datetime, time
 
+import asyncpg
 
-class CoreRepository:
+from src.core.db.scoping import TenantScopedRepository, system_scope
+
+
+class CoreRepository(TenantScopedRepository):
     def __init__(self, pool):
         self.pool = pool
 
@@ -565,13 +568,6 @@ class CoreRepository:
                 )
             return self._json_fields_onboarding(dict(row))
 
-    async def list_onboarding_profiles(self):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM onboarding_profiles ORDER BY nome_attivita"
-            )
-            return [self._json_fields_onboarding(dict(r)) for r in rows]
-
     # ── Email configs ─────────────────────────────────────────
 
     async def add_email_config(self, organization_id, indirizzo, is_active=True):
@@ -648,6 +644,7 @@ class CoreRepository:
             """, auth_user_id, organization_id)
             return dict(row) if row else None
 
+    @system_scope("risoluzione multi-org da JWT validato server-side")
     async def get_memberships_by_auth(self, auth_user_id: str) -> list[dict]:
         """Tutti i membership dell'utente. Fonte unica per la risoluzione del
         tenant server-side (task18): l'org NON si deduce più da un header
@@ -808,6 +805,7 @@ class CoreRepository:
             )
             return dict(row)
 
+    @system_scope("risoluzione tenant da stripe_customer_id platform-unique")
     async def get_organization_by_stripe_customer(
         self, stripe_customer_id: str
     ) -> dict | None:
@@ -865,6 +863,7 @@ class CoreRepository:
             )
             return [dict(r) for r in rows]
 
+    @system_scope("root PK delete, cascade DB, endpoint owner-only")
     async def delete_organization(self, organization_id: uuid.UUID | str) -> None:
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)

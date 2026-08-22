@@ -1,9 +1,12 @@
 import os
 import uuid
+
 from cryptography.fernet import Fernet
 
+from src.core.db.scoping import TenantScopedRepository, system_scope
 
-class InstagramRepository:
+
+class InstagramRepository(TenantScopedRepository):
     """Accesso dati per il canale Instagram. Convive con WhatsAppRepository
     sullo stesso pool asyncpg: tabelle condivise (messages/conversations,
     identita' contatto = external id in contacts.phone_number) piu' la
@@ -12,6 +15,7 @@ class InstagramRepository:
     def __init__(self, pool):
         self.pool = pool
 
+    @system_scope("tenant-resolution: lookup da webhook Meta (ig_user_id platform-unique)")
     async def get_org_by_instagram_user_id(self, ig_user_id: str):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""

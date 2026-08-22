@@ -62,4 +62,4 @@ class TestP0Blockers:
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert "Stiamo ricevendo troppe richieste, attendi l'operatore" in body
         
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="quota_exceeded")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="quota_exceeded", organization_id=sample_msg["organization_id"])

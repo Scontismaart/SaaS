@@ -58,13 +58,15 @@ class TestTemplateSyncer:
 
     async def test_process_push_update(self, app_config, mock_repo):
         syncer = TemplateSyncer(app_config, mock_repo)
+        org_id = uuid.uuid4()
         await syncer.process_push_update({
             "message_template_name": "promo_welcome",
             "message_template_language": "it",
             "message_template_status": "REJECTED",
             "reason": "INVALID_FORMAT",
-        })
+        }, org_id)
         mock_repo.update_template_status.assert_called_once()
         args = mock_repo.update_template_status.call_args[1]
+        assert args["organization_id"] == org_id
         assert args["status"] == "REJECTED"
-        assert args["reason"] == "INVALID_FORMAT"
+        assert args["rejected_reason"] == "INVALID_FORMAT"

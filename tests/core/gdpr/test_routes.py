@@ -118,7 +118,7 @@ class TestConsentPrefs:
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=repo.pool)
         contact = await wrepo.get_or_create_contact(org_id, "393401234567")
-        await wrepo.record_consent_event(contact["id"], "opt_in", "manual_staff")
+        await wrepo.record_consent_event(contact["id"], "opt_in", "manual_staff", organization_id=org_id)
         resp = await async_client.get("/api/gdpr/consent-prefs",
                                       headers=_headers(org_id))
         assert resp.status_code == 200
@@ -140,7 +140,7 @@ class TestConsentPrefs:
                                       json={"phone_number": "393409876543", "consent_status": "withdrawn"},
                                       headers=_headers(org_id))
         assert resp.status_code == 200
-        status = await wrepo.get_contact_consent(contact["id"])
+        status = await wrepo.get_contact_consent(contact["id"], org_id)
         assert status == "withdrawn"
 
     async def test_put_consent_prefs_invalid_status(self, async_client, org_id):

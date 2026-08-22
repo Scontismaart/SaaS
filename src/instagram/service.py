@@ -57,11 +57,12 @@ class InstagramService:
                 IgSendTextRequest(recipient={"id": to_ig_id}, message={"text": text})
             )
             updated = await self.repo.update_message_status(
-                msg_id, "sent", wam_id=response.message_id
+                msg_id, "sent", wam_id=response.message_id, organization_id=org_id
             )
             return updated or {"status": "sent", "wam_id": response.message_id}
         except Exception as e:
-            await self.repo.update_message_status(msg_id, "failed", error_code="send_error", error_title=str(e))
+            await self.repo.update_message_status(msg_id, "failed", error_code="send_error",
+                                                  error_title=str(e), organization_id=org_id)
             raise
         finally:
             await client.close()

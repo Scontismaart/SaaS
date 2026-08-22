@@ -94,6 +94,7 @@ class TestWhatsAppService:
             access_token="tok",
             payload={"type": "text", "text": {"body": "Test"}},
             meta_client=mock_meta_client,
+            organization_id=uuid.uuid4(),
         )
         mock_repo.upsert_message.assert_not_called()
         mock_repo.update_message_status.assert_called()

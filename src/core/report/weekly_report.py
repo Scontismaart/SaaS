@@ -115,6 +115,7 @@ async def _claim_periodo(
 
 async def _segna_stato(
     pool,
+    org_id: str,
     claim_id: str,
     stato: str,
     destinatari: list[str] | None = None,
@@ -129,12 +130,12 @@ async def _segna_stato(
     async with pool.acquire() as conn:
         await conn.execute("""
             UPDATE weekly_report_log
-            SET stato = $2,
-                destinatari = CASE WHEN $2 = 'sent' THEN $3 ELSE destinatari END,
-                inviato_at = CASE WHEN $2 = 'sent' THEN NOW() ELSE inviato_at END,
-                motivo_errore = $4
-            WHERE id = $1
-        """, claim_id, stato, destinatari, motivo)
+            SET stato = $3,
+                destinatari = CASE WHEN $3 = 'sent' THEN $4 ELSE destinatari END,
+                inviato_at = CASE WHEN $3 = 'sent' THEN NOW() ELSE inviato_at END,
+                motivo_errore = $5
+            WHERE organization_id = $2 AND id = $1
+        """, claim_id, org_id, stato, destinatari, motivo)
 
 
 async def _get_nome_attivita(pool, org_id: str) -> str:
@@ -303,11 +304,11 @@ async def genera_e_invia_report_settimanale(
                 # Nessun destinatario: non e' un errore, ma il claim va
                 # rilasciato (-> 'failed') per permettere un nuovo tentativo
                 # quando l'org avra' un owner.
-                await _segna_stato(pool, claim_id, "failed", motivo="nessun destinatario")
+                await _segna_stato(pool, org_id, claim_id, "failed", motivo="nessun destinatario")
                 return risultato
 
             inviato = True
-            await _segna_stato(pool, claim_id, "sent", destinatari=risultato["destinatari"])
+            await _segna_stato(pool, org_id, claim_id, "sent", destinatari=risultato["destinatari"])
             return risultato
 
         except TRANSIENT_EXCEPTIONS as e:
@@ -326,7 +327,7 @@ async def genera_e_invia_report_settimanale(
     # Esauriti i retry (transiente) o errore permanente: marca 'failed'
     # e ri-solleva, cosi' il record non resta bloccato in 'pending'.
     try:
-        await _segna_stato(pool, claim_id, "failed", motivo=str(ultimo_errore))
+        await _segna_stato(pool, org_id, claim_id, "failed", motivo=str(ultimo_errore))
     except Exception:
         logger.exception("report_settimanale=marca_failed_fallita org=%s", org_id)
     _allerta_sentry(ultimo_errore, org_id)

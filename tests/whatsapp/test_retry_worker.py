@@ -85,6 +85,24 @@ class TestRetryWorker:
             await worker.process_next_batch()
             assert mock_repo.update_delivery_attempt.call_count == 2
 
+    async def test_attempt_passes_organization_id(self, app_config, mock_repo, mock_tenant):
+        """Regression (Fix Round 1): attempt_delivery richiede organization_id
+        obbligatorio; un AsyncMock nudo nasconderebbe la firma rotta e il
+        TypeError finirebbe nell'except generico bruciando i retry fino al
+        dead-letter. Qui asseriamo che il kwarg arrivi e sia l'org del
+        messaggio seedato."""
+        mock_service = AsyncMock()
+        mock_service.attempt_delivery = AsyncMock(return_value={"status": "sent"})
+        with patch(patching, AsyncMock(return_value=mock_tenant)):
+            worker = RetryWorker(app_config, mock_repo, mock_service)
+            await worker.process_next_batch()
+
+        expected_org = mock_repo.reconstruct_payload_for_retry.return_value["organization_id"]
+        assert mock_service.attempt_delivery.await_count == 2
+        for call in mock_service.attempt_delivery.await_args_list:
+            assert isinstance(call.kwargs["organization_id"], uuid.UUID)
+            assert call.kwargs["organization_id"] == expected_org
+
     async def test_dead_letter_after_max_retries(self, app_config, mock_repo, mock_tenant):
         mock_repo.claim_delivery_attempts = AsyncMock(return_value=[
             {"id": uuid.uuid4(), "message_id": uuid.uuid4(),

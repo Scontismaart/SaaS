@@ -77,7 +77,7 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         rows = await wrepo.list_tickets(str(org["id"]))
         assert len(rows) == 1
@@ -94,7 +94,7 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         rows = await wrepo.list_tickets(str(org["id"]))
         assert rows[0]["sla_minutes"] == 15
@@ -108,7 +108,7 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
         async with pg_pool.acquire() as conn:
             await conn.execute(
                 "UPDATE conversations SET pending_staff_at = NOW() - interval '10 minutes' WHERE id = $1",
@@ -137,7 +137,7 @@ class TestSla:
             )
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         rows = await wrepo.list_tickets(str(org["id"]))
         assert rows[0]["priorita"] == "alta"
@@ -150,7 +150,7 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         rows = await wrepo.list_tickets(str(org["id"]))
         assert rows[0]["priorita"] == "alta"
@@ -175,7 +175,7 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         rows = await wrepo.list_tickets(str(org["id"]), priorita="alta")
         assert len(rows) == 1
@@ -190,7 +190,7 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await self._make_client(app, org["id"], uuid.uuid4()) as client:
             response = await client.get("/api/inbox/tickets?priorita=alta")
@@ -217,7 +217,7 @@ class TestSla:
             )
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         rows = await wrepo.list_tickets(str(org["id"]))
         assert rows[0]["phone_number"] == "+393991234567"
@@ -231,9 +231,9 @@ class TestSla:
         _, conv = await self._create_conv(pg_pool, org["id"])
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
-        row = await wrepo.get_conversation(str(conv["id"]))
+        row = await wrepo.get_conversation(str(conv["id"]), str(org["id"]))
         assert row["sla_minutes"] == 45
         assert row["is_overdue"] is False
         assert row["phone_number"] == "+393991234567"

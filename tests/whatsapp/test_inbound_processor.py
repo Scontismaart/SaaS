@@ -123,14 +123,14 @@ class TestInboundProcessor:
             await processor.process_next_batch()
 
         mock_service.fast_path_match.assert_not_called()
-        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
+        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]), sample_msg["organization_id"])
         mock_email.assert_called_once()
         # Nessuna disclosure sul messaggio di attesa (vedi spec §6)
         assert mock_service.send_whatsapp_message.await_count == 1
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert "assistente automatico" not in body
         assert body == "Ti passo una persona dello staff, un attimo!"
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated", organization_id=sample_msg["organization_id"])
 
     async def test_ai_reply_sent_when_no_escalation(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -149,7 +149,7 @@ class TestInboundProcessor:
         assert payload_body.startswith("Ciao! Sono l'assistente automatico di Trattoria Test")
         assert payload_body.endswith("Siamo aperti dalle 12 alle 15.")
         mock_repo.escalate_to_human.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled", organization_id=sample_msg["organization_id"])
 
     async def test_escalation_when_ai_requires_human(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -164,7 +164,7 @@ class TestInboundProcessor:
             processor = InboundProcessor(app_config, mock_repo, mock_service)
             await processor.process_next_batch()
 
-        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
+        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]), sample_msg["organization_id"])
         mock_email.assert_called_once()
         # Il responder ha escalationato senza lasciare testo: il guardrail
         # "risposta_vuota" lo sostituisce col fallback staff, che ora viene
@@ -172,7 +172,7 @@ class TestInboundProcessor:
         mock_service.send_whatsapp_message.assert_awaited_once()
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert "ti metto in contatto con lo staff" in body
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated", organization_id=sample_msg["organization_id"])
 
     async def test_escalation_survives_email_failure(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -188,7 +188,7 @@ class TestInboundProcessor:
             await processor.process_next_batch()
 
         mock_repo.escalate_to_human.assert_awaited_once()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated", organization_id=sample_msg["organization_id"])
         mock_email.assert_called_once()
 
     async def test_fast_path_reply_also_sent_via_whatsapp(
@@ -292,7 +292,7 @@ class TestInboundProcessor:
         mock_service.send_whatsapp_message.assert_awaited_once()
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert body == "Grazie per averci scritto, ti risponderemo al piu' presto."
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="suspended")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="suspended", organization_id=sample_msg["organization_id"])
 
     async def test_suspended_org_blocks_new_booking(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -330,7 +330,7 @@ class TestInboundProcessor:
 
         booking_service.handle_reminder_reply.assert_awaited_once()
         mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="automation")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="automation", organization_id=sample_msg["organization_id"])
 
     async def test_decorate_with_disclosure_first_contact(
         self, app_config, mock_repo, mock_service
@@ -460,7 +460,7 @@ class TestInstagramDispatch:
 
         mock_ig_cls.assert_not_called()
         mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(ig_msg["id"], handling_type="ai_handled")
+        mock_repo.try_mark_replied.assert_awaited_with(ig_msg["id"], handling_type="ai_handled", organization_id=ig_msg["organization_id"])
 
 
 class TestGuardrailsProcessor:
@@ -493,7 +493,7 @@ class TestGuardrailsProcessor:
         assert "ti metto in contatto con lo staff" in body
         assert "25 euro" not in body
         # escalation + email al titolare
-        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]))
+        mock_repo.escalate_to_human.assert_awaited_once_with(str(sample_msg["conversation_id"]), sample_msg["organization_id"])
         mock_email.assert_called_once()
         # usage event del guardrail per iterare sui prompt
         assert mock_repo.record_usage.await_count >= 1
@@ -503,7 +503,7 @@ class TestGuardrailsProcessor:
         ]
         assert guardrail_calls, "manca l'usage event guardrail_block"
         assert guardrail_calls[0].kwargs["metadata"]["motivo"] == "prezzo_non_verificato"
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated", organization_id=sample_msg["organization_id"])
 
     async def test_prezzo_verificato_dal_rag_passa_e_viene_inviato(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -562,7 +562,7 @@ class TestGuardrailsProcessor:
         body = mock_service.send_whatsapp_message.call_args.kwargs["payload"]["text"]["body"]
         assert "qualcuno dello staff" in body
         mock_repo.escalate_to_human.assert_awaited_once()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated", organization_id=sample_msg["organization_id"])
 
     async def test_outbound_ai_marca_handling_type_ai_handled(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -728,14 +728,14 @@ class TestFeedbackEmojiProcessor:
         mock_ai.assert_not_called()
         mock_service.send_whatsapp_message.assert_not_called()
         mock_service.fast_path_match.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback", organization_id=sample_msg["organization_id"])
 
     async def test_pollice_giu_con_skin_tone(self, app_config, mock_repo, mock_service, sample_msg):
         mock_repo.get_last_ai_outbound_message = AsyncMock(return_value=None)
         sample_msg["content_text"] = "👎🏽 "
         processor = InboundProcessor(app_config, mock_repo, mock_service)
         await processor.process_next_batch()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback", organization_id=sample_msg["organization_id"])
 
     async def test_senza_risposta_ai_precedente_resto_gestito(
         self, app_config, mock_repo, mock_service, sample_msg
@@ -752,7 +752,7 @@ class TestFeedbackEmojiProcessor:
 
         mock_repo.registra_feedback.assert_not_called()
         mock_ai.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="feedback", organization_id=sample_msg["organization_id"])
 
     async def test_testo_con_emoji_non_e_feedback(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -770,7 +770,7 @@ class TestFeedbackEmojiProcessor:
             await processor.process_next_batch()
 
         mock_repo.registra_feedback.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled")
+        mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="ai_handled", organization_id=sample_msg["organization_id"])
 
 
 class TestRagContestoWhatsapp:

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --sidebar-bg:       #080a08;
   --sidebar-bg-2:     #121214;
   --sidebar-text:     #a1a1aa;
@@ -19,12 +19,16 @@
   --accent-soft:      rgba(94,255,0,0.1);
   --sage:             #5eff00;
   --sage-soft:        rgba(94,255,0,0.1);
-  --amber:            #5eff00;
-  --amber-soft:       rgba(94,255,0,0.1);
-  --red:              #C63F52;
-  --red-soft:         #F8E2E5;
-  --gold:             #5eff00;
-  --gold-soft:        rgba(94,255,0,0.1);
+  --amber:            #E8B33D;
+  --amber-soft:       rgba(232,179,61,0.14);
+  --red:              #C24357;
+  --red-soft:         rgba(194,67,87,0.16);
+  --gold:             #E5C07B;
+  --gold-soft:        rgba(229,192,123,0.12);
+
+  /* Alias storici usati da componenti recenti (thread modal ecc.) */
+  --border:           rgba(255,255,255,0.06);
+  --muted:            #8b8b93;
 
   --font-display:     "Inter", -apple-system, sans-serif;
   --font-body:        "Inter", -apple-system, sans-serif;
@@ -42,6 +46,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+
+/* L'attributo hidden deve vincere su qualunque display della classe
+   (i backdrop dei modal usano display:flex e lo sovrascriverebbero). */
+[hidden] { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -65,6 +73,86 @@ body {
   outline: 2.5px solid var(--amber);
   outline-offset: 3px;
 }
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+
+#toast-container {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(360px, calc(100vw - 44px));
+}
+
+.toast {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-left-width: 3px;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--ink);
+  box-shadow: 0 12px 34px rgba(0,0,0,0.45);
+  opacity: 0;
+  transform: translateX(14px);
+  transition: opacity 0.3s cubic-bezier(0.32,0.72,0,1), transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+
+.toast-in { opacity: 1; transform: translateX(0); }
+
+.toast-error { border-left-color: var(--red); }
+.toast-success { border-left-color: var(--sage); }
+.toast-info { border-left-color: var(--gold); }
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+
+.skeleton {
+  pointer-events: none;
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  border-radius: 8px;
+  min-height: 14px;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.06),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 2px;
+}
+
+.skeleton-line-lg { height: 40px; border-radius: 10px; }
 
 /* ============================================================
    APP SHELL
@@ -370,7 +458,7 @@ body {
 .kpi-card:hover {
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
-  border-color: #DCD6C8;
+  border-color: rgba(255,255,255,0.16);
 }
 
 .kpi-card.kpi-highlight {
@@ -530,7 +618,7 @@ body {
 }
 
 .priority-item.prio-alta:hover {
-  background: #FCD0D5;
+  background: rgba(194,67,87,0.24);
 }
 
 .priority-item.prio-media {
@@ -539,7 +627,7 @@ body {
 }
 
 .priority-item.prio-media:hover {
-  background: #FCE8C0;
+  background: rgba(232,179,61,0.22);
 }
 
 .priority-item.prio-bassa {
@@ -643,7 +731,7 @@ body {
 }
 
 .ticket-item.prio-alta:hover {
-  background: #FCD0D5;
+  background: rgba(194,67,87,0.24);
 }
 
 .ticket-item.prio-media {
@@ -652,7 +740,7 @@ body {
 }
 
 .ticket-item.prio-media:hover {
-  background: #FCE8C0;
+  background: rgba(232,179,61,0.22);
 }
 
 .ticket-item.prio-bassa:hover {
@@ -1014,7 +1102,7 @@ body {
   border-radius: 50%;
   border: none;
   background: var(--accent-2);
-  color: #FFFFFF;
+  color: #080a08;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2009,7 +2097,7 @@ body.booking-modal-open { overflow: hidden; }
   padding: 18px;
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
-  background: #FBFAF7;
+  background: var(--bg-elev-2, #1c1c1e);
   cursor: pointer;
   text-align: left;
   color: var(--ink);
@@ -2052,7 +2140,7 @@ body.booking-modal-open { overflow: hidden; }
   width: 100%;
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
-  background: #FFFDF9;
+  background: #1a1a1d;
   color: var(--ink);
   padding: 12px 14px;
   font: 500 0.9rem/1.5 var(--font-body);
@@ -2085,7 +2173,7 @@ body.booking-modal-open { overflow: hidden; }
   padding: 12px 14px;
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
-  background: #FFFDF9;
+  background: #1a1a1d;
   color: var(--ink-soft);
   font-weight: 600;
 }
@@ -2106,7 +2194,7 @@ body.booking-modal-open { overflow: hidden; }
   padding: 18px;
   border: 1px solid var(--card-border);
   border-radius: var(--radius-sm);
-  background: #FBFAF7;
+  background: var(--bg-elev-2, #1c1c1e);
 }
 
 .preview-card {
@@ -2401,12 +2489,16 @@ body.booking-modal-open { overflow: hidden; }
   --accent-soft:      rgba(94,255,0,0.1);
   --sage:             #5eff00;
   --sage-soft:        rgba(94,255,0,0.1);
-  --amber:            #5eff00;
-  --amber-soft:       rgba(94,255,0,0.1);
+  --amber:            #E8B33D;
+  --amber-soft:       rgba(232,179,61,0.14);
   --red:              #C24357;
-  --red-soft:         #F7E1E6;
-  --gold:             #5eff00;
-  --gold-soft:        rgba(94,255,0,0.1);
+  --red-soft:         rgba(194,67,87,0.16);
+  --gold:             #E5C07B;
+  --gold-soft:        rgba(229,192,123,0.12);
+
+  /* Alias storici usati da componenti recenti (thread modal ecc.) */
+  --border:           rgba(255,255,255,0.06);
+  --muted:            #8b8b93;
 
   --font-display:     "Inter", -apple-system, sans-serif;
   --font-body:        "Inter", -apple-system, sans-serif;

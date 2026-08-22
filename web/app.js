@@ -22,6 +22,30 @@ function _sanitize(v) {
   return String(v == null ? "" : v);
 }
 
+/* ============================================================
+   TOAST — notifiche non bloccanti al posto di alert()
+   ============================================================ */
+
+function toast(messaggio, tipo = "info", durata = 4200) {
+  let container = document.getElementById("toast-container");
+  if (!container) {
+    container = document.createElement("div");
+    container.id = "toast-container";
+    container.setAttribute("role", "status");
+    container.setAttribute("aria-live", "polite");
+    document.body.appendChild(container);
+  }
+  const el = document.createElement("div");
+  el.className = `toast toast-${tipo}`;
+  el.textContent = messaggio;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("toast-in"));
+  setTimeout(() => {
+    el.classList.remove("toast-in");
+    setTimeout(() => el.remove(), 320);
+  }, durata);
+}
+
 function leggiCookie(nome) {
   return document.cookie
     .split(";")
@@ -141,11 +165,11 @@ document.getElementById("billing-btn")?.addEventListener("click", async () => {
       const data = await res.json();
       if (data.url) window.location.href = data.url;
     } else {
-      alert("Impossibile aprire il portale abbonamenti. Riprova più tardi.");
+      toast("Impossibile aprire il portale abbonamenti. Riprova più tardi.", "error");
     }
   } catch (e) {
     console.error("Errore apertura portal billing:", e);
-    alert("Errore di connessione.");
+    toast("Errore di connessione.", "error");
   }
 });
 
@@ -944,7 +968,7 @@ async function aggiornaPrenotazioni() {
       const ora = String(p.ora).slice(0, 5);
       bookingCalendar.addEvent({
         id: p.id,
-        title: `${ora} Â· ${p.nome_cliente || "Cliente"} Â· ${p.coperti || "?"} coperti`,
+        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
         start: `${p.data}T${ora}:00`,
         end: `${p.data}T${ora}:00`,
         backgroundColor: colorePrenotazione(p.stato),
@@ -977,7 +1001,7 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
       const ora = String(p.ora || "").slice(0, 5);
       item.innerHTML = `
         <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
-        <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` Â· ${_sanitize(p.telefono)}` : ""}</span></div>
+        <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` · ${_sanitize(p.telefono)}` : ""}</span></div>
         <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
       bookingDayList.appendChild(item);
     });
@@ -1151,7 +1175,7 @@ async function inviaRecensione() {
     await aggiornaTrends();
     await aggiornaNotifiche();
   } catch (err) {
-    alert("Errore: " + err.message);
+    toast("Errore: " + err.message, "error");
   } finally {
     reviewAnalyze.disabled = false;
     reviewAnalyze.textContent = "Analizza e genera bozza";
@@ -1178,7 +1202,7 @@ async function approvaRecensione() {
     await aggiornaRiepilogo();
     await aggiornaPrioritari();
   } catch (err) {
-    alert("Errore: " + err.message);
+    toast("Errore: " + err.message, "error");
     reviewApprove.disabled = false;
     reviewApprove.textContent = "Approva risposta";
   }
@@ -1187,8 +1211,8 @@ async function approvaRecensione() {
 const trendList = document.getElementById("trend-list");
 
 function _paroleChiave(testi, max = 3) {
-  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "Ã¨", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "piÃ¹", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
-  const words = testi.join(" ").toLowerCase().replace(/[^a-zÃ Ã¨Ã©Ã¬Ã²Ã¹\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
+  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "è", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "più", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
+  const words = testi.join(" ").toLowerCase().replace(/[^a-zàèéìòù\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
   const freq = {};
   words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
   return Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, max).map(e => e[0]);
@@ -1203,7 +1227,7 @@ async function aggiornaTrends() {
     const totale = recensioni.length;
 
     if (totale === 0) {
-      trendList.innerHTML = `<li class="trend-item"><div class="trend-body"><span class="trend-label" style="color:var(--sidebar-text)">Nessuna recensione ancora â€” incollane una qui sopra.</span></div></li>`;
+      trendList.innerHTML = `<li class="trend-item"><div class="trend-body"><span class="trend-label" style="color:var(--sidebar-text)">Nessuna recensione ancora — incollane una qui sopra.</span></div></li>`;
       return;
     }
 
@@ -1228,7 +1252,7 @@ async function aggiornaTrends() {
 
     if (pos > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-pos">â–²</span>
+        <span class="trend-icon trend-pos">▲</span>
         <div class="trend-body">
           <span class="trend-label">Positivo (${pctPos}%)</span>
           <div class="trend-bar-track"><div class="trend-bar-fill fill-pos" style="width:${pctPos}%"></div></div>
@@ -1237,7 +1261,7 @@ async function aggiornaTrends() {
 
     if (neg > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-neg">â–¼</span>
+        <span class="trend-icon trend-neg">▼</span>
         <div class="trend-body">
           <span class="trend-label">Negativo (${pctNeg}%)</span>
           <div class="trend-bar-track"><div class="trend-bar-fill fill-neg" style="width:${pctNeg}%"></div></div>
@@ -1246,14 +1270,14 @@ async function aggiornaTrends() {
 
     if (neut > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-neutral">â€”</span>
+        <span class="trend-icon trend-neutral">—</span>
         <div class="trend-body"><span class="trend-label">Neutro (${pctNeut}%)</span></div>
       </li>`);
 
     topCat.forEach(([cat]) => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-topic">â†—</span>
+          <span class="trend-icon trend-topic">↗</span>
           <div class="trend-body"><span class="trend-label">Argomento ricorrente: ${_sanitize(cat.replace(/_/g, " "))}</span></div>
         </li>`);
     });
@@ -1261,7 +1285,7 @@ async function aggiornaTrends() {
     keywords.forEach(kw => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-new">âœ¦</span>
+          <span class="trend-icon trend-new">✦</span>
           <div class="trend-body"><span class="trend-label">Parola chiave: "${_sanitize(kw)}"</span></div>
         </li>`);
     });
@@ -1330,7 +1354,7 @@ async function aggiornaReport(forza = false) {
 reportRefresh.addEventListener("click", () => aggiornaReport(true));
 
 /* ============================================================
-   PANORAMICA â€” KPI + prioritÃ  + attivitÃ 
+   PANORAMICA — KPI + priorità + attività
    ============================================================ */
 
 const prioritySection = document.getElementById("priority-section");
@@ -1341,14 +1365,22 @@ const statTotale = document.getElementById("stat-totale");
 const statAi = document.getElementById("stat-ai");
 const statUmano = document.getElementById("stat-umano");
 
+function _skeletonList(n = 3) {
+  return (
+    '<div class="skeleton-list">' +
+    '<div class="skeleton skeleton-line-lg"></div>'.repeat(n) +
+    "</div>"
+  );
+}
+
 async function aggiornaPrioritari() {
+  priorityList.innerHTML = _skeletonList(3);
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
-    if (!res.ok) return;
-    const eventi = await res.json();
+    if (!res.ok) return;    const eventi = await res.json();
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
-      priorityList.innerHTML = `<li class="priority-empty">Niente da gestire â€” tutto sotto controllo.</li>`;
+      priorityList.innerHTML = `<li class="priority-empty">Niente da gestire — tutto sotto controllo.</li>`;
       return;
     }
     eventi.forEach((e) => {
@@ -1657,7 +1689,7 @@ docChiediBtn.addEventListener("click", async () => {
 });
 
 /* ============================================================
-   INBOX (HITL) â€” ticket escalati all'operatore umano
+   INBOX (HITL) — ticket escalati all'operatore umano
    ============================================================ */
 
 const inboxList = document.getElementById("inbox-list");
@@ -1691,14 +1723,19 @@ function formatSla(sla_due_at, is_overdue) {
   return { text: `SLA ${minutes} min`, overdue: false };
 }
 
+let inboxPrimoCaricamento = true;
+
 async function caricaInbox() {
   if (!inboxList) return;
+  if (inboxPrimoCaricamento) {
+    inboxList.innerHTML = _skeletonList(3);
+    inboxPrimoCaricamento = false;
+  }
   try {
     const params = new URLSearchParams();
     if (inboxState.status !== "ALL") params.set("status", inboxState.status);
     if (inboxState.priorita) params.set("priorita", inboxState.priorita);
-    const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);
-    if (!res.ok) return;
+    const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);    if (!res.ok) return;
     const data = await res.json();
     const tickets = data.tickets || [];
 
@@ -1752,7 +1789,7 @@ function renderInboxCard(container, t, team) {
 
   const meta = document.createElement("div");
   meta.className = "inbox-card-meta";
-  const assigned = t.assigned_nome ? ` Â· ${t.assigned_nome}` : "";
+  const assigned = t.assigned_nome ? ` · ${t.assigned_nome}` : "";
   meta.textContent = `${TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status}${assigned}`;
   left.appendChild(title);
   left.appendChild(meta);
@@ -1778,7 +1815,7 @@ function renderInboxCard(container, t, team) {
   if (t.pending_staff_at) {
     const pend = document.createElement("span");
     pend.className = "inbox-card-meta";
-    pend.textContent = ` Â· attesa da ${formatInboxDate(t.pending_staff_at)}`;
+    pend.textContent = ` · attesa da ${formatInboxDate(t.pending_staff_at)}`;
     meta.textContent += pend.textContent;
   }
 
@@ -1837,7 +1874,7 @@ function renderInboxCard(container, t, team) {
         await caricaInbox();
       } catch (err) {
         assignSel.disabled = false;
-        alert(err.message);
+        toast(err.message, "error");
       }
     });
     assignWrap.appendChild(assignSel);
@@ -1860,7 +1897,7 @@ function renderInboxCard(container, t, team) {
         if (!res.ok) throw new Error("Impossibile fare il claim.");
         await caricaInbox();
       } catch (err) {
-        alert(err.message);
+        toast(err.message, "error");
       }
     });
     actions.appendChild(claim);
@@ -1877,7 +1914,7 @@ function renderInboxCard(container, t, team) {
         if (!res.ok) throw new Error("Impossibile rilasciare.");
         await caricaInbox();
       } catch (err) {
-        alert(err.message);
+        toast(err.message, "error");
       }
     });
     actions.appendChild(release);
@@ -1892,7 +1929,7 @@ function renderInboxCard(container, t, team) {
         if (!res.ok) throw new Error("Impossibile risolvere.");
         await caricaInbox();
       } catch (err) {
-        alert(err.message);
+        toast(err.message, "error");
       }
     });
     actions.appendChild(risolvi);

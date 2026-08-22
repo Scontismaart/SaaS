@@ -165,6 +165,66 @@ async def test_outbound_dedup_scoped(two_orgs, pg_pool):
     assert own["response_text"] == "risposta-segreta-org-a"
 
 
+def _vec384(*head):
+    """Vettore 384 dimensioni: valori distinti in testa, resto a zero."""
+    return list(head) + [0.0] * (384 - len(head))
+
+
+async def _seed_doc_with_chunk(pg_pool, org_id, nome, content, embedding):
+    doc_id = uuid.uuid4()
+    chunk_id = uuid.uuid4()
+    vec = "[" + ",".join(str(v) for v in embedding) + "]"
+    async with pg_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO documents (id, organization_id, nome) VALUES ($1, $2, $3)",
+            doc_id, org_id, nome,
+        )
+        await conn.execute(
+            """INSERT INTO document_chunks
+                   (id, organization_id, document_id, chunk_index, content, embedding)
+               VALUES ($1, $2, $3, 0, $4, $5::vector)""",
+            chunk_id, org_id, doc_id, content, vec,
+        )
+    return {"doc": doc_id, "chunk": chunk_id}
+
+
+# Criticita' #6 (QA task 8): il retrieval vettoriale non deve mai attraversare
+# il confine tenant. L'embedding di org_b e' IDENTICO al vettore di query
+# (distanza 0 -> vincitore certo in un eventuale ranking cross-tenant):
+# se il filtro organization_id venisse meno, org_b vincerebbe comunque.
+async def test_search_similar_isolato(two_orgs, pg_pool):
+    repo = Repository(pool=pg_pool)
+    core_repo = CoreRepository(pool=pg_pool)
+    query_vec = _vec384(1.0, 0.0)
+
+    chunk_b = await _seed_doc_with_chunk(
+        pg_pool, two_orgs["b"]["id"], "manuale-org-b.pdf",
+        "SEGRETO-ORG-B: procedura riservata all'altra organizzazione",
+        query_vec,
+    )
+    chunk_a = await _seed_doc_with_chunk(
+        pg_pool, two_orgs["a"]["id"], "manuale-org-a.pdf",
+        "documento pubblico dell'organizzazione A",
+        _vec384(0.99, 0.02),
+    )
+
+    for search in (
+        lambda: repo.search_similar(str(two_orgs["a"]["id"]), query_vec, k=10),
+        lambda: core_repo.search_similar(str(two_orgs["a"]["id"]), query_vec, k=10),
+    ):
+        results = await search()
+        returned_ids = {r["id"] for r in results}
+        assert chunk_b["chunk"] not in returned_ids, (
+            "LEAK cross-tenant: la ricerca vettoriale di org_a ha ritornato "
+            "un chunk di org_b"
+        )
+        assert all("SEGRETO-ORG-B" not in r["content"] for r in results)
+        assert all(r["document_name"] != "manuale-org-b.pdf" for r in results)
+        assert returned_ids == {chunk_a["chunk"]}, (
+            "il chunk proprio di org_a deve essere l'unico risultato"
+        )
+
+
 # Criticita' #5: dead code cross-tenant rimosso (nessun chiamante in src/).
 def test_dead_code_rimosso():
     for method in ("soft_delete_message", "soft_delete_conversation", "soft_delete_contact"):

@@ -869,3 +869,41 @@ class CoreRepository(TenantScopedRepository):
             organization_id = uuid.UUID(organization_id)
         async with self.pool.acquire() as conn:
             await conn.execute("DELETE FROM organizations WHERE id = $1", organization_id)
+
+    # ── Registrazione (system scope: l'org non esiste ancora) ──
+
+    async def create_organization_with_owner(
+        self,
+        auth_user_id: str,
+        nome_attivita: str,
+        trial_days: int = 14,
+    ) -> dict:
+        """Crea organizzazione + membership owner in un'unica transazione.
+
+        System-scope giustificato: la registrazione crea una NUOVA org, non
+        tocca dati di tenant esistenti. user_profiles e' popolato dal trigger
+        sync_auth_user_profile() sull'INSERT in auth.users (stesso DB), quindi
+        al momento della chiamata la riga esiste gia'.
+        """
+        org_id = uuid.uuid4()
+        async with self.pool.acquire() as conn, conn.transaction():
+            row = await conn.fetchrow("""
+                WITH new_org AS (
+                    INSERT INTO organizations
+                        (id, name, subscription_status, trial_start, trial_end)
+                    VALUES ($1, $2, 'trialing', NOW(),
+                            NOW() + make_interval(days => $3))
+                    RETURNING id
+                )
+                INSERT INTO organization_memberships
+                    (organization_id, user_id, ruolo, joined_at)
+                SELECT o.id, up.id, 'owner', NOW()
+                FROM new_org o
+                JOIN user_profiles up ON up.auth_user_id = $4::uuid
+                RETURNING organization_id, user_id
+            """, org_id, nome_attivita, trial_days, uuid.UUID(auth_user_id))
+            if not row:
+                raise RuntimeError(
+                    "user_profiles non trovato per l'utente appena registrato"
+                )
+        return {"organization_id": str(org_id)}

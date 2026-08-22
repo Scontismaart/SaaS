@@ -74,6 +74,7 @@ if _sentry_dsn:
 from src.core.auth.csrf import validate_csrf_request
 from src.core.auth.dependencies import get_repo, require_ruolo, close_http_client
 from src.core.auth.routes import router as auth_router
+from src.core.auth.register import router as register_router
 from src.core.rate_limit import close_rate_limiter, get_rate_limiter, reset_memory_rate_limiter
 from src.core.security.docs import is_production, require_docs_access
 from src.core.db.repository import CoreRepository
@@ -230,6 +231,7 @@ app.include_router(reviews_router)
 app.include_router(reviews_google_router)
 app.include_router(instagram_account_router)
 app.include_router(auth_router)
+app.include_router(register_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]

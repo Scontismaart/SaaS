@@ -468,6 +468,22 @@ class Repository:
             """)
             return int(result.split()[-1]) if result else 0
 
+    async def get_outbound_dedup(self, message_id: uuid.UUID) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT response_text FROM outbound_dedup
+                WHERE message_id = $1
+            """, message_id)
+            return dict(row) if row else None
+
+    async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO outbound_dedup (message_id, organization_id, response_text)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (message_id) DO UPDATE SET response_text = EXCLUDED.response_text
+            """, message_id, org_id, response_text)
+
     async def check_message_usage(self, org_id: uuid.UUID) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -482,14 +498,14 @@ class Repository:
                 return await self._increment_message_usage(conn, org_id)
         return await self._increment_message_usage(conn, org_id)
 
-    async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int:
+    async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int | None:
         row = await conn.fetchrow("""
             UPDATE organizations
             SET messages_used_this_period = messages_used_this_period + 1
-            WHERE id = $1
+            WHERE id = $1 AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
             RETURNING messages_used_this_period
         """, org_id)
-        return row["messages_used_this_period"] if row else 0
+        return row["messages_used_this_period"] if row else None
 
     async def upsert_template(self, organization_id, name, language, category, status, components):
         async with self.pool.acquire() as conn:
@@ -916,4 +932,87 @@ class Repository:
             await conn.execute(
                 f"UPDATE whatsapp_templates SET {', '.join(parts)} WHERE name = $1 AND language = $2",
                 *params
+            )
+
+    async def claim_message_and_check_quota(self, msg_id: str, org_id: str) -> dict:
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    "SELECT id, billed_at, ai_reply_cache, sent_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid FOR UPDATE",
+                    msg_id
+                )
+                if not row:
+                    return {"status": "not_found"}
+
+                if row["sent_at"] is not None:
+                    return {"status": "already_sent"}
+
+                if row["quota_exceeded_at"] is not None:
+                    return {"status": "quota_exceeded"}
+                    
+                if row["processing_at"] is not None and row["ai_reply_cache"] is None:
+                    return {"status": "currently_processing"}
+
+                if row["billed_at"] is None:
+                    updated_org = await conn.fetchrow("""
+                        UPDATE organizations
+                        SET messages_used_this_period = messages_used_this_period + 1
+                        WHERE id = $1::uuid AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
+                        RETURNING messages_used_this_period
+                    """, org_id)
+
+                    if not updated_org:
+                        await conn.execute(
+                            "UPDATE messages SET quota_exceeded_at = now() WHERE id = $1::uuid",
+                            msg_id
+                        )
+                        return {"status": "quota_exceeded"}
+
+                    await conn.execute(
+                        "UPDATE messages SET billed_at = now() WHERE id = $1::uuid",
+                        msg_id
+                    )
+                    
+                cache_val = row["ai_reply_cache"]
+                if isinstance(cache_val, str):
+                    try:
+                        cache_val = json.loads(cache_val)
+                    except Exception:
+                        cache_val = {"text": cache_val, "richiede_umano": False}
+
+                if cache_val is None:
+                    await conn.execute(
+                        "UPDATE messages SET processing_at = now() WHERE id = $1::uuid", msg_id
+                    )
+
+                return {"status": "claimed", "ai_reply_cache": cache_val}
+
+    async def check_booking_exists(self, msg_id: str, org_id: str) -> bool:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT id FROM bookings WHERE organization_id = $1::uuid AND source_message_id = $2",
+                org_id, str(msg_id)
+            )
+            return bool(row)
+
+    async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False, motivo: str = "") -> None:
+        if isinstance(reply, dict):
+            payload = reply
+        else:
+            payload = {
+                "text": reply,
+                "richiede_umano": richiede_umano,
+                "motivo": motivo,
+            }
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE messages SET ai_reply_cache = $2::jsonb, ai_reply_generated_at = now() WHERE id = $1::uuid",
+                msg_id, json.dumps(payload)
+            )
+
+    async def mark_message_sent(self, msg_id: str, meta_message_id: str) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE messages SET sent_at = now(), meta_message_id = $2 WHERE id = $1::uuid",
+                msg_id, str(meta_message_id)
             )

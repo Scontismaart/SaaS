@@ -14,26 +14,50 @@ class CoreRepository:
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
                              richiede_intervento=False, id_conversazione=None,
                              contact_id=None, richiede_deposito=False,
-                             completata_at=None, tipo_evento=""):
+                             completata_at=None, tipo_evento="", source_message_id=None):
         if isinstance(data, str):
             data = date.fromisoformat(data)
         if isinstance(ora, str):
             ore, minuti = ora.split(":")
             ora = time(int(ore), int(minuti))
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO bookings (id, organization_id, contact_id,
-                                      nome_cliente, telefono, data, ora, coperti,
-                                      note, stato, origine, richiede_intervento,
-                                      id_conversazione, richiede_deposito, completata_at,
-                                      tipo_evento)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-                RETURNING *
-            """, uuid.uuid4(), organization_id, contact_id,
-            nome_cliente, telefono, data, ora, coperti,
-            note, stato, origine, richiede_intervento,
-            id_conversazione, richiede_deposito, completata_at, tipo_evento)
-            return dict(row)
+            if source_message_id:
+                try:
+                    row = await conn.fetchrow("""
+                        INSERT INTO bookings (id, organization_id, contact_id,
+                                              nome_cliente, telefono, data, ora, coperti,
+                                              note, stato, origine, richiede_intervento,
+                                              id_conversazione, richiede_deposito, completata_at,
+                                              tipo_evento, source_message_id)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                        ON CONFLICT (organization_id, source_message_id) WHERE source_message_id IS NOT NULL
+                            DO NOTHING
+                        RETURNING *
+                    """, uuid.uuid4(), organization_id, contact_id,
+                    nome_cliente, telefono, data, ora, coperti,
+                    note, stato, origine, richiede_intervento,
+                    id_conversazione, richiede_deposito, completata_at, tipo_evento, source_message_id)
+                except asyncpg.exceptions.UniqueViolationError:
+                    row = None
+                if not row:
+                    row = await conn.fetchrow("""
+                        SELECT * FROM bookings WHERE organization_id = $1 AND source_message_id = $2
+                    """, organization_id, source_message_id)
+                return dict(row) if row else None
+            else:
+                row = await conn.fetchrow("""
+                    INSERT INTO bookings (id, organization_id, contact_id,
+                                          nome_cliente, telefono, data, ora, coperti,
+                                          note, stato, origine, richiede_intervento,
+                                          id_conversazione, richiede_deposito, completata_at,
+                                          tipo_evento)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+                    RETURNING *
+                """, uuid.uuid4(), organization_id, contact_id,
+                nome_cliente, telefono, data, ora, coperti,
+                note, stato, origine, richiede_intervento,
+                id_conversazione, richiede_deposito, completata_at, tipo_evento)
+                return dict(row)
 
     async def get_booking(self, organization_id, booking_id):
         async with self.pool.acquire() as conn:
@@ -272,8 +296,8 @@ class CoreRepository:
                 return dict(updated)
 
     async def get_review_analytics(self, organization_id, giorni=90):
-        from datetime import datetime, timedelta
-        cutoff = datetime.utcnow() - timedelta(days=giorni)
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc) - timedelta(days=giorni)
         async with self.pool.acquire() as conn:
             sentiment_trend = await conn.fetch("""
                 SELECT DATE(created_at) AS giorno,
@@ -690,18 +714,18 @@ class CoreRepository:
 
     async def increment_message_usage(
         self, organization_id: uuid.UUID | str
-    ) -> int:
+    ) -> int | None:
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
                 """UPDATE organizations
                    SET messages_used_this_period = messages_used_this_period + 1
-                   WHERE id = $1
+                   WHERE id = $1 AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
                    RETURNING messages_used_this_period""",
                 organization_id,
             )
-            return row["messages_used_this_period"]
+            return row["messages_used_this_period"] if row else None
 
     async def reset_message_usage(
         self,

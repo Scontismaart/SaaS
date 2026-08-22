@@ -55,5 +55,6 @@ jobs:
           PGDATABASE: test
           PGHOST: localhost
           PGPORT: 5432
+          TEST_DB_DSN: postgresql://postgres:test@localhost:5432/test
           ENCRYPTION_KEY: C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=
         run: pytest -v --tb=short

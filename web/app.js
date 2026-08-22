@@ -69,6 +69,8 @@ function aggiornaBottoneAccesso() {
     btn.textContent = "Accedi";
     btn.title = "Accedi";
   }
+  const billingBtn = document.getElementById("billing-btn");
+  if (billingBtn) billingBtn.hidden = !sessione;
 }
 
 async function caricaSessione() {
@@ -129,6 +131,21 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
     });
   } else {
     apriConfigAccesso();
+  }
+});
+
+document.getElementById("billing-btn")?.addEventListener("click", async () => {
+  try {
+    const res = await apiFetch(`${API_BASE}/api/billing/create-portal-session`, { method: "POST" });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } else {
+      alert("Impossibile aprire il portale abbonamenti. Riprova più tardi.");
+    }
+  } catch (e) {
+    console.error("Errore apertura portal billing:", e);
+    alert("Errore di connessione.");
   }
 });
 

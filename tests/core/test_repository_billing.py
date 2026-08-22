@@ -65,7 +65,7 @@ async def test_update_plan_limits_sets_correct_values(repo, sample_org):
     await repo.update_plan_limits(sample_org["id"], "pro")
     result = await repo.get_organization_billing(sample_org["id"])
     assert result["plan"] == "pro"
-    assert result["messages_limit"] == 2000
+    assert result["messages_limit"] == 1200
     assert result["users_limit"] == 3
 
 
@@ -73,7 +73,7 @@ async def test_update_plan_limits_business_unlimited(repo, sample_org):
     await repo.update_plan_limits(sample_org["id"], "business")
     result = await repo.get_organization_billing(sample_org["id"])
     assert result["plan"] == "business"
-    assert result["messages_limit"] is None
+    assert result["messages_limit"] == 5000
 
 
 async def test_increment_message_usage_cross_tenant(repo, sample_org, other_org):

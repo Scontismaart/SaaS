@@ -47,7 +47,7 @@ async def handle_stripe_webhook(event: dict, repo, trial_days: int) -> dict | No
                 result = await _handle_payment_failed(conn, repo, data_obj, event_id)
             elif event_type == "customer.subscription.updated":
                 result = await _handle_subscription_updated(conn, repo, data_obj, event_id)
-            elif event_type == "subscription.deleted":
+            elif event_type in ("customer.subscription.deleted", "subscription.deleted"):
                 result = await _handle_subscription_deleted(conn, repo, data_obj, event_id)
             else:
                 result = None

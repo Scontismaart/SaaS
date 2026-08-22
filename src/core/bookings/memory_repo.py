@@ -29,7 +29,7 @@ class InMemoryBookingRepo:
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
                              richiede_intervento=False, id_conversazione=None,
                              contact_id=None, richiede_deposito=False,
-                             completata_at=None, tipo_evento=""):
+                             completata_at=None, tipo_evento="", source_message_id=None):
         if isinstance(data, str):
             data = date.fromisoformat(data)
         if isinstance(ora, str):

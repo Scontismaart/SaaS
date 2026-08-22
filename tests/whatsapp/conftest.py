@@ -3,34 +3,30 @@ import os
 os.environ.setdefault("TC_HOST", "localhost")
 
 import asyncio
+import uuid
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 import asyncpg
 import pytest
 
 CI = os.getenv("CI")
 
-if CI:
-    _dsn = (
-        f"postgresql://{os.getenv('PGUSER','postgres')}"
-        f":{os.getenv('PGPASSWORD','test')}"
-        f"@{os.getenv('PGHOST','localhost')}"
-        f":{os.getenv('PGPORT','5432')}"
-        f"/{os.getenv('PGDATABASE','test')}"
-    )
+_dsn = os.getenv(
+    "TEST_DB_DSN",
+    f"postgresql://{os.getenv('PGUSER','test')}"
+    f":{os.getenv('PGPASSWORD','test')}"
+    f"@{os.getenv('PGHOST','localhost')}"
+    f":{os.getenv('PGPORT','55432')}"
+    f"/{os.getenv('PGDATABASE','p0_concurrency_test')}"
+)
 
-    @pytest.fixture(scope="session")
-    def postgres_container():
-        class _FakeContainer:
-            @staticmethod
-            def get_connection_url():
-                return _dsn
-        return _FakeContainer()
-else:
-    from testcontainers.postgres import PostgresContainer
-
-    @pytest.fixture(scope="session")
-    def postgres_container():
-        with PostgresContainer("postgres:16") as pg:
-            yield pg
+@pytest.fixture(scope="session")
+def postgres_container():
+    class _FakeContainer:
+        @staticmethod
+        def get_connection_url():
+            return _dsn
+    return _FakeContainer()
 
 
 @pytest.fixture
@@ -38,6 +34,10 @@ async def pg_pool(postgres_container):
     dsn = postgres_container.get_connection_url().replace("+psycopg2", "")
     pool = await asyncpg.create_pool(dsn=dsn, min_size=2, max_size=10)
     async with pool.acquire() as conn:
+        await conn.execute("""
+            DROP SCHEMA IF EXISTS public CASCADE;
+            CREATE SCHEMA public;
+        """)
         with open("src/whatsapp/schema.sql") as f:
             await conn.execute(f.read())
         with open("src/core/db/migrations/004_gdpr.sql") as f:
@@ -262,7 +262,75 @@ def app_config():
     return AppConfig(
         app_secret="test_app_secret_123",
         encryption_key="C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=",
-        postgres_dsn="postgresql://test:[REDACTED]@localhost:5432/test",
+        postgres_dsn="postgresql://test:test@localhost:5432/test",
         verify_token="test_verify_token",
         max_retry_attempts=5,
     )
+
+
+@pytest.fixture
+def sample_msg():
+    return {
+        "id": uuid.uuid4(),
+        "organization_id": uuid.uuid4(),
+        "conversation_id": uuid.uuid4(),
+        "content": {"from": "391234567890"},
+        "content_text": "Ciao",
+        "message_type": "text",
+    }
+
+
+@pytest.fixture
+def fake_tenant_config():
+    from src.whatsapp.config import TenantConfig
+    return TenantConfig(
+        organization_id=uuid.uuid4(),
+        phone_number_id="123456",
+        waba_id="waba1",
+        access_token="decrypted-token",
+        business_profile={"nome": "Trattoria Test", "orari": "12-15"},
+    )
+
+
+@pytest.fixture
+def mock_service():
+    service = AsyncMock()
+    service.check_opt_out = AsyncMock(return_value={"is_opt_out": False, "confidence": "low"})
+    service.fast_path_match = AsyncMock(return_value=None)
+    service.check_human_request = AsyncMock(return_value=False)
+    service.send_whatsapp_message = AsyncMock(return_value={"status": "sent", "wam_id": "wamid_12345"})
+    service.MessageUsageExceeded = Exception
+    return service
+
+
+@pytest.fixture
+def mock_repo(sample_msg):
+    repo = AsyncMock()
+    repo.claim_inbound_messages = AsyncMock(return_value=[sample_msg])
+    repo.reap_stale_claims = AsyncMock(return_value=[])
+    repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
+    repo.update_heartbeat = AsyncMock()
+    repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
+    repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
+    repo.faq_cache_lookup = AsyncMock(return_value=None)
+    repo.faq_cache_store = AsyncMock(return_value=None)
+    repo.pool = MagicMock()
+    repo.claim_message_and_check_quota = AsyncMock(return_value={
+        "status": "claimed",
+        "ai_reply_cache": None,
+        "billed_at": None,
+        "sent_at": None,
+        "quota_exceeded_at": None,
+        "processing_at": None,
+    })
+    repo.get_outbound_dedup = AsyncMock(return_value=None)
+    repo.save_outbound_dedup = AsyncMock()
+    repo.save_ai_reply = AsyncMock()
+    repo.check_booking_exists = AsyncMock(return_value=False)
+    repo.mark_message_sent = AsyncMock()
+    repo.escalate_to_human = AsyncMock(return_value={"id": str(uuid.uuid4()), "ticket_status": "PENDING_STAFF"})
+    repo.record_usage = AsyncMock()
+    repo.get_org_business_profile = AsyncMock(return_value={})
+    return repo
+

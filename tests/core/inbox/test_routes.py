@@ -100,7 +100,7 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_client(app, org["id"], profile2["id"]) as client:
             response = await client.get("/api/inbox/tickets")
@@ -129,7 +129,7 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(
@@ -159,7 +159,7 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(
@@ -196,8 +196,8 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2, organization_id=str(org["id"]))
 
         async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(f"/api/inbox/release/{conv['id']}")
@@ -223,8 +223,8 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2, organization_id=str(org["id"]))
 
         async with await _make_client(app, org["id"], staff_profile["id"]) as client:
             response = await client.post(f"/api/inbox/resolve/{conv['id']}")
@@ -257,7 +257,7 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))  # PENDING_STAFF, non CLAIMED
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))  # PENDING_STAFF, non CLAIMED
 
         async with await _make_client(app, org["id"], profile["id"]) as client:
             response = await client.post(
@@ -287,8 +287,8 @@ class TestInboxAPI:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(staff_profile["id"]), expected_version=2, organization_id=str(org["id"]))
 
         fake_tenant_config = MagicMock(phone_number_id="123", access_token="tok")
         fake_result = {"id": "msg-uuid-1", "status": "sent"}
@@ -369,7 +369,7 @@ class TestRealJwtPropagatesUserId:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         import jose.jwt as jose_jwt_module
 
@@ -411,8 +411,8 @@ class TestRealJwtPropagatesUserId:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2, organization_id=str(org["id"]))
 
         import jose.jwt as jose_jwt_module
 
@@ -486,7 +486,7 @@ class TestTeamAndAssign:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
             response = await client.post(
@@ -505,8 +505,8 @@ class TestTeamAndAssign:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(ids["staff"]["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(ids["staff"]["id"]), expected_version=2, organization_id=str(org["id"]))
 
         async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
             response = await client.post(
@@ -586,7 +586,7 @@ class TestTeamAndAssign:
 
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_client(app, org["id"], ids["owner"]["id"], ruolo="owner") as client:
             response = await client.post(
@@ -635,7 +635,7 @@ class TestApiKeySenzaUserId:
         )
         from src.whatsapp.repository import Repository as WRepo
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_api_key_client(app, org["id"]) as client:
             response = await client.post(
@@ -742,8 +742,8 @@ class TestReplyDispatchPerCanale:
         org, profile, conv = await self._create_instagram_ticket(pg_pool)
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2, organization_id=str(org["id"]))
 
         mock_send = AsyncMock(return_value={"id": "msg-ig-1", "status": "sent"})
         fake_ig_service = MagicMock()
@@ -782,8 +782,8 @@ class TestReplyDispatchPerCanale:
         org, profile, conv = await self._create_instagram_ticket(pg_pool)
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
-        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2)
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
+        await wrepo.claim_ticket(str(conv["id"]), str(profile["id"]), expected_version=2, organization_id=str(org["id"]))
 
         with patch("src.instagram.config.load_instagram_config", AsyncMock(return_value=None)), \
              patch("src.instagram.service.InstagramService") as mock_ig_cls:
@@ -803,7 +803,7 @@ class TestReplyDispatchPerCanale:
         org, profile, conv = await self._create_instagram_ticket(pg_pool)
 
         wrepo = WRepo(pool=pg_pool)
-        await wrepo.escalate_to_human(str(conv["id"]))
+        await wrepo.escalate_to_human(str(conv["id"]), str(org["id"]))
 
         async with await _make_client(app, org["id"], profile["id"]) as client:
             response = await client.get("/api/inbox/tickets")

@@ -155,11 +155,11 @@ async def test_update_message_status_with_guard(repo: Repository, pg_pool):
     conv = await repo.get_or_create_conversation(org_id, contact["id"])
     msg = await repo.upsert_message(uuid.uuid4(), org_id, conv["id"], "wamid.test.3", "outbound", "text",
                                       {"text": {"body": "Ciao"}}, "Ciao", "queued")
-    updated = await repo.update_message_status(msg["id"], "delivered", wam_id="wamid.test.3")
+    updated = await repo.update_message_status(msg["id"], "delivered", wam_id="wamid.test.3", organization_id=org_id)
     assert updated["status"] == "delivered"
-    updated2 = await repo.update_message_status(msg["id"], "sent")
+    updated2 = await repo.update_message_status(msg["id"], "sent", organization_id=org_id)
     assert updated2["status"] == "delivered"
-    updated3 = await repo.update_message_status(msg["id"], "failed")
+    updated3 = await repo.update_message_status(msg["id"], "failed", organization_id=org_id)
     assert updated3["status"] == "failed"
 
 
@@ -213,6 +213,7 @@ async def test_record_consent_event(repo: Repository, pg_pool):
         event_type="opt_out",
         method="keyword_match",
         matched_text="stop",
+        organization_id=org_id,
     )
     assert event["event_type"] == "opt_out"
     assert event["method"] == "keyword_match"

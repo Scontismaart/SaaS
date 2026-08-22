@@ -20,34 +20,34 @@ async def contact(repo, org_id):
 
 
 @pytest.mark.asyncio
-async def test_record_consent_opt_out_sets_contact_status(repo, contact):
+async def test_record_consent_opt_out_sets_contact_status(repo, contact, org_id):
     c = await contact()
-    await repo.record_consent_event(c["id"], "opt_out", "keyword_match")
-    status = await repo.get_contact_consent(c["id"])
+    await repo.record_consent_event(c["id"], "opt_out", "keyword_match", organization_id=org_id)
+    status = await repo.get_contact_consent(c["id"], org_id)
     assert status == "withdrawn"
 
 
 @pytest.mark.asyncio
-async def test_record_consent_opt_in_sets_contact_status(repo, contact):
+async def test_record_consent_opt_in_sets_contact_status(repo, contact, org_id):
     c = await contact()
-    await repo.record_consent_event(c["id"], "opt_in", "manual_staff")
-    status = await repo.get_contact_consent(c["id"])
+    await repo.record_consent_event(c["id"], "opt_in", "manual_staff", organization_id=org_id)
+    status = await repo.get_contact_consent(c["id"], org_id)
     assert status == "granted"
 
 
 @pytest.mark.asyncio
-async def test_contact_default_consent(repo, contact):
+async def test_contact_default_consent(repo, contact, org_id):
     c = await contact()
-    status = await repo.get_contact_consent(c["id"])
+    status = await repo.get_contact_consent(c["id"], org_id)
     assert status == "unknown"
 
 
 @pytest.mark.asyncio
-async def test_consent_status_deleted_contact_returns_none(repo, contact):
+async def test_consent_status_deleted_contact_returns_none(repo, contact, org_id):
     c = await contact()
     async with repo.pool.acquire() as conn:
         await conn.execute("UPDATE contacts SET deleted_at = NOW() WHERE id = $1", c["id"])
-    status = await repo.get_contact_consent(c["id"])
+    status = await repo.get_contact_consent(c["id"], org_id)
     assert status is None
 
 

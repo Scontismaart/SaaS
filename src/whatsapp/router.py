@@ -195,6 +195,7 @@ async def _handle_status_update(repo, org_id, status):
                     error_code=str(errors[0]["code"]) if errors else None,
                     error_title=errors[0]["title"] if errors else None,
                     error_details=errors,
+                    organization_id=org_id,
                 )
             return
         await repo.update_message_status(
@@ -203,6 +204,7 @@ async def _handle_status_update(repo, org_id, status):
             error_code=str(errors[0]["code"]) if errors else None,
             error_title=errors[0]["title"] if errors else None,
             error_details=errors,
+            organization_id=org_id,
         )
         return
 
@@ -212,6 +214,7 @@ async def _handle_status_update(repo, org_id, status):
             error_code=str(errors[0]["code"]) if errors else None,
             error_title=errors[0]["title"] if errors else None,
             error_details=errors,
+            organization_id=org_id,
         )
 
 

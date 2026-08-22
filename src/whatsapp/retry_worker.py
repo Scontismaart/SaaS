@@ -57,7 +57,8 @@ class RetryWorker:
             logger.warning("Delivery attempt %d failed for %s: %s", attempt_num, message_id, e)
             if attempt_num >= self.max_retries:
                 await self.repo.update_delivery_attempt(attempt["id"], "failed", {"error": str(e)})
-                await self.repo.update_message_status(message_id, "failed", error_code="max_retries", error_title=str(e))
+                await self.repo.update_message_status(message_id, "failed", error_code="max_retries",
+                                                       error_title=str(e), organization_id=org_id)
             else:
                 next_retry = datetime.now(timezone.utc) + BACKOFF_SCHEDULE[min(attempt_num, len(BACKOFF_SCHEDULE) - 1)]
                 await self.repo.update_delivery_attempt(attempt["id"], "pending", {"error": str(e)})

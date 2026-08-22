@@ -172,5 +172,5 @@ async def test_all_successful_flows_finalize_properly(base_app_config, fake_tena
         await processor._process_one(msg)
 
     mock_service.send_whatsapp_message.assert_awaited_once()
-    mock_repo.mark_message_sent.assert_awaited_once_with(msg_id, "wamid_12345")
-    mock_repo.try_mark_replied.assert_awaited_once_with(msg_id, handling_type="ai_handled")
+    mock_repo.mark_message_sent.assert_awaited_once_with(msg_id, "wamid_12345", org_id)
+    mock_repo.try_mark_replied.assert_awaited_once_with(msg_id, handling_type="ai_handled", organization_id=org_id)

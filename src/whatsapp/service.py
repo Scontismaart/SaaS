@@ -90,6 +90,7 @@ class WhatsAppService:
             access_token=tenant_config.access_token,
             payload=payload,
             meta_client=meta_client,
+            organization_id=org_id,
         )
         if result:
             await self.repo.increment_message_usage(org_id)
@@ -102,6 +103,8 @@ class WhatsAppService:
         access_token: str,
         payload: dict,
         meta_client=None,
+        *,
+        organization_id,
     ) -> dict:
         if meta_client is None:
             from src.whatsapp.client import MetaClient
@@ -126,11 +129,12 @@ class WhatsAppService:
             response = await meta_client.send_message(send_request)
             wam_id = response.messages[0].id if response.messages else None
             updated = await self.repo.update_message_status(
-                message_id, "sent", wam_id=wam_id
+                message_id, "sent", wam_id=wam_id, organization_id=organization_id
             )
             return updated or {"status": "sent", "wam_id": wam_id}
         except Exception as e:
-            await self.repo.update_message_status(message_id, "failed", error_code="send_error", error_title=str(e))
+            await self.repo.update_message_status(message_id, "failed", error_code="send_error",
+                                                  error_title=str(e), organization_id=organization_id)
             raise
 
     async def check_opt_out(self, text: str, lang: str = "it") -> dict:

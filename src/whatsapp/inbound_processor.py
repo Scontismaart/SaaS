@@ -70,7 +70,7 @@ async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, re
                                    nome_attivita: str = "Attivita") -> str:
     """Prepende la disclosure AI al primo messaggio automatico per quel contatto."""
     contact = await repo.get_or_create_contact(org_id, from_number)
-    sent = await repo.mark_ai_disclosure_sent(contact["id"])
+    sent = await repo.mark_ai_disclosure_sent(contact["id"], org_id)
     if not sent:
         return testo
     return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
@@ -92,11 +92,11 @@ class InboundProcessor:
             except Exception as e:
                 logger.error("Error processing message %s: %s", msg["id"], e)
 
-    async def _heartbeat_loop(self, msg_id):
+    async def _heartbeat_loop(self, msg_id, organization_id):
         try:
             while True:
                 await asyncio.sleep(HEARTBEAT_INTERVAL)
-                await self.repo.update_heartbeat(msg_id)
+                await self.repo.update_heartbeat(msg_id, organization_id)
         except asyncio.CancelledError:
             pass
 
@@ -124,7 +124,7 @@ class InboundProcessor:
                     handling_type="quota_exceeded"
                 )
                 meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
+                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
                 if conv:
                     enqueue_escalation(
                         org_id=str(org_id),
@@ -132,7 +132,7 @@ class InboundProcessor:
                         contact_name=content.get("from", "cliente"),
                         pool=self.repo.pool,
                     )
-                await self._finalize_message(msg["id"], handling_type="quota_exceeded", meta_message_id=meta_id)
+                await self._finalize_message(msg["id"], handling_type="quota_exceeded", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Quota exceeded notification send failed for %s: %s", msg["id"], e)
             return
@@ -147,12 +147,13 @@ class InboundProcessor:
                 method="keyword_match",
                 triggering_message_id=msg["id"],
                 matched_text=text,
+                organization_id=org_id,
             )
             security_audit("consent_opt_out", contact_id=str(contact["id"]), organization_id=str(org_id))
             # Il percorso di opt-out non ha side-effect esterni verso Meta (fail-closed opt-out).
             # La persistenza del consenso e l'audit log sono transazionalmente completati nel DB locale.
             # È quindi sicuro finalizzare/marcare subito il messaggio come handled ('opt_out').
-            await self._finalize_message(msg["id"], handling_type="opt_out")
+            await self._finalize_message(msg["id"], handling_type="opt_out", organization_id=org_id)
             return
 
         wants_human = await self.service.check_human_request(text)
@@ -162,7 +163,7 @@ class InboundProcessor:
             try:
                 res = await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY, handling_type="automation")
                 meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
+                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
                 if conv:
                     enqueue_escalation(
                         org_id=str(org_id),
@@ -170,7 +171,7 @@ class InboundProcessor:
                         contact_name=from_number or "cliente",
                         pool=self.repo.pool,
                     )
-                await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id)
+                await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Human request notification send failed for %s: %s", msg["id"], e)
             return
@@ -187,7 +188,7 @@ class InboundProcessor:
             if booking_reply:
                 # Booking reminder reply invia la risposta internamente via booking_service._send_whatsapp;
                 # la finalizzazione avviene qui una volta completata l'elaborazione.
-                await self._finalize_message(msg["id"], handling_type="automation")
+                await self._finalize_message(msg["id"], handling_type="automation", organization_id=org_id)
                 return
 
         state = await self.repo.get_org_subscription_state(org_id)
@@ -197,7 +198,7 @@ class InboundProcessor:
             try:
                 res = await self._send_ai_reply(org_id, msg, content, tenant_config, ORG_SUSPENDED_REPLY, handling_type="automation")
                 meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                await self._finalize_message(msg["id"], handling_type="suspended", meta_message_id=meta_id)
+                await self._finalize_message(msg["id"], handling_type="suspended", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Org suspended message send failed for %s: %s", msg["id"], e)
             return
@@ -216,7 +217,7 @@ class InboundProcessor:
             try:
                 res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
                 meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id)
+                await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Fast reply send failed for %s: %s", msg["id"], e)
             return
@@ -230,7 +231,7 @@ class InboundProcessor:
             try:
                 res = await self._send_ai_reply(org_id, msg, content, tenant_config, dedup["response_text"])
                 meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id)
+                await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Dedup send failed for %s: %s", msg["id"], e)
             return
@@ -282,7 +283,7 @@ class InboundProcessor:
                         )
                     except Exception as e:
                         logger.warning("Cache hit usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
-                    await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id)
+                    await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id, organization_id=org_id)
                 except Exception as e:
                     logger.error("FAQ cache reply send failed for %s: %s", msg["id"], e)
                 return
@@ -314,10 +315,11 @@ class InboundProcessor:
                 richiede_umano = False
                 await self.repo.save_ai_reply(
                     msg["id"],
-                    reply={"text": risposta_text, "richiede_umano": False, "motivo": "booking_exists"}
+                    reply={"text": risposta_text, "richiede_umano": False, "motivo": "booking_exists"},
+                    organization_id=org_id,
                 )
             else:
-                heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"]))
+                heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"], org_id))
                 try:
                     contesto = await recupera_contesto_documenti(str(org_id), text, self.repo, q_emb=q_emb)
                     risposta = await genera_risposta_async(
@@ -398,7 +400,8 @@ class InboundProcessor:
                         "text": risposta_text,
                         "richiede_umano": richiede_umano,
                         "motivo": getattr(risposta, "motivo", "") or (getattr(esito, "motivo", "") if esito else ""),
-                    }
+                    },
+                    organization_id=org_id,
                 )
 
         if richiede_umano:
@@ -409,13 +412,13 @@ class InboundProcessor:
                     decorated = await decorate_with_disclosure(org_id, from_number, risposta_text, self.repo, profilo.nome)
                     res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
                     meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]))
+                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
                 if conv:
                     enqueue_escalation(
                         org_id=str(org_id), conversation_id=str(msg["conversation_id"]),
                         contact_name=content.get("from", "cliente"), pool=self.repo.pool,
                     )
-                await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id)
+                await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Human escalation reply send failed for %s: %s", msg["id"], e)
             return
@@ -429,7 +432,7 @@ class InboundProcessor:
         try:
             res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
             meta_message_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-            await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_message_id)
+            await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_message_id, organization_id=org_id)
         except Exception as e:
             logger.error("Meta send failed for %s: %s", msg["id"], e)
             return
@@ -470,17 +473,19 @@ class InboundProcessor:
             logger.error("Registrazione feedback emoji fallita msg %s: %s", msg["id"], e)
         # Il feedback emoji non esegue alcuna chiamata di rete esterna (nessun invio a Meta/AI).
         # La persistenza del feedback avviene interamente su DB locale; è sicuro finalizzare subito.
-        await self._finalize_message(msg["id"], handling_type="feedback")
+        await self._finalize_message(msg["id"], handling_type="feedback", organization_id=org_id)
 
-    async def _finalize_message(self, msg_id: str, handling_type: str, meta_message_id: str | None = None) -> bool:
+    async def _finalize_message(self, msg_id: str, handling_type: str, organization_id,
+                                meta_message_id: str | None = None) -> bool:
         """
         Punto unico di finalizzazione condiviso per tutti i flussi.
         Marca il messaggio come inviato a Meta (sent_at) e come risolto (replied_at/status=handled).
         Viene chiamato SOLO DOPO che qualsiasi side-effect esterno (invio Meta) ha avuto successo confermato.
         """
         if meta_message_id:
-            await self.repo.mark_message_sent(msg_id, meta_message_id)
-        return await self.repo.try_mark_replied(msg_id, handling_type=handling_type)
+            await self.repo.mark_message_sent(msg_id, meta_message_id, organization_id)
+        return await self.repo.try_mark_replied(msg_id, handling_type=handling_type,
+                                                 organization_id=organization_id)
 
     async def _send_ai_reply(self, org_id, msg, content, tenant_config, testo_risposta,
                              handling_type="ai_handled") -> dict:

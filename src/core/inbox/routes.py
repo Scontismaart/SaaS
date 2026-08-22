@@ -162,7 +162,8 @@ async def claim_ticket(
     conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    result = await wrepo.claim_ticket(conversation_id, _require_user_id(user), expected_version=body.expected_version)
+    result = await wrepo.claim_ticket(conversation_id, _require_user_id(user),
+                                       expected_version=body.expected_version, organization_id=org_id)
     if not result:
         raise HTTPException(status_code=409, detail="Conflict: ticket already claimed or version mismatch")
     return ClaimResponse(
@@ -187,7 +188,7 @@ async def release_ticket(
     conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    result = await wrepo.release_ticket(conversation_id, _require_user_id(user))
+    result = await wrepo.release_ticket(conversation_id, _require_user_id(user), organization_id=org_id)
     if not result:
         raise HTTPException(status_code=409, detail="Cannot release: not assigned to you or not CLAIMED")
     return {"ticket_status": result["ticket_status"], "version": result["version"]}
@@ -204,7 +205,7 @@ async def resolve_ticket(
     conv = await wrepo.get_conversation(conversation_id, org_id)
     if not conv or str(conv["organization_id"]) != str(org_id):
         raise HTTPException(status_code=404, detail="Conversation not found")
-    result = await wrepo.resolve_ticket(conversation_id, _require_user_id(user))
+    result = await wrepo.resolve_ticket(conversation_id, _require_user_id(user), organization_id=org_id)
     if not result:
         raise HTTPException(status_code=409, detail="Cannot resolve: not assigned to you or not CLAIMED")
     return {"ticket_status": result["ticket_status"], "version": result["version"]}
@@ -250,7 +251,8 @@ async def assign_ticket(
         raise HTTPException(status_code=404, detail="Member not found in this organization")
 
     result = await wrepo.assign_ticket(
-        conversation_id, body.assigned_to, expected_version=body.expected_version
+        conversation_id, body.assigned_to, expected_version=body.expected_version,
+        organization_id=org_id,
     )
     if not result:
         raise HTTPException(status_code=409, detail="Conflict: ticket status or version mismatch")

@@ -77,7 +77,7 @@ async function apiFetch(url, options = {}) {
     } else {
       sessione = null;
       aggiornaBottoneAccesso();
-      apriConfigAccesso();
+      vaiAdAccesso();
     }
   }
   return res;
@@ -115,27 +115,11 @@ async function caricaSessione() {
   }
 }
 
-function apriConfigAccesso() {
-  document.getElementById("accesso-modal").hidden = false;
-  document.getElementById("accesso-error").textContent = "";
-}
-
-function chiudiConfigAccesso() {
-  document.getElementById("accesso-modal").hidden = true;
-}
-
-async function faiLogin(email, password) {
-  const res = await fetch(`${API_BASE}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "Credenziali non valide.");
-  }
-  await caricaSessione();
+/* Login su pagina dedicata /accedi/, registrazione su /registrati/
+   (pagine standalone). Il modal è stato rimosso. */
+function vaiAdAccesso() {
+  const next = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.href = `/accedi/?next=${next}`;
 }
 
 async function faiLogout() {
@@ -154,7 +138,7 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
       window.location.reload();
     });
   } else {
-    apriConfigAccesso();
+    vaiAdAccesso();
   }
 });
 
@@ -171,31 +155,6 @@ document.getElementById("billing-btn")?.addEventListener("click", async () => {
     console.error("Errore apertura portal billing:", e);
     toast("Errore di connessione.", "error");
   }
-});
-
-document.getElementById("accesso-save")?.addEventListener("click", async () => {
-  const email = document.getElementById("accesso-email").value.trim();
-  const password = document.getElementById("accesso-password").value;
-  const errEl = document.getElementById("accesso-error");
-  if (!email || !password) {
-    errEl.textContent = "Compila entrambi i campi.";
-    return;
-  }
-  const btn = document.getElementById("accesso-save");
-  btn.disabled = true;
-  try {
-    await faiLogin(email, password);
-    chiudiConfigAccesso();
-    window.location.reload();
-  } catch (err) {
-    errEl.textContent = err.message;
-  } finally {
-    btn.disabled = false;
-  }
-});
-
-document.querySelectorAll("[data-accesso-close]").forEach((el) => {
-  el.addEventListener("click", () => chiudiConfigAccesso());
 });
 
 /* ============================================================
@@ -313,7 +272,10 @@ navItems.forEach((btn) => {
       aggiornaPrioritari();
     }
     if (viewName === "onboarding") {
-      inizializzaOnboarding();
+/* NOTA: inizializzaOnboarding() NON va chiamata qui al load — parte dalla
+   vista onboarding (mostraView) DOPO la session check di avvia(). Chiamarla
+   al top-level trovava sessione=undefined e rimandava al login prima ancora
+   che caricaSessione() completasse (bounce immediato post-OAuth). */
     }
     if (viewName === "recensioni") {
       aggiornaTrends();
@@ -445,7 +407,7 @@ function profiloOnboarding() {
   const vertical = verticaleCorrente();
   return {
     verticale: onboardingState.selectedVertical,
-    nome_attivita: onboardingEls.name.value.trim() || "Nuova attivita",
+    nome_attivita: onboardingEls.name.value.trim() || "Nuova attività",
     orari: onboardingEls.hours.value.trim() || "Orari da configurare",
     tono: onboardingEls.tone.value.trim() || vertical?.tono || "",
     servizi: righeDaTextarea(onboardingEls.services.value),
@@ -543,7 +505,7 @@ async function inizializzaOnboarding() {
     return;
   }
   if (!sessione) {
-    apriConfigAccesso();
+    vaiAdAccesso();
     return;
   }
   try {
@@ -712,8 +674,6 @@ onboardingEls.uploadDoc?.addEventListener("click", async () => {
     onboardingEls.uploadDoc.disabled = false;
   }
 });
-
-inizializzaOnboarding();
 
 /* ============================================================
    CHAT
@@ -1209,6 +1169,7 @@ async function approvaRecensione() {
 }
 
 const trendList = document.getElementById("trend-list");
+let trendPrimoCaricamento = true;
 
 function _paroleChiave(testi, max = 3) {
   const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "è", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "più", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
@@ -1220,6 +1181,10 @@ function _paroleChiave(testi, max = 3) {
 
 async function aggiornaTrends() {
   try {
+    if (trendPrimoCaricamento && trendList) {
+      trendList.innerHTML = _skeletonList(3);
+      trendPrimoCaricamento = false;
+    }
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
     if (!res.ok) return;
     const eventi = await res.json();
@@ -1227,7 +1192,16 @@ async function aggiornaTrends() {
     const totale = recensioni.length;
 
     if (totale === 0) {
-      trendList.innerHTML = `<li class="trend-item"><div class="trend-body"><span class="trend-label" style="color:var(--sidebar-text)">Nessuna recensione ancora — incollane una qui sopra.</span></div></li>`;
+      trendList.innerHTML = "";
+      const li = document.createElement("li");
+      li.appendChild(_emptyState(
+        ICONS.trend,
+        "Nessuna recensione ancora",
+        "Incolla una recensione qui a fianco: l'assistente valuta il tono e individua i temi ricorrenti.",
+        "Analizza una recensione",
+        () => document.getElementById("review-text")?.focus()
+      ));
+      trendList.appendChild(li);
       return;
     }
 
@@ -1360,7 +1334,6 @@ reportRefresh.addEventListener("click", () => aggiornaReport(true));
 const prioritySection = document.getElementById("priority-section");
 const priorityList = document.getElementById("priority-list");
 const ticketList = document.getElementById("ticket-list");
-const ticketEmpty = document.getElementById("ticket-empty");
 const statTotale = document.getElementById("stat-totale");
 const statAi = document.getElementById("stat-ai");
 const statUmano = document.getElementById("stat-umano");
@@ -1373,14 +1346,47 @@ function _skeletonList(n = 3) {
   );
 }
 
+const ICONS = {
+  inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 6.5h16v11H4v-11Z"/><path d="M4 8l8 6 8-6" stroke-linecap="round"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 4h10v16H7V4Z"/><path d="M10 9h4M10 13h4" stroke-linecap="round"/></svg>',
+  trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>',
+  chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5h16v10H9l-4 4v-4H4v-10Z"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+};
+
+function _emptyState(icon, titolo, sottotitolo, ctaLabel, ctaAction) {
+  const wrap = document.createElement("div");
+  wrap.className = "empty-state";
+  wrap.innerHTML =
+    '<div class="empty-state-icon" aria-hidden="true">' + icon + "</div>" +
+    '<span class="empty-state-title">' + _sanitize(titolo) + "</span>" +
+    '<span class="empty-state-sub">' + _sanitize(sottotitolo) + "</span>";
+  if (ctaLabel) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "review-analyze";
+    btn.textContent = ctaLabel;
+    btn.addEventListener("click", ctaAction);
+    wrap.appendChild(btn);
+  }
+  return wrap;
+}
+
 async function aggiornaPrioritari() {
   priorityList.innerHTML = _skeletonList(3);
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
-    if (!res.ok) return;    const eventi = await res.json();
+    if (!res.ok) return;
+    const eventi = await res.json();
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
-      priorityList.innerHTML = `<li class="priority-empty">Niente da gestire — tutto sotto controllo.</li>`;
+      const li = document.createElement("li");
+      li.appendChild(_emptyState(
+        ICONS.check,
+        "Tutto sotto controllo",
+        "Nessuna richiesta urgente: l'assistente sta gestendo le conversazioni."
+      ));
+      priorityList.appendChild(li);
       return;
     }
     eventi.forEach((e) => {
@@ -1418,7 +1424,13 @@ async function aggiornaRiepilogo() {
     statUmano.textContent = girati;
     ticketList.innerHTML = "";
     if (totale === 0) {
-      ticketList.appendChild(ticketEmpty);
+      ticketList.appendChild(_emptyState(
+        ICONS.chat,
+        "Nessuna attività ancora",
+        "Parla con l'assistente dalla sezione Assistente: le conversazioni compaiono qui.",
+        "Prova l'assistente",
+        () => document.querySelector('[data-view="assistente"]')?.click()
+      ));
       return;
     }
     storico.slice().reverse().forEach((e) => {
@@ -1484,6 +1496,7 @@ const docRisposta = document.getElementById("doc-risposta");
 const docRispostaText = document.getElementById("doc-risposta-text");
 const docFonti = document.getElementById("doc-fonti");
 const docFontiList = document.getElementById("doc-fonti-list");
+let docPrimoCaricamento = true;
 
 async function aggiornaConteggio() {
   try {
@@ -1499,12 +1512,25 @@ async function aggiornaConteggio() {
 async function aggiornaDocumenti() {
   if (!docLibrary) return;
   try {
+    if (docPrimoCaricamento) {
+      docLibrary.innerHTML = _skeletonList(3);
+      docPrimoCaricamento = false;
+    }
     const res = await apiFetch(`${API_BASE}/api/documenti/elenco`);
     if (!res.ok) return;
     const data = await res.json();
     docLibrary.innerHTML = "";
     if (!data.documenti?.length) {
-      docLibrary.innerHTML = '<p class="doc-library-empty">Nessun documento caricato.</p>';
+      docLibrary.appendChild(_emptyState(
+        ICONS.doc,
+        "Knowledge base vuota",
+        "Carica menu, listini o lista allergeni: l'assistente li userà per rispondere ai clienti.",
+        "Carica il primo documento",
+        () => {
+          document.getElementById("doc-carica-testo")?.focus();
+          document.getElementById("doc-carica-testo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      ));
       return;
     }
     data.documenti.forEach((documento) => {
@@ -1693,12 +1719,15 @@ docChiediBtn.addEventListener("click", async () => {
    ============================================================ */
 
 const inboxList = document.getElementById("inbox-list");
-const inboxEmpty = document.getElementById("inbox-empty");
 const inboxCount = document.getElementById("inbox-count");
 let inboxState = {
   status: "ALL",
   priorita: "",
 };
+
+function filtersAttivi() {
+  return inboxState.status !== "ALL" || Boolean(inboxState.priorita);
+}
 
 const TICKET_STATUS_LABEL = {
   AI_ACTIVE: "Automazione",
@@ -1750,8 +1779,11 @@ async function caricaInbox() {
     inboxCount.textContent = `${tickets.length} ticket`;
     inboxList.innerHTML = "";
     if (!tickets.length) {
-      inboxList.appendChild(inboxEmpty);
-      inboxEmpty.textContent = "Nessun ticket.";
+      inboxList.appendChild(_emptyState(
+        ICONS.inbox,
+        filtersAttivi() ? "Nessun ticket con questi filtri" : "Nessun ticket aperto",
+        "Quando l'assistente incontra una richiesta delicata, la conversazione finisce qui per la presa in carico."
+      ));
       return;
     }
     tickets.forEach((t) => renderInboxCard(inboxList, t, team));
@@ -2180,8 +2212,12 @@ function fermaInboxPolling() {
 (async function avvia() {
   const loggato = await caricaSessione();
   if (!loggato) {
-    apriConfigAccesso();
+    vaiAdAccesso();
     return;
+  }
+  if (sessionStorage.getItem("melpis_benvenuto")) {
+    sessionStorage.removeItem("melpis_benvenuto");
+    toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
   }
   aggiornaRiepilogo();
   aggiornaPrioritari();

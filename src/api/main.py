@@ -29,7 +29,6 @@ from src.core.conversation_store import store as conv_store
 
 from src.core.scheduler import (
     imposta_fonte_dati,
-    imposta_pool,
     avvia_scheduler,
     ferma_scheduler,
     get_report_cache,
@@ -115,7 +114,11 @@ async def lifespan(app: FastAPI):
             # aumenta senza toccare codice. Per picchi reali valutare un
             # pooler (Supavisor/pgBouncer) — vedi report task18.
             db_pool_max = int(os.getenv("DB_POOL_MAX_SIZE", "5"))
-            pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=db_pool_max)
+            # command_timeout: nessuna query web puo' restare appesa
+            # all'infinito (difesa post-incidente pool scheduler).
+            pool = await asyncpg.create_pool(
+                dsn=dsn, min_size=1, max_size=db_pool_max, command_timeout=30
+            )
             app.state.repo = CoreRepository(pool=pool)
             app.state.pool = pool
             print("[startup] Database pool created successfully.")
@@ -185,7 +188,6 @@ async def lifespan(app: FastAPI):
             whatsapp_service=None, app_config=None,
         )
         _imposta_fonte_dati_per_scheduler()
-    imposta_pool(app.state.pool)
     avvia_scheduler()
     yield
     ferma_scheduler()

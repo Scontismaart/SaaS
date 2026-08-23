@@ -10,6 +10,8 @@ transitoria) e al piano task18/auth-bff.
 """
 
 import asyncio
+import base64
+import hashlib
 import os
 
 import httpx
@@ -84,6 +86,58 @@ async def login(email: str, password: str) -> dict:
     return await _token_request(
         {"grant_type": "password", "email": email, "password": password}
     )
+
+
+def public_app_url() -> str:
+    url = os.getenv("PUBLIC_APP_URL", "").rstrip("/")
+    if not url:
+        raise HTTPException(500, "PUBLIC_APP_URL non configurato")
+    return url
+
+
+def pkce_challenge(code_verifier: str) -> str:
+    """S256: BASE64URL(SHA256(verifier)) senza padding (RFC 7636)."""
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+def google_authorize_url(redirect_to: str, code_challenge: str) -> str:
+    """URL di avvio OAuth Google su Supabase Auth (PKCE). Il browser viene
+    reindirizzato qui; Supabase gestisce il dialog Google e torna su
+    `redirect_to` con ?code=...&state=...
+
+    Nota: lo `state` OAuth è generato e validato internamente da Supabase
+    Auth (uuid della flow_state): passarne uno custom rompe il flusso
+    (bad_oauth_state). Il binding anti-CSRF resta garantito da PKCE: il
+    verifier viaggia solo nel nostro cookie HttpOnly.
+    """
+    from urllib.parse import urlencode
+
+    query = urlencode(
+        {
+            "provider": "google",
+            "redirect_to": redirect_to,
+            "code_challenge": code_challenge,
+            "code_challenge_method": "S256",
+        }
+    )
+    return f"{_supabase_url()}/auth/v1/authorize?{query}"
+
+
+async def exchange_pkce(auth_code: str, code_verifier: str) -> dict:
+    """Scambio del codice PKCE con Supabase Auth: stessa risposta della
+    /token (access_token + refresh_token), che il chiamante mette in cookie."""
+    client = await _client()
+    resp = await client.post(
+        f"{_supabase_url()}/auth/v1/token",
+        params={"grant_type": "pkce"},
+        json={"auth_code": auth_code, "code_verifier": code_verifier},
+        headers={"apikey": _anon_key(), "Content-Type": "application/json"},
+    )
+    if resp.status_code >= 400:
+        # Stessa regola del login password: 401 generico, niente dettagli.
+        raise HTTPException(401, "Autorizzazione non valida")
+    return resp.json()
 
 
 async def refresh(refresh_token: str, user_key: str) -> dict:

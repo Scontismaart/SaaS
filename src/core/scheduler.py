@@ -1,15 +1,65 @@
 import asyncio
+import logging
 import os
+import time
 from datetime import datetime
 
+import asyncpg
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from src.core.db.scoping import system_scope
 from src.models.schemas import ReportOutput
 
+logger = logging.getLogger(__name__)
+
 _report_cache: dict[str, ReportOutput] = {}
 _scheduler: BackgroundScheduler | None = None
+
+
+# I job girano in thread APScheduler: ogni asyncio.run() crea un event loop
+# NUOVO. Le connessioni asyncpg sono legate al loop che le ha create:
+# condividere il pool di uvicorn da qui corrompe il protocollo
+# (RuntimeError _check_state) e le connessioni avvelenate tornano nel pool,
+# appiccicando le richieste web senza alcun errore visibile. Ogni job usa
+# quindi un proprio pool effimero, come i worker standalone.
+_JOB_POOL_MIN = 1
+_JOB_POOL_MAX = 2
+_JOB_COMMAND_TIMEOUT = 30  # secondi: niente piu' query appese all'infinito
+
+
+def _dsn() -> str:
+    dsn = os.getenv("DATABASE_URL", "")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL non configurato: scheduler non operativo")
+    return dsn
+
+
+async def _con_pool_esimero(job_coro):
+    """Esegue la coroutine del job su un pool creato DENTRO il suo event
+    loop e lo chiude sempre. Log di durata per diagnostiche post-incidente."""
+    inizio = time.monotonic()
+    nome = getattr(job_coro, "__name__", "job")
+    pool = await asyncpg.create_pool(
+        dsn=_dsn(),
+        min_size=_JOB_POOL_MIN,
+        max_size=_JOB_POOL_MAX,
+        command_timeout=_JOB_COMMAND_TIMEOUT,
+    )
+    try:
+        await job_coro(pool)
+        logger.info(
+            "scheduler=job_ok job=%s durata=%.1fs", nome, time.monotonic() - inizio
+        )
+    except Exception:
+        logger.exception(
+            "scheduler=job_ko job=%s durata=%.1fs",
+            nome,
+            time.monotonic() - inizio,
+        )
+        raise
+    finally:
+        await pool.close()
 
 
 def _ottieni_storico_ref():
@@ -17,18 +67,11 @@ def _ottieni_storico_ref():
 
 
 _ottieni_storico = _ottieni_storico_ref
-_pool_ref = lambda: (_ for _ in ()).throw(RuntimeError("pool non impostato. Chiama imposta_pool()."))
-_pool = _pool_ref
 
 
 def imposta_fonte_dati(callback):
     global _ottieni_storico
     _ottieni_storico = callback
-
-
-def imposta_pool(pool):
-    global _pool
-    _pool = lambda: pool
 
 
 def get_report_cache(data: str) -> ReportOutput | None:
@@ -50,8 +93,7 @@ def genera_e_caching():
 
 
 def _run_retention():
-    pool = _pool()
-    asyncio.run(_retention_job(pool))
+    asyncio.run(_con_pool_esimero(_retention_job))
 
 
 async def _retention_job(pool):
@@ -61,8 +103,7 @@ async def _retention_job(pool):
 
 
 def _run_reminder_check():
-    pool = _pool()
-    asyncio.run(_reminder_check_job(pool))
+    asyncio.run(_con_pool_esimero(_reminder_check_job))
 
 
 async def _reminder_check_job(pool):
@@ -84,8 +125,7 @@ async def _reminder_check_job(pool):
 
 
 def _run_reminder_timeout():
-    pool = _pool()
-    asyncio.run(_reminder_timeout_job(pool))
+    asyncio.run(_con_pool_esimero(_reminder_timeout_job))
 
 
 async def _reminder_timeout_job(pool):
@@ -103,8 +143,7 @@ async def _reminder_timeout_job(pool):
 
 
 def _run_no_show_check():
-    pool = _pool()
-    asyncio.run(_no_show_check_job(pool))
+    asyncio.run(_con_pool_esimero(_no_show_check_job))
 
 
 async def _no_show_check_job(pool):
@@ -122,8 +161,7 @@ async def _no_show_check_job(pool):
 
 
 def _run_calendar_sync():
-    pool = _pool()
-    asyncio.run(_calendar_sync_job(pool))
+    asyncio.run(_con_pool_esimero(_calendar_sync_job))
 
 
 @system_scope("worker queue: enumerazione org con sync calendar abilitata")
@@ -164,8 +202,7 @@ async def _calendar_sync_job(pool):
 
 
 def _run_nonce_cleanup():
-    pool = _pool()
-    asyncio.run(_nonce_cleanup_job(pool))
+    asyncio.run(_con_pool_esimero(_nonce_cleanup_job))
 
 
 async def _nonce_cleanup_job(pool):
@@ -178,8 +215,7 @@ async def _nonce_cleanup_job(pool):
 
 
 def _run_suspension_notice():
-    pool = _pool()
-    asyncio.run(_suspension_notice_job(pool))
+    asyncio.run(_con_pool_esimero(_suspension_notice_job))
 
 
 async def _suspension_notice_job(pool):
@@ -203,8 +239,7 @@ async def _suspension_notice_job(pool):
 
 
 def _run_weekly_report():
-    pool = _pool()
-    asyncio.run(_weekly_report_job(pool))
+    asyncio.run(_con_pool_esimero(_weekly_report_job))
 
 
 async def _weekly_report_job(pool):

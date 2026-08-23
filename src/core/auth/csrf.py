@@ -13,6 +13,7 @@ CSRF_HEADER = "X-CSRF-Token"
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_EXEMPT_PATHS = {
     "/api/auth/login",
+    "/api/auth/register",
     "/api/health",
     "/api/billing/webhook",
     "/webhooks/whatsapp",

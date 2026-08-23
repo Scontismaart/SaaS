@@ -1,0 +1,142 @@
+"""Test verifica JWT Supabase (verify_supabase_jwt).
+
+Contratto:
+- token firmati ES256 (chiavi asimmetriche, default Supabase 2025+) e RS256
+  (progetti legacy) sono entrambi accettati;
+- l'algoritmo è pinnato al campo "alg" del JWKS: un token firmato con una
+  chiave estranea o con alg non supportato è rifiutato fail-closed (403);
+- iss e aud restano verificati.
+"""
+
+import time
+import uuid
+
+import pytest
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from jose import jwk as jose_jwk
+from jose import jwt
+
+from src.core.auth import dependencies as deps
+
+SUPABASE_URL = "https://myproj.supabase.co"
+ISS = f"{SUPABASE_URL}/auth/v1"
+AUD = "authenticated"
+
+pytestmark = pytest.mark.asyncio
+
+
+def _make_jwk(private_key, alg: str) -> dict:
+    jwk = jose_jwk.construct(private_key, algorithm=alg).to_dict()
+    # Un JWKS pubblico non contiene mai la componente privata ("d"): senza
+    # questa rimozione construct() di python-jose fallisce la verifica.
+    jwk.pop("d", None)
+    jwk["kid"] = str(uuid.uuid4())
+    jwk["alg"] = alg
+    return jwk
+
+
+def _make_token(private_key, alg: str, *, iss=ISS, aud=AUD, sub="user-1") -> str:
+    now = int(time.time())
+    claims = {
+        "sub": sub,
+        "aud": aud,
+        "iss": iss,
+        "iat": now,
+        "exp": now + 600,
+        "role": "authenticated",
+    }
+    return jwt.encode(claims, private_key, algorithm=alg)
+
+
+def _ec_key():
+    return ec.generate_private_key(ec.SECP256R1())
+
+
+def _rsa_key():
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
+
+
+@pytest.fixture(autouse=True)
+def env(monkeypatch):
+    monkeypatch.setenv("SUPABASE_URL", SUPABASE_URL)
+    monkeypatch.setenv("SUPABASE_JWT_AUD", AUD)
+    monkeypatch.setattr(deps, "JWKS_CACHE", {"keys": None, "expires_at": 0})
+
+
+@pytest.fixture
+def patch_jwks(monkeypatch):
+    async def _install(keys):
+        async def fake():
+            return keys
+
+        monkeypatch.setattr(deps, "_get_supabase_jwks", fake)
+
+    return _install
+
+
+async def test_token_es256_accettato(patch_jwks):
+    key = _ec_key()
+    await patch_jwks([_make_jwk(key, "ES256")])
+    payload = await deps.verify_supabase_jwt(_make_token(key, "ES256"))
+    assert payload["sub"] == "user-1"
+
+
+async def test_token_rs256_legacy_accettato(patch_jwks):
+    key = _rsa_key()
+    await patch_jwks([_make_jwk(key, "RS256")])
+    payload = await deps.verify_supabase_jwt(_make_token(key, "RS256"))
+    assert payload["sub"] == "user-1"
+
+
+async def test_chiave_senza_camp_alg_prova_entrambe(monkeypatch, patch_jwks):
+    key = _ec_key()
+    jwk = _make_jwk(key, "ES256")
+    jwk.pop("alg")
+    await patch_jwks([jwk])
+    payload = await deps.verify_supabase_jwt(_make_token(key, "ES256"))
+    assert payload["sub"] == "user-1"
+
+
+async def test_token_firmato_da_chiave_esterna_rifiutato(patch_jwks):
+    good = _ec_key()
+    evil = _ec_key()
+    await patch_jwks([_make_jwk(good, "ES256")])
+    with pytest.raises(Exception) as exc:
+        await deps.verify_supabase_jwt(_make_token(evil, "ES256"))
+    assert getattr(exc.value, "status_code", None) in (403, None)
+
+
+async def test_issuer_diverso_rifiutato(patch_jwks):
+    key = _ec_key()
+    await patch_jwks([_make_jwk(key, "ES256")])
+    with pytest.raises(Exception):
+        await deps.verify_supabase_jwt(
+            _make_token(key, "ES256", iss="https://evil.supabase.co/auth/v1")
+        )
+
+
+async def test_audience_diversa_rifiutata(patch_jwks):
+    key = _ec_key()
+    await patch_jwks([_make_jwk(key, "ES256")])
+    with pytest.raises(Exception):
+        await deps.verify_supabase_jwt(_make_token(key, "ES256", aud="other"))
+
+
+async def test_alg_non_supportato_saltato(patch_jwks):
+    """Una chiave HS256 nel JWKS non deve mai essere usata per RS/ES token."""
+    key = _ec_key()
+    hs_jwk = {
+        "kty": "oct",
+        "k": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "alg": "HS256",
+    }
+    await patch_jwks([hs_jwk, _make_jwk(key, "ES256")])
+    payload = await deps.verify_supabase_jwt(_make_token(key, "ES256"))
+    assert payload["sub"] == "user-1"
+
+
+async def test_nessuna_chiave_valida_fail_closed(patch_jwks):
+    await patch_jwks([])
+    with pytest.raises(deps.HTTPException) as exc:
+        await deps.verify_supabase_jwt("qualsiasi.token.qui")
+    assert exc.value.status_code == 403

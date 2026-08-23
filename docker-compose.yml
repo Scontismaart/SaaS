@@ -22,6 +22,21 @@ services:
       valkey:
         condition: service_started
 
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    image: whatsapp-ai-responder-web:latest
+    ports:
+      - "8080:80"
+    networks:
+      - app_internal
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.5"
+    depends_on:
+      - api
+
   valkey:
     image: valkey/valkey:8-alpine
     command: ["valkey-server", "--appendonly", "yes"]

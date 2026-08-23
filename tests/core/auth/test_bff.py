@@ -106,14 +106,14 @@ class TestLogin:
     async def test_login_throttled_after_5_failures(self, bff_client, monkeypatch):
         from fastapi import HTTPException
 
-        from src.core.auth import routes as auth_routes
+        from src.core.rate_limit import reset_memory_rate_limiter
 
         async def fail_login(email, password):
             raise HTTPException(401, "Credenziali non valide")
 
         monkeypatch.setattr(bff_module, "login", fail_login)
         # svuota lo stato di throttle tra i run dei test
-        auth_routes._LOGIN_FAILURES.clear()
+        reset_memory_rate_limiter()
 
         for _ in range(5):
             resp = await bff_client.post(

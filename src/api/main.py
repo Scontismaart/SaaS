@@ -29,7 +29,6 @@ from src.core.conversation_store import store as conv_store
 
 from src.core.scheduler import (
     imposta_fonte_dati,
-    imposta_pool,
     avvia_scheduler,
     ferma_scheduler,
     get_report_cache,
@@ -74,6 +73,7 @@ if _sentry_dsn:
 from src.core.auth.csrf import validate_csrf_request
 from src.core.auth.dependencies import get_repo, require_ruolo, close_http_client
 from src.core.auth.routes import router as auth_router
+from src.core.auth.register import router as register_router
 from src.core.rate_limit import close_rate_limiter, get_rate_limiter, reset_memory_rate_limiter
 from src.core.security.docs import is_production, require_docs_access
 from src.core.db.repository import CoreRepository
@@ -114,7 +114,11 @@ async def lifespan(app: FastAPI):
             # aumenta senza toccare codice. Per picchi reali valutare un
             # pooler (Supavisor/pgBouncer) — vedi report task18.
             db_pool_max = int(os.getenv("DB_POOL_MAX_SIZE", "5"))
-            pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=db_pool_max)
+            # command_timeout: nessuna query web puo' restare appesa
+            # all'infinito (difesa post-incidente pool scheduler).
+            pool = await asyncpg.create_pool(
+                dsn=dsn, min_size=1, max_size=db_pool_max, command_timeout=30
+            )
             app.state.repo = CoreRepository(pool=pool)
             app.state.pool = pool
             print("[startup] Database pool created successfully.")
@@ -184,7 +188,6 @@ async def lifespan(app: FastAPI):
             whatsapp_service=None, app_config=None,
         )
         _imposta_fonte_dati_per_scheduler()
-    imposta_pool(app.state.pool)
     avvia_scheduler()
     yield
     ferma_scheduler()
@@ -230,6 +233,7 @@ app.include_router(reviews_router)
 app.include_router(reviews_google_router)
 app.include_router(instagram_account_router)
 app.include_router(auth_router)
+app.include_router(register_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]

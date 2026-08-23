@@ -16,6 +16,15 @@ class RateLimiter(Protocol):
     async def hit(self, key: str, limit: int, window_seconds: int) -> bool:
         """Return True when the limit has been exceeded."""
 
+    async def push(self, key: str, window_seconds: int) -> None:
+        """Registra un evento (timestamp) nella finestra scorrevole del key."""
+
+    async def count(self, key: str, window_seconds: int) -> int:
+        """Eventi del key dentro la finestra scorrevole, SENZA incrementare."""
+
+    async def reset(self, key: str) -> None:
+        """Azzera gli eventi del key."""
+
 
 class InMemoryRateLimiter:
     def __init__(self) -> None:
@@ -29,6 +38,16 @@ class InMemoryRateLimiter:
             return True
         window.append(now)
         return False
+
+    async def push(self, key: str, window_seconds: int) -> None:
+        self.windows[key].append(time.time())
+
+    async def count(self, key: str, window_seconds: int) -> int:
+        now = time.time()
+        return len([t for t in self.windows.get(key, ()) if t > now - window_seconds])
+
+    async def reset(self, key: str) -> None:
+        self.windows.pop(key, None)
 
     def clear(self) -> None:
         self.windows.clear()
@@ -45,6 +64,27 @@ class RedisRateLimiter:
         if count == 1:
             await self.redis.expire(redis_key, window_seconds)
         return int(count) > limit
+
+    # Finestra scorrevole via ZSET: condivisa tra worker/repliche e
+    # sopravvive ai restart (a differenza del contatore INCR a finestra
+    # fissa usato dal middleware globale).
+    def _sw_key(self, key: str) -> str:
+        return f"{self.prefix}:sw:{key}"
+
+    async def push(self, key: str, window_seconds: int) -> None:
+        zkey = self._sw_key(key)
+        now = time.time()
+        await self.redis.zadd(zkey, {str(now): now})
+        await self.redis.expire(zkey, max(window_seconds, 1))
+
+    async def count(self, key: str, window_seconds: int) -> int:
+        zkey = self._sw_key(key)
+        cutoff = time.time() - window_seconds
+        await self.redis.zremrangebyscore(zkey, "-inf", cutoff)
+        return int(await self.redis.zcard(zkey))
+
+    async def reset(self, key: str) -> None:
+        await self.redis.delete(self._sw_key(key))
 
 
 _memory_limiter = InMemoryRateLimiter()

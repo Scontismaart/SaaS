@@ -10,7 +10,10 @@ from fastapi import Depends, Header, HTTPException, Request
 
 from src.core.auth.api_key_guard import api_key_request_allowed
 
-JWT_ALGORITHM = "RS256"
+# Firme JWT emesse da Supabase Auth: i progetti con le chiavi di firma
+# asimmetriche (default 2025+) usano ES256, i piu' vecchi RS256. L'alg e'
+# pinnato per chiave dal campo "alg" del JWKS: niente algorithm-switching.
+SUPPORTED_JWT_ALGS = ("RS256", "ES256")
 JWKS_CACHE: dict[str, Any] = {"keys": None, "expires_at": 0}
 HTTP_CLIENT: httpx.AsyncClient | None = None
 VALID_RUOLI = {"owner", "manager", "staff", "service_role"}
@@ -66,7 +69,6 @@ async def _get_supabase_jwks() -> list[dict]:
 
 async def verify_supabase_jwt(token: str) -> dict:
     from jose import JWTError, jwt
-    from jose.constants import Algorithms
 
     jwks = await _get_supabase_jwks()
     expected_aud = os.getenv("SUPABASE_JWT_AUD", "authenticated")
@@ -76,11 +78,14 @@ async def verify_supabase_jwt(token: str) -> dict:
     # comunque accettato. L'issuer atteso e' sempre "<SUPABASE_URL>/auth/v1".
     expected_iss = f"{supabase_url}/auth/v1" if supabase_url else None
     for key in jwks:
+        alg = key.get("alg")
+        if alg and alg not in SUPPORTED_JWT_ALGS:
+            continue
         try:
             payload = jwt.decode(
                 token,
                 key,
-                algorithms=[Algorithms.RS256],
+                algorithms=[alg] if alg else list(SUPPORTED_JWT_ALGS),
                 audience=expected_aud,
                 issuer=expected_iss,
                 options={"verify_aud": True, "verify_iss": bool(expected_iss)},

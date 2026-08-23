@@ -6,23 +6,61 @@ Nessun token transita dal client (niente localStorage, niente header Bearer).
 """
 
 import hashlib
-import time
+import os
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from src.core.auth import bff
+from src.core.auth import bff, throttle
 from src.core.auth.csrf import clear_csrf_token, issue_csrf_token
-from src.core.auth.dependencies import get_organization_context
+from src.core.auth.dependencies import get_organization_context, get_repo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+# Durata trial alla creazione org (registrazione normale e primo accesso
+# Google usano la stessa variabile d'ambiente).
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
+
 # Anti brute-force su /api/auth/login: fallimenti consecutivi per IP.
-# In-memory per processo (stessa limitazione del rate-limiter globale).
-_LOGIN_FAILURES: dict[str, list[float]] = {}
+# Contatori distribuiti (Redis quando RATE_LIMIT_BACKEND=redis): validi con
+# più worker/repliche e sopravvivono ai restart. Finestra scorrevole.
 _LOGIN_MAX_FAILURES = 5
 _LOGIN_WINDOW_SECONDS = 15 * 60
-_LOGIN_LOCKOUT_SECONDS = 15 * 60
+_LOGIN_LOCKOUT_SECONDS = _LOGIN_WINDOW_SECONDS  # la finestra stessa è il lockout
+
+# ── Google OAuth (PKCE server-side) ────────────────────────────────────
+# Il verifier viaggia SOLO in cookie HttpOnly: il browser non vede mai il
+# verifier (i token restano fuori da JS, come per il login BFF). Lo `state`
+# OAuth è gestito internamente da Supabase Auth: passarne uno custom rompe
+# il flusso (bad_oauth_state); il binding anti-CSRF è garantito da PKCE,
+# perché lo scambio del codice richiede il verifier del nostro cookie.
+# SameSite=Lax è richiesto: il callback arriva da un redirect top-level di
+# Google, che i cookie Strict non includerebbero.
+_OAUTH_VERIFIER_COOKIE = "wa_oauth_verifier"
+_OAUTH_NEXT_COOKIE = "wa_oauth_next"
+_OAUTH_STATE_MAX_AGE = 600  # 10 minuti per completare il round-trip
+
+
+def _oauth_cookie_name(base: str) -> str:
+    return f"__Host-{base}" if bff.cookie_secure() else base
+
+
+def _safe_next(next_path: str | None) -> str:
+    """Accetta solo path relativi interni (niente //host, backslash, scheme)."""
+    if not next_path:
+        return "/app/"
+    # I valori cookie con caratteri speciali tornano quotati dal browser.
+    path = next_path.strip('"')
+    if (
+        path.startswith("/")
+        and not path.startswith("//")
+        and "\\" not in path
+        and "://" not in path
+    ):
+        return path
+    return "/app/"
 
 
 class LoginRequest(BaseModel):
@@ -34,24 +72,26 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _check_login_throttle(ip: str) -> None:
-    now = time.time()
-    cutoff = now - _LOGIN_WINDOW_SECONDS
-    failures = [t for t in _LOGIN_FAILURES.get(ip, []) if t > cutoff]
-    if len(failures) >= _LOGIN_MAX_FAILURES:
+def _login_throttle_key(ip: str) -> str:
+    return f"auth:login-fail:{ip}"
+
+
+async def _check_login_throttle(ip: str) -> None:
+    if await throttle.is_throttled(
+        _login_throttle_key(ip), _LOGIN_MAX_FAILURES, _LOGIN_WINDOW_SECONDS
+    ):
         raise HTTPException(
             status_code=429,
             detail="Troppi tentativi di accesso. Riprova tra 15 minuti.",
         )
-    _LOGIN_FAILURES[ip] = failures
 
 
-def _record_login_failure(ip: str) -> None:
-    _LOGIN_FAILURES.setdefault(ip, []).append(time.time())
+async def _record_login_failure(ip: str) -> None:
+    await throttle.record_event(_login_throttle_key(ip), _LOGIN_LOCKOUT_SECONDS)
 
 
-def _record_login_success(ip: str) -> None:
-    _LOGIN_FAILURES.pop(ip, None)
+async def _record_login_success(ip: str) -> None:
+    await throttle.clear_events(_login_throttle_key(ip))
 
 
 def _set_session_cookies(response: Response, data: dict) -> None:
@@ -74,13 +114,13 @@ def _clear_session_cookies(response: Response) -> None:
 @router.post("/login")
 async def login(body: LoginRequest, request: Request, response: Response):
     ip = _client_ip(request)
-    _check_login_throttle(ip)
+    await _check_login_throttle(ip)
     try:
         data = await bff.login(body.email.strip(), body.password)
     except HTTPException:
-        _record_login_failure(ip)
+        await _record_login_failure(ip)
         raise
-    _record_login_success(ip)
+    await _record_login_success(ip)
     _set_session_cookies(response, data)
     csrf_token = issue_csrf_token(response)
     return {"ok": True, "email": body.email.strip(), "csrf_token": csrf_token}
@@ -97,6 +137,113 @@ async def refresh(request: Request, response: Response):
     _set_session_cookies(response, data)
     csrf_token = issue_csrf_token(response)
     return {"ok": True, "csrf_token": csrf_token}
+
+
+def _nome_attivita_da_utente(user: dict) -> str:
+    """Nome organizzazione per il provisioning JIT: full name Google,
+    altrimenti prefisso email. Trim + limite 120 come la validazione
+    della registrazione normale."""
+    meta = user.get("user_metadata") if isinstance(user, dict) else None
+    meta = meta if isinstance(meta, dict) else {}
+    email = user.get("email") or ""
+    nome = (
+        (meta.get("full_name") or "").strip()
+        or (meta.get("name") or "").strip()
+        or email.split("@")[0].strip()
+        or "La mia attività"
+    )
+    return nome[:120] or "La mia attività"
+
+
+@router.get("/google/start")
+async def google_start(next: str | None = None):
+    """Avvio login Google: genera il PKCE verifier, lo mette in cookie
+    HttpOnly di breve durata e reindirizza al authorize endpoint Supabase.
+    Lo `state` OAuth non va passato: lo genera Supabase internamente."""
+    next_path = _safe_next(next)
+    code_verifier = secrets.token_urlsafe(48)
+    redirect_to = f"{bff.public_app_url()}/api/auth/google/callback"
+    authorize_url = bff.google_authorize_url(
+        redirect_to, bff.pkce_challenge(code_verifier)
+    )
+
+    # I cookie vanno messi sulla redirect stessa: FastAPI non unisce gli
+    # header del parametro `response` quando si torna una Response diretta.
+    redirect = RedirectResponse(authorize_url, status_code=302)
+    common = {
+        "httponly": True,
+        "secure": bff.cookie_secure(),
+        "samesite": "lax",
+        "path": "/",
+        "max_age": _OAUTH_STATE_MAX_AGE,
+    }
+    redirect.set_cookie(_oauth_cookie_name(_OAUTH_VERIFIER_COOKIE), code_verifier, **common)
+    # Il path di destinazione post-login viaggia nel cookie (non nell'URL di
+    # authorize: redirect_to deve restare identico agli URL consentiti Supabase).
+    redirect.set_cookie(_oauth_cookie_name(_OAUTH_NEXT_COOKIE), next_path, **common)
+    return redirect
+
+
+@router.get("/google/callback")
+async def google_callback(request: Request):
+    """Callback Google→Supabase: scambia il codice PKCE con i token di
+    sessione e imposta gli stessi cookie del login BFF. Lo `state` che torna
+    indietro è l'uuid interno di Supabase (opaco): l'integrità del flusso è
+    garantita da PKCE — senza il verifier nel cookie HttpOnly lo scambio
+    fallisce. Qualsiasi anomalia → /accedi/?errore=google (fail-closed)."""
+    error_redirect = RedirectResponse("/accedi/?errore=google", status_code=302)
+
+    # Google/Supabase possono rimandare un errore OAuth (access denied ecc.)
+    if request.query_params.get("error"):
+        return error_redirect
+
+    auth_code = request.query_params.get("code")
+    cookie_verifier = request.cookies.get(_oauth_cookie_name(_OAUTH_VERIFIER_COOKIE))
+    cookie_next = _safe_next(request.cookies.get(_oauth_cookie_name(_OAUTH_NEXT_COOKIE)))
+    if not auth_code or not cookie_verifier:
+        return error_redirect
+
+    try:
+        data = await bff.exchange_pkce(auth_code, cookie_verifier)
+
+        # Primo accesso Google: Supabase ha creato l'utente (e il trigger DB
+        # il profilo), ma organizzazione + membership esistono solo se l'utente
+        # e' passato dalla registrazione email/password. Senza provisioning,
+        # /me risponderebbe 403 e il frontend rispedirebbe al login: loop.
+        # Idempotente: se ha gia' una org non fa nulla.
+        user = data.get("user") if isinstance(data.get("user"), dict) else {}
+        auth_user_id = user.get("id")
+        if auth_user_id:
+            repo = get_repo(request)
+            memberships = await repo.get_memberships_by_auth(str(auth_user_id))
+            if not memberships:
+                await repo.get_or_create_organization_with_owner(
+                    str(auth_user_id),
+                    _nome_attivita_da_utente(user),
+                    TRIAL_DAYS,
+                )
+    except HTTPException:
+        return error_redirect
+    except RuntimeError:
+        return error_redirect
+
+    target_url = (
+        cookie_next
+        if cookie_next.startswith(("http://", "https://"))
+        else f"{bff.public_app_url()}{cookie_next}"
+    )
+    redirect = RedirectResponse(target_url, status_code=302)
+    _set_session_cookies(redirect, data)
+    issue_csrf_token(redirect)
+
+    # I cookie temporanei OAuth vanno consumati: non riutilizzabili.
+    for name in (
+        _oauth_cookie_name(_OAUTH_VERIFIER_COOKIE),
+        _oauth_cookie_name(_OAUTH_NEXT_COOKIE),
+    ):
+        redirect.delete_cookie(name, path="/")
+
+    return redirect
 
 
 @router.post("/logout")

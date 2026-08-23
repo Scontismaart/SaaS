@@ -2,38 +2,11 @@ import uuid
 
 import pytest
 
-from src.core.auth.register import (
-    PASSWORD_MIN,
-    _check_signup_throttle,
-    _EMAIL_RE,
-)
-from fastapi import HTTPException
-
 pytestmark = [pytest.mark.usefixtures("reset_db")]
 
-
-def test_email_regex_accepts_valid():
-    assert _EMAIL_RE.match("titolare@attivita.it")
-    assert _EMAIL_RE.match("a.b+tag@sub.domain.com")
-
-
-def test_email_regex_rejects_invalid():
-    assert not _EMAIL_RE.match("no-at-sign")
-    assert not _EMAIL_RE.match("a@b")
-    assert not _EMAIL_RE.match("a b@c.it")
-
-
-def test_password_min_constant():
-    assert PASSWORD_MIN >= 8
-
-
-def test_signup_throttle_blocks_after_max():
-    ip = f"10.0.0.{uuid.uuid4().int % 250 + 1}"
-    for _ in range(5):
-        _check_signup_throttle(ip)
-    with pytest.raises(HTTPException) as exc:
-        _check_signup_throttle(ip)
-    assert exc.value.status_code == 429
+# I test di policy password/throttle senza DB stanno in
+# tests/core/auth/test_register_policy.py; qui restano i flussi che
+# toccano repository e database.
 
 
 async def test_create_organization_with_owner(repo, pg_pool):

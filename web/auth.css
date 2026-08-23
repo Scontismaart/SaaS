@@ -1,0 +1,293 @@
+/* ============================================================
+   AUTH — stile condiviso /accedi/ e /registrati/
+   ============================================================
+   Tema chiaro coerente con la landing (bianco, Outfit, lime).
+   Self-contained: non dipende dal CSS scuro della dashboard.
+   ============================================================ */
+
+:root {
+  --bg: #ffffff;
+  --bg-elev: #f7faf5;
+  --bg-elev-2: #eef4ea;
+  --ink: #101310;
+  --ink-soft: #485049;
+  --ink-mute: #6f7870;
+  --lime: #5eff00;
+  --lime-deep: #46d400;
+  --green-deep: #0e8a38;
+  --green-light: rgba(14, 138, 56, 0.08);
+  --line: rgba(16, 24, 12, 0.08);
+  --line-strong: rgba(16, 24, 12, 0.16);
+  --red-soft: rgba(194, 67, 87, 0.10);
+  --radius-lg: 24px;
+  --radius-sm: 12px;
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --shadow-card: 0 12px 36px -16px rgba(16, 24, 12, 0.14);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--green-deep);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ── Layout pagina ────────────────────────────────────────── */
+.accedi-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.accedi-card {
+  width: min(440px, 100%);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 34px 30px;
+  box-shadow: var(--shadow-card);
+}
+
+/* ── Brand + titoli ───────────────────────────────────────── */
+.accedi-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+.accedi-brand-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.accedi-card h1 {
+  margin: 0 0 4px;
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.accesso-help {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+/* ── Banner errori ────────────────────────────────────────── */
+.accedi-error {
+  display: none;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  background: var(--red-soft);
+  border: 1px solid rgba(194, 67, 87, 0.35);
+  color: #8f2438;
+}
+.accedi-error.visible { display: block; }
+
+/* ── Pulsante Google ──────────────────────────────────────── */
+.google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 18px;
+  padding: 12px 16px;
+  background: #ffffff;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(16, 24, 12, 0.04);
+  transition:
+    transform 0.45s var(--spring),
+    box-shadow 0.45s var(--spring),
+    border-color 0.3s ease,
+    background-color 0.3s ease;
+}
+.google-btn:hover {
+  border-color: rgba(14, 138, 56, 0.45);
+  background: rgba(14, 138, 56, 0.04);
+  transform: translateY(-1px);
+}
+.google-btn:active { transform: scale(0.98); }
+.google-btn svg { width: 18px; height: 18px; flex: none; }
+
+.accedi-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--ink-mute);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+.accedi-divider::before,
+.accedi-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ── Form ─────────────────────────────────────────────────── */
+.accedi-card label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 14px 0 6px;
+}
+.wizard-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+}
+.wizard-input::placeholder { color: var(--ink-mute); }
+.wizard-input:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: var(--green-deep);
+  box-shadow: 0 0 0 3px var(--green-light);
+}
+
+.doc-config-status {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #8f2438;
+  line-height: 1.5;
+}
+
+/* Bottone primario: pill lime come .btn-primary della landing */
+.onboarding-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+.onboarding-actions .review-analyze {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 13px 22px;
+  background: var(--lime);
+  color: #000000;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 20px -4px rgba(94, 255, 0, 0.4);
+  transition:
+    transform 0.45s var(--spring),
+    box-shadow 0.45s var(--spring),
+    background-color 0.3s ease;
+}
+.onboarding-actions .review-analyze:hover {
+  background: var(--lime-deep);
+  transform: scale(1.02);
+  box-shadow: 0 8px 30px -4px rgba(94, 255, 0, 0.6);
+}
+.onboarding-actions .review-analyze:active { transform: scale(0.98); }
+.onboarding-actions .review-analyze:disabled {
+  opacity: 0.55;
+  cursor: default;
+  transform: none;
+}
+
+/* ── Checkbox termini ─────────────────────────────────────── */
+.field-check { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; }
+.field-check input[type="checkbox"] { margin-top: 3px; accent-color: var(--green-deep); }
+.field-check label {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 400;
+}
+.field-check a { color: var(--green-deep); text-decoration: none; font-weight: 600; }
+.field-check a:hover { text-decoration: underline; }
+
+/* ── Messaggio successo verifica email ────────────────────── */
+.accesso-success {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.84rem;
+  line-height: 1.55;
+  background: var(--green-light);
+  border: 1px solid rgba(14, 138, 56, 0.25);
+  color: var(--ink-soft);
+}
+.accesso-success strong { color: var(--green-deep); }
+.accesso-success a { color: var(--green-deep); font-weight: 600; }
+
+/* ── Strength meter password ──────────────────────────────── */
+.pw-meter {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-elev-2);
+  overflow: hidden;
+  margin-top: 10px;
+}
+.pw-meter-bar {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: #e05252;
+  transition: width 0.25s var(--ease-out), background-color 0.25s ease;
+}
+.pw-meter-bar.pw-1 { background: #e05252; }
+.pw-meter-bar.pw-2 { background: #e8b33d; }
+.pw-meter-bar.pw-3 { background: var(--lime-deep); }
+.pw-meter-bar.pw-4 { background: var(--green-deep); }
+.pw-checks {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.pw-checks li {
+  font-size: 0.72rem;
+  color: var(--ink-mute);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.2s ease;
+}
+.pw-checks li::before { content: "○"; font-size: 0.72rem; color: var(--ink-mute); }
+.pw-checks li.done { color: var(--green-deep); }
+.pw-checks li.done::before { content: "●"; color: var(--green-deep); }
+
+/* ── Footer link ──────────────────────────────────────────── */
+.accedi-foot { margin-top: 18px; text-align: center; font-size: 0.84rem; color: var(--ink-soft); }
+.accedi-foot a { color: var(--green-deep); text-decoration: none; font-weight: 600; }
+.accedi-foot a:hover { text-decoration: underline; }
+.accedi-foot + .accedi-foot { margin-top: 8px; }

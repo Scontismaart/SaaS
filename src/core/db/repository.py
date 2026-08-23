@@ -907,3 +907,60 @@ class CoreRepository(TenantScopedRepository):
                     "user_profiles non trovato per l'utente appena registrato"
                 )
         return {"organization_id": str(org_id)}
+
+    @system_scope("provisioning JIT org al primo accesso OAuth")
+    async def get_or_create_organization_with_owner(
+        self,
+        auth_user_id: str,
+        nome_attivita: str,
+        trial_days: int = 7,
+    ) -> dict:
+        """Restituisce l'org dell'utente se ne ha gia' una, altrimenti crea
+        organizzazione + membership owner con trial attivo.
+
+        Differenza da create_organization_with_owner: idempotente per
+        costruzione. L'advisory lock per auth_user_id serializza i callback
+        concorrenti (doppio click, retry) e la SELECT di esistenza dentro la
+        STESSA transazione rende impossibile il doppio provisioning: due
+        callback simultanei del primo accesso producono una sola org.
+        user_profiles esiste gia' al momento della chiamata: popolato dal
+        trigger sync_auth_user_profile() sull'INSERT in auth.users.
+        """
+        uid = uuid.UUID(auth_user_id)
+        async with self.pool.acquire() as conn, conn.transaction():
+            # Lock per-utente sulla transazione: i callback paralleli dello
+            # stesso utente si mettono in coda invece di gareggiare.
+            await conn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+                str(uid),
+            )
+            existing = await conn.fetchrow("""
+                SELECT om.organization_id::text AS organization_id
+                FROM organization_memberships om
+                JOIN user_profiles up ON up.id = om.user_id
+                WHERE up.auth_user_id = $1
+                LIMIT 1
+            """, uid)
+            if existing:
+                return dict(existing)
+            org_id = uuid.uuid4()
+            row = await conn.fetchrow("""
+                WITH new_org AS (
+                    INSERT INTO organizations
+                        (id, name, subscription_status, trial_start, trial_end)
+                    VALUES ($1, $2, 'trialing', NOW(),
+                            NOW() + make_interval(days => $3))
+                    RETURNING id
+                )
+                INSERT INTO organization_memberships
+                    (organization_id, user_id, ruolo, joined_at)
+                SELECT o.id, up.id, 'owner', NOW()
+                FROM new_org o
+                JOIN user_profiles up ON up.auth_user_id = $4::uuid
+                RETURNING organization_id, user_id
+            """, org_id, nome_attivita, trial_days, uid)
+            if not row:
+                raise RuntimeError(
+                    "user_profiles non trovato per l'utente OAuth"
+                )
+        return {"organization_id": str(org_id)}

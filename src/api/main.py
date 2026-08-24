@@ -491,7 +491,145 @@ async def onboarding_salva_profilo(
             detail="Nessuna organizzazione collegata: inserisci API key e Organization ID.",
         )
     repo = get_repo(request)
-    return {"profilo": await save_profile(org_id, profilo, repo)}
+    profilo_salvato = await save_profile(org_id, profilo, repo)
+    await _audit(request, user, "profilo.aggiornato",
+                 target_table="onboarding_profiles",
+                 details={"nome_attivita": profilo.nome_attivita, "tono": profilo.tono})
+    return {"profilo": profilo_salvato}
+
+
+# ── Impostazioni organizzazione: fuso orario ───────────────────────────
+
+_TIMEZONE_COMUNI = [
+    "Europe/Rome", "Europe/London", "Europe/Paris", "Europe/Berlin",
+    "Europe/Madrid", "America/New_York", "America/Chicago",
+    "America/Los_Angeles", "America/Sao_Paulo", "Asia/Dubai",
+    "Asia/Singapore", "Asia/Tokyo", "Australia/Sydney", "UTC",
+]
+
+
+@app.get("/api/impostazioni/organizzazione")
+async def get_impostazioni_organizzazione(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+    repo = get_repo(request)
+    async with repo.pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT timezone, name FROM organizations WHERE id = $1::uuid", org_id
+        )
+    if not row:
+        raise HTTPException(404, "Organizzazione non trovata")
+    return {
+        "timezone": row["timezone"] or "Europe/Rome",
+        "nome": row["name"],
+        "timezone_disponibili": _TIMEZONE_COMUNI,
+    }
+
+
+@app.put("/api/impostazioni/organizzazione")
+async def put_impostazioni_organizzazione(
+    body: dict,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+    tz = (body.get("timezone") or "").strip()
+    if tz not in _TIMEZONE_COMUNI:
+        raise HTTPException(422, "Fuso orario non valido")
+    repo = get_repo(request)
+    async with repo.pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE organizations SET timezone = $2, updated_at = NOW() WHERE id = $1::uuid",
+            org_id, tz,
+        )
+    await _audit(request, user, "org.timezone_updated",
+                 target_table="organizations", details={"timezone": tz})
+    return {"ok": True, "timezone": tz}
+
+# ── Audit log: lettura org-scoped ──────────────────────────────────────
+
+@app.get("/api/audit")
+async def lista_audit(
+    request: Request,
+    limit: int = 20,
+    offset: int = 0,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    repo = get_repo(request)
+    async with repo.pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT a.action, a.target_table, a.target_id, a.details,
+                   a.created_at,
+                   u.email AS user_email
+            FROM audit_log a
+            LEFT JOIN user_profiles u ON u.id = a.user_id
+            WHERE a.organization_id = $1::uuid
+            ORDER BY a.created_at DESC
+            LIMIT $2 OFFSET $3
+        """, org_id, limit + 1, offset)
+    has_more = len(rows) > limit
+    return {
+        "eventi": [
+            {
+                "action": r["action"],
+                "target_table": r["target_table"],
+                "target_id": r["target_id"],
+                "details": r["details"],
+                "created_at": r["created_at"].isoformat(),
+                "user_email": r["user_email"],
+            }
+            for r in rows[:limit]
+        ],
+        "has_more": has_more,
+    }
+
+
+# ── Integrazioni: stato canali e webhook ───────────────────────────────
+
+@app.get("/api/integrazioni/stato")
+async def stato_integrazioni(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+    repo = get_repo(request)
+    async with repo.pool.acquire() as conn:
+        wa = await conn.fetchrow("""
+            SELECT phone_number_id, waba_id, updated_at
+            FROM whatsapp_accounts WHERE organization_id = $1::uuid
+        """, org_id)
+        ig = await conn.fetchrow("""
+            SELECT ig_user_id, updated_at
+            FROM instagram_accounts WHERE organization_id = $1::uuid
+        """, org_id)
+    return {
+        "whatsapp": {
+            "connesso": wa is not None,
+            "phone_number_id": wa["phone_number_id"] if wa else None,
+            "aggiornato": wa["updated_at"].isoformat() if wa and wa["updated_at"] else None,
+        },
+        "instagram": {
+            "connesso": ig is not None,
+            "ig_user_id": ig["ig_user_id"] if ig else None,
+            "aggiornato": ig["updated_at"].isoformat() if ig and ig["updated_at"] else None,
+        },
+        "webhook_meta": {
+            "configurato": bool(os.getenv("META_APP_SECRET")) and bool(os.getenv("META_VERIFY_TOKEN")),
+        },
+    }
 
 
 @app.post("/api/onboarding/preview", response_model=RispostaOutput)

@@ -415,8 +415,13 @@ navItems.forEach((btn) => {
       documenti: "Documenti",
       inbox: "Inbox",
       impostazioni: "Impostazioni",
+      integrazioni: "Integrazioni",
+      audit: "Audit",
     };
     topbarTitle.textContent = titles[viewName] || viewName;
+    if (viewName === "audit") caricaAudit();
+    if (viewName === "integrazioni") caricaIntegrazioni();
+    if (viewName === "impostazioni") caricaTimezone();
 
     if (viewName === "panoramica") {
       aggiornaRiepilogo();
@@ -586,6 +591,22 @@ function renderOnboardingStep() {
   }
   onboardingEls.prev.disabled = onboardingState.step === 0;
   onboardingEls.next.textContent = onboardingState.step === 6 ? "Completa" : "Avanti";
+  salvaBozzaOnboarding();
+}
+
+function salvaBozzaOnboarding() {
+  /* Bozza in localStorage: il wizard resta riprendibile anche se il
+     browser si chiude a metà. I dati sono non-sensibili (profilo attività). */
+  try {
+    const bozza = { step: onboardingState.step, salvata_at: new Date().toISOString(), profilo: profiloOnboarding() };
+    localStorage.setItem("melpis_onboarding_bozza", JSON.stringify(bozza));
+    const badge = document.getElementById("onboarding-autosave");
+    if (badge) {
+      const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      badge.textContent = `Bozza salvata · ${ora}`;
+      badge.hidden = false;
+    }
+  } catch { /* localStorage pieno/bloccato: non blocca il wizard */ }
 }
 
 function renderVerticals() {
@@ -3122,5 +3143,279 @@ notifBell?.addEventListener("click", () => {
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
     e.preventDefault();
     input.focus();
+  });
+})();
+
+/* ============================================================
+   TEMA CHIARO/SCURO (grigio antracite, mai nero puro)
+   ============================================================ */
+
+(function inizializzaTema() {
+  const KEY = "melpis_theme";
+  const label = document.getElementById("theme-toggle-label");
+
+  function applica(tema) {
+    document.documentElement.dataset.theme = tema;
+    if (label) label.textContent = tema === "dark" ? "Tema chiaro" : "Tema scuro";
+  }
+
+  applica(localStorage.getItem(KEY) || "light");
+
+  document.getElementById("theme-toggle")?.addEventListener("click", () => {
+    const nuovo = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    localStorage.setItem(KEY, nuovo);
+    applica(nuovo);
+  });
+})();
+
+/* ============================================================
+   IMPOSTAZIONI — fuso orario organizzazione
+   ============================================================ */
+
+(async function inizializzaTimezone() {
+  const select = document.getElementById("settings-timezone");
+  const saveBtn = document.getElementById("settings-timezone-save");
+  const status = document.getElementById("settings-timezone-status");
+  if (!select || !saveBtn) return;
+  let caricato = false;
+
+  async function carica() {
+    try {
+      const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (caricato) return;
+      caricato = true;
+      select.innerHTML = "";
+      (data.timezone_disponibili || []).forEach((tz) => {
+        const opt = document.createElement("option");
+        opt.value = tz;
+        opt.textContent = tz;
+        if (tz === data.timezone) opt.selected = true;
+        select.appendChild(opt);
+      });
+      if (![...select.options].some((o) => o.value === data.timezone)) {
+        const opt = document.createElement("option");
+        opt.value = data.timezone;
+        opt.textContent = data.timezone;
+        opt.selected = true;
+        select.appendChild(opt);
+      }
+    } catch { /* silenzioso: la vista riproverà al prossimo switch */ }
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    if (status) { status.textContent = "Salvo…"; status.style.color = ""; }
+    try {
+      const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: select.value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (status) { status.textContent = data.detail || "Salvataggio non riuscito"; status.style.color = "var(--red)"; }
+        return;
+      }
+      if (status) securityStatus(status, "Fuso orario aggiornato");
+    } catch {
+      if (status) { status.textContent = "Errore di connessione"; status.style.color = "var(--red)"; }
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  await carica();
+})();
+
+/* ============================================================
+   AUDIT — registro attività
+   ============================================================ */
+
+const AUDIT_ACTION_LABEL = {
+  "profilo.aggiornato": "Profilo aggiornato",
+  "org.timezone_updated": "Fuso orario aggiornato",
+  "prenotazione.confermata": "Prenotazione confermata",
+  "prenotazione.rifiutata": "Prenotazione rifiutata",
+  "prenotazione.annullata": "Prenotazione annullata",
+  "documento_eliminato": "Documento eliminato",
+};
+
+let auditOffset = 0;
+let auditHasMore = false;
+
+async function caricaAudit({ append = false } = {}) {
+  const list = document.getElementById("audit-list");
+  const count = document.getElementById("audit-count");
+  if (!list) return;
+  if (!append) {
+    auditOffset = 0;
+    auditHasMore = false;
+    list.innerHTML = '<div class="skeleton skeleton-line-lg"></div><div class="skeleton skeleton-line-lg"></div><div class="skeleton skeleton-line-lg"></div>';
+  }
+  try {
+    const res = await apiFetch(`${API_BASE}/api/audit?limit=20&offset=${auditOffset}`);
+    if (!res.ok) {
+      list.innerHTML = '<p class="inbox-empty">Registro non disponibile.</p>';
+      return;
+    }
+    const data = await res.json();
+    const eventi = data.eventi || [];
+    auditHasMore = Boolean(data.has_more);
+    if (!append) {
+      list.innerHTML = "";
+      document.getElementById("inbox-load-more")?.remove();
+    } else {
+      document.getElementById("audit-load-more")?.remove();
+    }
+    if (!eventi.length && !append) {
+      list.innerHTML = '<p class="inbox-empty">Nessuna azione registrata: le modifiche a impostazioni, prenotazioni e documenti compariranno qui.</p>';
+      if (count) count.textContent = "";
+      return;
+    }
+    eventi.forEach((ev) => {
+      const item = document.createElement("div");
+      item.className = "audit-item";
+      const quando = new Date(ev.created_at).toLocaleString("it-IT", {
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      });
+      const dettagli = ev.details && Object.keys(ev.details).length
+        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" · ")
+        : "";
+      item.innerHTML = `
+        <div class="audit-main">
+          <strong>${_sanitize(AUDIT_ACTION_LABEL[ev.action] || ev.action)}</strong>
+          ${dettagli ? `<span class="audit-details">${_sanitize(dettagli)}</span>` : ""}
+        </div>
+        <div class="audit-meta">
+          <span>${_sanitize(ev.user_email || "sistema")}</span>
+          <time>${_sanitize(quando)}</time>
+        </div>`;
+      list.appendChild(item);
+    });
+    auditOffset += eventi.length;
+    if (count) count.textContent = `${auditOffset} eventi`;
+    if (auditHasMore) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "audit-load-more";
+      btn.className = "inbox-load-more";
+      btn.textContent = "Carica altri eventi";
+      btn.addEventListener("click", () => {
+        btn.disabled = true;
+        btn.textContent = "Carico…";
+        caricaAudit({ append: true });
+      });
+      list.appendChild(btn);
+    }
+  } catch {
+    list.innerHTML = '<p class="inbox-empty">Registro non disponibile.</p>';
+  }
+}
+
+/* ============================================================
+   INTEGRAZIONI — stato canali e webhook
+   ============================================================ */
+
+async function caricaIntegrazioni() {
+  const status = document.getElementById("integrazioni-status");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/integrazioni/stato`);
+    if (!res.ok) {
+      if (status) { status.textContent = "Stato non disponibile."; status.style.color = "var(--red)"; }
+      return;
+    }
+    const d = await res.json();
+
+    const waStato = document.getElementById("integ-whatsapp-stato");
+    const waSub = document.getElementById("integ-whatsapp-sub");
+    if (waStato && waSub) {
+      waStato.textContent = d.whatsapp.connesso ? "Connesso" : "Non connesso";
+      waStato.classList.add(d.whatsapp.connesso ? "on" : "off");
+      waSub.textContent = d.whatsapp.connesso
+        ? `Numero ID ${d.whatsapp.phone_number_id || "configurato"}`
+        : "Nessun numero collegato";
+    }
+
+    const igStato = document.getElementById("integ-instagram-stato");
+    const igSub = document.getElementById("integ-instagram-sub");
+    if (igStato && igSub) {
+      igStato.textContent = d.instagram.connesso ? "Connesso" : "Non connesso";
+      igStato.classList.add(d.instagram.connesso ? "on" : "off");
+      igSub.textContent = d.instagram.connesso
+        ? `Account ${d.instagram.ig_user_id || "collegato"}`
+        : "Nessun account collegato";
+    }
+
+    const whStato = document.getElementById("integ-webhook-stato");
+    const whSub = document.getElementById("integ-webhook-sub");
+    if (whStato && whSub) {
+      whStato.textContent = d.webhook_meta.configurato ? "Attivo" : "Da configurare";
+      whStato.classList.add(d.webhook_meta.configurato ? "on" : "off");
+      whSub.textContent = d.webhook_meta.configurato
+        ? "Credenziali Meta presenti sul server"
+        : "Serve META_APP_SECRET e META_VERIFY_TOKEN";
+    }
+  } catch {
+    if (status) { status.textContent = "Errore di connessione."; status.style.color = "var(--red)"; }
+  }
+}
+
+document.getElementById("integrazioni-config")?.addEventListener("click", () => {
+  const btn = document.querySelector('[data-view="onboarding"]');
+  if (btn) btn.click();
+});
+
+/* ============================================================
+   STAMPA REPORT + SCORCIATOIE TASTIERA
+   ============================================================ */
+
+document.getElementById("report-print")?.addEventListener("click", () => window.print());
+
+(function inizializzaScorciatoie() {
+  const ordineViste = [
+    "panoramica", "onboarding", "assistente", "recensioni",
+    "prenotazioni", "report", "documenti", "inbox",
+    "impostazioni", "integrazioni", "audit",
+  ];
+
+  function pannelloScorciatoie() {
+    let overlay = document.getElementById("shortcuts-overlay");
+    if (overlay) { overlay.remove(); return; }
+    overlay = document.createElement("div");
+    overlay.id = "shortcuts-overlay";
+    overlay.innerHTML = `
+      <div class="shortcuts-panel" role="dialog" aria-modal="true" aria-label="Scorciatoie da tastiera">
+        <h3>Scorciatoie da tastiera</h3>
+        <dl>
+          <dt>/</dt><dd>ricerca globale</dd>
+          <dt>1 – 9</dt><dd>vai alle viste in ordine di menu</dd>
+          <dt>0</dt><dd>vista Audit</dd>
+          <dt>?</dt><dd>questo pannello</dd>
+          <dt>Esc</dt><dd>chiudi pannelli e ricerca</dd>
+        </dl>
+        <p>Premi Esc o clicca fuori per chiudere.</p>
+      </div>`;
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+
+    if (e.key === "?") { e.preventDefault(); pannelloScorciatoie(); return; }
+    if (e.key === "Escape") { document.getElementById("shortcuts-overlay")?.remove(); return; }
+
+    const n = Number(e.key);
+    if (!Number.isNaN(n) && e.key !== " ") {
+      const view = n === 0 ? "audit" : ordineViste[n - 1];
+      if (view) {
+        const btn = document.querySelector(`[data-view="${view}"]`);
+        if (btn) { e.preventDefault(); btn.click(); }
+      }
+    }
   });
 })();

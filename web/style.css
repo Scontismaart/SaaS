@@ -1,4 +1,4 @@
-/* Font self-hosted: Outfit variabile (300�800), stesso set della landing. */
+/* Font self-hosted: Outfit variabile (300 — 800), stesso set della landing. */
 @font-face {
   font-family: 'Outfit';
   font-style: normal;
@@ -17,8 +17,8 @@
 }
 
 /* ============================================================
-   DESIGN TOKENS � allineati alla landing (tema chiaro glass)
-   bg #ffffff � testo #101310 � accento lime #5eff00 � verde #0e8a38
+   DESIGN TOKENS  —  allineati alla landing (tema chiaro glass)
+   bg #ffffff  —  testo #101310  —  accento lime #5eff00  —  verde #0e8a38
    ============================================================ */
 :root {
   /* Superfici */
@@ -68,20 +68,20 @@
   --font-body:        "Outfit", -apple-system, sans-serif;
   --font-mono:        ui-monospace, "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
 
-  /* Raggi � scala landing */
+  /* Raggi  —  scala landing */
   --radius-xl:        32px;
   --radius-lg:        24px;
   --radius:           16px;
   --radius-sm:        12px;
 
-  /* Ombre � tinte sull'inchiostro, mai nero puro */
+  /* Ombre  —  tinte sull'inchiostro, mai nero puro */
   --shadow-card:      0 12px 36px -16px rgba(16, 24, 12, 0.14);
   --shadow-glow:      0 0 50px -10px rgba(94, 255, 0, 0.28);
   --shadow:           0 1px 2px rgba(16, 24, 12, 0.05), 0 10px 26px -12px rgba(16, 24, 12, 0.14);
   --shadow-sm:        0 1px 2px rgba(16, 24, 12, 0.08);
   --shadow-lift:      0 4px 12px -4px rgba(16, 24, 12, 0.12), 0 18px 40px -18px rgba(16, 24, 12, 0.22);
 
-  /* Motion � curve della landing */
+  /* Motion  —  curve della landing */
   --spring:           cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out:         cubic-bezier(0.16, 1, 0.3, 1);
 
@@ -388,7 +388,7 @@ body {
 }
 
 /* ============================================================
-   MAIN � area contenuto
+   MAIN  —  area contenuto
    ============================================================ */
 
 .main {
@@ -473,7 +473,7 @@ body {
 }
 
 /* ============================================================
-   VIEWS � tab switching
+   VIEWS  —  tab switching
    ============================================================ */
 
 .view {
@@ -627,7 +627,7 @@ body {
 }
 
 /* ============================================================
-   PRIORITY LIST � barra colore a sinistra
+   PRIORITY LIST  —  barra colore a sinistra
    ============================================================ */
 
 .priority-list {
@@ -901,7 +901,7 @@ body {
 }
 
 /* ============================================================
-   CHAT � vista Assistente
+   CHAT  —  vista Assistente
    ============================================================ */
 
 .chat-window {
@@ -1196,7 +1196,7 @@ body {
 .send-button:disabled { opacity: 0.5; cursor: default; }
 
 /* ============================================================
-   RECENSIONI � vista
+   RECENSIONI  —  vista
    ============================================================ */
 
 .recensioni-grid {
@@ -1795,7 +1795,7 @@ body.booking-modal-open { overflow: hidden; }
 }
 
 /* ============================================================
-   REPORT � vista
+   REPORT  —  vista
    ============================================================ */
 
 .report-card {
@@ -2752,7 +2752,7 @@ body.booking-modal-open { overflow: hidden; }
 }
 
 /* ============================================================
-   INBOX (HITL) � ticket escalati all'operatore umano
+   INBOX (HITL)  —  ticket escalati all'operatore umano
    ============================================================ */
 
 .inbox-filters {
@@ -3125,7 +3125,7 @@ body.booking-modal-open { overflow: hidden; }
 }
 
 /* ============================================================
-   ACCESSO � modal login/registrazione (BFF)
+   ACCESSO  —  modal login/registrazione (BFF)
    ============================================================ */
 
 .doc-progress-bar-bg {
@@ -3181,7 +3181,7 @@ body.booking-modal-open { overflow: hidden; }
 .accesso-success strong { color:var(--ink); }
 
 /* ============================================================
-   EMPTY STATES � stati vuoti composti
+   EMPTY STATES  —  stati vuoti composti
    ============================================================ */
 
 .empty-state {
@@ -3212,7 +3212,7 @@ body.booking-modal-open { overflow: hidden; }
 .skip-link:focus-visible { top:12px; }
 
 /* ============================================================
-   PREMIUM PASS � numeri tabulari, titoli bilanciati
+   PREMIUM PASS  —  numeri tabulari, titoli bilanciati
    ============================================================ */
 
 .kpi-value, .report-stat-value, .booking-row-time, .availability-seats,
@@ -3717,7 +3717,7 @@ body.booking-modal-open { overflow: hidden; }
 }
 
 /* ============================================================
-   FASE 2 � ricerca globale, sicurezza account, export, paginazione
+   FASE 2 — ricerca globale, sicurezza account, export, paginazione
    ============================================================ */
 
 .global-search {
@@ -3901,3 +3901,271 @@ body.booking-modal-open { overflow: hidden; }
 }
 
 .inbox-load-more:disabled { opacity: 0.6; cursor: default; }
+/* ============================================================
+   TEMA SCURO — grigio antracite (mai nero puro), stessi accenti
+   ============================================================ */
+
+html[data-theme="dark"] {
+  --bg:               #161a16;
+  --bg-elev:          #1d221d;
+  --bg-elev-2:        #242a24;
+
+  --sidebar-bg:       rgba(24, 29, 24, 0.78);
+  --sidebar-bg-2:     #1d221d;
+  --sidebar-text:     #a8b0a8;
+  --sidebar-active:   #e8ece8;
+  --sidebar-brand:    #e8ece8;
+  --sidebar-hover:    rgba(232, 236, 232, 0.06);
+
+  --main-bg:          #161a16;
+  --card-bg:          #1a1f1a;
+  --card-border:      rgba(232, 236, 232, 0.08);
+
+  --ink:              #e8ece8;
+  --ink-soft:         #a8b0a8;
+  --ink-muted:        #77817a;
+
+  --accent-soft:      rgba(94, 255, 0, 0.10);
+  --sage-soft:        rgba(94, 255, 0, 0.10);
+  --amber:            #d9a94e;
+  --amber-soft:       rgba(217, 169, 78, 0.14);
+  --red:              #d96a7c;
+  --red-soft:         rgba(217, 106, 124, 0.14);
+  --gold:             #d4b06a;
+  --gold-soft:        rgba(212, 176, 106, 0.12);
+
+  --line:             rgba(232, 236, 232, 0.09);
+  --line-strong:      rgba(232, 236, 232, 0.18);
+  --border:           var(--line);
+  --muted:            #8b958c;
+
+  --shadow-card:      0 12px 36px -16px rgba(0, 0, 0, 0.5);
+  --shadow:           0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 26px -12px rgba(0, 0, 0, 0.4);
+  --shadow-sm:        0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-lift:      0 4px 12px -4px rgba(0, 0, 0, 0.4), 0 18px 40px -18px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at 82% -12%, rgba(94, 255, 0, 0.06), transparent 36%),
+    radial-gradient(circle at -8% 30%, rgba(94, 255, 0, 0.03), transparent 30%),
+    radial-gradient(circle at 110% 85%, rgba(94, 255, 0, 0.03), transparent 34%),
+    var(--main-bg);
+}
+
+html[data-theme="dark"] .sidebar {
+  background: linear-gradient(180deg, rgba(26, 31, 26, 0.9), rgba(22, 26, 22, 0.95));
+}
+
+html[data-theme="dark"] .topbar {
+  background: rgba(22, 26, 22, 0.82);
+  border-color: var(--line);
+}
+
+html[data-theme="dark"] .wizard-input,
+html[data-theme="dark"] .review-textarea,
+html[data-theme="dark"] .review-author,
+html[data-theme="dark"] .review-stars,
+html[data-theme="dark"] .review-source,
+html[data-theme="dark"] .inbox-reply-input,
+html[data-theme="dark"] #global-search-input,
+html[data-theme="dark"] .chat-input-row input {
+  background: var(--bg-elev);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+html[data-theme="dark"] .chat-header,
+html[data-theme="dark"] .booking-export-bar,
+html[data-theme="dark"] .security-grid form,
+html[data-theme="dark"] .accesso-tabs,
+html[data-theme="dark"] .empty-state,
+html[data-theme="dark"] .sidebar-cta {
+  background: var(--bg-elev);
+}
+
+html[data-theme="dark"] .sidebar-mark { background: var(--bg-elev-2); }
+
+html[data-theme="dark"] .theme-icon-light { display: none; }
+html[data-theme="dark"] .theme-icon-dark { display: block; }
+.theme-icon-dark { display: none; }
+
+html[data-theme="dark"] .nav-item.active {
+  color: #0a0f08;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+}
+
+html[data-theme="dark"] .bubble-in {
+  background: var(--bg-elev-2);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .toast {
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* ============================================================
+   INTEGRAZIONI
+   ============================================================ */
+
+.integrazioni-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.integrazione-card { display: flex; flex-direction: column; gap: 12px; }
+
+.integrazione-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.integrazione-icona {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--green-deep);
+}
+
+.integrazione-icona svg { width: 20px; height: 20px; }
+
+.integrazione-titolo {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.integrazione-sub { font-size: 0.78rem; color: var(--ink-soft); }
+
+.integrazione-stato {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.integrazione-stato.on { background: var(--sage-soft); color: var(--green-deep); }
+.integrazione-stato.off { background: var(--amber-soft); color: var(--amber); }
+
+/* ============================================================
+   AUDIT
+   ============================================================ */
+
+.audit-list { display: flex; flex-direction: column; gap: 8px; }
+
+.audit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+}
+
+.audit-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.audit-main strong { font-size: 0.86rem; color: var(--ink); }
+.audit-details { font-size: 0.76rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; }
+
+.audit-meta {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--ink-muted);
+}
+
+/* ============================================================
+   AUTOSAVE BADGE + SCORCIATOIE
+   ============================================================ */
+
+.onboarding-autosave-badge {
+  display: inline-block;
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--ink-muted);
+}
+
+.shortcuts-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(16, 24, 12, 0.4);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.shortcuts-panel {
+  width: min(420px, 100%);
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lift);
+  padding: 24px 26px;
+}
+
+.shortcuts-panel h3 {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  color: var(--ink);
+}
+
+.shortcuts-panel dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.shortcuts-panel dt {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--green-deep);
+  background: var(--sage-soft);
+  border-radius: 8px;
+  padding: 2px 9px;
+  text-align: center;
+}
+
+.shortcuts-panel dd { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
+.shortcuts-panel p { margin: 14px 0 0; font-size: 0.74rem; color: var(--ink-muted); }
+
+/* ============================================================
+   STAMPA — solo il report
+   ============================================================ */
+
+@media print {
+  body { background: #ffffff !important; }
+  .sidebar, .topbar, .net-banner, .report-footer-actions,
+  .skip-link, #toast-container, .sidebar-overlay { display: none !important; }
+  .main { margin-left: 0 !important; }
+  .view { padding: 0 !important; }
+  .view:not([data-view-panel="report"]) { display: none !important; }
+  [data-view-panel="report"] .report-footer-actions { display: none !important; }
+  .dash-card, [data-view-panel="report"] .dash-card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+}

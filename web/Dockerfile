@@ -15,6 +15,7 @@ FROM nginx:1.27-alpine AS runtime
 COPY landing/index.html landing/style.css landing/app.js /usr/share/nginx/html/
 COPY landing/privacy.html landing/termini.html landing/cookie.html landing/404.html /usr/share/nginx/html/
 COPY landing/robots.txt landing/sitemap.xml landing/og-image.jpg /usr/share/nginx/html/
+COPY landing/*.webp /usr/share/nginx/html/
 COPY landing/fonts/ /usr/share/nginx/html/fonts/
 
 # ── Pagine di accesso e registrazione dedicate (/accedi/, /registrati/) ──

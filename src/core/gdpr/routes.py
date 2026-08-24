@@ -1,8 +1,6 @@
-import json
 import logging
 import secrets
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -11,22 +9,11 @@ from pydantic import BaseModel, field_validator
 from src.core.auth.audit import audit_log
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.db.repository import CoreRepository
+from src.core.gdpr import token_store
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/gdpr", tags=["gdpr"])
-
-
-# ── In-memory export token store ──────────────────────────────
-
-_export_tokens: dict[str, dict] = {}
-
-
-def _generate_export_token(org_id: str, data: dict) -> tuple[str, datetime]:
-    token = secrets.token_urlsafe(32)
-    expires = datetime.now(timezone.utc) + timedelta(minutes=15)
-    _export_tokens[token] = {"org_id": org_id, "data": data, "expires": expires}
-    return token, expires
 
 
 # ── Task 7: DPA template ──────────────────────────────────────
@@ -187,26 +174,23 @@ async def gdpr_export(
     repo: CoreRepository = request.app.state.repo
     org_id = user["organization_id"]
     data = await _export_tenant_data(repo, org_id)
-    token, expires = _generate_export_token(str(org_id), data)
+    token = secrets.token_urlsafe(32)
+    await token_store.save_token(token, str(org_id), data)
     download_url = str(request.base_url) + f"api/gdpr/download/{token}"
 
     await audit_log(repo, organization_id=org_id, action="gdpr.export",
                     auth_user_id=user.get("auth_user_id"),
-                    details={"expires": expires.isoformat()})
+                    details={"expires_in_minutes": 15})
 
     return {"download_url": download_url, "expires_in_minutes": 15}
 
 
 @router.get("/download/{token}")
 async def gdpr_download(token: str):
-    if token not in _export_tokens:
-        raise HTTPException(404, "Export token not found or expired")
-    meta = _export_tokens[token]
-    if datetime.now(timezone.utc) > meta["expires"]:
-        del _export_tokens[token]
-        raise HTTPException(410, "Export token expired")
+    meta = await token_store.pop_token(token)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Link di export scaduto o non valido")
     data = meta["data"]
-    del _export_tokens[token]
     return data
 
 

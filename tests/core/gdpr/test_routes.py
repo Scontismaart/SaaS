@@ -188,15 +188,17 @@ class TestDataRights:
         assert data["organization_id"] == str(org_id)
         assert len(data["contacts"]) >= 1
 
-    async def test_download_expired_token_returns_410(self, async_client, org_id):
-        from src.core.gdpr.routes import _export_tokens
-        _export_tokens["expired_test_token"] = {
+    async def test_download_expired_token_returns_404(self, async_client, org_id, monkeypatch):
+        monkeypatch.setenv("REDIS_URL", "")
+        from src.core.gdpr import token_store
+        monkeypatch.setattr(token_store, "_redis", None)
+        token_store._memory["expired_test_token"] = {
             "org_id": str(org_id),
             "data": {"test": True},
-            "expires": __import__("datetime").datetime(2020, 1, 1, tzinfo=__import__("datetime").timezone.utc),
+            "expires": 0,
         }
         resp = await async_client.get("/api/gdpr/download/expired_test_token")
-        assert resp.status_code == 410
+        assert resp.status_code == 404
 
     async def test_download_nonexistent_token_returns_404(self, async_client):
         resp = await async_client.get("/api/gdpr/download/nonexistent")

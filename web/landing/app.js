@@ -414,4 +414,20 @@
             }
         });
     }
+
+    /* ---------- Cookie notice ---------- */
+    var cookieNotice = document.getElementById('cookieNotice');
+    var cookieOk = document.getElementById('cookieOk');
+
+    if (cookieNotice && cookieOk) {
+        var cookieFlag = null;
+        try { cookieFlag = localStorage.getItem('cookie_notice_ok'); } catch (storageErr) { /* localStorage non disponibile */ }
+        if (!cookieFlag) {
+            cookieNotice.hidden = false;
+        }
+        cookieOk.addEventListener('click', function () {
+            try { localStorage.setItem('cookie_notice_ok', '1'); } catch (storageErr) { /* localStorage non disponibile */ }
+            cookieNotice.hidden = true;
+        });
+    }
 })();

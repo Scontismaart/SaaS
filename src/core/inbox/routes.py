@@ -87,12 +87,23 @@ async def list_tickets(
     request: Request,
     status: str | None = None,
     priorita: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
     org_id = user["organization_id"]
     wrepo = _get_wrepo(request)
-    tickets = await wrepo.list_tickets(org_id, status=status, priorita=priorita)
-    return TicketListResponse(tickets=[_to_ticket_item(t) for t in tickets])
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    # limit+1 per rilevare has_more senza una COUNT extra
+    tickets = await wrepo.list_tickets(
+        org_id, status=status, priorita=priorita, limit=limit + 1, offset=offset
+    )
+    has_more = len(tickets) > limit
+    return TicketListResponse(
+        tickets=[_to_ticket_item(t) for t in tickets[:limit]],
+        has_more=has_more,
+    )
 
 
 @router.get("/tickets/{conversation_id}", response_model=TicketListItem)

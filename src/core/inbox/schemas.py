@@ -42,6 +42,7 @@ class TicketListItem(BaseModel):
 
 class TicketListResponse(BaseModel):
     tickets: list[TicketListItem]
+    has_more: bool = False
 
 
 class ReplyRequest(BaseModel):

@@ -5,6 +5,12 @@ import os
 def assert_production_safe() -> None:
     from src.core.security.docs import is_production
 
+    stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
+    if stripe_key.startswith("sk_live") and not is_production():
+        raise RuntimeError(
+            "AVVIO BLOCCATO: STRIPE_SECRET_KEY live (sk_live_...) con APP_ENV diverso "
+            "da production. Imposta APP_ENV=production o usa chiavi di test."
+        )
     if not is_production():
         return
     demo = os.getenv("DEMO_MODE", "").strip().lower() in ("1", "true", "yes")

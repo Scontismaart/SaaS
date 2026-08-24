@@ -51,3 +51,20 @@ def test_startup_ok_con_chiave_valida(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
     assert_production_safe()
+
+
+def test_startup_bloccato_stripe_live_in_dev(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("DEMO_MODE", "")
+    monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_abc123")
+    with pytest.raises(RuntimeError, match="STRIPE_SECRET_KEY live"):
+        assert_production_safe()
+
+
+def test_startup_ok_stripe_test_in_dev(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("DEMO_MODE", "")
+    monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_abc123")
+    assert_production_safe()  # non alza

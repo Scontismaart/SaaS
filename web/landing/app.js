@@ -2,6 +2,13 @@
 (function () {
     'use strict';
 
+    /* ---------- Analytics (Plausible, proxied same-origin) ---------- */
+    function trackEvent(name, props) {
+        if (typeof window.plausible === 'function') {
+            window.plausible(name, { props: props || {} });
+        }
+    }
+
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* ---------- API base: same-origin in produzione, override per sviluppo ---------- */
@@ -252,6 +259,7 @@
             });
             labelM.classList.toggle('active', !yearly);
             labelY.classList.toggle('active', yearly);
+            trackEvent('toggle_pricing_annual', { enabled: yearly });
         });
     })();
 
@@ -281,6 +289,7 @@
     function openModal(plan) {
         lastFocused = document.activeElement;
         modal.hidden = false;
+        trackEvent('open_signup_modal');
         document.body.style.overflow = 'hidden';
         var nome = document.getElementById('su-nome');
         var btns = document.querySelectorAll('[data-signup][data-plan]');
@@ -316,6 +325,10 @@
 
     document.querySelectorAll('[data-signup]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+            trackEvent('click_cta', {
+                location: btn.dataset.trackLocation || '',
+                plan: btn.dataset.plan || ''
+            });
             closeNav();
             openModal(btn.dataset.plan);
         });
@@ -378,6 +391,7 @@
                 var data = await resp.json().catch(function () { return {}; });
 
                 if (resp.ok && data.ok) {
+                    trackEvent('submit_signup_form');
                     if (data.email_verified) {
                         window.location.href = '/app/';
                         return;

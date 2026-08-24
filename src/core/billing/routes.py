@@ -1,5 +1,4 @@
 import os
-import json
 import asyncio
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,6 +16,13 @@ class CheckoutSessionRequest(BaseModel):
     plan: str
     success_url: str
     cancel_url: str
+    interval: str = "monthly"  # "monthly" | "yearly"
+
+
+def _resolve_price_id(plan, interval: str) -> str:
+    if interval not in ("monthly", "yearly"):
+        raise ValueError(f"interval non valido: {interval}")
+    return plan.stripe_price_id_yearly if interval == "yearly" else plan.stripe_price_id
 
 
 def _get_stripe():
@@ -60,14 +66,21 @@ async def create_checkout_session(
         })
 
     plan = PLANS[req.plan]
-    if not plan.stripe_price_id:
-        raise HTTPException(status_code=503, detail=f"Stripe price ID not configured for plan: {req.plan}")
+    try:
+        price_id = _resolve_price_id(plan, req.interval)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="interval non valido: monthly|yearly")
+    if not price_id:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Stripe price ID ({req.interval}) non configurato per: {req.plan}",
+        )
 
     trial_days = request.app.state.billing_config.stripe_trial_days
     session = await _stripe_call(
         st.checkout.Session.create,
         customer=customer_id,
-        line_items=[{"price": plan.stripe_price_id, "quantity": 1}],
+        line_items=[{"price": price_id, "quantity": 1}],
         mode="subscription",
         success_url=req.success_url,
         cancel_url=req.cancel_url,
@@ -81,7 +94,7 @@ async def create_checkout_session(
                         action="billing.checkout_session_created",
                         auth_user_id=user.get("auth_user_id"),
                         target_table="organizations", target_id=str(org_id),
-                        details={"plan": req.plan, "session_id": session.id})
+                        details={"plan": req.plan, "interval": req.interval, "session_id": session.id})
     except Exception as e:
         logger.warning("Audit log failed: %s", e)
 

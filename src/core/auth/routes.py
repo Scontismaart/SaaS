@@ -378,3 +378,68 @@ async def change_email(body: EmailChange, request: Request):
             else "Email aggiornata"
         ),
     }
+
+
+# ── Recupero password (recover + reset) ────────────────────────────────
+# Recover: l'utente NON è autenticato, quindi niente sessione; Supabase
+# invia l'email con il link di recovery. Risposta sempre identica a
+# prescindere dall'esistenza dell'account: nessuna enumerazione.
+# Reset: il link di recovery rimanda al frontend con access_token +
+# type=recovery nell'hash dell'URL; il token viene usato come Bearer per
+# PUT /auth/v1/user (stessa via del cambio password da autenticato).
+# Rate limit condiviso con le altre modifiche account (5/ora/IP).
+
+
+class RecoverRequest(BaseModel):
+    email: str
+
+
+class ResetPassword(BaseModel):
+    access_token: str
+    password: str
+
+
+@router.post("/recover")
+async def recover_password(body: RecoverRequest, request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    email = body.email.strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(422, "Email non valida")
+
+    import httpx
+
+    client = await bff._client()
+    try:
+        await client.post(
+            f"{bff._supabase_url()}/auth/v1/recover",
+            json={"email": email},
+            headers={"apikey": bff._anon_key(), "Content-Type": "application/json"},
+        )
+    except httpx.HTTPError:
+        # Nessuna enumerazione account: la risposta resta identica anche
+        # se Supabase non è raggiungibile in questo momento.
+        pass
+    return {
+        "ok": True,
+        "message": "Se l'email e' registrata riceverai un link di recupero.",
+    }
+
+
+@router.post("/reset")
+async def reset_password(body: ResetPassword, request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    pwd = body.password
+    if len(pwd) < _PASSWORD_MIN or not _SPECIAL_RE.search(pwd):
+        raise HTTPException(
+            422,
+            f"La password deve avere almeno {_PASSWORD_MIN} caratteri "
+            "e includere almeno un carattere speciale (es. ! @ # $ %)",
+        )
+    await _supabase_update_user(body.access_token, {"password": pwd})
+    return {"ok": True, "message": "Password aggiornata, ora puoi accedere"}

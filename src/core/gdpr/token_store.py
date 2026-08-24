@@ -7,20 +7,31 @@ backend in-memory (stesso contratto, stessi TTL)."""
 import json
 import os
 import time
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 TOKEN_TTL_SECONDS = 15 * 60
 _PREFIX = "gdpr:export:"
 _memory: dict[str, dict[str, Any]] = {}
 _redis = None
+_warned = False
 
 
 async def _get_redis():
-    global _redis
+    global _redis, _warned
     if _redis is not None:
         return _redis
     url = os.getenv("REDIS_URL", "").strip()
     if not url:
+        from src.core.security.docs import is_production
+        if is_production() and not _warned:
+            _warned = True
+            logger.warning(
+                "token_store: REDIS_URL assente in produzione: fallback in-memory, "
+                "i token NON saranno condivisi tra i worker"
+            )
         return None
     from redis.asyncio import Redis
 

@@ -97,6 +97,8 @@ from src.instagram.repository import InstagramRepository
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from src.core.startup_guard import assert_production_safe
+    assert_production_safe()
     # Config globale — settato incondizionatamente, prima di qualsiasi
     # dipendenza dal DB, cosi' e' disponibile anche in modalita' demo
     # (DATABASE_URL assente o DB irraggiungibile).

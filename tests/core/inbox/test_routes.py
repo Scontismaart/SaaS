@@ -80,7 +80,7 @@ class TestInboxAPI:
         async with await _make_client(app, org["id"], uuid.uuid4()) as client:
             response = await client.get("/api/inbox/tickets")
             assert response.status_code == 200
-            assert response.json() == {"tickets": []}
+            assert response.json() == {"tickets": [], "has_more": False}
 
     async def test_list_tickets_with_pending(self, async_client):
         repo, pg_pool, app = async_client

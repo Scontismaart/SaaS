@@ -280,7 +280,10 @@
         </aside>
 
         <div class="onboarding-panel">
-          <div class="onboarding-progress"><span id="onboarding-progress-bar"></span></div>
+          <div class="onboarding-head-row">
+            <div class="onboarding-progress"><span id="onboarding-progress-bar"></span></div>
+            <button type="button" class="report-refresh" id="onboarding-chiudi">Chiudi configurazione</button>
+          </div>
           <span class="onboarding-autosave-badge" id="onboarding-autosave" hidden></span>
 
           <section class="onboarding-page" data-onboarding-page="0">
@@ -388,10 +391,17 @@
 
     <!-- ---------- VISTA: ASSISTENTE ---------- -->
     <section class="view view-hidden" data-view-panel="assistente">
-      <!-- Banner configurazione: renderizzato da JS SOLO se il profilo è
-           incompleto (mai solo nascosto via CSS: niente flash per chi ha
-           già finito l'onboarding). -->
-      <div id="onboarding-banner" hidden></div>
+      <!-- Accesso alla configurazione assistente (wizard pre-compilato):
+           permanente, è l'unico punto di modifica dopo l'onboarding. -->
+      <div class="dash-card onboarding-banner-card" id="onboarding-banner">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Modifica la configurazione del tuo assistente</span>
+        </div>
+        <p class="settings-help">Attività, tono di voce, lingue, regole di escalation e numero WhatsApp: un wizard guidato di 7 passaggi, precompilato con la tua configurazione attuale.</p>
+        <div class="settings-actions">
+          <button type="button" class="review-analyze" id="onboarding-banner-cta">Configura</button>
+        </div>
+      </div>
       <p class="view-intro">Scrivi come farebbe un cliente vero — puoi anche scegliere un esempio qui sotto.</p>
 
       <div class="chat-window">
@@ -670,60 +680,6 @@
       </div>
 
       <div data-settings-pane="generale">
-      <p class="view-intro">Modifica il profilo dell'assistente senza rifare l'onboarding: le modifiche valgono per tutte le nuove conversazioni.</p>
-
-      <p class="doc-config-status" id="settings-status" hidden></p>
-
-      <div class="settings-grid">
-        <div class="dash-card settings-wide">
-          <div class="dash-card-header">
-            <span class="dash-card-title">Profilo attività</span>
-          </div>
-          <label class="wizard-label" for="settings-name">Nome attività</label>
-          <input class="wizard-input" id="settings-name" type="text" placeholder="Es. Trattoria Da Mario">
-          <div class="wizard-two">
-            <div>
-              <label class="wizard-label" for="settings-hours">Orari</label>
-              <textarea class="wizard-input" id="settings-hours" rows="4" placeholder="Es. Martedì-Sabato 09:00-19:00"></textarea>
-            </div>
-            <div>
-              <label class="wizard-label" for="settings-tone">Tono di voce</label>
-              <textarea class="wizard-input" id="settings-tone" rows="4" placeholder="Gentile, preciso, professionale..."></textarea>
-            </div>
-          </div>
-          <label class="wizard-label" for="settings-services">Servizi principali, uno per riga</label>
-          <textarea class="wizard-input" id="settings-services" rows="5"></textarea>
-        </div>
-
-        <div class="dash-card">
-          <div class="dash-card-header">
-            <span class="dash-card-title">Lingue</span>
-          </div>
-          <p class="settings-help">L'assistente rileva la lingua del cliente e risponde nella stessa lingua. L'italiano è sempre attivo.</p>
-          <div class="escalation-list" id="settings-lingue-grid"></div>
-          <label class="wizard-label" for="settings-lingua-default">Lingua di default</label>
-          <select class="wizard-input" id="settings-lingua-default"></select>
-        </div>
-
-        <div class="dash-card settings-wide">
-          <div class="dash-card-header">
-            <span class="dash-card-title">Regole escalation</span>
-          </div>
-          <p class="settings-help">Quando una richiesta matcha una regola, la conversazione passa a un operatore umano.</p>
-          <div class="escalation-list" id="settings-escalation-list"></div>
-          <label class="wizard-label" for="settings-extra-rule">Aggiungi regola</label>
-          <div class="wizard-inline">
-            <input class="wizard-input" id="settings-extra-rule" type="text" placeholder="Es. richieste fuori listino">
-            <button type="button" class="report-refresh" id="settings-add-rule">Aggiungi</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="settings-actions">
-        <span class="doc-config-status inline" id="settings-save-status" role="status"></span>
-        <button type="button" class="review-analyze" id="settings-save">Salva modifiche</button>
-      </div>
-
       <div class="dash-card settings-wide">
         <div class="dash-card-header">
           <span class="dash-card-title">Localizzazione</span>

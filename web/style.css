@@ -325,6 +325,14 @@ body {
   background: var(--line);
 }
 
+/* Riga testa del wizard: progress + chiudi configurazione */
+.onboarding-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 /* --- Tab Impostazioni (Generale / Integrazioni / Audit) --- */
 .settings-tabs {
   display: flex;

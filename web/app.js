@@ -2,7 +2,7 @@ const API_BASE = window.MELPIS_API_BASE ?? "http://localhost:8000";
 const PROFILO_ID = "trattoria_da_mario";
 
 /* ============================================================
-   AUTENTICAZIONE — BFF (task18)
+   AUTENTICAZIONE â€” BFF (task18)
    ============================================================
    Il frontend NON gestisce token: invia email+password a
    /api/auth/login, il backend (BFF) scambia le credenziali con
@@ -23,7 +23,7 @@ function _sanitize(v) {
 }
 
 /* ============================================================
-   TOAST — notifiche non bloccanti al posto di alert()
+   TOAST â€” notifiche non bloccanti al posto di alert()
    ============================================================ */
 
 function toast(messaggio, tipo = "info", durata = 4200) {
@@ -47,7 +47,7 @@ function toast(messaggio, tipo = "info", durata = 4200) {
 }
 
 /* ============================================================
-   CONFERMA AZIONI DISTRUTTIVE — modal riusabile al posto di confirm()
+   CONFERMA AZIONI DISTRUTTIVE â€” modal riusabile al posto di confirm()
    ============================================================ */
 
 function confermaDestructiva({ titolo = "Conferma azione", descrizione = "", label = "Conferma" } = {}) {
@@ -104,7 +104,7 @@ function csrfToken() {
 }
 
 /* ============================================================
-   STATO RETE — banner "connessione persa / ripristinata"
+   STATO RETE â€” banner "connessione persa / ripristinata"
    ============================================================ */
 
 let reteInErrore = false;
@@ -130,9 +130,9 @@ function mostraBannerRete(testo, online = false, autoHideMs = 0) {
 function segnalaErroreRete() {
   reteInErrore = true;
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
+    mostraBannerRete("Connessione persa â€” i dati non si aggiornano. Controlla la rete.");
   } else {
-    mostraBannerRete("Server irraggiungibile — riprova tra poco.");
+    mostraBannerRete("Server irraggiungibile â€” riprova tra poco.");
   }
 }
 
@@ -143,7 +143,7 @@ function segnaReteOk() {
 }
 
 window.addEventListener("offline", () => {
-  mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
+  mostraBannerRete("Connessione persa â€” i dati non si aggiornano. Controlla la rete.");
 });
 
 window.addEventListener("online", () => {
@@ -205,7 +205,7 @@ function aggiornaBottoneAccesso() {
   const userMenu = document.getElementById("user-menu");
   if (btn) btn.hidden = Boolean(sessione);
   if (userMenu) userMenu.hidden = !sessione;
-/* Il billing non è più una CTA in topbar: vive nella vista "Piano e
+/* Il billing non Ã¨ piÃ¹ una CTA in topbar: vive nella vista "Piano e
    abbonamento" della sidebar (gruppo Account). */
   if (!sessione) {
     chiudiMenuUtente();
@@ -252,7 +252,7 @@ document.getElementById("logout-btn")?.addEventListener("click", async () => {
 });
 
 /* Login su pagina dedicata /accedi/, registrazione su /registrati/
-   (pagine standalone). Il modal è stato rimosso. */
+   (pagine standalone). Il modal Ã¨ stato rimosso. */
 function vaiAdAccesso() {
   const next = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `/accedi/?next=${next}`;
@@ -291,13 +291,13 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
 });
 
 /* ============================================================
-   ACCOUNT — Piano e abbonamento (vista dedicata, ex CTA topbar)
+   ACCOUNT â€” Piano e abbonamento (vista dedicata, ex CTA topbar)
    ============================================================ */
 
 const ACCOUNT_PLANS = [
-  { slug: "starter", nome: "Essenziale", prezzo: "€29/mese", limite: "300 conversazioni/mese" },
-  { slug: "pro", nome: "Crescita", prezzo: "€69/mese", limite: "1.200 conversazioni/mese" },
-  { slug: "business", nome: "Scala", prezzo: "€149/mese", limite: "5.000 conversazioni/mese" },
+  { slug: "starter", nome: "Essenziale", prezzo: "â‚¬29/mese", limite: "300 conversazioni/mese" },
+  { slug: "pro", nome: "Crescita", prezzo: "â‚¬69/mese", limite: "1.200 conversazioni/mese" },
+  { slug: "business", nome: "Scala", prezzo: "â‚¬149/mese", limite: "5.000 conversazioni/mese" },
 ];
 
 function accountStatoPill(stato) {
@@ -318,7 +318,7 @@ async function caricaAccount() {
     accountStatoPill(stato);
 
     const corrente = ACCOUNT_PLANS.find((p) => p.slug === sub.plan);
-    document.getElementById("account-plan-nome").textContent = corrente ? corrente.nome : "—";
+    document.getElementById("account-plan-nome").textContent = corrente ? corrente.nome : "â€”";
     document.getElementById("account-plan-prezzo").textContent = corrente ? corrente.prezzo : "";
 
     const rinnovo = document.getElementById("account-rinnovo");
@@ -328,7 +328,7 @@ async function caricaAccount() {
     else if (sub.current_period_end) rinnovo.textContent = `Prossimo rinnovo: ${dataIt(sub.current_period_end)}.`;
     else rinnovo.textContent = "Nessun rinnovo programmato.";
 
-    // Card cambio piano: quella attiva è evidenziata e non cliccabile.
+    // Card cambio piano: quella attiva Ã¨ evidenziata e non cliccabile.
     const wrap = document.getElementById("account-plans");
     wrap.innerHTML = "";
     ACCOUNT_PLANS.forEach((p) => {
@@ -381,7 +381,7 @@ async function cambiaPiano(slug) {
   } catch (e) {
     console.error("Errore cambio piano:", e);
     status.hidden = false;
-    status.textContent = "Impossibile avviare il cambio piano. Riprova più tardi.";
+    status.textContent = "Impossibile avviare il cambio piano. Riprova piÃ¹ tardi.";
     status.style.color = "var(--red)";
   }
 }
@@ -396,7 +396,7 @@ async function apriPortaleBilling() {
   } catch (e) {
     console.error("Errore apertura portale billing:", e);
     status.hidden = false;
-    status.textContent = "Impossibile aprire il portale Stripe. Riprova più tardi.";
+    status.textContent = "Impossibile aprire il portale Stripe. Riprova piÃ¹ tardi.";
     status.style.color = "var(--red)";
   }
 }
@@ -422,11 +422,11 @@ let notificationItems = {
 };
 
 /* Chiavi delle notifiche nate prima della riorganizzazione della sidebar:
-   la migrazione preserva lo stato "già letto" (timestamp) di chi le aveva
+   la migrazione preserva lo stato "giÃ  letto" (timestamp) di chi le aveva
    viste, altrimenti le notifiche ricomparirebbero come nuove. */
 const NOTIF_KEY_MIGRATION = {
   documenti: "conoscenza",
-  report: null, // badge rimosso: la voce non esiste più
+  report: null, // badge rimosso: la voce non esiste piÃ¹
   panoramica: null, // badge aggregato rimosso (ora Inbox e Recensioni hanno i propri)
   assistente: null,
 };
@@ -479,16 +479,16 @@ function segnaNotificheViste(viewName) {
   aggiornaCampana();
 }
 
-/* Destinazioni di fallback per chiavi di viste non più presenti nella nav
+/* Destinazioni di fallback per chiavi di viste non piÃ¹ presenti nella nav
    (notifiche salvate prima della riorganizzazione, link memorizzati):
    apre la vista contenitore e, se prevista, il tab giusto dentro
-   Impostazioni — mai un no-op silenzioso. */
+   Impostazioni â€” mai un no-op silenzioso. */
 const VIEW_FALLBACK = {
   audit: { view: "impostazioni", tab: "audit" },
   integrazioni: { view: "impostazioni", tab: "integrazioni" },
   documenti: { view: "conoscenza" },
   report: { view: "panoramica" },
-  onboarding: { view: "assistente", banner: true },
+  onboarding: { view: "assistente" },
 };
 
 function apriView(key) {
@@ -502,7 +502,6 @@ function apriView(key) {
   const container = document.querySelector(`.nav-item[data-view="${dest.view}"]`);
   if (container) container.click();
   if (dest.tab) attivaTabImpostazioni(dest.tab);
-  if (dest.banner) mostraBannerOnboarding(true);
   return true;
 }
 
@@ -560,7 +559,7 @@ navItems.forEach((btn) => {
     segnaNotificheViste(viewName);
 
     // Su mobile il drawer resta aperto dopo la navigazione: chiudilo sempre
-    // (no-op su desktop dove il drawer non è mai "aperto").
+    // (no-op su desktop dove il drawer non Ã¨ mai "aperto").
     chiudiMenuMobile();
 
     navItems.forEach((n) => n.classList.remove("active"));
@@ -584,8 +583,8 @@ navItems.forEach((btn) => {
     topbarTitle.textContent = titles[viewName] || viewName;
     if (viewName === "impostazioni") {
       // Hub a tab: precarico i dati di tutti i pane (lazy per tab sarebbe
-      // over-engineering: sono tre chiamate leggere).
-      caricaTimezone();
+      // over-engineering: sono tre chiamate leggere). Il fuso orario si
+      // gestisce da solo (IIFE inizializzaTimezone con flag "caricato").
       caricaIntegrazioni();
       caricaAudit();
     }
@@ -596,7 +595,7 @@ navItems.forEach((btn) => {
       aggiornaPrioritari();
     }
     if (viewName === "onboarding") {
-/* NOTA: inizializzaOnboarding() NON va chiamata qui al load — parte dalla
+/* NOTA: inizializzaOnboarding() NON va chiamata qui al load â€” parte dalla
    vista onboarding (mostraView) DOPO la session check di avvia(). Chiamarla
    al top-level trovava sessione=undefined e rimandava al login prima ancora
    che caricaSessione() completasse (bounce immediato post-OAuth). */
@@ -614,17 +613,11 @@ navItems.forEach((btn) => {
       aggiornaConteggio();
       aggiornaDocumenti();
     }
-    if (viewName === "assistente") {
-      mostraBannerOnboarding();
-    }
     if (viewName === "inbox") {
       avviaInboxPolling();
       caricaInbox();
     } else {
       fermaInboxPolling();
-    }
-    if (viewName === "impostazioni") {
-      caricaImpostazioni();
     }
     chiudiMenuMobile();
   });
@@ -738,7 +731,7 @@ function profiloOnboarding() {
   const vertical = verticaleCorrente();
   return {
     verticale: onboardingState.selectedVertical,
-    nome_attivita: onboardingEls.name.value.trim() || "Nuova attività",
+    nome_attivita: onboardingEls.name.value.trim() || "Nuova attivitÃ ",
     orari: onboardingEls.hours.value.trim() || "Orari da configurare",
     tono: onboardingEls.tone.value.trim() || vertical?.tono || "",
     servizi: righeDaTextarea(onboardingEls.services.value),
@@ -767,14 +760,14 @@ function renderOnboardingStep() {
 
 function salvaBozzaOnboarding() {
   /* Bozza in localStorage: il wizard resta riprendibile anche se il
-     browser si chiude a metà. I dati sono non-sensibili (profilo attività). */
+     browser si chiude a metÃ . I dati sono non-sensibili (profilo attivitÃ ). */
   try {
     const bozza = { step: onboardingState.step, salvata_at: new Date().toISOString(), profilo: profiloOnboarding() };
     localStorage.setItem("melpis_onboarding_bozza", JSON.stringify(bozza));
     const badge = document.getElementById("onboarding-autosave");
     if (badge) {
       const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-      badge.textContent = `Bozza salvata · ${ora}`;
+      badge.textContent = `Bozza salvata Â· ${ora}`;
       badge.hidden = false;
     }
   } catch { /* localStorage pieno/bloccato: non blocca il wizard */ }
@@ -904,7 +897,7 @@ async function salvaProfiloOnboarding() {
 }
 
 /* ============================================================
-   ONBOARDING — accesso dal banner in "Assistente" (voce nav rimossa)
+   ONBOARDING â€” accesso dal banner in "Assistente" (voce nav rimossa)
    ============================================================ */
 
 function apriOnboarding() {
@@ -914,267 +907,21 @@ function apriOnboarding() {
     v.classList.toggle("view-hidden", v.dataset.viewPanel !== "onboarding");
   });
   topbarTitle.textContent = "Configurazione assistente";
+  // Pre-compila il wizard dal profilo salvato: il wizard Ã¨ l'unico editor
+  // della configurazione assistente (le card duplicate in Impostazioni sono
+  // state rimosse).
+  inizializzaOnboarding();
 }
 
 function chiudiOnboarding() {
   document.querySelector('.nav-item[data-view="assistente"]')?.click();
 }
 
-function profiloOnboardingCompleto(profilo) {
-  return Boolean(profilo && profilo.nome_attivita && profilo.verticale);
-}
+document.getElementById("onboarding-banner-cta")?.addEventListener("click", apriOnboarding);
+document.getElementById("onboarding-chiudi")?.addEventListener("click", chiudiOnboarding);
 
-function renderBannerOnboarding(banner) {
-  banner.innerHTML =
-    '<div class="dash-card onboarding-banner-card">' +
-    '<div class="dash-card-header"><span class="dash-card-title">Completa la configurazione del tuo assistente</span></div>' +
-    '<p class="settings-help">Sette passaggi guidati: attività, tono di voce, lingue, escalation e numero WhatsApp. Meno di 10 minuti.</p>' +
-    '<div class="settings-actions"><button type="button" class="review-analyze" id="onboarding-banner-cta">Riprendi la configurazione</button></div>' +
-    "</div>";
-  banner.querySelector("#onboarding-banner-cta")?.addEventListener("click", apriOnboarding);
-}
 
-/* force=true: il banner serve subito (fallback da notifica/link vecchi).
-   Senza force: si decide dal profilo reale — se completo il banner viene
-   RIMOSSO dal DOM (non solo nascosto: niente flash al load per chi ha
-   già finito l'onboarding). */
-async function mostraBannerOnboarding(force) {
-  const banner = document.getElementById("onboarding-banner");
-  if (!banner) return;
-  if (force === true) {
-    renderBannerOnboarding(banner);
-    banner.hidden = false;
-    return;
-  }
-  try {
-    const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
-    if (!res.ok) {
-      renderBannerOnboarding(banner);
-      banner.hidden = false;
-      return;
-    }
-    const data = await res.json();
-    if (profiloOnboardingCompleto(data.profilo)) {
-      banner.remove();
-    } else {
-      renderBannerOnboarding(banner);
-      banner.hidden = false;
-    }
-  } catch {
-    banner.remove(); // senza risposta non mostriamo un banner falso
-  }
-}
-
-/* ============================================================
-   IMPOSTAZIONI — stesso profilo dell'onboarding, modificabile
-   senza rifare il wizard (GET/POST /api/onboarding/profilo)
-   ============================================================ */
-
-const settingsEls = {
-  name: document.getElementById("settings-name"),
-  hours: document.getElementById("settings-hours"),
-  tone: document.getElementById("settings-tone"),
-  services: document.getElementById("settings-services"),
-  lingueGrid: document.getElementById("settings-lingue-grid"),
-  linguaDefault: document.getElementById("settings-lingua-default"),
-  escalationList: document.getElementById("settings-escalation-list"),
-  extraRule: document.getElementById("settings-extra-rule"),
-  addRule: document.getElementById("settings-add-rule"),
-  saveBtn: document.getElementById("settings-save"),
-  saveStatus: document.getElementById("settings-save-status"),
-};
-
-const settingsState = {
-  loaded: false,
-  loading: false,
-  verticale: "ristorante",
-  whatsappCollegato: false,
-  documentiImportati: false,
-  extraRules: [],
-  lingueDisponibili: ["it", "en", "fr", "de", "es"],
-};
-
-function settingsLingueSelezionate() {
-  return [...document.querySelectorAll(".settings-lang:checked")].map((i) => i.value);
-}
-
-function settingsRegoleSelezionate() {
-  return [...document.querySelectorAll(".settings-rule:checked")].map((input) => input.value);
-}
-
-function aggiornaSettingsDefaultLingua(preferito = null) {
-  if (!settingsEls.linguaDefault) return;
-  const selezionate = settingsLingueSelezionate();
-  const corrente = preferito || settingsEls.linguaDefault.value || "it";
-  settingsEls.linguaDefault.innerHTML = "";
-  (selezionate.length ? selezionate : ["it"]).forEach((lang) => {
-    const opt = document.createElement("option");
-    opt.value = lang;
-    opt.textContent = lang.toUpperCase();
-    opt.selected = lang === corrente;
-    settingsEls.linguaDefault.appendChild(opt);
-  });
-}
-
-function renderSettingsLingue(lingueAttive) {
-  if (!settingsEls.lingueGrid) return;
-  settingsEls.lingueGrid.innerHTML = "";
-  settingsState.lingueDisponibili.forEach((lang) => {
-    const label = document.createElement("label");
-    label.className = "wizard-check";
-    const locked = lang === "it";
-    label.innerHTML = `<input class="settings-lang" type="checkbox" value="${_sanitize(lang)}" ${lingueAttive.includes(lang) ? "checked" : ""} ${locked ? "disabled" : ""}> ${_sanitize(lang.toUpperCase())}`;
-    label.querySelector("input").addEventListener("change", () => aggiornaSettingsDefaultLingua());
-    settingsEls.lingueGrid.appendChild(label);
-  });
-  aggiornaSettingsDefaultLingua(lingueAttive.find((l) => l !== "it") || "it");
-}
-
-function renderSettingsEscalation() {
-  if (!settingsEls.escalationList) return;
-  settingsEls.escalationList.innerHTML = "";
-  settingsState.extraRules.forEach((rule) => {
-    const label = document.createElement("label");
-    label.className = "wizard-check";
-    label.innerHTML = `<input class="settings-rule" type="checkbox" value="${_sanitize(String(rule).replaceAll('"', "&quot;"))}" checked> ${_sanitize(rule)}`;
-    settingsEls.escalationList.appendChild(label);
-  });
-}
-
-function impostaSettingsReadonly(solaLettura) {
-  [
-    settingsEls.name, settingsEls.hours, settingsEls.tone, settingsEls.services,
-    settingsEls.linguaDefault, settingsEls.extraRule, settingsEls.addRule, settingsEls.saveBtn,
-  ].forEach((el) => { if (el) el.disabled = solaLettura; });
-  if (solaLettura && settingsEls.saveStatus) {
-    settingsEls.saveStatus.textContent = "Solo il proprietario o un manager possono modificare il profilo.";
-    settingsEls.saveStatus.style.color = "var(--amber)";
-  }
-}
-
-async function caricaImpostazioni() {
-  if (!sessione) {
-    vaiAdAccesso();
-    return;
-  }
-  if (settingsState.loaded || settingsState.loading) return;
-  settingsState.loading = true;
-  try {
-    const [profiloRes, verticaliRes] = await Promise.all([
-      apiFetch(`${API_BASE}/api/onboarding/profilo`),
-      apiFetch(`${API_BASE}/api/onboarding/verticali`),
-    ]);
-    if (verticaliRes.ok) {
-      const data = await verticaliRes.json().catch(() => ({}));
-      settingsState.lingueDisponibili = data.lingue_disponibili || settingsState.lingueDisponibili;
-    }
-    if (profiloRes.status === 401) {
-      vaiAdAccesso();
-      return;
-    }
-    let record = null;
-    if (profiloRes.ok) {
-      const data = await profiloRes.json().catch(() => ({}));
-      record = data.profilo;
-    }
-    impostaSettingsReadonly(sessione.ruolo === "staff");
-    settingsState.verticale = record?.verticale || settingsState.verticale;
-    settingsState.whatsappCollegato = Boolean(record?.whatsapp_collegato);
-    settingsState.documentiImportati = Boolean(record?.documenti_importati);
-    if (settingsEls.name) settingsEls.name.value = record?.nome_attivita || "";
-    if (settingsEls.hours) settingsEls.hours.value = record?.orari || "";
-    if (settingsEls.tone) settingsEls.tone.value = record?.tono || "";
-    if (settingsEls.services) settingsEls.services.value = (record?.servizi || []).join("\n");
-    settingsState.extraRules = (record?.regole_escalation || []).map(String);
-    const lingueAttive = record?.lingue_supportate?.length ? record.lingue_supportate : ["it"];
-    renderSettingsLingue(lingueAttive.map(String));
-    if (record?.lingua_default) aggiornaSettingsDefaultLingua(record.lingua_default);
-    renderSettingsEscalation();
-    settingsState.loaded = true;
-  } catch (err) {
-    console.error("Impossibile caricare le impostazioni:", err);
-  } finally {
-    settingsState.loading = false;
-  }
-}
-
-function aggiungiRegolaSettings() {
-  if (!settingsEls.extraRule || !settingsEls.addRule) return;
-  const valore = settingsEls.extraRule.value.trim();
-  if (!valore) return;
-  if (!settingsState.extraRules.some((r) => r.toLowerCase() === valore.toLowerCase())) {
-    settingsState.extraRules.push(valore);
-    renderSettingsEscalation();
-  }
-  settingsEls.extraRule.value = "";
-}
-
-settingsEls.addRule?.addEventListener("click", aggiungiRegolaSettings);
-
-settingsEls.extraRule?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    aggiungiRegolaSettings();
-  }
-});
-
-async function salvaImpostazioni() {
-  if (!settingsEls.saveBtn || settingsEls.saveBtn.disabled) return;
-  const payload = {
-    verticale: settingsState.verticale,
-    nome_attivita: settingsEls.name.value.trim() || "Nuova attività",
-    orari: settingsEls.hours.value.trim() || "Orari da configurare",
-    tono: settingsEls.tone.value.trim(),
-    servizi: righeDaTextarea(settingsEls.services.value),
-    regole_escalation: settingsRegoleSelezionate(),
-    whatsapp_collegato: settingsState.whatsappCollegato,
-    documenti_importati: settingsState.documentiImportati,
-    lingue_supportate: settingsLingueSelezionate(),
-    lingua_default: settingsEls.linguaDefault?.value || "it",
-  };
-  settingsEls.saveBtn.disabled = true;
-  if (settingsEls.saveStatus) {
-    settingsEls.saveStatus.textContent = "Salvataggio…";
-    settingsEls.saveStatus.style.color = "";
-  }
-  try {
-    const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      throw new Error(err?.detail || "Errore salvataggio profilo");
-    }
-    const data = await res.json();
-    const nome = data.profilo?.nome_attivita || payload.nome_attivita;
-    const brandName = document.getElementById("business-name");
-    const chatName = document.getElementById("chat-business-name");
-    if (brandName) brandName.textContent = nome;
-    if (chatName) chatName.textContent = nome;
-    if (settingsEls.saveStatus) {
-      settingsEls.saveStatus.textContent = "Modifiche salvate.";
-      settingsEls.saveStatus.style.color = "var(--sage)";
-      setTimeout(() => {
-        if (settingsEls.saveStatus.textContent === "Modifiche salvate.") settingsEls.saveStatus.textContent = "";
-      }, 4000);
-    }
-    toast("Impostazioni salvate.", "success");
-  } catch (err) {
-    if (settingsEls.saveStatus) {
-      settingsEls.saveStatus.textContent = err.message || "Errore salvataggio.";
-      settingsEls.saveStatus.style.color = "var(--red)";
-    }
-    toast(err.message || "Errore salvataggio.", "error");
-  } finally {
-    if (settingsEls.saveBtn && sessione?.ruolo !== "staff") settingsEls.saveBtn.disabled = false;
-  }
-}
-
-settingsEls.saveBtn?.addEventListener("click", salvaImpostazioni);
-
-/* ── Sicurezza account: cambio password/email ────────────────── */
+/* â”€â”€ Sicurezza account: cambio password/email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const SECURITY_PASSWORD_MIN = 10;
 
@@ -1199,7 +946,7 @@ document.getElementById("security-password-form")?.addEventListener("submit", as
     return;
   }
   submit.disabled = true;
-  securityStatus(status, "Aggiorno…");
+  securityStatus(status, "Aggiornoâ€¦");
   try {
     const res = await apiFetch(`${API_BASE}/api/auth/password`, {
       method: "POST",
@@ -1231,7 +978,7 @@ document.getElementById("security-email-form")?.addEventListener("submit", async
     return;
   }
   submit.disabled = true;
-  securityStatus(status, "Aggiorno…");
+  securityStatus(status, "Aggiornoâ€¦");
   try {
     const res = await apiFetch(`${API_BASE}/api/auth/email`, {
       method: "POST",
@@ -1291,8 +1038,6 @@ onboardingEls.next?.addEventListener("click", async () => {
     await salvaProfiloOnboarding();
     onboardingEls.status.textContent = "Profilo salvato. La chat ora usa questo assistente.";
     onboardingEls.status.style.color = "var(--sage)";
-    // Profilo completo: il banner in "Assistente" non deve più esistere.
-    document.getElementById("onboarding-banner")?.remove();
   } catch (err) {
     onboardingEls.status.textContent = err.message;
     onboardingEls.status.style.color = "var(--red)";
@@ -1326,7 +1071,6 @@ onboardingEls.testBtn?.addEventListener("click", async () => {
   onboardingEls.testOutput.textContent = "Salvo profilo e provo risposta...";
   try {
     await salvaProfiloOnboarding();
-    document.getElementById("onboarding-banner")?.remove();
     await generaPreviewOnboarding(
       onboardingEls.testOutput,
       onboardingEls.testMessage.value.trim() || verticaleCorrente()?.esempio || "Siete aperti?"
@@ -1585,7 +1329,7 @@ document.getElementById("booking-reject-btn")?.addEventListener("click", () => {
   eseguiAzionePrenotazione("reject", {
     chiediConferma: true,
     titolo: "Rifiutare la prenotazione?",
-    descrizione: `La richiesta di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà contrassegnata come rifiutata e il cliente non avrà il tavolo riservato.`,
+    descrizione: `La richiesta di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrÃ  contrassegnata come rifiutata e il cliente non avrÃ  il tavolo riservato.`,
     label: "Rifiuta",
   });
 });
@@ -1594,7 +1338,7 @@ document.getElementById("booking-cancel-btn")?.addEventListener("click", () => {
   eseguiAzionePrenotazione("cancel", {
     chiediConferma: true,
     titolo: "Annullare la prenotazione?",
-    descrizione: `La prenotazione di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà annullata e i posti torneranno disponibili.`,
+    descrizione: `La prenotazione di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrÃ  annullata e i posti torneranno disponibili.`,
     label: "Annulla prenotazione",
   });
 });
@@ -1713,7 +1457,7 @@ async function aggiornaPrenotazioni() {
       const ora = String(p.ora).slice(0, 5);
       bookingCalendar.addEvent({
         id: p.id,
-        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
+        title: `${ora} Â· ${p.nome_cliente || "Cliente"} Â· ${p.coperti || "?"} coperti`,
         start: `${p.data}T${ora}:00`,
         end: `${p.data}T${ora}:00`,
         backgroundColor: colorePrenotazione(p.stato),
@@ -1747,7 +1491,7 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
       const ora = String(p.ora || "").slice(0, 5);
       item.innerHTML = `
         <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
-        <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` · ${_sanitize(p.telefono)}` : ""}</span></div>
+        <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` Â· ${_sanitize(p.telefono)}` : ""}</span></div>
         <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
       bookingDayList.appendChild(item);
     });
@@ -1764,7 +1508,7 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
           const ora = String(p.ora || "").slice(0, 5);
           item.innerHTML = `
             <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
-            <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` · ${_sanitize(p.telefono)}` : ""}</span></div>
+            <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` Â· ${_sanitize(p.telefono)}` : ""}</span></div>
             <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
           bookingDayList.appendChild(item);
         });
@@ -1978,8 +1722,8 @@ const trendList = document.getElementById("trend-list");
 let trendPrimoCaricamento = true;
 
 function _paroleChiave(testi, max = 3) {
-  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "è", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "più", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
-  const words = testi.join(" ").toLowerCase().replace(/[^a-zàèéìòù\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
+  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "Ã¨", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "piÃ¹", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
+  const words = testi.join(" ").toLowerCase().replace(/[^a-zÃ Ã¨Ã©Ã¬Ã²Ã¹\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
   const freq = {};
   words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
   return Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, max).map(e => e[0]);
@@ -2036,7 +1780,7 @@ async function aggiornaTrends() {
 
     if (pos > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-pos">▲</span>
+        <span class="trend-icon trend-pos">â–²</span>
         <div class="trend-body">
           <span class="trend-label">Positivo (${pctPos}%)</span>
           <div class="trend-bar-track"><div class="trend-bar-fill fill-pos" style="width:${pctPos}%"></div></div>
@@ -2045,7 +1789,7 @@ async function aggiornaTrends() {
 
     if (neg > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-neg">▼</span>
+        <span class="trend-icon trend-neg">â–¼</span>
         <div class="trend-body">
           <span class="trend-label">Negativo (${pctNeg}%)</span>
           <div class="trend-bar-track"><div class="trend-bar-fill fill-neg" style="width:${pctNeg}%"></div></div>
@@ -2054,14 +1798,14 @@ async function aggiornaTrends() {
 
     if (neut > 0) items.push(`
       <li class="trend-item">
-        <span class="trend-icon trend-neutral">—</span>
+        <span class="trend-icon trend-neutral">â€”</span>
         <div class="trend-body"><span class="trend-label">Neutro (${pctNeut}%)</span></div>
       </li>`);
 
     topCat.forEach(([cat]) => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-topic">↗</span>
+          <span class="trend-icon trend-topic">â†—</span>
           <div class="trend-body"><span class="trend-label">Argomento ricorrente: ${_sanitize(cat.replace(/_/g, " "))}</span></div>
         </li>`);
     });
@@ -2069,7 +1813,7 @@ async function aggiornaTrends() {
     keywords.forEach(kw => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-new">✦</span>
+          <span class="trend-icon trend-new">âœ¦</span>
           <div class="trend-body"><span class="trend-label">Parola chiave: "${_sanitize(kw)}"</span></div>
         </li>`);
     });
@@ -2106,7 +1850,7 @@ const reportTimestamp = document.getElementById("report-timestamp");
 const reportRefresh = document.getElementById("report-refresh");
 const reportEmptyHint = document.getElementById("report-empty-hint");
 
-/* ── Export CSV prenotazioni (endpoint /api/report/csv) ──────────── */
+/* â”€â”€ Export CSV prenotazioni (endpoint /api/report/csv) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 async function scaricaCsvPrenotazioni(da, a) {
   const params = new URLSearchParams();
@@ -2146,7 +1890,7 @@ document.getElementById("booking-export-csv")?.addEventListener("click", () => {
   const da = document.getElementById("booking-export-da")?.value || "";
   const a = document.getElementById("booking-export-a")?.value || "";
   if (da && a && da > a) {
-    toast("La data inizio è dopo la data fine.", "error");
+    toast("La data inizio Ã¨ dopo la data fine.", "error");
     return;
   }
   scaricaCsvPrenotazioni(da, a);
@@ -2188,7 +1932,7 @@ async function aggiornaReport(forza = false) {
 reportRefresh.addEventListener("click", () => aggiornaReport(true));
 
 /* ============================================================
-   PANORAMICA — KPI + priorità + attività
+   PANORAMICA â€” KPI + prioritÃ  + attivitÃ 
    ============================================================ */
 
 const prioritySection = document.getElementById("priority-section");
@@ -2234,7 +1978,7 @@ function _emptyState(icon, titolo, sottotitolo, ctaLabel, ctaAction) {
 }
 
 /* Stato errore con retry: usato al posto del skeleton infinito quando una
-   chiamata API fallisce (l'utente deve capire che può riprovare, non che
+   chiamata API fallisce (l'utente deve capire che puÃ² riprovare, non che
    la sezione sia vuota). */
 function _errorState(messaggio, retryFn) {
   const wrap = document.createElement("div");
@@ -2242,7 +1986,7 @@ function _errorState(messaggio, retryFn) {
   wrap.setAttribute("role", "alert");
   wrap.innerHTML =
     '<div class="empty-state-icon error" aria-hidden="true">' + ICONS.alert + "</div>" +
-    '<span class="empty-state-title">Qualcosa è andato storto</span>' +
+    '<span class="empty-state-title">Qualcosa Ã¨ andato storto</span>' +
     '<span class="empty-state-sub">' + _sanitize(messaggio) + "</span>";
   const btn = document.createElement("button");
   btn.type = "button";
@@ -2303,7 +2047,7 @@ async function aggiornaRiepilogo() {
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
     if (!res.ok) {
       ticketList.innerHTML = "";
-      ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", aggiornaRiepilogo));
+      ticketList.appendChild(_errorState("Impossibile caricare l'attivitÃ  recente.", aggiornaRiepilogo));
       return;
     }
     const storico = await res.json();
@@ -2317,7 +2061,7 @@ async function aggiornaRiepilogo() {
     if (totale === 0) {
       ticketList.appendChild(_emptyState(
         ICONS.chat,
-        "Nessuna attività ancora",
+        "Nessuna attivitÃ  ancora",
         "Parla con l'assistente dalla sezione Assistente: le conversazioni compaiono qui.",
         "Prova l'assistente",
         () => document.querySelector('[data-view="assistente"]')?.click()
@@ -2373,7 +2117,7 @@ async function aggiornaRiepilogo() {
   } catch (err) {
     console.error("Impossibile aggiornare il riepilogo:", err);
     ticketList.innerHTML = "";
-    ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", aggiornaRiepilogo));
+    ticketList.appendChild(_errorState("Impossibile caricare l'attivitÃ  recente.", aggiornaRiepilogo));
   }
 }
 
@@ -2421,7 +2165,7 @@ async function aggiornaDocumenti() {
       docLibrary.appendChild(_emptyState(
         ICONS.doc,
         "Knowledge base vuota",
-        "Carica menu, listini o lista allergeni: l'assistente li userà per rispondere ai clienti.",
+        "Carica menu, listini o lista allergeni: l'assistente li userÃ  per rispondere ai clienti.",
         "Carica il primo documento",
         () => {
           document.getElementById("doc-carica-testo")?.focus();
@@ -2449,7 +2193,7 @@ async function aggiornaDocumenti() {
       remove.addEventListener("click", async () => {
         const ok = await confermaDestructiva({
           titolo: "Rimuovere il documento?",
-          descrizione: `${documento.nome} verrà eliminato dalla knowledge base e l'assistente non potrà più usarlo per rispondere.`,
+          descrizione: `${documento.nome} verrÃ  eliminato dalla knowledge base e l'assistente non potrÃ  piÃ¹ usarlo per rispondere.`,
           label: "Rimuovi",
         });
         if (!ok) return;
@@ -2633,7 +2377,7 @@ docChiediBtn.addEventListener("click", async () => {
 });
 
 /* ============================================================
-   INBOX (HITL) — ticket escalati all'operatore umano
+   INBOX (HITL) â€” ticket escalati all'operatore umano
    ============================================================ */
 
 const inboxList = document.getElementById("inbox-list");
@@ -2737,7 +2481,7 @@ async function caricaInbox({ append = false } = {}) {
       btn.textContent = "Carica altri ticket";
       btn.addEventListener("click", () => {
         btn.disabled = true;
-        btn.textContent = "Carico…";
+        btn.textContent = "Caricoâ€¦";
         caricaInbox({ append: true });
       });
       inboxList.appendChild(btn);
@@ -2780,7 +2524,7 @@ function renderInboxCard(container, t, team) {
 
   const meta = document.createElement("div");
   meta.className = "inbox-card-meta";
-  const assigned = t.assigned_nome ? ` · ${t.assigned_nome}` : "";
+  const assigned = t.assigned_nome ? ` Â· ${t.assigned_nome}` : "";
   meta.textContent = `${TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status}${assigned}`;
   left.appendChild(title);
   left.appendChild(meta);
@@ -2806,7 +2550,7 @@ function renderInboxCard(container, t, team) {
   if (t.pending_staff_at) {
     const pend = document.createElement("span");
     pend.className = "inbox-card-meta";
-    pend.textContent = ` · attesa da ${formatInboxDate(t.pending_staff_at)}`;
+    pend.textContent = ` Â· attesa da ${formatInboxDate(t.pending_staff_at)}`;
     meta.textContent += pend.textContent;
   }
 
@@ -2839,7 +2583,7 @@ function renderInboxCard(container, t, team) {
     assignSel.className = "inbox-assign-select";
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Assegna a…";
+    placeholder.textContent = "Assegna aâ€¦";
     placeholder.disabled = true;
     placeholder.selected = true;
     assignSel.appendChild(placeholder);
@@ -3029,7 +2773,7 @@ function chiudiThreadConversazione() {
   if (threadModal) threadModal.hidden = true;
 }
 
-/* ---------- Feedback 👍/👎 sulle risposte AI (task 12) ---------- */
+/* ---------- Feedback ðŸ‘/ðŸ‘Ž sulle risposte AI (task 12) ---------- */
 
 function creaControlliFeedback(messaggio) {
   const wrap = document.createElement("div");
@@ -3038,13 +2782,13 @@ function creaControlliFeedback(messaggio) {
   const btnUp = document.createElement("button");
   btnUp.type = "button";
   btnUp.className = "thread-feedback-btn";
-  btnUp.textContent = "👍";
+  btnUp.textContent = "ðŸ‘";
   btnUp.title = "Risposta utile";
 
   const btnDown = document.createElement("button");
   btnDown.type = "button";
   btnDown.className = "thread-feedback-btn";
-  btnDown.textContent = "👎";
+  btnDown.textContent = "ðŸ‘Ž";
   btnDown.title = "Risposta da migliorare";
 
   // Stato corrente: feedback del cliente (emoji) + voti staff.
@@ -3091,7 +2835,7 @@ function creaControlliFeedback(messaggio) {
 
 async function apriThreadConversazione(ticket) {
   if (!threadModal || !threadMsgs) return;
-  threadModalTitle.textContent = `Conversazione — ${ticket.phone_number || "cliente"}`;
+  threadModalTitle.textContent = `Conversazione â€” ${ticket.phone_number || "cliente"}`;
   threadMsgs.innerHTML = "";
   threadFoot.textContent = "Caricamento messaggi...";
   threadModal.hidden = false;
@@ -3114,10 +2858,10 @@ async function apriThreadConversazione(ticket) {
       meta.className = "thread-bubble-meta";
       const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
       const quando = formatInboxDate(m.created_at);
-      meta.textContent = m.direction === "outbound" ? `${quando} · ${status}` : quando;
+      meta.textContent = m.direction === "outbound" ? `${quando} Â· ${status}` : quando;
       bubble.appendChild(text);
       bubble.appendChild(meta);
-      // Feedback 👍/👎 sulle risposte generate dall'AI (task 12 guardrails):
+      // Feedback ðŸ‘/ðŸ‘Ž sulle risposte generate dall'AI (task 12 guardrails):
       // aiuta a capire quali prompt funzionano meglio.
       if (m.direction === "outbound" && m.handling_type === "ai_handled") {
         bubble.appendChild(creaControlliFeedback(m));
@@ -3165,7 +2909,7 @@ function fermaInboxPolling() {
 }
 
 /* ============================================================
-   MENU MOBILE — sidebar off-canvas sotto 1100px
+   MENU MOBILE â€” sidebar off-canvas sotto 1100px
    ============================================================ */
 
 const navToggle = document.getElementById("nav-toggle");
@@ -3241,8 +2985,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 /* ============================================================
-   CENTRO NOTIFICHE — campana in topbar
-   Aggrega i conteggi già calcolati in notificationItems
+   CENTRO NOTIFICHE â€” campana in topbar
+   Aggrega i conteggi giÃ  calcolati in notificationItems
    (aggiornati ogni 30s da aggiornaNotifiche).
    ============================================================ */
 
@@ -3284,7 +3028,7 @@ function renderPannelloNotifiche() {
   if (!righe.some((riga) => riga.nonViste > 0)) {
     const p = document.createElement("p");
     p.className = "notif-empty";
-    p.textContent = "Tutto aggiornato: nessuna novità.";
+    p.textContent = "Tutto aggiornato: nessuna novitÃ .";
     notifList.appendChild(p);
     return;
   }
@@ -3337,7 +3081,7 @@ notifBell?.addEventListener("click", () => {
   }
   if (sessionStorage.getItem("melpis_benvenuto")) {
     sessionStorage.removeItem("melpis_benvenuto");
-    toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
+    toast("Benvenuto in Melpis: il tuo periodo di prova Ã¨ attivo.", "success");
   }
   aggiornaRiepilogo();
   aggiornaPrioritari();
@@ -3347,7 +3091,7 @@ notifBell?.addEventListener("click", () => {
   aggiornaCampana();
   setInterval(aggiornaNotifiche, 30000);
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
+    mostraBannerRete("Connessione persa â€” i dati non si aggiornano. Controlla la rete.");
   }
   if (document.getElementById("booking-date")) {
     document.getElementById("booking-date").value = oggiIso();
@@ -3385,15 +3129,15 @@ notifBell?.addEventListener("click", () => {
   }
 
   /* Navigazione statica "Vai a": la ricerca non indicizza solo dati, deve
-     risolvere anche le destinazioni del menu (es. "audit" → Impostazioni ›
-     Audit). DEBITO TECNICO NOTO: la lista è statica — se aggiungi un tab o
+     risolvere anche le destinazioni del menu (es. "audit" â†’ Impostazioni â€º
+     Audit). DEBITO TECNICO NOTO: la lista Ã¨ statica â€” se aggiungi un tab o
      una vista, aggiorna questa mappa (nessun modo automatico per rilevarlo). */
   const VAI_A = [
-    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni › Audit", view: "impostazioni", tab: "audit" },
-    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni › Integrazioni", view: "impostazioni", tab: "integrazioni" },
-    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione › Generale", view: "impostazioni", tab: "generale" },
+    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni â€º Audit", view: "impostazioni", tab: "audit" },
+    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni â€º Integrazioni", view: "impostazioni", tab: "integrazioni" },
+    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione â€º Generale", view: "impostazioni", tab: "generale" },
     { q: ["fattur", "abbonament", "piano", "rinnovo", "pagament", "upgrade", "downgrade", "cancellazion", "prezz"], gruppo: "Account", titolo: "Piano e abbonamento", sub: "Account", view: "account" },
-    { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente › Conoscenza", view: "conoscenza" },
+    { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente â€º Conoscenza", view: "conoscenza" },
   ];
 
   async function eseguiRicerca(q) {
@@ -3431,7 +3175,7 @@ notifBell?.addEventListener("click", () => {
       ).slice(0, 5);
       if (hits.length) {
         blocchi.push(`<span class="gs-gruppo-titolo">Prenotazioni</span>` + hits.map((p) =>
-          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} · ${p.stato || ""}`, "prenotazioni")
+          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} Â· ${p.stato || ""}`, "prenotazioni")
         ).join(""));
       }
     }
@@ -3523,7 +3267,7 @@ notifBell?.addEventListener("click", () => {
 })();
 
 /* ============================================================
-   IMPOSTAZIONI — fuso orario organizzazione
+   IMPOSTAZIONI â€” fuso orario organizzazione
    ============================================================ */
 
 (async function inizializzaTimezone() {
@@ -3555,12 +3299,12 @@ notifBell?.addEventListener("click", () => {
         opt.selected = true;
         select.appendChild(opt);
       }
-    } catch { /* silenzioso: la vista riproverà al prossimo switch */ }
+    } catch { /* silenzioso: la vista riproverÃ  al prossimo switch */ }
   }
 
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
-    if (status) { status.textContent = "Salvo…"; status.style.color = ""; }
+    if (status) { status.textContent = "Salvoâ€¦"; status.style.color = ""; }
     try {
       const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`, {
         method: "PUT",
@@ -3584,7 +3328,7 @@ notifBell?.addEventListener("click", () => {
 })();
 
 /* ============================================================
-   AUDIT — registro attività
+   AUDIT â€” registro attivitÃ 
    ============================================================ */
 
 const AUDIT_ACTION_LABEL = {
@@ -3635,7 +3379,7 @@ async function caricaAudit({ append = false } = {}) {
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
       });
       const dettagli = ev.details && Object.keys(ev.details).length
-        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" · ")
+        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" Â· ")
         : "";
       item.innerHTML = `
         <div class="audit-main">
@@ -3658,7 +3402,7 @@ async function caricaAudit({ append = false } = {}) {
       btn.textContent = "Carica altri eventi";
       btn.addEventListener("click", () => {
         btn.disabled = true;
-        btn.textContent = "Carico…";
+        btn.textContent = "Caricoâ€¦";
         caricaAudit({ append: true });
       });
       list.appendChild(btn);
@@ -3669,7 +3413,7 @@ async function caricaAudit({ append = false } = {}) {
 }
 
 /* ============================================================
-   INTEGRAZIONI — stato canali e webhook
+   INTEGRAZIONI â€” stato canali e webhook
    ============================================================ */
 
 async function caricaIntegrazioni() {
@@ -3743,7 +3487,7 @@ document.getElementById("report-print")?.addEventListener("click", () => window.
         <h3>Scorciatoie da tastiera</h3>
         <dl>
           <dt>/</dt><dd>ricerca globale</dd>
-          <dt>1 – 9</dt><dd>vai alle viste in ordine di menu</dd>
+          <dt>1 â€“ 9</dt><dd>vai alle viste in ordine di menu</dd>
           <dt>0</dt><dd>vista Audit</dd>
           <dt>?</dt><dd>questo pannello</dd>
           <dt>Esc</dt><dd>chiudi pannelli e ricerca</dd>

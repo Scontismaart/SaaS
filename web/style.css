@@ -335,7 +335,7 @@ body {
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--sidebar-text);
-  transition: transform 0.45s var(--motion), background 0.45s var(--motion), color 0.45s var(--motion);
+  transition: transform 0.18s var(--ease-out), background 0.18s var(--ease-out), color 0.18s var(--ease-out);
 }
 
 .nav-item:hover {
@@ -1199,7 +1199,7 @@ body {
   color: #000;
   border-radius: 16px;
   font-weight: 800;
-  transition: transform 0.45s var(--motion), background 0.45s var(--motion), box-shadow 0.45s var(--motion);
+  transition: transform 0.18s var(--ease-out), background 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out);
 }
 
 .send-button:hover { background: var(--accent); box-shadow: 0 4px 10px rgba(94,255,0,0.25); }
@@ -2097,7 +2097,7 @@ body.booking-modal-open { overflow: hidden; }
   min-height: 54px;
   border-radius: 18px;
   font-size: 0.88rem;
-  transition: transform 0.45s var(--motion), background 0.45s var(--motion), color 0.45s var(--motion);
+  transition: transform 0.18s var(--ease-out), background 0.18s var(--ease-out), color 0.18s var(--ease-out);
 }
 
 .onboarding-step span {

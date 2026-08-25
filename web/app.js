@@ -205,8 +205,8 @@ function aggiornaBottoneAccesso() {
   const userMenu = document.getElementById("user-menu");
   if (btn) btn.hidden = Boolean(sessione);
   if (userMenu) userMenu.hidden = !sessione;
-  const billingBtn = document.getElementById("billing-btn");
-  if (billingBtn) billingBtn.hidden = !sessione;
+/* Il billing non è più una CTA in topbar: vive nella vista "Piano e
+   abbonamento" della sidebar (gruppo Account). */
   if (!sessione) {
     chiudiMenuUtente();
     return;
@@ -290,20 +290,119 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
   vaiAdAccesso();
 });
 
-document.getElementById("billing-btn")?.addEventListener("click", async () => {
+/* ============================================================
+   ACCOUNT — Piano e abbonamento (vista dedicata, ex CTA topbar)
+   ============================================================ */
+
+const ACCOUNT_PLANS = [
+  { slug: "starter", nome: "Essenziale", prezzo: "€29/mese", limite: "300 conversazioni/mese" },
+  { slug: "pro", nome: "Crescita", prezzo: "€69/mese", limite: "1.200 conversazioni/mese" },
+  { slug: "business", nome: "Scala", prezzo: "€149/mese", limite: "5.000 conversazioni/mese" },
+];
+
+function accountStatoPill(stato) {
+  const pill = document.getElementById("account-stato");
+  if (stato === "active") { pill.textContent = "Attivo"; pill.className = "account-stato-pill"; }
+  else if (stato === "trialing") { pill.textContent = "Prova gratuita"; pill.className = "account-stato-pill stato-trial"; }
+  else if (stato === "canceled" || stato === "past_due") { pill.textContent = "In pausa"; pill.className = "account-stato-pill stato-pausa"; }
+  else { pill.textContent = "Nessun abbonamento"; pill.className = "account-stato-pill stato-pausa"; }
+}
+
+async function caricaAccount() {
+  const status = document.getElementById("account-status");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/billing/subscription`);
+    if (!res.ok) throw new Error("stato non disponibile");
+    const sub = await res.json();
+    const stato = sub.subscription_status || "none";
+    accountStatoPill(stato);
+
+    const corrente = ACCOUNT_PLANS.find((p) => p.slug === sub.plan);
+    document.getElementById("account-plan-nome").textContent = corrente ? corrente.nome : "—";
+    document.getElementById("account-plan-prezzo").textContent = corrente ? corrente.prezzo : "";
+
+    const rinnovo = document.getElementById("account-rinnovo");
+    const dataIt = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("it-IT"); };
+    if (sub.trial_end) rinnovo.textContent = `Prova gratuita fino al ${dataIt(sub.trial_end)}.`;
+    else if (stato === "canceled") rinnovo.textContent = "Abbonamento cancellato: il servizio resta attivo fino a fine periodo.";
+    else if (sub.current_period_end) rinnovo.textContent = `Prossimo rinnovo: ${dataIt(sub.current_period_end)}.`;
+    else rinnovo.textContent = "Nessun rinnovo programmato.";
+
+    // Card cambio piano: quella attiva è evidenziata e non cliccabile.
+    const wrap = document.getElementById("account-plans");
+    wrap.innerHTML = "";
+    ACCOUNT_PLANS.forEach((p) => {
+      const attuale = p.slug === sub.plan;
+      const card = document.createElement("div");
+      card.className = "dash-card account-plan-card" + (attuale ? " account-plan-attuale" : "");
+      card.innerHTML =
+        '<div class="dash-card-header"><span class="dash-card-title">' + p.nome + "</span>" +
+        (attuale ? '<span class="account-stato-pill">Attivo</span>' : "") +
+        "</div>" +
+        '<span class="account-plan-prezzo">' + p.prezzo + "</span>" +
+        '<p class="settings-help">' + p.limite + "</p>";
+      const actions = document.createElement("div");
+      actions.className = "settings-actions";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = attuale ? "report-refresh" : "review-analyze";
+      btn.textContent = attuale ? "Piano attivo" : (stato === "canceled" ? "Riattiva " + p.nome : "Passa a " + p.nome);
+      if (!attuale) btn.addEventListener("click", () => cambiaPiano(p.slug));
+      else btn.disabled = true;
+      actions.appendChild(btn);
+      card.appendChild(actions);
+      wrap.appendChild(card);
+    });
+    status.hidden = true;
+  } catch (err) {
+    console.error("Impossibile caricare l'abbonamento:", err);
+    status.hidden = false;
+    status.textContent = "Impossibile caricare lo stato dell'abbonamento: torna su questa sezione per riprovare.";
+    status.style.color = "var(--red)";
+  }
+}
+
+async function cambiaPiano(slug) {
+  const status = document.getElementById("account-status");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/billing/create-checkout-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan: slug,
+        interval: "monthly",
+        success_url: window.location.origin + "/app/",
+        cancel_url: window.location.origin + "/app/",
+      }),
+    });
+    if (!res.ok) throw new Error("checkout non disponibile");
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  } catch (e) {
+    console.error("Errore cambio piano:", e);
+    status.hidden = false;
+    status.textContent = "Impossibile avviare il cambio piano. Riprova più tardi.";
+    status.style.color = "var(--red)";
+  }
+}
+
+async function apriPortaleBilling() {
+  const status = document.getElementById("account-status");
   try {
     const res = await apiFetch(`${API_BASE}/api/billing/create-portal-session`, { method: "POST" });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-    } else {
-      toast("Impossibile aprire il portale abbonamenti. Riprova più tardi.", "error");
-    }
+    if (!res.ok) throw new Error("portale non disponibile");
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
   } catch (e) {
-    console.error("Errore apertura portal billing:", e);
-    toast("Errore di connessione.", "error");
+    console.error("Errore apertura portale billing:", e);
+    status.hidden = false;
+    status.textContent = "Impossibile aprire il portale Stripe. Riprova più tardi.";
+    status.style.color = "var(--red)";
   }
-});
+}
+
+document.getElementById("account-portal-btn")?.addEventListener("click", apriPortaleBilling);
+document.getElementById("account-cancel-btn")?.addEventListener("click", apriPortaleBilling);
 
 /* ============================================================
    SIDEBAR / NAVIGATION
@@ -316,18 +415,41 @@ const views = document.querySelectorAll(".view");
 const NOTIFICATION_STORAGE_KEY = "restaurant-dashboard-notifications-v1";
 const notificationBadges = document.querySelectorAll("[data-notification-badge]");
 let notificationItems = {
-  panoramica: 0,
-  assistente: 0,
-  recensioni: 0,
-  prenotazioni: 0,
-  documenti: 0,
-  report: 0,
   inbox: 0,
+  prenotazioni: 0,
+  recensioni: 0,
+  conoscenza: 0,
 };
+
+/* Chiavi delle notifiche nate prima della riorganizzazione della sidebar:
+   la migrazione preserva lo stato "già letto" (timestamp) di chi le aveva
+   viste, altrimenti le notifiche ricomparirebbero come nuove. */
+const NOTIF_KEY_MIGRATION = {
+  documenti: "conoscenza",
+  report: null, // badge rimosso: la voce non esiste più
+  panoramica: null, // badge aggregato rimosso (ora Inbox e Recensioni hanno i propri)
+  assistente: null,
+};
+
+function migraStatoNotifiche(stato) {
+  if (!stato || !stato.viste) return stato;
+  let migrato = false;
+  for (const [vecchia, nuova] of Object.entries(NOTIF_KEY_MIGRATION)) {
+    if (!(vecchia in stato.viste)) continue;
+    migrato = true;
+    if (nuova && !(nuova in stato.viste)) {
+      stato.viste[nuova] = stato.viste[vecchia];
+    }
+    delete stato.viste[vecchia];
+  }
+  if (migrato) salvaStatoNotifiche(stato);
+  return stato;
+}
 
 function leggiStatoNotifiche() {
   try {
-    return JSON.parse(localStorage.getItem(NOTIFICATION_STORAGE_KEY) || "null") || { inizializzato: false, viste: {} };
+    const stato = JSON.parse(localStorage.getItem(NOTIFICATION_STORAGE_KEY) || "null") || { inizializzato: false, viste: {} };
+    return migraStatoNotifiche(stato);
   } catch {
     return { inizializzato: false, viste: {} };
   }
@@ -357,22 +479,61 @@ function segnaNotificheViste(viewName) {
   aggiornaCampana();
 }
 
+/* Destinazioni di fallback per chiavi di viste non più presenti nella nav
+   (notifiche salvate prima della riorganizzazione, link memorizzati):
+   apre la vista contenitore e, se prevista, il tab giusto dentro
+   Impostazioni — mai un no-op silenzioso. */
+const VIEW_FALLBACK = {
+  audit: { view: "impostazioni", tab: "audit" },
+  integrazioni: { view: "impostazioni", tab: "integrazioni" },
+  documenti: { view: "conoscenza" },
+  report: { view: "panoramica" },
+  onboarding: { view: "assistente", banner: true },
+};
+
+function apriView(key) {
+  const btn = document.querySelector(`.nav-item[data-view="${key}"]`);
+  if (btn) {
+    btn.click();
+    return true;
+  }
+  const dest = VIEW_FALLBACK[key];
+  if (!dest) return false;
+  const container = document.querySelector(`.nav-item[data-view="${dest.view}"]`);
+  if (container) container.click();
+  if (dest.tab) attivaTabImpostazioni(dest.tab);
+  if (dest.banner) mostraBannerOnboarding(true);
+  return true;
+}
+
+/* --- Tab Impostazioni: Generale / Integrazioni / Audit --- */
+
+function attivaTabImpostazioni(tab) {
+  document.querySelectorAll("[data-settings-tab-btn]").forEach((b) => {
+    const on = b.dataset.settingsTabBtn === tab;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-selected", String(on));
+  });
+  document.querySelectorAll("[data-settings-pane]").forEach((p) => {
+    p.hidden = p.dataset.settingsPane !== tab;
+  });
+  if (tab === "integrazioni") caricaIntegrazioni();
+  if (tab === "audit") caricaAudit();
+}
+
+document.querySelectorAll("[data-settings-tab-btn]").forEach((btn) => {
+  btn.addEventListener("click", () => attivaTabImpostazioni(btn.dataset.settingsTabBtn));
+});
+
 async function aggiornaNotifiche() {
   try {
-    const [summaryResponse, reportResponse] = await Promise.all([
-      apiFetch(`${API_BASE}/api/ui/summary`),
-      apiFetch(`${API_BASE}/api/report/stato`),
-    ]);
+    const summaryResponse = await apiFetch(`${API_BASE}/api/ui/summary`);
     const summary = summaryResponse.ok ? await summaryResponse.json() : {};
-    const report = reportResponse.ok ? await reportResponse.json() : { disponibile: false };
     notificationItems = {
-      panoramica: Number(summary.inbox_attivi || 0) + Number(summary.recensioni_da_approvare || 0),
-      assistente: 0,
-      recensioni: summary.recensioni_da_approvare || 0,
-      prenotazioni: summary.prenotazioni || 0,
-      documenti: summary.documenti || 0,
-      report: report.disponibile ? 1 : 0,
       inbox: summary.inbox_attivi || 0,
+      prenotazioni: summary.prenotazioni || 0,
+      recensioni: summary.recensioni_da_approvare || 0,
+      conoscenza: summary.documenti || 0,
     };
     const stato = leggiStatoNotifiche();
     if (!stato.inizializzato) {
@@ -411,21 +572,24 @@ navItems.forEach((btn) => {
 
     const titles = {
       panoramica: "Panoramica",
-      onboarding: "Onboarding",
-      assistente: "Assistente",
-      recensioni: "Recensioni",
-      prenotazioni: "Prenotazioni",
-      report: "Report",
-      documenti: "Documenti",
       inbox: "Inbox",
+      prenotazioni: "Prenotazioni",
+      recensioni: "Recensioni",
+      assistente: "Assistente",
+      conoscenza: "Conoscenza",
       impostazioni: "Impostazioni",
-      integrazioni: "Integrazioni",
-      audit: "Audit",
+      account: "Piano e abbonamento",
+      onboarding: "Configurazione assistente",
     };
     topbarTitle.textContent = titles[viewName] || viewName;
-    if (viewName === "audit") caricaAudit();
-    if (viewName === "integrazioni") caricaIntegrazioni();
-    if (viewName === "impostazioni") caricaTimezone();
+    if (viewName === "impostazioni") {
+      // Hub a tab: precarico i dati di tutti i pane (lazy per tab sarebbe
+      // over-engineering: sono tre chiamate leggere).
+      caricaTimezone();
+      caricaIntegrazioni();
+      caricaAudit();
+    }
+    if (viewName === "account") caricaAccount();
 
     if (viewName === "panoramica") {
       aggiornaRiepilogo();
@@ -446,9 +610,12 @@ navItems.forEach((btn) => {
       aggiornaPrenotazioni();
       aggiornaSemaforo();
     }
-    if (viewName === "documenti") {
+    if (viewName === "documenti" || viewName === "conoscenza") {
       aggiornaConteggio();
       aggiornaDocumenti();
+    }
+    if (viewName === "assistente") {
+      mostraBannerOnboarding();
     }
     if (viewName === "inbox") {
       avviaInboxPolling();
@@ -734,6 +901,68 @@ async function salvaProfiloOnboarding() {
   document.getElementById("business-name").textContent = record.nome_attivita;
   document.getElementById("chat-business-name").textContent = record.nome_attivita;
   return record;
+}
+
+/* ============================================================
+   ONBOARDING — accesso dal banner in "Assistente" (voce nav rimossa)
+   ============================================================ */
+
+function apriOnboarding() {
+  chiudiMenuMobile();
+  navItems.forEach((n) => n.classList.remove("active"));
+  views.forEach((v) => {
+    v.classList.toggle("view-hidden", v.dataset.viewPanel !== "onboarding");
+  });
+  topbarTitle.textContent = "Configurazione assistente";
+}
+
+function chiudiOnboarding() {
+  document.querySelector('.nav-item[data-view="assistente"]')?.click();
+}
+
+function profiloOnboardingCompleto(profilo) {
+  return Boolean(profilo && profilo.nome_attivita && profilo.verticale);
+}
+
+function renderBannerOnboarding(banner) {
+  banner.innerHTML =
+    '<div class="dash-card onboarding-banner-card">' +
+    '<div class="dash-card-header"><span class="dash-card-title">Completa la configurazione del tuo assistente</span></div>' +
+    '<p class="settings-help">Sette passaggi guidati: attività, tono di voce, lingue, escalation e numero WhatsApp. Meno di 10 minuti.</p>' +
+    '<div class="settings-actions"><button type="button" class="review-analyze" id="onboarding-banner-cta">Riprendi la configurazione</button></div>' +
+    "</div>";
+  banner.querySelector("#onboarding-banner-cta")?.addEventListener("click", apriOnboarding);
+}
+
+/* force=true: il banner serve subito (fallback da notifica/link vecchi).
+   Senza force: si decide dal profilo reale — se completo il banner viene
+   RIMOSSO dal DOM (non solo nascosto: niente flash al load per chi ha
+   già finito l'onboarding). */
+async function mostraBannerOnboarding(force) {
+  const banner = document.getElementById("onboarding-banner");
+  if (!banner) return;
+  if (force === true) {
+    renderBannerOnboarding(banner);
+    banner.hidden = false;
+    return;
+  }
+  try {
+    const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
+    if (!res.ok) {
+      renderBannerOnboarding(banner);
+      banner.hidden = false;
+      return;
+    }
+    const data = await res.json();
+    if (profiloOnboardingCompleto(data.profilo)) {
+      banner.remove();
+    } else {
+      renderBannerOnboarding(banner);
+      banner.hidden = false;
+    }
+  } catch {
+    banner.remove(); // senza risposta non mostriamo un banner falso
+  }
 }
 
 /* ============================================================
@@ -1062,6 +1291,8 @@ onboardingEls.next?.addEventListener("click", async () => {
     await salvaProfiloOnboarding();
     onboardingEls.status.textContent = "Profilo salvato. La chat ora usa questo assistente.";
     onboardingEls.status.style.color = "var(--sage)";
+    // Profilo completo: il banner in "Assistente" non deve più esistere.
+    document.getElementById("onboarding-banner")?.remove();
   } catch (err) {
     onboardingEls.status.textContent = err.message;
     onboardingEls.status.style.color = "var(--red)";
@@ -1095,6 +1326,7 @@ onboardingEls.testBtn?.addEventListener("click", async () => {
   onboardingEls.testOutput.textContent = "Salvo profilo e provo risposta...";
   try {
     await salvaProfiloOnboarding();
+    document.getElementById("onboarding-banner")?.remove();
     await generaPreviewOnboarding(
       onboardingEls.testOutput,
       onboardingEls.testMessage.value.trim() || verticaleCorrente()?.esempio || "Siete aperti?"
@@ -1109,7 +1341,7 @@ onboardingEls.testBtn?.addEventListener("click", async () => {
 });
 
 onboardingEls.openDocs?.addEventListener("click", () => {
-  document.querySelector('[data-view="documenti"]')?.click();
+  document.querySelector('[data-view="conoscenza"]')?.click();
 });
 
 onboardingEls.uploadDoc?.addEventListener("click", async () => {
@@ -3070,7 +3302,7 @@ function renderPannelloNotifiche() {
     row.append(label, count);
     row.addEventListener("click", () => {
       chiudiPannelloNotifiche();
-      document.querySelector(`.nav-item[data-view="${key}"]`)?.click();
+      apriView(key);
     });
     notifList.appendChild(row);
   });
@@ -3145,12 +3377,24 @@ notifBell?.addEventListener("click", () => {
     results.hidden = false;
   }
 
-  function riga(gruppo, titolo, sub, view) {
-    return `<button type="button" class="gs-row" data-view="${view}">
+  function riga(gruppo, titolo, sub, view, tab) {
+    return `<button type="button" class="gs-row" data-view="${view}"${tab ? ` data-tab="${tab}"` : ""}>
       <span class="gs-gruppo">${gruppo}</span>
       <span class="gs-main"><strong>${_sanitize(titolo)}</strong><span>${_sanitize(sub || "")}</span></span>
     </button>`;
   }
+
+  /* Navigazione statica "Vai a": la ricerca non indicizza solo dati, deve
+     risolvere anche le destinazioni del menu (es. "audit" → Impostazioni ›
+     Audit). DEBITO TECNICO NOTO: la lista è statica — se aggiungi un tab o
+     una vista, aggiorna questa mappa (nessun modo automatico per rilevarlo). */
+  const VAI_A = [
+    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni › Audit", view: "impostazioni", tab: "audit" },
+    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni › Integrazioni", view: "impostazioni", tab: "integrazioni" },
+    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione › Generale", view: "impostazioni", tab: "generale" },
+    { q: ["fattur", "abbonament", "piano", "rinnovo", "pagament", "upgrade", "downgrade", "cancellazion", "prezz"], gruppo: "Account", titolo: "Piano e abbonamento", sub: "Account", view: "account" },
+    { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente › Conoscenza", view: "conoscenza" },
+  ];
 
   async function eseguiRicerca(q) {
     const token = ++searchToken;
@@ -3203,6 +3447,17 @@ notifBell?.addEventListener("click", () => {
     }
 
     if (token !== searchToken) return;
+
+    // Navigazione "Vai a": le viste si suggeriscono sempre (in fondo),
+    // anche quando i risultati dati sono vuoti.
+    const vaiHits = VAI_A.filter((v) => v.q.some((k) => ql.includes(k) || k.includes(ql)) || ql.length >= 3 && v.titolo.toLowerCase().includes(ql));
+    if (vaiHits.length) {
+      blocchi.push(
+        `<span class="gs-gruppo-titolo">Vai a</span>` +
+        vaiHits.slice(0, 4).map((v) => riga(v.gruppo, v.titolo, v.sub, v.view, v.tab)).join("")
+      );
+    }
+
     if (!blocchi.length) {
       apriCon(`<p class="gs-vuoto">Nessun risultato per "${_sanitize(q)}"</p>`);
       return;
@@ -3229,6 +3484,7 @@ notifBell?.addEventListener("click", () => {
     input.value = "";
     const btn = document.querySelector(`[data-view="${view}"]`);
     if (btn) btn.click();
+    if (row.dataset.tab) attivaTabImpostazioni(row.dataset.tab);
   });
 
   document.addEventListener("click", (e) => {
@@ -3461,8 +3717,7 @@ async function caricaIntegrazioni() {
 }
 
 document.getElementById("integrazioni-config")?.addEventListener("click", () => {
-  const btn = document.querySelector('[data-view="onboarding"]');
-  if (btn) btn.click();
+  apriOnboarding();
 });
 
 /* ============================================================

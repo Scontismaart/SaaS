@@ -29,47 +29,12 @@
     </div>
 
     <nav class="sidebar-nav" id="sidebar-nav" aria-label="Sezioni del pannello">
+      <span class="nav-group-label" aria-hidden="true">Principale</span>
       <button class="nav-item active" type="button" data-view="panoramica">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
         </span>
-        Panoramica <span class="nav-badge" data-notification-badge="panoramica" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="onboarding">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 5h14v14H5V5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.5 12h7M12 8.5v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </span>
-        Onboarding
-      </button>
-      <button class="nav-item" type="button" data-view="assistente">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5h16v10H9l-4 4v-4H4v-10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        </span>
-        Assistente <span class="nav-badge" data-notification-badge="assistente" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="recensioni">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.66 5.4 5.96.87-4.31 4.2 1.02 5.93L12 17l-5.33 2.9 1.02-5.93-4.31-4.2 5.96-.87L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        </span>
-        Recensioni <span class="nav-badge" data-notification-badge="recensioni" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="prenotazioni">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5v3M17 3.5v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span>
-        Prenotazioni <span class="nav-badge" data-notification-badge="prenotazioni" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="report">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 20V10M12 20V4M19 20v-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </span>
-        Report <span class="nav-badge" data-notification-badge="report" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="documenti">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v16H7V4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 9h4M10 13h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        </span>
-        Documenti <span class="nav-badge" data-notification-badge="documenti" hidden></span>
+        Panoramica
       </button>
       <button class="nav-item" type="button" data-view="inbox">
         <span class="nav-icon" aria-hidden="true">
@@ -77,23 +42,48 @@
         </span>
         Inbox <span class="nav-badge" data-notification-badge="inbox" hidden></span>
       </button>
+      <button class="nav-item" type="button" data-view="prenotazioni">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5v3M17 3.5v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Prenotazioni <span class="nav-badge" data-notification-badge="prenotazioni" hidden></span>
+      </button>
+      <button class="nav-item" type="button" data-view="recensioni">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.66 5.4 5.96.87-4.31 4.2 1.02 5.93L12 17l-5.33 2.9 1.02-5.93-4.31-4.2 5.96-.87L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </span>
+        Recensioni <span class="nav-badge" data-notification-badge="recensioni" hidden></span>
+      </button>
+
+      <span class="nav-group-label" aria-hidden="true">Assistente</span>
+      <button class="nav-item" type="button" data-view="assistente">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5h16v10H9l-4 4v-4H4v-10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        </span>
+        Assistente
+      </button>
+      <button class="nav-item" type="button" data-view="conoscenza">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21V5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8.5 7.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        Conoscenza <span class="nav-badge" data-notification-badge="conoscenza" hidden></span>
+      </button>
+
+      <span class="nav-sep" role="presentation"></span>
+      <span class="nav-group-label" aria-hidden="true">Gestione</span>
       <button class="nav-item" type="button" data-view="impostazioni">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.55a.5.5 0 0 0 .12-.64l-1.9-3.3a.5.5 0 0 0-.61-.22l-2.36.95a7.6 7.6 0 0 0-2.6-1.5L13.7.94a.5.5 0 0 0-.5-.42h-3.8a.5.5 0 0 0-.5.42l-.35 2.5c-.96.35-1.83.87-2.6 1.5l-2.36-.95a.5.5 0 0 0-.6.22l-1.91 3.3a.5.5 0 0 0 .12.64l2.01 1.56a7.6 7.6 0 0 0 0 3L2.2 14.27a.5.5 0 0 0-.12.64l1.9 3.3c.13.21.39.3.61.21l2.36-.95c.77.64 1.64 1.16 2.6 1.51l.35 2.5c.04.24.25.42.5.42h3.8c.25 0 .46-.18.5-.42l.35-2.5c.96-.35 1.83-.87 2.6-1.5l2.36.94c.22.09.48 0 .6-.22l1.91-3.3a.5.5 0 0 0-.12-.63l-2.01-1.57Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
         </span>
         Impostazioni
       </button>
-      <button class="nav-item" type="button" data-view="integrazioni">
+
+      <span class="nav-group-label" aria-hidden="true">Account</span>
+      <button class="nav-item" type="button" data-view="account">
         <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M9 7H7a4 4 0 0 0 0 8h2M15 7h2a4 4 0 0 1 0 8h-2M8.5 11h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5.5" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M6.5 14.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </span>
-        Integrazioni
-      </button>
-      <button class="nav-item" type="button" data-view="audit">
-        <span class="nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/></svg>
-        </span>
-        Audit
+        Piano e abbonamento
       </button>
     </nav>
 
@@ -124,7 +114,6 @@
       </div>
       <div class="topbar-right">
         <span class="topbar-meta" id="topbar-date"></span>
-        <button type="button" class="accesso-btn" id="billing-btn" hidden>Gestisci Abbonamento</button>
         <div class="notif-wrap">
           <button type="button" class="bell-btn" id="notif-bell" aria-haspopup="menu" aria-expanded="false" aria-controls="notif-panel" aria-label="Centro notifiche">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 9.5a6 6 0 1 0-12 0v2.9c0 .6-.24 1.18-.66 1.6L4.1 15.24c-.63.63-.19 1.76.71 1.76h14.38c.9 0 1.34-1.13.71-1.76l-1.24-1.24a2.26 2.26 0 0 1-.66-1.6V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
@@ -204,10 +193,79 @@
         </div>
 
       </div>
+
+      <!-- Report e andamento: consultazione, non navigazione (ex vista Report) -->
+      <div class="report-panoramica" id="report-panoramica">
+        <h2 class="report-panoramica-title">Report e andamento</h2>
+
+        <div class="dash-card chart-card" id="chart-section" hidden>
+          <div class="dash-card-header">
+            <span class="dash-card-title">Messaggi: andamento ultimi 7 giorni</span>
+          </div>
+          <div class="chart-legend">
+            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--accent)"></span>Ricevuti</span>
+            <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--sage)"></span>Gestiti da AI</span>
+          </div>
+          <div class="chart-svg-wrap" id="chart-svg-wrap"></div>
+        </div>
+
+        <div class="insights-grid" id="insights-grid" hidden>
+          <div class="insight-card insights-card">
+            <div class="insight-card-header">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3v.2A3 3 0 0 0 4.5 10a3 3 0 0 0 1 5.6A3 3 0 0 0 8 20a3 3 0 0 0 4-2.6M9 4a3 3 0 0 1 3 2.6M9 4v13.4M15 4a3 3 0 0 1 3 3v.2a3 3 0 0 1 1.5 2.8 3 3 0 0 1-1 5.6A3 3 0 0 1 16 20a3 3 0 0 1-4-2.6M15 4v13.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Insights principali
+            </div>
+            <ul class="insight-list" id="insight-list"></ul>
+          </div>
+        </div>
+
+        <div class="dash-card report-card" id="report-section" hidden>
+          <div class="dash-card-header">
+            <span class="dash-card-title">Report giornaliero</span>
+            <span class="dash-card-meta" id="report-date"></span>
+          </div>
+          <div class="report-stats">
+            <div class="report-stat">
+              <span class="report-stat-value" id="report-totale">0</span>
+              <span class="report-stat-label">messaggi</span>
+            </div>
+            <div class="report-stat">
+              <span class="report-stat-value" id="report-ai">0</span>
+              <span class="report-stat-label">gestiti AI</span>
+            </div>
+            <div class="report-stat">
+              <span class="report-stat-value" id="report-umano">0</span>
+              <span class="report-stat-label">girati a umano</span>
+            </div>
+          </div>
+          <div class="report-body" id="report-body">
+            <p class="report-body-text" id="report-analisi"></p>
+          </div>
+          <div class="report-suggestions" id="report-suggestions" hidden>
+            <span class="report-suggestions-title">Suggerimenti</span>
+            <ul class="report-suggestions-list" id="report-suggestions-list"></ul>
+          </div>
+          <div class="report-footer">
+            <span class="report-timestamp" id="report-timestamp"></span>
+            <div class="report-footer-actions">
+              <button type="button" class="report-refresh" id="report-print" aria-label="Stampa il report">
+                Stampa
+              </button>
+              <button type="button" class="report-refresh" id="report-export-csv" aria-label="Esporta prenotazioni in CSV">
+                Esporta CSV
+              </button>
+              <button type="button" class="report-refresh" id="report-refresh" aria-label="Rigenera report">
+                Rigenera
+              </button>
+            </div>
+          </div>
+        </div>
+        <p class="report-empty-hint" id="report-empty-hint">Nessun report ancora generato per oggi.</p>
+      </div>
     </section>
 
-    <!-- ---------- VISTA: ASSISTENTE ---------- -->
-    <section class="view view-hidden" data-view-panel="onboarding">
+    <!-- ---------- PANNELLO: ONBOARDING (fuori nav: si apre dal banner in Assistente) ---------- -->
+    <section class="view view-hidden" data-view-panel="onboarding" aria-label="Configurazione assistente">
       <p class="view-intro">Configura un assistente pronto per il tuo settore. Il profilo salvato sostituisce il profilo demo usato dalla chat.</p>
 
       <div class="onboarding-shell">
@@ -330,6 +388,10 @@
 
     <!-- ---------- VISTA: ASSISTENTE ---------- -->
     <section class="view view-hidden" data-view-panel="assistente">
+      <!-- Banner configurazione: renderizzato da JS SOLO se il profilo è
+           incompleto (mai solo nascosto via CSS: niente flash per chi ha
+           già finito l'onboarding). -->
+      <div id="onboarding-banner" hidden></div>
       <p class="view-intro">Scrivi come farebbe un cliente vero — puoi anche scegliere un esempio qui sotto.</p>
 
       <div class="chat-window">
@@ -519,84 +581,10 @@
       </div>
     </section>
 
-    <!-- ---------- VISTA: REPORT ---------- -->
-    <section class="view view-hidden" data-view-panel="report">
 
-      <div class="dash-card chart-card" id="chart-section" hidden>
-        <div class="dash-card-header">
-          <span class="dash-card-title">Messaggi: andamento ultimi 7 giorni</span>
-        </div>
-        <div class="chart-legend">
-          <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--accent)"></span>Ricevuti</span>
-          <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--sage)"></span>Gestiti da AI</span>
-        </div>
-        <div class="chart-svg-wrap" id="chart-svg-wrap"></div>
-      </div>
-
-      <div class="insights-grid" id="insights-grid" hidden>
-        <div class="insight-card insights-card">
-          <div class="insight-card-header">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 4a3 3 0 0 0-3 3v.2A3 3 0 0 0 4.5 10a3 3 0 0 0 1 5.6A3 3 0 0 0 8 20a3 3 0 0 0 4-2.6M9 4a3 3 0 0 1 3 2.6M9 4v13.4M15 4a3 3 0 0 1 3 3v.2a3 3 0 0 1 1.5 2.8 3 3 0 0 1-1 5.6A3 3 0 0 1 16 20a3 3 0 0 1-4-2.6M15 4v13.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Insights principali
-          </div>
-          <ul class="insight-list" id="insights-list"></ul>
-        </div>
-        <div class="insight-card suggestions-card">
-          <div class="insight-card-header">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.35.5.9.5 1.4V16h6v-.7c0-.5 0-1.05.5-1.4A6 6 0 0 0 12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Suggerimenti operativi
-          </div>
-          <ul class="insight-list" id="suggestions-list"></ul>
-        </div>
-      </div>
-
-      <div class="dash-card report-card" id="report-section" hidden>
-        <div class="dash-card-header">
-          <span class="dash-card-title">Report giornaliero</span>
-          <span class="dash-card-meta" id="report-date"></span>
-        </div>
-        <div class="report-stats">
-          <div class="report-stat">
-            <span class="report-stat-value" id="report-totale">0</span>
-            <span class="report-stat-label">messaggi</span>
-          </div>
-          <div class="report-stat">
-            <span class="report-stat-value" id="report-ai">0</span>
-            <span class="report-stat-label">gestiti AI</span>
-          </div>
-          <div class="report-stat">
-            <span class="report-stat-value" id="report-umano">0</span>
-            <span class="report-stat-label">girati a umano</span>
-          </div>
-        </div>
-        <div class="report-body" id="report-body">
-          <p class="report-body-text" id="report-analisi"></p>
-        </div>
-        <div class="report-suggestions" id="report-suggestions" hidden>
-          <span class="report-suggestions-title">Suggerimenti</span>
-          <ul class="report-suggestions-list" id="report-suggestions-list"></ul>
-        </div>
-        <div class="report-footer">
-          <span class="report-timestamp" id="report-timestamp"></span>
-          <div class="report-footer-actions">
-            <button type="button" class="report-refresh" id="report-print" aria-label="Stampa il report">
-              Stampa
-            </button>
-            <button type="button" class="report-refresh" id="report-export-csv" aria-label="Esporta prenotazioni in CSV">
-              Esporta CSV
-            </button>
-            <button type="button" class="report-refresh" id="report-refresh" aria-label="Rigenera report">
-              Rigenera
-            </button>
-          </div>
-        </div>
-      </div>
-      <p class="report-empty-hint" id="report-empty-hint">Nessun report ancora generato per oggi.</p>
-    </section>
-
-    <!-- ---------- VISTA: DOCUMENTI ---------- -->
-    <section class="view view-hidden" data-view-panel="documenti">
-      <p class="view-intro">Carica menu, lista allergeni o carta vini: l'assistente userà questi contenuti per rispondere alle domande operative dei clienti.</p>
+    <!-- ---------- VISTA: CONOSCENZA (ex Documenti) ---------- -->
+    <section class="view view-hidden" data-view-panel="conoscenza">
+      <p class="view-intro">Carica menu, lista allergeni o carta vini: qui c'è ciò che il tuo assistente sa. Più conoscenza carichi, più risponde con precisione ai clienti.</p>
 
       <div class="dash-card" id="doc-status-card">
         <div class="dash-card-header">
@@ -673,8 +661,15 @@
       </div>
     </section>
 
-    <!-- ---------- VISTA: IMPOSTAZIONI ---------- -->
+    <!-- ---------- VISTA: IMPOSTAZIONI (hub a tab) ---------- -->
     <section class="view view-hidden" data-view-panel="impostazioni">
+      <div class="settings-tabs" role="tablist" aria-label="Sezioni delle impostazioni">
+        <button type="button" class="settings-tab active" role="tab" aria-selected="true" data-settings-tab-btn="generale">Generale</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" data-settings-tab-btn="integrazioni">Integrazioni</button>
+        <button type="button" class="settings-tab" role="tab" aria-selected="false" data-settings-tab-btn="audit">Audit</button>
+      </div>
+
+      <div data-settings-pane="generale">
       <p class="view-intro">Modifica il profilo dell'assistente senza rifare l'onboarding: le modifiche valgono per tutte le nuove conversazioni.</p>
 
       <p class="doc-config-status" id="settings-status" hidden></p>
@@ -764,10 +759,9 @@
           </form>
         </div>
       </div>
-    </section>
+      </div><!-- /pane: generale -->
 
-    <!-- ---------- VISTA: INTEGRAZIONI ---------- -->
-    <section class="view view-hidden" data-view-panel="integrazioni">
+      <div data-settings-pane="integrazioni" hidden>
       <p class="view-intro">Stato delle connessioni ai canali: qui vedi cosa è collegato e cosa va configurato.</p>
 
       <div class="integrazioni-grid">
@@ -818,10 +812,9 @@
         <span class="doc-config-status inline" id="integrazioni-status" role="status"></span>
         <button type="button" class="report-refresh" id="integrazioni-config">Configura in Onboarding</button>
       </div>
-    </section>
+      </div><!-- /pane: integrazioni -->
 
-    <!-- ---------- VISTA: AUDIT ---------- -->
-    <section class="view view-hidden" data-view-panel="audit">
+      <div data-settings-pane="audit" hidden>
       <p class="view-intro">Registro delle azioni sensibili sull'account: impostazioni modificate, prenotazioni gestite, documenti rimossi.</p>
 
       <div class="dash-card">
@@ -830,6 +823,53 @@
           <span class="dash-card-meta" id="audit-count"></span>
         </div>
         <div class="audit-list" id="audit-list"></div>
+      </div>
+      </div><!-- /pane: audit -->
+    </section>
+
+    <!-- ---------- VISTA: ACCOUNT — Piano e abbonamento ---------- -->
+    <section class="view view-hidden" data-view-panel="account">
+      <p class="view-intro">Il tuo piano, il rinnovo e i pagamenti: tutto in un posto, gestito con Stripe.</p>
+
+      <p class="doc-config-status" id="account-status" hidden></p>
+
+      <div class="dash-card account-summary" id="account-summary">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Piano attuale</span>
+          <span class="account-stato-pill" id="account-stato">…</span>
+        </div>
+        <div class="account-summary-body">
+          <div class="account-summary-main">
+            <span class="account-plan-nome" id="account-plan-nome">…</span>
+            <span class="account-plan-prezzo" id="account-plan-prezzo"></span>
+          </div>
+          <p class="settings-help" id="account-rinnovo"></p>
+        </div>
+      </div>
+
+      <h2 class="account-section-title">Cambia piano</h2>
+      <div class="account-plans" id="account-plans"></div>
+
+      <h2 class="account-section-title">Pagamenti e fatture</h2>
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Metodo di pagamento, fatture e storico</span>
+        </div>
+        <p class="settings-help">Metodi di pagamento, ricevute e storico delle fatture sono gestiti in modo sicuro dal portale Stripe: nessun dato di carta passa per Melpis.</p>
+        <div class="settings-actions">
+          <button type="button" class="review-analyze" id="account-portal-btn">Apri il portale di fatturazione</button>
+        </div>
+      </div>
+
+      <h2 class="account-section-title account-danger-title">Zona di rischio</h2>
+      <div class="dash-card settings-security">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Cancellazione abbonamento</span>
+        </div>
+        <p class="settings-help">Puoi cancellare l'abbonamento in qualsiasi momento dal portale Stripe: il servizio resta attivo fino a fine periodo, poi va in pausa senza perdere i dati.</p>
+        <div class="settings-actions">
+          <button type="button" class="btn-danger" id="account-cancel-btn">Gestisci la cancellazione su Stripe</button>
+        </div>
       </div>
     </section>
 
@@ -861,6 +901,6 @@
 <script src="config.js"></script>
 <script src="vendor/fullcalendar.min.js"></script>
 <script src="vendor/dompurify.min.js"></script>
-<script src="app.js?v=fase3-1"></script>
+<script src="app.js?v=nav-1"></script>
 </body>
 </html>

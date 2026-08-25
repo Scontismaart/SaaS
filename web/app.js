@@ -1760,7 +1760,11 @@ async function aggiornaTrends() {
       trendPrimoCaricamento = false;
     }
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      trendList.innerHTML = "";
+      trendList.appendChild(_errorState("Impossibile caricare le statistiche.", aggiornaTrends));
+      return;
+    }
     const eventi = await res.json();
     const recensioni = eventi.filter(e => e.tipo_evento === "recensione");
     const totale = recensioni.length;
@@ -1841,6 +1845,10 @@ async function aggiornaTrends() {
     trendList.innerHTML = items.join("");
   } catch (err) {
     console.error("Impossibile aggiornare i trend:", err);
+    if (trendList) {
+      trendList.innerHTML = "";
+      trendList.appendChild(_errorState("Impossibile caricare le statistiche.", aggiornaTrends));
+    }
   }
 }
 
@@ -1972,6 +1980,7 @@ const ICONS = {
   trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>',
   chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 5.5h16v10H9l-4 4v-4H4v-10Z"/></svg>',
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4L2.5 20h19L12 4Z"/><path d="M12 10v4M12 17.5v.01"/></svg>',
 };
 
 function _emptyState(icon, titolo, sottotitolo, ctaLabel, ctaAction) {
@@ -1992,11 +2001,35 @@ function _emptyState(icon, titolo, sottotitolo, ctaLabel, ctaAction) {
   return wrap;
 }
 
+/* Stato errore con retry: usato al posto del skeleton infinito quando una
+   chiamata API fallisce (l'utente deve capire che può riprovare, non che
+   la sezione sia vuota). */
+function _errorState(messaggio, retryFn) {
+  const wrap = document.createElement("div");
+  wrap.className = "error-state";
+  wrap.setAttribute("role", "alert");
+  wrap.innerHTML =
+    '<div class="empty-state-icon error" aria-hidden="true">' + ICONS.alert + "</div>" +
+    '<span class="empty-state-title">Qualcosa è andato storto</span>' +
+    '<span class="empty-state-sub">' + _sanitize(messaggio) + "</span>";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "review-analyze";
+  btn.textContent = "Riprova";
+  btn.addEventListener("click", retryFn);
+  wrap.appendChild(btn);
+  return wrap;
+}
+
 async function aggiornaPrioritari() {
   priorityList.innerHTML = _skeletonList(3);
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      priorityList.innerHTML = "";
+      priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", aggiornaPrioritari));
+      return;
+    }
     const eventi = await res.json();
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
@@ -2028,13 +2061,19 @@ async function aggiornaPrioritari() {
     });
   } catch (err) {
     console.error("Impossibile aggiornare gli eventi prioritari:", err);
+    priorityList.innerHTML = "";
+    priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", aggiornaPrioritari));
   }
 }
 
 async function aggiornaRiepilogo() {
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      ticketList.innerHTML = "";
+      ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", aggiornaRiepilogo));
+      return;
+    }
     const storico = await res.json();
     const totale = storico.length;
     const gestitiAi = storico.filter((e) => e.gestito_da_ai).length;
@@ -2101,6 +2140,8 @@ async function aggiornaRiepilogo() {
     });
   } catch (err) {
     console.error("Impossibile aggiornare il riepilogo:", err);
+    ticketList.innerHTML = "";
+    ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", aggiornaRiepilogo));
   }
 }
 
@@ -2137,7 +2178,11 @@ async function aggiornaDocumenti() {
       docPrimoCaricamento = false;
     }
     const res = await apiFetch(`${API_BASE}/api/documenti/elenco`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      docLibrary.innerHTML = "";
+      docLibrary.appendChild(_errorState("Impossibile caricare i documenti.", aggiornaDocumenti));
+      return;
+    }
     const data = await res.json();
     docLibrary.innerHTML = "";
     if (!data.documenti?.length) {
@@ -2206,6 +2251,8 @@ async function aggiornaDocumenti() {
     }
   } catch (err) {
     console.error("Impossibile caricare l'elenco documenti:", err);
+    docLibrary.innerHTML = "";
+    docLibrary.appendChild(_errorState("Impossibile caricare i documenti.", aggiornaDocumenti));
   }
 }
 
@@ -2411,7 +2458,14 @@ async function caricaInbox({ append = false } = {}) {
     if (inboxState.priorita) params.set("priorita", inboxState.priorita);
     params.set("limit", String(INBOX_PAGE_SIZE));
     params.set("offset", String(inboxOffset));
-    const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);    if (!res.ok) return;
+    const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);
+    if (!res.ok) {
+      if (!append && inboxList) {
+        inboxList.innerHTML = "";
+        inboxList.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
+      }
+      return;
+    }
     const data = await res.json();
     const tickets = data.tickets || [];
     inboxHasMore = Boolean(data.has_more);
@@ -2458,6 +2512,10 @@ async function caricaInbox({ append = false } = {}) {
     }
   } catch (err) {
     console.error("Impossibile caricare l'inbox:", err);
+    if (!append && inboxList) {
+      inboxList.innerHTML = "";
+      inboxList.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
+    }
   }
 }
 

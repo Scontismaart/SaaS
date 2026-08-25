@@ -3182,6 +3182,18 @@ body.booking-modal-open { overflow: hidden; }
 .empty-state-sub { font-size:.84rem;line-height:1.55;color:var(--muted);max-width:36ch; }
 .empty-state .review-analyze, .empty-state .report-refresh { margin-top:12px; }
 
+/* Stato errore con retry: stessa struttura dell'empty state, accento ambra
+   (non rosso aggressivo: l'errore piu' comune e' rete lenta, non catastrofe). */
+.error-state {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  padding:28px 18px;
+  text-align:center;
+}
+.empty-state-icon.error { background:var(--amber-soft); color:var(--amber); }
+
 /* ============================================================
    SKIP LINK (a11y dashboard)
    ============================================================ */

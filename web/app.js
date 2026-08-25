@@ -398,6 +398,10 @@ navItems.forEach((btn) => {
     const viewName = btn.dataset.view;
     segnaNotificheViste(viewName);
 
+    // Su mobile il drawer resta aperto dopo la navigazione: chiudilo sempre
+    // (no-op su desktop dove il drawer non è mai "aperto").
+    chiudiMenuMobile();
+
     navItems.forEach((n) => n.classList.remove("active"));
     btn.classList.add("active");
 
@@ -2878,15 +2882,28 @@ const navToggle = document.getElementById("nav-toggle");
 const sidebarOverlay = document.getElementById("sidebar-overlay");
 
 function chiudiMenuMobile() {
+  const eraAperto = document.body.classList.contains("nav-open");
   document.body.classList.remove("nav-open");
   if (navToggle) navToggle.setAttribute("aria-expanded", "false");
   if (sidebarOverlay) sidebarOverlay.hidden = true;
+  // Se il focus era dentro il drawer APERTO, torna al toggle (a11y: niente
+  // focus perso su elemento invisibile). Su desktop (drawer mai aperto) il
+  // focus non viene toccato.
+  if (eraAperto && navToggle) {
+    const sidebarAperta = document.querySelector(".sidebar");
+    if (sidebarAperta && sidebarAperta.contains(document.activeElement)) {
+      navToggle.focus();
+    }
+  }
 }
 
 function apriMenuMobile() {
   document.body.classList.add("nav-open");
   if (navToggle) navToggle.setAttribute("aria-expanded", "true");
   if (sidebarOverlay) sidebarOverlay.hidden = false;
+  // Il focus parte dentro il drawer, sul primo elemento navigabile.
+  const primo = document.querySelector(".sidebar .nav-item");
+  if (primo) primo.focus();
 }
 
 navToggle?.addEventListener("click", () => {
@@ -2895,6 +2912,28 @@ navToggle?.addEventListener("click", () => {
 });
 
 sidebarOverlay?.addEventListener("click", chiudiMenuMobile);
+
+/* Focus-trap del drawer (a11y 2.4.3): con il menu mobile aperto il Tab cicla
+   solo dentro la sidebar; Tab oltre l'ultimo elemento chiude il drawer e
+   riporta il focus al toggle. */
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Tab" || !document.body.classList.contains("nav-open")) return;
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+  const focusabili = sidebar.querySelectorAll(
+    "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+  );
+  if (!focusabili.length) return;
+  const primo = focusabili[0];
+  const ultimo = focusabili[focusabili.length - 1];
+  if (event.shiftKey && document.activeElement === primo) {
+    event.preventDefault();
+    ultimo.focus();
+  } else if (!event.shiftKey && document.activeElement === ultimo) {
+    event.preventDefault();
+    chiudiMenuMobile();
+  }
+});
 
 /* Chiusura dropdown su click fuori (menu utente + notifiche) */
 
@@ -2906,6 +2945,7 @@ document.addEventListener("click", (event) => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
+  chiudiMenuMobile();
   chiudiMenuUtente();
   chiudiPannelloNotifiche();
 });

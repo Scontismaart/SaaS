@@ -53,8 +53,8 @@
   --amber-soft:       rgba(176, 126, 31, 0.12);
   --red:              #C24357;
   --red-soft:         rgba(194, 67, 87, 0.10);
-  --gold:             #9A7420;
-  --gold-soft:        rgba(154, 116, 32, 0.12);
+  --gold:             #7A5C16;
+  --gold-soft:        rgba(122, 92, 22, 0.12);
 
   /* Bordi e linee */
   --line:             rgba(16, 24, 12, 0.08);
@@ -275,7 +275,7 @@ body {
 
 .sidebar-brand-eyebrow {
   font-family: var(--font-mono);
-  font-size: 0.63rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   color: var(--gold);
   letter-spacing: 0.16em;
@@ -308,7 +308,7 @@ body {
   background: var(--green-deep);
   color: #ffffff;
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 19px;
   text-align: center;
@@ -683,7 +683,7 @@ body {
 
 .priority-item-subcat {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-muted);
   text-transform: lowercase;
 }
@@ -742,7 +742,7 @@ body {
 
 .priority-item-badge {
   font-family: var(--font-mono);
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   padding: 2px 5px;
@@ -763,7 +763,7 @@ body {
 
 .priority-item-cat {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
   flex-shrink: 0;
 }
@@ -838,7 +838,7 @@ body {
 
 .ticket-item-time {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 
@@ -854,7 +854,7 @@ body {
 .ticket-tag {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   padding: 3px 9px;
@@ -884,7 +884,7 @@ body {
 
 .ticket-copy-btn {
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   padding: 3px 10px;
   border-radius: 20px;
   border: 1px solid var(--sage);
@@ -992,7 +992,7 @@ body {
 
 .chat-day-divider span {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
   background: var(--card-border);
   padding: 2px 10px;
@@ -1083,7 +1083,7 @@ body {
 .bubble-tag {
   display: inline-block;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-top: 5px;
@@ -1391,7 +1391,7 @@ body {
 
 .review-draft-sentiment {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 2px 8px;
@@ -1419,7 +1419,7 @@ body {
 
 .review-draft-cat {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 
@@ -1507,7 +1507,7 @@ body {
 .booking-modal-grid span {
   color: var(--ink-soft);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -1583,7 +1583,7 @@ body.booking-modal-open { overflow: hidden; }
 
 #booking-calendar .fc-timegrid-event {
   min-height: 20px;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 #booking-calendar .fc-toolbar-title {
@@ -1678,7 +1678,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .booking-row-status {
   color: var(--booking-color, var(--sage));
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   text-align: right;
   white-space: nowrap;
 }
@@ -1931,7 +1931,7 @@ body.booking-modal-open { overflow: hidden; }
 }
 
 .report-stat-label {
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 
@@ -1959,7 +1959,7 @@ body.booking-modal-open { overflow: hidden; }
 .report-suggestions-title {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-soft);
@@ -2000,7 +2000,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .report-timestamp {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 
@@ -2124,7 +2124,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .onboarding-step span {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--gold);
 }
 
@@ -2170,7 +2170,7 @@ body.booking-modal-open { overflow: hidden; }
   display: block;
   color: var(--gold);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -2411,7 +2411,7 @@ body.booking-modal-open { overflow: hidden; }
   color: var(--red);
   cursor: pointer;
   font-family: var(--font-body);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   padding: 2px 0;
 }
 
@@ -2430,7 +2430,7 @@ body.booking-modal-open { overflow: hidden; }
   flex-shrink: 0;
   color: var(--ink-soft);
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
 }
 
 .doc-library-empty {
@@ -2545,7 +2545,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .doc-fonti-score {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 
@@ -2585,8 +2585,8 @@ body.booking-modal-open { overflow: hidden; }
   --amber-soft:       rgba(176, 126, 31, 0.12);
   --red:              #C24357;
   --red-soft:         rgba(194, 67, 87, 0.10);
-  --gold:             #9A7420;
-  --gold-soft:        rgba(154, 116, 32, 0.12);
+  --gold:             #7A5C16;
+  --gold-soft:        rgba(122, 92, 22, 0.12);
 
   /* Alias storici usati da componenti recenti (thread modal ecc.) */
   --border:           var(--line);
@@ -2677,6 +2677,11 @@ body.booking-modal-open { overflow: hidden; }
   body.nav-open .sidebar {
     transform: translateX(0);
     visibility: visible;
+  }
+
+  /* Scroll-lock: con il drawer aperto il contenuto sotto non scrolla (a11y 2.4.3) */
+  body.nav-open {
+    overflow: hidden;
   }
 
   .main {
@@ -2778,7 +2783,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .inbox-filter-btn {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03em;
   padding: 4px 12px;
   border-radius: 20px;
@@ -2846,7 +2851,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .inbox-card-meta {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--ink-soft);
 }
 
@@ -2869,7 +2874,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .inbox-sla {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   padding: 3px 9px;
   border-radius: 20px;
   border: 1px solid var(--card-border);
@@ -2891,7 +2896,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .inbox-btn {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   padding: 5px 12px;
@@ -2921,7 +2926,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .inbox-assign-select {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   padding: 4px 10px;
@@ -3070,7 +3075,7 @@ body.booking-modal-open { overflow: hidden; }
   display: block;
   margin-top: 4px;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -3112,7 +3117,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .thread-feedback-count {
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--muted);
 }
 
@@ -3311,7 +3316,7 @@ body.booking-modal-open { overflow: hidden; }
   background: var(--green-deep);
   color: #ffffff;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 18px;
   text-align: center;
@@ -3340,7 +3345,7 @@ body.booking-modal-open { overflow: hidden; }
 .notif-panel-title {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: var(--gold);
@@ -3380,7 +3385,7 @@ body.booking-modal-open { overflow: hidden; }
   padding: 2px 7px;
   border-radius: 10px;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.5;
   text-align: center;
@@ -3507,7 +3512,7 @@ body.booking-modal-open { overflow: hidden; }
   padding: 2px 9px;
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -3778,7 +3783,7 @@ body.booking-modal-open { overflow: hidden; }
 .gs-gruppo-titolo {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--ink-muted);
@@ -3804,7 +3809,7 @@ body.booking-modal-open { overflow: hidden; }
 .gs-gruppo {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--green-deep);
@@ -4050,7 +4055,7 @@ html[data-theme="dark"] .toast {
 .integrazione-stato {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 4px 10px;
@@ -4088,7 +4093,7 @@ html[data-theme="dark"] .toast {
   align-items: flex-end;
   gap: 2px;
   font-family: var(--font-mono);
-  font-size: 0.66rem;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 
@@ -4100,7 +4105,7 @@ html[data-theme="dark"] .toast {
   display: inline-block;
   margin: 8px 0 0;
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.75rem;
   color: var(--ink-muted);
 }
 

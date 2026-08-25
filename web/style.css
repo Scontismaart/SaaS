@@ -87,6 +87,11 @@
 
   --sidebar-w:        248px;
   --topbar-h:         64px;
+
+  /* --- BREAKPOINTS: unica scala ammessa ---
+     sm = 640px | md = 768px | lg = 1024px | xl = 1280px
+     Il drawer di navigazione si attiva a <= lg (1024px).
+     Non introdurre altri valori di media query. */
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -496,7 +501,7 @@ body {
 }
 
 .view-intro {
-  max-width: 760px;
+  max-width: 768px;
   margin: 0 0 30px;
   color: var(--ink-soft);
   font-size: 1.02rem;
@@ -528,6 +533,14 @@ body {
   box-shadow: var(--shadow-card);
   padding: 28px 30px;
   overflow: hidden;
+}
+
+/* lg (tablet landscape / small laptop): 2 colonne invece di 3, così le
+   label non vanno a capo male. Il passaggio a 1 colonna resta a sm (640px). */
+@media (max-width: 1024px) {
+  .kpi-card {
+    grid-column: span 6;
+  }
 }
 
 .kpi-card:hover {
@@ -587,7 +600,7 @@ body {
   gap: 22px;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
   .panorama-grid {
     grid-template-columns: 1fr;
   }
@@ -905,7 +918,7 @@ body {
    ============================================================ */
 
 .chat-window {
-  max-width: 520px;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
   height: 540px;
@@ -1206,7 +1219,7 @@ body {
   align-items: start;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 1024px) {
   .recensioni-grid { grid-template-columns: 1fr; }
 }
 
@@ -1781,7 +1794,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .booking-settings-actions { margin-top: 10px; }
 
-@media (max-width: 1120px) {
+@media (max-width: 1280px) {
   .booking-layout { grid-template-columns: 1fr; }
 }
 
@@ -1838,7 +1851,7 @@ body.booking-modal-open { overflow: hidden; }
   margin-bottom: 16px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .insights-grid { grid-template-columns: 1fr; }
 }
 
@@ -2036,42 +2049,7 @@ body.booking-modal-open { overflow: hidden; }
    RESPONSIVE
    ============================================================ */
 
-@media (max-width: 860px) {
-  .sidebar {
-    width: 60px;
-    overflow: hidden;
-  }
-
-  .sidebar-brand-eyebrow,
-  .sidebar-brand-name,
-  .nav-item span:not(.nav-icon),
-  .sidebar-cta {
-    display: none;
-  }
-
-  .nav-item {
-    justify-content: center;
-    padding: 12px;
-  }
-
-  .main {
-    margin-left: 60px;
-  }
-
-  .view {
-    padding: 20px 16px 40px;
-  }
-
-  .topbar {
-    padding: 0 16px;
-  }
-
-  .kpi-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .topbar-meta {
     display: none;
   }
@@ -2325,7 +2303,7 @@ body.booking-modal-open { overflow: hidden; }
   margin-top: 24px;
 }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .onboarding-shell {
     grid-template-columns: 1fr;
   }
@@ -2337,7 +2315,7 @@ body.booking-modal-open { overflow: hidden; }
   }
 }
 
-@media (max-width: 680px) {
+@media (max-width: 640px) {
   .onboarding-panel { padding: 22px 18px; }
   .vertical-grid,
   .wizard-two {
@@ -2658,7 +2636,7 @@ body.booking-modal-open { overflow: hidden; }
   background: rgba(94,255,0,0.06);
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
   :root { --sidebar-w: 272px; }
 
   .topbar .nav-toggle {
@@ -2689,11 +2667,11 @@ body.booking-modal-open { overflow: hidden; }
   }
 }
 
-@media (min-width: 1101px) {
+@media (min-width: 1025px) {
   .sidebar-overlay { display: none !important; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .view {
     padding: 24px 18px 60px;
   }
@@ -3571,7 +3549,7 @@ body.booking-modal-open { overflow: hidden; }
   color: var(--sage);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .net-banner { margin: 8px 10px 0; }
 }
 
@@ -3717,7 +3695,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .settings-actions .review-analyze { min-width: 170px; }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .settings-grid { grid-template-columns: 1fr; }
 }
 
@@ -3824,7 +3802,7 @@ body.booking-modal-open { overflow: hidden; }
 
 .gs-vuoto { margin: 0; padding: 14px 10px; font-size: 0.84rem; color: var(--ink-soft); }
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
   .global-search { display: none; }
 }
 
@@ -3861,7 +3839,7 @@ body.booking-modal-open { overflow: hidden; }
   color: var(--ink-soft);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .security-grid { grid-template-columns: 1fr; }
 }
 

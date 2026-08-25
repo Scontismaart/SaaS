@@ -479,34 +479,6 @@ body {
   height: 19px;
 }
 
-.sidebar-cta {
-  position: relative;
-  margin: auto 18px 20px;
-  padding: 18px;
-  border-radius: 20px;
-  background: var(--bg-elev);
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--green-deep);
-}
-
-.sidebar-cta-title {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 500;
-  color: var(--sidebar-active);
-  margin-bottom: 5px;
-  line-height: 1.3;
-  font-size: 0.95rem;
-  letter-spacing: -0.015em;
-}
-
-.sidebar-cta-sub {
-  color: var(--sidebar-text);
-  margin: 0;
-  line-height: 1.45;
-  font-size: 0.76rem;
-}
-
 /* ============================================================
    MAIN  —  area contenuto
    ============================================================ */
@@ -562,36 +534,6 @@ body {
   font-family: var(--font-mono);
   font-size: 0.74rem;
   color: var(--ink-soft);
-}
-
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-family: var(--font-body);
-  font-size: 0.76rem;
-  color: var(--ink-soft);
-  padding: 6px 13px 6px 11px;
-  min-height: 40px;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: var(--bg-elev);
-  font-weight: 800;
-}
-
-.status-pill-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--sage);
-  box-shadow: 0 0 0 3px var(--sage-soft);
-  flex-shrink: 0;
-  animation: status-pulse 2.4s infinite ease-in-out;
-}
-
-@keyframes status-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
 }
 
 /* ============================================================
@@ -2804,9 +2746,8 @@ body.booking-modal-open { overflow: hidden; }
     grid-column: auto;
   }
 
-  /* Topbar: a md la riga non entra tutta — nascondi meta e pill (già nascosti a sm) */
-  .topbar-meta,
-  .status-pill-desktop {
+  /* Topbar: a md la riga non entra tutta — nascondi la data (già nascosta a sm) */
+  .topbar-meta {
     display: none;
   }
 
@@ -2837,9 +2778,7 @@ body.booking-modal-open { overflow: hidden; }
     padding: 0 12px;
   }
 
-  .topbar-meta,
-  .status-pill-desktop,
-  #billing-btn {
+  .topbar-meta {
     display: none;
   }
 
@@ -4097,8 +4036,7 @@ html[data-theme="dark"] .chat-header,
 html[data-theme="dark"] .booking-export-bar,
 html[data-theme="dark"] .security-grid form,
 html[data-theme="dark"] .accesso-tabs,
-html[data-theme="dark"] .empty-state,
-html[data-theme="dark"] .sidebar-cta {
+html[data-theme="dark"] .empty-state {
   background: var(--bg-elev);
 }
 

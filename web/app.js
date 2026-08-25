@@ -594,11 +594,10 @@ navItems.forEach((btn) => {
       aggiornaRiepilogo();
       aggiornaPrioritari();
     }
-    if (viewName === "onboarding") {
-/* NOTA: inizializzaOnboarding() NON va chiamata qui al load â€” parte dalla
-   vista onboarding (mostraView) DOPO la session check di avvia(). Chiamarla
-   al top-level trovava sessione=undefined e rimandava al login prima ancora
-   che caricaSessione() completasse (bounce immediato post-OAuth). */
+    if (viewName === "assistente") {
+      // Il wizard salva solo owner/manager (gate lato API): per lo staff
+      // la card "Configura" non ha senso, la rimuoviamo dal DOM.
+      if (sessione?.ruolo === "staff") document.getElementById("onboarding-banner")?.remove();
     }
     if (viewName === "recensioni") {
       aggiornaTrends();

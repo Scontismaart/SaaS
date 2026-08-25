@@ -6,17 +6,17 @@
     <title>Privacy Policy — Melpis</title>
     <meta name="description" content="Informativa sul trattamento dei dati personali ai sensi del Regolamento UE 2016/679 (GDPR) per il servizio Melpis.">
     <meta name="robots" content="noindex, follow">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080a08'/%3E%3Cpath d='M9 11h14v8H15l-3.5 3.2V19H9z' fill='none' stroke='%235eff00' stroke-width='1.8'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="/style.css?v=1">
+    <link rel="icon" href="logo.webp" type="image/webp">
+    <link rel="stylesheet" href="style.css?v=white-theme-7">
 </head>
 <body class="legal-body">
 
 <nav class="legal-nav">
-    <a href="/" class="brand" aria-label="Melpis — home">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 5h15v9h-9l-4.5 4v-4H4.5V5Z" stroke="#5eff00" stroke-width="1.8" stroke-linejoin="round"/></svg>
-        Melpis
+    <a href="index.html" class="brand" aria-label="Melpis — home">
+        <img src="logo.webp" alt="Melpis Logo" class="brand-logo" width="30" height="30">
+        <span>Melpis</span>
     </a>
-    <a href="/" class="btn-secondary btn-nav">Torna al sito</a>
+    <a href="index.html" class="btn-secondary btn-nav">Torna al sito</a>
 </nav>
 
 <main class="legal-main container-narrow">
@@ -61,7 +61,9 @@
     <li><strong>Supabase</strong> — autenticazione e database (Unione Europea).</li>
     <li><strong>Meta Platforms Ireland Ltd.</strong> — WhatsApp Business API.</li>
     <li><strong>Stripe Payments Europe</strong> — pagamenti.</li>
-    <li><strong>Provider LLM</strong> — elaborazione dei messaggi per la generazione delle risposte; i contenuti transitano cifrati e non sono conservati a fini di addestramento.</li>
+    <li><strong>OpenRouter</strong> — instradamento dei modelli AI; i provider sono configurati per non addestrare sui dati.</li>
+    <li><strong>Plausible Analytics</strong> — statistiche di traffico anonime e senza cookie (nessun dato personale trattato).</li>
+    <li><strong>[provider hosting]</strong> — hosting dell'applicazione web <em>[da completare con il provider effettivo prima della pubblicazione]</em>.</li>
 </ul>
 </section>
 
@@ -91,8 +93,9 @@
     <div class="container footer-bottom">
         <p>&copy; 2026 Melpis AI. Tutti i diritti riservati.</p>
         <div style="display:flex; gap:24px;">
-            <a href="/termini/">Termini di Servizio</a>
-            <a href="/cookie/">Cookie Policy</a>
+            <a href="termini.html">Termini di Servizio</a>
+            <a href="cookie.html">Cookie Policy</a>
+            <a href="/api/gdpr/dpa">DPA</a>
         </div>
     </div>
 </footer>

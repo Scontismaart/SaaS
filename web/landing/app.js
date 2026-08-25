@@ -2,6 +2,13 @@
 (function () {
     'use strict';
 
+    /* ---------- Analytics (Plausible, proxied same-origin) ---------- */
+    function trackEvent(name, props) {
+        if (typeof window.plausible === 'function') {
+            window.plausible(name, { props: props || {} });
+        }
+    }
+
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* ---------- API base: same-origin in produzione, override per sviluppo ---------- */
@@ -55,13 +62,13 @@
                     revObs.unobserve(entry.target);
                 }
             });
-        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+        }, { threshold: 0.10, rootMargin: '0px 0px -30px 0px' });
         document.querySelectorAll('.reveal:not(.visible)').forEach(function (el) {
             revObs.observe(el);
         });
     }
 
-    /* ---------- Scroll progress (fallback senza animation-timeline) ---------- */
+    /* ---------- Scroll progress (fallback) ---------- */
     (function () {
         var el = document.getElementById('scrollProgress');
         if (!el || CSS.supports('animation-timeline: scroll()')) return;
@@ -89,41 +96,132 @@
         });
     }
 
-    /* ---------- Tilt telefono ---------- */
-    (function () {
-        if (reduceMotion || !window.matchMedia('(hover: hover)').matches) return;
-        var container = document.getElementById('phoneContainer');
-        var frame = document.getElementById('phoneFrame');
-        var reflection = document.getElementById('screenReflection');
-        if (!container || !frame) return;
-        var base = 'rotateY(-22deg) rotateX(10deg) rotateZ(-2deg)';
-        var ticking = false;
+    /* ---------- Showcase 3D Deck Stack & Parallax Controller ---------- */
+    (function initDeckStack() {
+        var stage = document.getElementById('showcaseStage');
+        var deck = document.getElementById('deckContainer');
+        var card0 = document.getElementById('deckCard0');
+        var card1 = document.getElementById('deckCard1');
+        var buttons = document.querySelectorAll('.switcher-btn');
+        var glider = document.querySelector('.switcher-glider');
 
-        container.addEventListener('mousemove', function (e) {
-            if (!ticking) {
-                requestAnimationFrame(function () {
-                    var r = container.getBoundingClientRect();
-                    var px = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-                    var py = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-                    frame.style.transition = 'none';
-                    frame.style.transform =
-                        'rotateY(' + (px * 20).toFixed(1) + 'deg)' +
-                        ' rotateX(' + (-py * 12).toFixed(1) + 'deg)' +
-                        ' rotateZ(' + (-px * py * 4).toFixed(1) + 'deg)';
-                    if (reflection) {
-                        reflection.style.background = 'linear-gradient(' +
-                            (125 + px * 12).toFixed(0) + 'deg, rgba(255,255,255,0.07) 0%, transparent 40%)';
+        if (!deck || !card0 || !card1) return;
+
+        var activeIndex = 0;
+        var cards = [card0, card1];
+
+        function updateGlider(btn) {
+            if (!glider || !btn) return;
+            glider.style.width = btn.offsetWidth + 'px';
+            glider.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+        }
+
+        function setActiveCard(targetIndex) {
+            if (targetIndex === activeIndex) return;
+            activeIndex = targetIndex;
+
+            // Animate Cards: Active becomes front, inactive becomes back
+            cards.forEach(function (card, idx) {
+                var isFront = (idx === activeIndex);
+                if (isFront) {
+                    card.classList.remove('deck-card-back');
+                    card.classList.add('deck-card-front');
+                    card.setAttribute('aria-hidden', 'false');
+                } else {
+                    card.classList.remove('deck-card-front');
+                    card.classList.add('deck-card-back');
+                    card.setAttribute('aria-hidden', 'true');
+                }
+            });
+
+            // Update Switcher Buttons
+            buttons.forEach(function (btn) {
+                var btnIdx = parseInt(btn.dataset.target, 10);
+                var isActive = (btnIdx === activeIndex);
+                btn.classList.toggle('active', isActive);
+                btn.setAttribute('aria-selected', String(isActive));
+                if (isActive) updateGlider(btn);
+            });
+        }
+
+        // Clicking on cards: if background card is clicked, bring to front!
+        cards.forEach(function (card, idx) {
+            card.addEventListener('click', function () {
+                if (card.classList.contains('deck-card-back')) {
+                    setActiveCard(idx);
+                }
+            });
+        });
+
+        // Clicking on Switcher Buttons
+        buttons.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var targetIdx = parseInt(btn.dataset.target, 10);
+                if (!isNaN(targetIdx)) setActiveCard(targetIdx);
+            });
+        });
+
+        // Initialize Glider position
+        var initialActive = document.querySelector('.switcher-btn.active');
+        if (initialActive) {
+            setTimeout(function () { updateGlider(initialActive); }, 80);
+        }
+        window.addEventListener('resize', function () {
+            var curr = document.querySelector('.switcher-btn.active');
+            if (curr) updateGlider(curr);
+        });
+
+        // Touch Swipe Gestures
+        if (stage) {
+            var startX = 0;
+            stage.addEventListener('touchstart', function (e) {
+                if (e.touches && e.touches[0]) startX = e.touches[0].clientX;
+            }, { passive: true });
+
+            stage.addEventListener('touchend', function (e) {
+                if (e.changedTouches && e.changedTouches[0]) {
+                    var diff = startX - e.changedTouches[0].clientX;
+                    if (Math.abs(diff) > 40) {
+                        setActiveCard(activeIndex === 0 ? 1 : 0);
                     }
-                    ticking = false;
-                });
-                ticking = true;
+                }
+            }, { passive: true });
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function (e) {
+            if (!stage) return;
+            var rect = stage.getBoundingClientRect();
+            var inView = (rect.top <= window.innerHeight && rect.bottom >= 0);
+            if (!inView) return;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                setActiveCard(activeIndex === 0 ? 1 : 0);
             }
         });
-        container.addEventListener('mouseleave', function () {
-            frame.style.transition = 'transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
-            frame.style.transform = base;
-            if (reflection) reflection.style.background = '';
-        });
+
+        // Subtle 3D Mouse Parallax Tilt across the deck
+        if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
+            var ticking = false;
+            stage.addEventListener('mousemove', function (e) {
+                if (!ticking) {
+                    requestAnimationFrame(function () {
+                        var r = stage.getBoundingClientRect();
+                        var px = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+                        var py = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+                        deck.style.transition = 'transform 0.1s ease-out';
+                        deck.style.transform =
+                            'rotateY(' + (px * 3.8).toFixed(2) + 'deg)' +
+                            ' rotateX(' + (-py * 2.8).toFixed(2) + 'deg)';
+                        ticking = false;
+                    });
+                    ticking = true;
+                }
+            });
+            stage.addEventListener('mouseleave', function () {
+                deck.style.transition = 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1)';
+                deck.style.transform = 'rotateY(0deg) rotateX(0deg)';
+            });
+        }
     })();
 
     /* ---------- Bottoni magnetici ---------- */
@@ -131,15 +229,15 @@
         document.querySelectorAll('.magnetic').forEach(function (el) {
             el.addEventListener('mousemove', function (e) {
                 var r = el.getBoundingClientRect();
-                var x = (e.clientX - (r.left + r.width / 2)) * 0.18;
-                var y = (e.clientY - (r.top + r.height / 2)) * 0.18;
+                var x = (e.clientX - (r.left + r.width / 2)) * 0.16;
+                var y = (e.clientY - (r.top + r.height / 2)) * 0.16;
                 el.style.transform = 'translate(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px)';
             });
             el.addEventListener('mouseleave', function () { el.style.transform = ''; });
         });
     }
 
-    /* ---------- Toggle prezzi ---------- */
+    /* ---------- Toggle prezzi (Mensile / Annuale) ---------- */
     (function () {
         var toggle = document.getElementById('pricingToggle');
         if (!toggle) return;
@@ -154,13 +252,14 @@
                 el.textContent = yearly ? el.dataset.yearly : el.dataset.monthly;
             });
             document.querySelectorAll('.price-period').forEach(function (el) {
-                el.textContent = yearly ? '/mese' : '/mese';
+                el.textContent = '/mese';
             });
             document.querySelectorAll('.yearly-note').forEach(function (el) {
                 el.classList.toggle('hidden', !yearly);
             });
             labelM.classList.toggle('active', !yearly);
             labelY.classList.toggle('active', yearly);
+            trackEvent('toggle_pricing_annual', { enabled: yearly });
         });
     })();
 
@@ -190,6 +289,7 @@
     function openModal(plan) {
         lastFocused = document.activeElement;
         modal.hidden = false;
+        trackEvent('open_signup_modal');
         document.body.style.overflow = 'hidden';
         var nome = document.getElementById('su-nome');
         var btns = document.querySelectorAll('[data-signup][data-plan]');
@@ -225,6 +325,10 @@
 
     document.querySelectorAll('[data-signup]').forEach(function (btn) {
         btn.addEventListener('click', function () {
+            trackEvent('click_cta', {
+                location: btn.dataset.trackLocation || '',
+                plan: btn.dataset.plan || ''
+            });
             closeNav();
             openModal(btn.dataset.plan);
         });
@@ -238,7 +342,7 @@
         });
     }
 
-    // Apertura via URL: miosito.it/#prova (link "registrati" dalla dashboard)
+    // Apertura via URL: miosito.it/#prova
     if (modal && window.location.hash === '#prova') {
         openModal();
     }
@@ -287,12 +391,11 @@
                 var data = await resp.json().catch(function () { return {}; });
 
                 if (resp.ok && data.ok) {
+                    trackEvent('submit_signup_form');
                     if (data.email_verified) {
-                        // Sessione attiva (email auto-confirm): via al pannello
                         window.location.href = '/app/';
                         return;
                     }
-                    // Verifica email richiesta
                     form.reset();
                     okBox.hidden = false;
                     errBox.hidden = true;
@@ -309,6 +412,22 @@
                 submitBtn.disabled = false;
                 submitBtn.firstChild.textContent = 'Crea il mio assistente ';
             }
+        });
+    }
+
+    /* ---------- Cookie notice ---------- */
+    var cookieNotice = document.getElementById('cookieNotice');
+    var cookieOk = document.getElementById('cookieOk');
+
+    if (cookieNotice && cookieOk) {
+        var cookieFlag = null;
+        try { cookieFlag = localStorage.getItem('cookie_notice_ok'); } catch (storageErr) { /* localStorage non disponibile */ }
+        if (!cookieFlag) {
+            cookieNotice.hidden = false;
+        }
+        cookieOk.addEventListener('click', function () {
+            try { localStorage.setItem('cookie_notice_ok', '1'); } catch (storageErr) { /* localStorage non disponibile */ }
+            cookieNotice.hidden = true;
         });
     }
 })();

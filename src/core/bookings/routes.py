@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
+from src.core.auth.audit import audit_log
 from src.core.auth.dependencies import require_ruolo
 from src.core.bookings import SlotPienoError
 from src.models.schemas import DisponibilitaSlot
@@ -13,6 +14,25 @@ def _get_booking_service(request: Request):
     if svc is None:
         raise HTTPException(status_code=503, detail="Booking service not available")
     return svc
+
+
+async def _audit_booking(request: Request, user: dict, action: str, booking: dict) -> None:
+    """Audit best-effort sulle azioni sensibili delle prenotazioni."""
+    repo = getattr(request.app.state, "repo", None)
+    org_id = user.get("organization_id")
+    if repo is None or not org_id:
+        return
+    try:
+        await audit_log(
+            repo, org_id, action,
+            user_id=user.get("user_id"),
+            auth_user_id=user.get("auth_user_id"),
+            target_table="bookings",
+            target_id=str(booking.get("id")) if booking else None,
+            details={"stato": booking.get("stato"), "cliente": booking.get("nome_cliente")},
+        )
+    except Exception as exc:  # l'audit non deve rompere l'azione
+        logger.warning("audit booking fallito: %s", exc)
 
 
 @router.get("/semaforo", response_model=list[DisponibilitaSlot])
@@ -90,9 +110,11 @@ async def confirm_booking(booking_id: str, request: Request,
                           user: dict = Depends(require_ruolo("owner", "manager"))):
     service = _get_booking_service(request)
     try:
-        return await service.confirm(user["organization_id"], booking_id)
+        b = await service.confirm(user["organization_id"], booking_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    await _audit_booking(request, user, "prenotazione.confermata", b)
+    return b
 
 
 @router.post("/{booking_id}/reject")
@@ -101,9 +123,11 @@ async def reject_booking(booking_id: str, body: dict | None = None, request: Req
     service = _get_booking_service(request)
     body = body or {}
     try:
-        return await service.reject(user["organization_id"], booking_id, body.get("motivo", ""))
+        b = await service.reject(user["organization_id"], booking_id, body.get("motivo", ""))
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    await _audit_booking(request, user, "prenotazione.rifiutata", b)
+    return b
 
 
 @router.post("/{booking_id}/cancel")
@@ -113,6 +137,7 @@ async def cancel_booking(booking_id: str, request: Request,
     b = await service.cancel(user["organization_id"], booking_id)
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    await _audit_booking(request, user, "prenotazione.annullata", b)
     return b
 
 

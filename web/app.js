@@ -46,6 +46,51 @@ function toast(messaggio, tipo = "info", durata = 4200) {
   }, durata);
 }
 
+/* ============================================================
+   CONFERMA AZIONI DISTRUTTIVE — modal riusabile al posto di confirm()
+   ============================================================ */
+
+function confermaDestructiva({ titolo = "Conferma azione", descrizione = "", label = "Conferma" } = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("confirm-modal");
+    const titleEl = document.getElementById("confirm-title");
+    const descEl = document.getElementById("confirm-desc");
+    const okBtn = document.getElementById("confirm-ok-btn");
+    const cancelBtn = document.getElementById("confirm-cancel-btn");
+    if (!modal || !okBtn || !cancelBtn) {
+      resolve(window.confirm(descrizione || titolo));
+      return;
+    }
+    titleEl.textContent = titolo;
+    descEl.textContent = descrizione;
+    okBtn.textContent = label;
+    modal.hidden = false;
+    okBtn.focus();
+
+    const chiudi = (esito) => {
+      modal.hidden = true;
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      modal.removeEventListener("keydown", onKey);
+      resolve(esito);
+    };
+    function onOk() { chiudi(true); }
+    function onCancel() { chiudi(false); }
+    function onKey(e) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        chiudi(false);
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+        (document.activeElement === okBtn ? cancelBtn : okBtn).focus();
+      }
+    }
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+    modal.addEventListener("keydown", onKey);
+  });
+}
+
 function leggiCookie(nome) {
   return document.cookie
     .split(";")
@@ -58,6 +103,67 @@ function csrfToken() {
   return decodeURIComponent(leggiCookie("__Host-wa_csrf") || leggiCookie("wa_csrf"));
 }
 
+/* ============================================================
+   STATO RETE — banner "connessione persa / ripristinata"
+   ============================================================ */
+
+let reteInErrore = false;
+
+function mostraBannerRete(testo, online = false, autoHideMs = 0) {
+  const netBanner = document.getElementById("net-banner");
+  if (!netBanner) return;
+  netBanner.textContent = testo;
+  netBanner.classList.toggle("online", Boolean(online));
+  netBanner.hidden = false;
+  if (mostraBannerRete._timer) {
+    clearTimeout(mostraBannerRete._timer);
+    mostraBannerRete._timer = null;
+  }
+  if (autoHideMs) {
+    mostraBannerRete._timer = setTimeout(() => {
+      netBanner.hidden = true;
+      mostraBannerRete._timer = null;
+    }, autoHideMs);
+  }
+}
+
+function segnalaErroreRete() {
+  reteInErrore = true;
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
+  } else {
+    mostraBannerRete("Server irraggiungibile — riprova tra poco.");
+  }
+}
+
+function segnaReteOk() {
+  if (!reteInErrore) return;
+  reteInErrore = false;
+  mostraBannerRete("Connessione ripristinata.", true, 3000);
+}
+
+window.addEventListener("offline", () => {
+  mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
+});
+
+window.addEventListener("online", () => {
+  if (reteInErrore) segnaReteOk();
+  else mostraBannerRete("Connessione ripristinata.", true, 3000);
+});
+
+async function tentaRefresh() {
+  try {
+    return await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: "POST",
+      headers: csrfToken() ? { "X-CSRF-Token": csrfToken() } : {},
+      credentials: "include",
+    });
+  } catch (err) {
+    segnalaErroreRete();
+    throw err;
+  }
+}
+
 async function apiFetch(url, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const headers = { ...(options.headers || {}) };
@@ -65,36 +171,91 @@ async function apiFetch(url, options = {}) {
     const token = csrfToken();
     if (token) headers["X-CSRF-Token"] = token;
   }
-  let res = await fetch(url, { ...options, headers, credentials: "include" });
+  async function tenta() {
+    try {
+      return await fetch(url, { ...options, headers, credentials: "include" });
+    } catch (err) {
+      segnalaErroreRete();
+      throw err;
+    }
+  }
+  let res = await tenta();
   if (res.status === 401 && !url.includes("/api/auth/")) {
-    const refreshRes = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: "POST",
-      headers: csrfToken() ? { "X-CSRF-Token": csrfToken() } : {},
-      credentials: "include",
-    });
+    const refreshRes = await tentaRefresh();
     if (refreshRes.ok) {
-      res = await fetch(url, { ...options, headers, credentials: "include" });
+      res = await tenta();
     } else {
       sessione = null;
       aggiornaBottoneAccesso();
       vaiAdAccesso();
     }
   }
+  segnaReteOk();
   return res;
 }
 
+const RUOLO_LABEL = {
+  owner: "Proprietario",
+  manager: "Manager",
+  staff: "Staff",
+};
+
 function aggiornaBottoneAccesso() {
   const btn = document.getElementById("accesso-btn");
-  if (!btn) return;
-  if (sessione) {
-    btn.textContent = sessione.email || "Esci";
-    btn.title = "Esci";
-  } else {
-    btn.textContent = "Accedi";
-    btn.title = "Accedi";
-  }
+  const userMenu = document.getElementById("user-menu");
+  if (btn) btn.hidden = Boolean(sessione);
+  if (userMenu) userMenu.hidden = !sessione;
   const billingBtn = document.getElementById("billing-btn");
   if (billingBtn) billingBtn.hidden = !sessione;
+  if (!sessione) {
+    chiudiMenuUtente();
+    return;
+  }
+  const email = sessione.email || "utente";
+  const iniziale = (email[0] || "U").toUpperCase();
+  const avatarInitial = document.getElementById("avatar-initial");
+  const dropdownInitial = document.getElementById("dropdown-initial");
+  if (avatarInitial) avatarInitial.textContent = iniziale;
+  if (dropdownInitial) dropdownInitial.textContent = iniziale;
+  const menuEmail = document.getElementById("user-menu-email");
+  const dropdownEmail = document.getElementById("dropdown-email");
+  if (menuEmail) menuEmail.textContent = email;
+  if (dropdownEmail) dropdownEmail.textContent = email;
+  const ruoloEl = document.getElementById("dropdown-ruolo");
+  if (ruoloEl) {
+    ruoloEl.textContent = RUOLO_LABEL[sessione.ruolo] || sessione.ruolo || "Ospite";
+    ruoloEl.className = `ruolo-chip ruolo-${sessione.ruolo || "staff"}`;
+  }
+}
+
+function toggleMenuUtente(force) {
+  const dropdown = document.getElementById("user-dropdown");
+  const menuBtn = document.getElementById("user-menu-btn");
+  if (!dropdown || !menuBtn) return;
+  const apri = typeof force === "boolean" ? force : dropdown.hidden;
+  dropdown.hidden = !apri;
+  menuBtn.setAttribute("aria-expanded", String(apri));
+}
+
+function chiudiMenuUtente() {
+  toggleMenuUtente(false);
+}
+
+document.getElementById("user-menu-btn")?.addEventListener("click", () => {
+  chiudiPannelloNotifiche();
+  toggleMenuUtente();
+});
+
+document.getElementById("logout-btn")?.addEventListener("click", async () => {
+  await faiLogout();
+  window.location.href = "/accedi/";
+});
+
+/* Login su pagina dedicata /accedi/, registrazione su /registrati/
+   (pagine standalone). Il modal è stato rimosso. */
+function vaiAdAccesso() {
+  const next = encodeURIComponent(window.location.pathname + window.location.search);
+  window.location.href = `/accedi/?next=${next}`;
 }
 
 async function caricaSessione() {
@@ -115,13 +276,6 @@ async function caricaSessione() {
   }
 }
 
-/* Login su pagina dedicata /accedi/, registrazione su /registrati/
-   (pagine standalone). Il modal è stato rimosso. */
-function vaiAdAccesso() {
-  const next = encodeURIComponent(window.location.pathname + window.location.search);
-  window.location.href = `/accedi/?next=${next}`;
-}
-
 async function faiLogout() {
   try {
     await apiFetch(`${API_BASE}/api/auth/logout`, {
@@ -133,13 +287,7 @@ async function faiLogout() {
 }
 
 document.getElementById("accesso-btn")?.addEventListener("click", () => {
-  if (sessione) {
-    faiLogout().then(() => {
-      window.location.reload();
-    });
-  } else {
-    vaiAdAccesso();
-  }
+  vaiAdAccesso();
 });
 
 document.getElementById("billing-btn")?.addEventListener("click", async () => {
@@ -206,6 +354,7 @@ function segnaNotificheViste(viewName) {
   stato.viste[viewName] = notificationItems[viewName] || 0;
   salvaStatoNotifiche(stato);
   aggiornaBadgeNotifiche(stato);
+  aggiornaCampana();
 }
 
 async function aggiornaNotifiche() {
@@ -232,6 +381,7 @@ async function aggiornaNotifiche() {
       salvaStatoNotifiche(stato);
     }
     aggiornaBadgeNotifiche(stato);
+    aggiornaCampana();
   } catch (err) {
     console.error("Impossibile aggiornare le notifiche:", err);
   }
@@ -264,8 +414,14 @@ navItems.forEach((btn) => {
       report: "Report",
       documenti: "Documenti",
       inbox: "Inbox",
+      impostazioni: "Impostazioni",
+      integrazioni: "Integrazioni",
+      audit: "Audit",
     };
     topbarTitle.textContent = titles[viewName] || viewName;
+    if (viewName === "audit") caricaAudit();
+    if (viewName === "integrazioni") caricaIntegrazioni();
+    if (viewName === "impostazioni") caricaTimezone();
 
     if (viewName === "panoramica") {
       aggiornaRiepilogo();
@@ -296,6 +452,10 @@ navItems.forEach((btn) => {
     } else {
       fermaInboxPolling();
     }
+    if (viewName === "impostazioni") {
+      caricaImpostazioni();
+    }
+    chiudiMenuMobile();
   });
 });
 
@@ -431,6 +591,22 @@ function renderOnboardingStep() {
   }
   onboardingEls.prev.disabled = onboardingState.step === 0;
   onboardingEls.next.textContent = onboardingState.step === 6 ? "Completa" : "Avanti";
+  salvaBozzaOnboarding();
+}
+
+function salvaBozzaOnboarding() {
+  /* Bozza in localStorage: il wizard resta riprendibile anche se il
+     browser si chiude a metà. I dati sono non-sensibili (profilo attività). */
+  try {
+    const bozza = { step: onboardingState.step, salvata_at: new Date().toISOString(), profilo: profiloOnboarding() };
+    localStorage.setItem("melpis_onboarding_bozza", JSON.stringify(bozza));
+    const badge = document.getElementById("onboarding-autosave");
+    if (badge) {
+      const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      badge.textContent = `Bozza salvata · ${ora}`;
+      badge.hidden = false;
+    }
+  } catch { /* localStorage pieno/bloccato: non blocca il wizard */ }
 }
 
 function renderVerticals() {
@@ -555,6 +731,293 @@ async function salvaProfiloOnboarding() {
   document.getElementById("chat-business-name").textContent = record.nome_attivita;
   return record;
 }
+
+/* ============================================================
+   IMPOSTAZIONI — stesso profilo dell'onboarding, modificabile
+   senza rifare il wizard (GET/POST /api/onboarding/profilo)
+   ============================================================ */
+
+const settingsEls = {
+  name: document.getElementById("settings-name"),
+  hours: document.getElementById("settings-hours"),
+  tone: document.getElementById("settings-tone"),
+  services: document.getElementById("settings-services"),
+  lingueGrid: document.getElementById("settings-lingue-grid"),
+  linguaDefault: document.getElementById("settings-lingua-default"),
+  escalationList: document.getElementById("settings-escalation-list"),
+  extraRule: document.getElementById("settings-extra-rule"),
+  addRule: document.getElementById("settings-add-rule"),
+  saveBtn: document.getElementById("settings-save"),
+  saveStatus: document.getElementById("settings-save-status"),
+};
+
+const settingsState = {
+  loaded: false,
+  loading: false,
+  verticale: "ristorante",
+  whatsappCollegato: false,
+  documentiImportati: false,
+  extraRules: [],
+  lingueDisponibili: ["it", "en", "fr", "de", "es"],
+};
+
+function settingsLingueSelezionate() {
+  return [...document.querySelectorAll(".settings-lang:checked")].map((i) => i.value);
+}
+
+function settingsRegoleSelezionate() {
+  return [...document.querySelectorAll(".settings-rule:checked")].map((input) => input.value);
+}
+
+function aggiornaSettingsDefaultLingua(preferito = null) {
+  if (!settingsEls.linguaDefault) return;
+  const selezionate = settingsLingueSelezionate();
+  const corrente = preferito || settingsEls.linguaDefault.value || "it";
+  settingsEls.linguaDefault.innerHTML = "";
+  (selezionate.length ? selezionate : ["it"]).forEach((lang) => {
+    const opt = document.createElement("option");
+    opt.value = lang;
+    opt.textContent = lang.toUpperCase();
+    opt.selected = lang === corrente;
+    settingsEls.linguaDefault.appendChild(opt);
+  });
+}
+
+function renderSettingsLingue(lingueAttive) {
+  if (!settingsEls.lingueGrid) return;
+  settingsEls.lingueGrid.innerHTML = "";
+  settingsState.lingueDisponibili.forEach((lang) => {
+    const label = document.createElement("label");
+    label.className = "wizard-check";
+    const locked = lang === "it";
+    label.innerHTML = `<input class="settings-lang" type="checkbox" value="${_sanitize(lang)}" ${lingueAttive.includes(lang) ? "checked" : ""} ${locked ? "disabled" : ""}> ${_sanitize(lang.toUpperCase())}`;
+    label.querySelector("input").addEventListener("change", () => aggiornaSettingsDefaultLingua());
+    settingsEls.lingueGrid.appendChild(label);
+  });
+  aggiornaSettingsDefaultLingua(lingueAttive.find((l) => l !== "it") || "it");
+}
+
+function renderSettingsEscalation() {
+  if (!settingsEls.escalationList) return;
+  settingsEls.escalationList.innerHTML = "";
+  settingsState.extraRules.forEach((rule) => {
+    const label = document.createElement("label");
+    label.className = "wizard-check";
+    label.innerHTML = `<input class="settings-rule" type="checkbox" value="${_sanitize(String(rule).replaceAll('"', "&quot;"))}" checked> ${_sanitize(rule)}`;
+    settingsEls.escalationList.appendChild(label);
+  });
+}
+
+function impostaSettingsReadonly(solaLettura) {
+  [
+    settingsEls.name, settingsEls.hours, settingsEls.tone, settingsEls.services,
+    settingsEls.linguaDefault, settingsEls.extraRule, settingsEls.addRule, settingsEls.saveBtn,
+  ].forEach((el) => { if (el) el.disabled = solaLettura; });
+  if (solaLettura && settingsEls.saveStatus) {
+    settingsEls.saveStatus.textContent = "Solo il proprietario o un manager possono modificare il profilo.";
+    settingsEls.saveStatus.style.color = "var(--amber)";
+  }
+}
+
+async function caricaImpostazioni() {
+  if (!sessione) {
+    vaiAdAccesso();
+    return;
+  }
+  if (settingsState.loaded || settingsState.loading) return;
+  settingsState.loading = true;
+  try {
+    const [profiloRes, verticaliRes] = await Promise.all([
+      apiFetch(`${API_BASE}/api/onboarding/profilo`),
+      apiFetch(`${API_BASE}/api/onboarding/verticali`),
+    ]);
+    if (verticaliRes.ok) {
+      const data = await verticaliRes.json().catch(() => ({}));
+      settingsState.lingueDisponibili = data.lingue_disponibili || settingsState.lingueDisponibili;
+    }
+    if (profiloRes.status === 401) {
+      vaiAdAccesso();
+      return;
+    }
+    let record = null;
+    if (profiloRes.ok) {
+      const data = await profiloRes.json().catch(() => ({}));
+      record = data.profilo;
+    }
+    impostaSettingsReadonly(sessione.ruolo === "staff");
+    settingsState.verticale = record?.verticale || settingsState.verticale;
+    settingsState.whatsappCollegato = Boolean(record?.whatsapp_collegato);
+    settingsState.documentiImportati = Boolean(record?.documenti_importati);
+    if (settingsEls.name) settingsEls.name.value = record?.nome_attivita || "";
+    if (settingsEls.hours) settingsEls.hours.value = record?.orari || "";
+    if (settingsEls.tone) settingsEls.tone.value = record?.tono || "";
+    if (settingsEls.services) settingsEls.services.value = (record?.servizi || []).join("\n");
+    settingsState.extraRules = (record?.regole_escalation || []).map(String);
+    const lingueAttive = record?.lingue_supportate?.length ? record.lingue_supportate : ["it"];
+    renderSettingsLingue(lingueAttive.map(String));
+    if (record?.lingua_default) aggiornaSettingsDefaultLingua(record.lingua_default);
+    renderSettingsEscalation();
+    settingsState.loaded = true;
+  } catch (err) {
+    console.error("Impossibile caricare le impostazioni:", err);
+  } finally {
+    settingsState.loading = false;
+  }
+}
+
+function aggiungiRegolaSettings() {
+  if (!settingsEls.extraRule || !settingsEls.addRule) return;
+  const valore = settingsEls.extraRule.value.trim();
+  if (!valore) return;
+  if (!settingsState.extraRules.some((r) => r.toLowerCase() === valore.toLowerCase())) {
+    settingsState.extraRules.push(valore);
+    renderSettingsEscalation();
+  }
+  settingsEls.extraRule.value = "";
+}
+
+settingsEls.addRule?.addEventListener("click", aggiungiRegolaSettings);
+
+settingsEls.extraRule?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    aggiungiRegolaSettings();
+  }
+});
+
+async function salvaImpostazioni() {
+  if (!settingsEls.saveBtn || settingsEls.saveBtn.disabled) return;
+  const payload = {
+    verticale: settingsState.verticale,
+    nome_attivita: settingsEls.name.value.trim() || "Nuova attività",
+    orari: settingsEls.hours.value.trim() || "Orari da configurare",
+    tono: settingsEls.tone.value.trim(),
+    servizi: righeDaTextarea(settingsEls.services.value),
+    regole_escalation: settingsRegoleSelezionate(),
+    whatsapp_collegato: settingsState.whatsappCollegato,
+    documenti_importati: settingsState.documentiImportati,
+    lingue_supportate: settingsLingueSelezionate(),
+    lingua_default: settingsEls.linguaDefault?.value || "it",
+  };
+  settingsEls.saveBtn.disabled = true;
+  if (settingsEls.saveStatus) {
+    settingsEls.saveStatus.textContent = "Salvataggio…";
+    settingsEls.saveStatus.style.color = "";
+  }
+  try {
+    const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Errore salvataggio profilo");
+    }
+    const data = await res.json();
+    const nome = data.profilo?.nome_attivita || payload.nome_attivita;
+    const brandName = document.getElementById("business-name");
+    const chatName = document.getElementById("chat-business-name");
+    if (brandName) brandName.textContent = nome;
+    if (chatName) chatName.textContent = nome;
+    if (settingsEls.saveStatus) {
+      settingsEls.saveStatus.textContent = "Modifiche salvate.";
+      settingsEls.saveStatus.style.color = "var(--sage)";
+      setTimeout(() => {
+        if (settingsEls.saveStatus.textContent === "Modifiche salvate.") settingsEls.saveStatus.textContent = "";
+      }, 4000);
+    }
+    toast("Impostazioni salvate.", "success");
+  } catch (err) {
+    if (settingsEls.saveStatus) {
+      settingsEls.saveStatus.textContent = err.message || "Errore salvataggio.";
+      settingsEls.saveStatus.style.color = "var(--red)";
+    }
+    toast(err.message || "Errore salvataggio.", "error");
+  } finally {
+    if (settingsEls.saveBtn && sessione?.ruolo !== "staff") settingsEls.saveBtn.disabled = false;
+  }
+}
+
+settingsEls.saveBtn?.addEventListener("click", salvaImpostazioni);
+
+/* ── Sicurezza account: cambio password/email ────────────────── */
+
+const SECURITY_PASSWORD_MIN = 10;
+
+function securityStatus(el, testo, errore = false) {
+  if (!el) return;
+  el.textContent = testo;
+  el.style.color = errore ? "var(--red)" : "var(--green-deep)";
+}
+
+document.getElementById("security-password-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pwd = document.getElementById("security-password")?.value || "";
+  const conferma = document.getElementById("security-password-confirm")?.value || "";
+  const status = document.getElementById("security-password-status");
+  const submit = e.target.querySelector(".security-submit");
+  if (pwd.length < SECURITY_PASSWORD_MIN || !/[^A-Za-z0-9]/.test(pwd)) {
+    securityStatus(status, `Min ${SECURITY_PASSWORD_MIN} caratteri e almeno un simbolo (es. ! @ #)`, true);
+    return;
+  }
+  if (pwd !== conferma) {
+    securityStatus(status, "Le due password non coincidono", true);
+    return;
+  }
+  submit.disabled = true;
+  securityStatus(status, "Aggiorno…");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/auth/password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      securityStatus(status, data.detail || "Aggiornamento non riuscito", true);
+      return;
+    }
+    securityStatus(status, data.message || "Password aggiornata");
+    document.getElementById("security-password").value = "";
+    document.getElementById("security-password-confirm").value = "";
+  } catch {
+    securityStatus(status, "Errore di connessione", true);
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+document.getElementById("security-email-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = document.getElementById("security-email")?.value.trim() || "";
+  const status = document.getElementById("security-email-status");
+  const submit = e.target.querySelector(".security-submit");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    securityStatus(status, "Inserisci un indirizzo email valido", true);
+    return;
+  }
+  submit.disabled = true;
+  securityStatus(status, "Aggiorno…");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/auth/email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      securityStatus(status, data.detail || "Aggiornamento non riuscito", true);
+      return;
+    }
+    securityStatus(status, data.message || "Email aggiornata");
+    document.getElementById("security-email").value = "";
+  } catch {
+    securityStatus(status, "Errore di connessione", true);
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 async function generaPreviewOnboarding(targetEl, message) {
   const res = await apiFetch(`${API_BASE}/api/onboarding/preview`, {
@@ -816,6 +1279,90 @@ function colorePrenotazione(stato) {
   return "#1F9D74";
 }
 
+const STATI_FINALI_PRENOTAZIONE = ["cancellata", "cancellato", "rifiutata", "no_show", "completata"];
+let prenotazioneCorrente = null;
+
+function statoNormalizzatoPrenotazione(p) {
+  return String(p?.stato || "").toLowerCase().trim().replace(/\s+/g, "_");
+}
+
+function aggiornaAzioniPrenotazione(p) {
+  const wrap = document.getElementById("booking-detail-actions");
+  if (!wrap || !p) {
+    if (wrap) wrap.hidden = true;
+    return;
+  }
+  const staff = Boolean(sessione && sessione.ruolo === "staff");
+  const confermaBtn = document.getElementById("booking-confirm-btn");
+  const rifiutaBtn = document.getElementById("booking-reject-btn");
+  const annullaBtn = document.getElementById("booking-cancel-btn");
+  if (!confermaBtn || !rifiutaBtn || !annullaBtn) return;
+  const stato = statoNormalizzatoPrenotazione(p);
+  const finale = STATI_FINALI_PRENOTAZIONE.includes(stato);
+  confermaBtn.hidden = staff || finale || stato === "confermata";
+  rifiutaBtn.hidden = staff || finale || stato === "rifiutata";
+  annullaBtn.hidden = staff || finale;
+  wrap.hidden = confermaBtn.hidden && rifiutaBtn.hidden && annullaBtn.hidden;
+}
+
+async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo = "", descrizione = "", label = "Conferma" } = {}) {
+  const p = prenotazioneCorrente;
+  if (!p?.id) return;
+  if (chiediConferma) {
+    const ok = await confermaDestructiva({ titolo, descrizione, label });
+    if (!ok) return;
+  }
+  const bottoni = ["booking-confirm-btn", "booking-reject-btn", "booking-cancel-btn"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+  bottoni.forEach((b) => { b.disabled = true; });
+  try {
+    const res = await apiFetch(`${API_BASE}/api/bookings/${encodeURIComponent(p.id)}/${azione}`, { method: "POST" });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Operazione non riuscita.");
+    }
+    chiudiDettaglioPrenotazione();
+    toast(
+      azione === "confirm" ? "Prenotazione confermata."
+        : azione === "reject" ? "Prenotazione rifiutata."
+          : "Prenotazione annullata.",
+      azione === "confirm" ? "success" : "info",
+    );
+    await Promise.all([
+      aggiornaPrenotazioni(),
+      p.data ? aggiornaListaGiorno(p.data) : Promise.resolve(),
+      p.data ? aggiornaSemaforo(p.data) : Promise.resolve(),
+    ]);
+  } catch (err) {
+    toast(err.message || "Errore di connessione.", "error");
+  } finally {
+    bottoni.forEach((b) => { b.disabled = false; });
+  }
+}
+
+document.getElementById("booking-confirm-btn")?.addEventListener("click", () => {
+  eseguiAzionePrenotazione("confirm");
+});
+
+document.getElementById("booking-reject-btn")?.addEventListener("click", () => {
+  eseguiAzionePrenotazione("reject", {
+    chiediConferma: true,
+    titolo: "Rifiutare la prenotazione?",
+    descrizione: `La richiesta di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà contrassegnata come rifiutata e il cliente non avrà il tavolo riservato.`,
+    label: "Rifiuta",
+  });
+});
+
+document.getElementById("booking-cancel-btn")?.addEventListener("click", () => {
+  eseguiAzionePrenotazione("cancel", {
+    chiediConferma: true,
+    titolo: "Annullare la prenotazione?",
+    descrizione: `La prenotazione di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà annullata e i posti torneranno disponibili.`,
+    label: "Annulla prenotazione",
+  });
+});
+
 function apriDettaglioPrenotazione(prenotazione) {
   if (!bookingModal || !prenotazione) return;
   const valore = (dato, fallback = "Non indicato") => dato || fallback;
@@ -824,6 +1371,7 @@ function apriDettaglioPrenotazione(prenotazione) {
       weekday: "long", day: "2-digit", month: "long", year: "numeric",
     })
     : "Non indicata";
+  prenotazioneCorrente = prenotazione;
   bookingDetail.title.textContent = valore(prenotazione.nome_cliente, "Cliente");
   bookingDetail.date.textContent = data;
   bookingDetail.time.textContent = valore(prenotazione.ora);
@@ -832,6 +1380,7 @@ function apriDettaglioPrenotazione(prenotazione) {
   bookingDetail.phone.textContent = valore(prenotazione.telefono);
   bookingDetail.origin.textContent = valore(prenotazione.origine);
   bookingDetail.note.textContent = valore(prenotazione.note, "Nessuna nota");
+  aggiornaAzioniPrenotazione(prenotazione);
   bookingModal.hidden = false;
   document.body.classList.add("booking-modal-open");
 }
@@ -955,7 +1504,8 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
       return;
     }
     items.sort((a, b) => `${a.ora}${a.nome_cliente}`.localeCompare(`${b.ora}${b.nome_cliente}`));
-    items.forEach((p) => {
+    const visibili = items.slice(0, 8);
+    visibili.forEach((p) => {
       const item = document.createElement("article");
       item.className = "booking-row";
       const ora = String(p.ora || "").slice(0, 5);
@@ -965,6 +1515,26 @@ function aggiornaListaGiorno(data, prenotazioni = null) {
         <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
       bookingDayList.appendChild(item);
     });
+    if (items.length > visibili.length) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "inbox-load-more";
+      more.textContent = `Mostra tutte (${items.length})`;
+      more.addEventListener("click", () => {
+        more.remove();
+        items.slice(visibili.length).forEach((p) => {
+          const item = document.createElement("article");
+          item.className = "booking-row";
+          const ora = String(p.ora || "").slice(0, 5);
+          item.innerHTML = `
+            <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
+            <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` · ${_sanitize(p.telefono)}` : ""}</span></div>
+            <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
+          bookingDayList.appendChild(item);
+        });
+      }, { once: true });
+      bookingDayList.appendChild(more);
+    }
   };
   if (prenotazioni) {
     render(prenotazioni.filter((p) => p.data === data));
@@ -1292,6 +1862,52 @@ const reportTimestamp = document.getElementById("report-timestamp");
 const reportRefresh = document.getElementById("report-refresh");
 const reportEmptyHint = document.getElementById("report-empty-hint");
 
+/* ── Export CSV prenotazioni (endpoint /api/report/csv) ──────────── */
+
+async function scaricaCsvPrenotazioni(da, a) {
+  const params = new URLSearchParams();
+  if (da) params.set("da", da);
+  if (a) params.set("a", a);
+  let res;
+  try {
+    res = await apiFetch(`${API_BASE}/api/report/csv?${params.toString()}`);
+  } catch {
+    toast("Errore di connessione durante l'export.", "error");
+    return;
+  }
+  if (res.status === 403) {
+    toast("Export disponibile per proprietario e manager.", "error");
+    return;
+  }
+  if (!res.ok) {
+    toast("Export non riuscito. Riprova.", "error");
+    return;
+  }
+  const blob = await res.blob();
+  const dispo = res.headers.get("Content-Disposition") || "";
+  const match = dispo.match(/filename="?([^"]+)"?/);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = match ? match[1] : "prenotazioni.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+  toast("Export scaricato.", "success");
+}
+
+document.getElementById("report-export-csv")?.addEventListener("click", () => scaricaCsvPrenotazioni());
+
+document.getElementById("booking-export-csv")?.addEventListener("click", () => {
+  const da = document.getElementById("booking-export-da")?.value || "";
+  const a = document.getElementById("booking-export-a")?.value || "";
+  if (da && a && da > a) {
+    toast("La data inizio è dopo la data fine.", "error");
+    return;
+  }
+  scaricaCsvPrenotazioni(da, a);
+});
+
 async function aggiornaReport(forza = false) {
   try {
     const url = `${API_BASE}/api/report${forza ? "?forza=true" : ""}`;
@@ -1533,7 +2149,8 @@ async function aggiornaDocumenti() {
       ));
       return;
     }
-    data.documenti.forEach((documento) => {
+    const DOC_PAGE = 15;
+    const docRenderItem = (documento) => {
       const item = document.createElement("div");
       item.className = "doc-library-item";
       const name = document.createElement("span");
@@ -1549,7 +2166,12 @@ async function aggiornaDocumenti() {
       remove.textContent = "Rimuovi";
       remove.title = `Rimuovi ${documento.nome}`;
       remove.addEventListener("click", async () => {
-        if (!window.confirm(`Rimuovere ${documento.nome} dalla knowledge base?`)) return;
+        const ok = await confermaDestructiva({
+          titolo: "Rimuovere il documento?",
+          descrizione: `${documento.nome} verrà eliminato dalla knowledge base e l'assistente non potrà più usarlo per rispondere.`,
+          label: "Rimuovi",
+        });
+        if (!ok) return;
         remove.disabled = true;
         try {
           const response = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(documento.id)}`, { method: "DELETE" });
@@ -1564,7 +2186,20 @@ async function aggiornaDocumenti() {
       });
       item.append(name, meta, remove);
       docLibrary.appendChild(item);
-    });
+    };
+    // Paginazione client-side: i primi DOC_PAGE, il resto dietro "Mostra tutti"
+    data.documenti.slice(0, DOC_PAGE).forEach(docRenderItem);
+    if (data.documenti.length > DOC_PAGE) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "inbox-load-more";
+      more.textContent = `Mostra tutti (${data.documenti.length})`;
+      more.addEventListener("click", () => {
+        more.remove();
+        data.documenti.slice(DOC_PAGE).forEach(docRenderItem);
+      }, { once: true });
+      docLibrary.appendChild(more);
+    }
   } catch (err) {
     console.error("Impossibile caricare l'elenco documenti:", err);
   }
@@ -1753,20 +2388,29 @@ function formatSla(sla_due_at, is_overdue) {
 }
 
 let inboxPrimoCaricamento = true;
+let inboxOffset = 0;
+let inboxHasMore = false;
+const INBOX_PAGE_SIZE = 20;
 
-async function caricaInbox() {
+async function caricaInbox({ append = false } = {}) {
   if (!inboxList) return;
-  if (inboxPrimoCaricamento) {
-    inboxList.innerHTML = _skeletonList(3);
-    inboxPrimoCaricamento = false;
+  if (!append) {
+    inboxOffset = 0;
+    if (inboxPrimoCaricamento) {
+      inboxList.innerHTML = _skeletonList(3);
+      inboxPrimoCaricamento = false;
+    }
   }
   try {
     const params = new URLSearchParams();
     if (inboxState.status !== "ALL") params.set("status", inboxState.status);
     if (inboxState.priorita) params.set("priorita", inboxState.priorita);
+    params.set("limit", String(INBOX_PAGE_SIZE));
+    params.set("offset", String(inboxOffset));
     const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);    if (!res.ok) return;
     const data = await res.json();
     const tickets = data.tickets || [];
+    inboxHasMore = Boolean(data.has_more);
 
     let team = [];
     try {
@@ -1776,17 +2420,38 @@ async function caricaInbox() {
       console.error("Impossibile caricare il team:", e);
     }
 
-    inboxCount.textContent = `${tickets.length} ticket`;
-    inboxList.innerHTML = "";
-    if (!tickets.length) {
-      inboxList.appendChild(_emptyState(
-        ICONS.inbox,
-        filtersAttivi() ? "Nessun ticket con questi filtri" : "Nessun ticket aperto",
-        "Quando l'assistente incontra una richiesta delicata, la conversazione finisce qui per la presa in carico."
-      ));
-      return;
+    if (!append) {
+      inboxList.innerHTML = "";
+      if (!tickets.length) {
+        inboxCount.textContent = "0 ticket";
+        inboxList.appendChild(_emptyState(
+          ICONS.inbox,
+          filtersAttivi() ? "Nessun ticket con questi filtri" : "Nessun ticket aperto",
+          "Quando l'assistente incontra una richiesta delicata, la conversazione finisce qui per la presa in carico."
+        ));
+        return;
+      }
+    } else {
+      document.getElementById("inbox-load-more")?.remove();
     }
+
     tickets.forEach((t) => renderInboxCard(inboxList, t, team));
+    inboxOffset += tickets.length;
+    inboxCount.textContent = `${inboxOffset} ticket`;
+
+    if (inboxHasMore) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "inbox-load-more";
+      btn.className = "inbox-load-more";
+      btn.textContent = "Carica altri ticket";
+      btn.addEventListener("click", () => {
+        btn.disabled = true;
+        btn.textContent = "Carico…";
+        caricaInbox({ append: true });
+      });
+      inboxList.appendChild(btn);
+    }
   } catch (err) {
     console.error("Impossibile caricare l'inbox:", err);
   }
@@ -2206,6 +2871,131 @@ function fermaInboxPolling() {
 }
 
 /* ============================================================
+   MENU MOBILE — sidebar off-canvas sotto 1100px
+   ============================================================ */
+
+const navToggle = document.getElementById("nav-toggle");
+const sidebarOverlay = document.getElementById("sidebar-overlay");
+
+function chiudiMenuMobile() {
+  document.body.classList.remove("nav-open");
+  if (navToggle) navToggle.setAttribute("aria-expanded", "false");
+  if (sidebarOverlay) sidebarOverlay.hidden = true;
+}
+
+function apriMenuMobile() {
+  document.body.classList.add("nav-open");
+  if (navToggle) navToggle.setAttribute("aria-expanded", "true");
+  if (sidebarOverlay) sidebarOverlay.hidden = false;
+}
+
+navToggle?.addEventListener("click", () => {
+  if (document.body.classList.contains("nav-open")) chiudiMenuMobile();
+  else apriMenuMobile();
+});
+
+sidebarOverlay?.addEventListener("click", chiudiMenuMobile);
+
+/* Chiusura dropdown su click fuori (menu utente + notifiche) */
+
+document.addEventListener("click", (event) => {
+  if (!(event.target instanceof Element)) return;
+  if (!event.target.closest("#user-menu")) chiudiMenuUtente();
+  if (!event.target.closest(".notif-wrap")) chiudiPannelloNotifiche();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  chiudiMenuUtente();
+  chiudiPannelloNotifiche();
+});
+
+/* ============================================================
+   CENTRO NOTIFICHE — campana in topbar
+   Aggrega i conteggi già calcolati in notificationItems
+   (aggiornati ogni 30s da aggiornaNotifiche).
+   ============================================================ */
+
+const NOTIF_LABELS = {
+  panoramica: "Panoramica",
+  assistente: "Assistente",
+  recensioni: "Recensioni",
+  prenotazioni: "Prenotazioni",
+  documenti: "Documenti",
+  report: "Report",
+  inbox: "Inbox",
+};
+
+const notifBell = document.getElementById("notif-bell");
+const notifPanel = document.getElementById("notif-panel");
+const notifList = document.getElementById("notif-list");
+const bellBadge = document.getElementById("bell-badge");
+
+function conteggioNonViste() {
+  const stato = leggiStatoNotifiche();
+  return Object.keys(NOTIF_LABELS).map((key) => {
+    const totale = Number(notificationItems[key] || 0);
+    const viste = Number(stato.viste?.[key] || 0);
+    return { key, nonViste: Math.max(0, totale - viste) };
+  });
+}
+
+function aggiornaCampana() {
+  if (!bellBadge) return;
+  const totale = conteggioNonViste().reduce((somma, riga) => somma + riga.nonViste, 0);
+  bellBadge.textContent = totale > 99 ? "99+" : String(totale);
+  bellBadge.hidden = totale === 0;
+}
+
+function renderPannelloNotifiche() {
+  if (!notifList) return;
+  const righe = conteggioNonViste();
+  notifList.innerHTML = "";
+  if (!righe.some((riga) => riga.nonViste > 0)) {
+    const p = document.createElement("p");
+    p.className = "notif-empty";
+    p.textContent = "Tutto aggiornato: nessuna novità.";
+    notifList.appendChild(p);
+    return;
+  }
+  righe.forEach(({ key, nonViste }) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = `notif-row${nonViste > 0 ? " has-new" : ""}`;
+    row.setAttribute("role", "menuitem");
+    const label = document.createElement("span");
+    label.className = "notif-row-label";
+    label.textContent = NOTIF_LABELS[key] || key;
+    const count = document.createElement("span");
+    count.className = "notif-count";
+    count.textContent = String(nonViste);
+    row.append(label, count);
+    row.addEventListener("click", () => {
+      chiudiPannelloNotifiche();
+      document.querySelector(`.nav-item[data-view="${key}"]`)?.click();
+    });
+    notifList.appendChild(row);
+  });
+}
+
+function togglePannelloNotifiche(force) {
+  if (!notifPanel || !notifBell) return;
+  const apri = typeof force === "boolean" ? force : notifPanel.hidden;
+  if (apri) renderPannelloNotifiche();
+  notifPanel.hidden = !apri;
+  notifBell.setAttribute("aria-expanded", String(apri));
+}
+
+function chiudiPannelloNotifiche() {
+  togglePannelloNotifiche(false);
+}
+
+notifBell?.addEventListener("click", () => {
+  chiudiMenuUtente();
+  togglePannelloNotifiche();
+});
+
+/* ============================================================
    AVVIO
    ============================================================ */
 
@@ -2224,8 +3014,408 @@ function fermaInboxPolling() {
   aggiornaReport();
   aggiornaConteggio();
   aggiornaNotifiche();
+  aggiornaCampana();
   setInterval(aggiornaNotifiche, 30000);
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
+  }
   if (document.getElementById("booking-date")) {
     document.getElementById("booking-date").value = oggiIso();
   }
+})();
+
+/* ============================================================
+   RICERCA GLOBALE (client-side su ticket, prenotazioni, documenti)
+   ============================================================ */
+
+(function inizializzaRicercaGlobale() {
+  const wrap = document.getElementById("global-search");
+  const input = document.getElementById("global-search-input");
+  const results = document.getElementById("global-search-results");
+  if (!wrap || !input || !results) return;
+
+  let debounceTimer = null;
+  let searchToken = 0;
+
+  function chiudi() {
+    results.hidden = true;
+    results.innerHTML = "";
+  }
+
+  function apriCon(html) {
+    results.innerHTML = html;
+    results.hidden = false;
+  }
+
+  function riga(gruppo, titolo, sub, view) {
+    return `<button type="button" class="gs-row" data-view="${view}">
+      <span class="gs-gruppo">${gruppo}</span>
+      <span class="gs-main"><strong>${_sanitize(titolo)}</strong><span>${_sanitize(sub || "")}</span></span>
+    </button>`;
+  }
+
+  async function eseguiRicerca(q) {
+    const token = ++searchToken;
+    const ql = q.toLowerCase();
+
+    const [tickRes, bookRes, docRes] = await Promise.allSettled([
+      apiFetch(`${API_BASE}/api/inbox/tickets?limit=100`),
+      apiFetch(`${API_BASE}/api/bookings`),
+      apiFetch(`${API_BASE}/api/documenti/elenco`),
+    ]);
+
+    if (token !== searchToken) return; // richiesta superata
+
+    const blocchi = [];
+
+    if (tickRes.status === "fulfilled" && tickRes.value.ok) {
+      const tickets = (await tickRes.value.json()).tickets || [];
+      const hits = tickets.filter((t) =>
+        [t.phone_number, t.last_message_preview, t.ticket_status]
+          .some((v) => (v || "").toLowerCase().includes(ql))
+      ).slice(0, 5);
+      if (hits.length) {
+        blocchi.push(`<span class="gs-gruppo-titolo">Ticket</span>` + hits.map((t) =>
+          riga("Inbox", t.phone_number || "Cliente", t.last_message_preview || t.ticket_status, "inbox")
+        ).join(""));
+      }
+    }
+
+    if (bookRes.status === "fulfilled" && bookRes.value.ok) {
+      const prens = await bookRes.value.json();
+      const hits = (Array.isArray(prens) ? prens : []).filter((p) =>
+        [p.nome_cliente, p.data, p.stato, p.telefono]
+          .some((v) => (v || "").toLowerCase().includes(ql))
+      ).slice(0, 5);
+      if (hits.length) {
+        blocchi.push(`<span class="gs-gruppo-titolo">Prenotazioni</span>` + hits.map((p) =>
+          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} · ${p.stato || ""}`, "prenotazioni")
+        ).join(""));
+      }
+    }
+
+    if (docRes.status === "fulfilled" && docRes.value.ok) {
+      const docs = (await docRes.value.json()).documenti || [];
+      const hits = docs.filter((d) => (d.nome || "").toLowerCase().includes(ql)).slice(0, 5);
+      if (hits.length) {
+        blocchi.push(`<span class="gs-gruppo-titolo">Documenti</span>` + hits.map((d) =>
+          riga("Documenti", d.nome, `${d.chunk} parti`, "documenti")
+        ).join(""));
+      }
+    }
+
+    if (token !== searchToken) return;
+    if (!blocchi.length) {
+      apriCon(`<p class="gs-vuoto">Nessun risultato per "${_sanitize(q)}"</p>`);
+      return;
+    }
+    apriCon(blocchi.join(""));
+  }
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim();
+    clearTimeout(debounceTimer);
+    if (q.length < 2) { chiudi(); return; }
+    debounceTimer = setTimeout(() => eseguiRicerca(q), 250);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { chiudi(); input.blur(); }
+  });
+
+  results.addEventListener("click", (e) => {
+    const row = e.target.closest(".gs-row");
+    if (!row) return;
+    const view = row.dataset.view;
+    chiudi();
+    input.value = "";
+    const btn = document.querySelector(`[data-view="${view}"]`);
+    if (btn) btn.click();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!wrap.contains(e.target)) chiudi();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "/" || e.defaultPrevented) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+    e.preventDefault();
+    input.focus();
+  });
+})();
+
+/* ============================================================
+   TEMA CHIARO/SCURO (grigio antracite, mai nero puro)
+   ============================================================ */
+
+(function inizializzaTema() {
+  const KEY = "melpis_theme";
+  const label = document.getElementById("theme-toggle-label");
+
+  function applica(tema) {
+    document.documentElement.dataset.theme = tema;
+    if (label) label.textContent = tema === "dark" ? "Tema chiaro" : "Tema scuro";
+  }
+
+  applica(localStorage.getItem(KEY) || "light");
+
+  document.getElementById("theme-toggle")?.addEventListener("click", () => {
+    const nuovo = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    localStorage.setItem(KEY, nuovo);
+    applica(nuovo);
+  });
+})();
+
+/* ============================================================
+   IMPOSTAZIONI — fuso orario organizzazione
+   ============================================================ */
+
+(async function inizializzaTimezone() {
+  const select = document.getElementById("settings-timezone");
+  const saveBtn = document.getElementById("settings-timezone-save");
+  const status = document.getElementById("settings-timezone-status");
+  if (!select || !saveBtn) return;
+  let caricato = false;
+
+  async function carica() {
+    try {
+      const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (caricato) return;
+      caricato = true;
+      select.innerHTML = "";
+      (data.timezone_disponibili || []).forEach((tz) => {
+        const opt = document.createElement("option");
+        opt.value = tz;
+        opt.textContent = tz;
+        if (tz === data.timezone) opt.selected = true;
+        select.appendChild(opt);
+      });
+      if (![...select.options].some((o) => o.value === data.timezone)) {
+        const opt = document.createElement("option");
+        opt.value = data.timezone;
+        opt.textContent = data.timezone;
+        opt.selected = true;
+        select.appendChild(opt);
+      }
+    } catch { /* silenzioso: la vista riproverà al prossimo switch */ }
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    if (status) { status.textContent = "Salvo…"; status.style.color = ""; }
+    try {
+      const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: select.value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (status) { status.textContent = data.detail || "Salvataggio non riuscito"; status.style.color = "var(--red)"; }
+        return;
+      }
+      if (status) securityStatus(status, "Fuso orario aggiornato");
+    } catch {
+      if (status) { status.textContent = "Errore di connessione"; status.style.color = "var(--red)"; }
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  await carica();
+})();
+
+/* ============================================================
+   AUDIT — registro attività
+   ============================================================ */
+
+const AUDIT_ACTION_LABEL = {
+  "profilo.aggiornato": "Profilo aggiornato",
+  "org.timezone_updated": "Fuso orario aggiornato",
+  "prenotazione.confermata": "Prenotazione confermata",
+  "prenotazione.rifiutata": "Prenotazione rifiutata",
+  "prenotazione.annullata": "Prenotazione annullata",
+  "documento_eliminato": "Documento eliminato",
+};
+
+let auditOffset = 0;
+let auditHasMore = false;
+
+async function caricaAudit({ append = false } = {}) {
+  const list = document.getElementById("audit-list");
+  const count = document.getElementById("audit-count");
+  if (!list) return;
+  if (!append) {
+    auditOffset = 0;
+    auditHasMore = false;
+    list.innerHTML = '<div class="skeleton skeleton-line-lg"></div><div class="skeleton skeleton-line-lg"></div><div class="skeleton skeleton-line-lg"></div>';
+  }
+  try {
+    const res = await apiFetch(`${API_BASE}/api/audit?limit=20&offset=${auditOffset}`);
+    if (!res.ok) {
+      list.innerHTML = '<p class="inbox-empty">Registro non disponibile.</p>';
+      return;
+    }
+    const data = await res.json();
+    const eventi = data.eventi || [];
+    auditHasMore = Boolean(data.has_more);
+    if (!append) {
+      list.innerHTML = "";
+      document.getElementById("inbox-load-more")?.remove();
+    } else {
+      document.getElementById("audit-load-more")?.remove();
+    }
+    if (!eventi.length && !append) {
+      list.innerHTML = '<p class="inbox-empty">Nessuna azione registrata: le modifiche a impostazioni, prenotazioni e documenti compariranno qui.</p>';
+      if (count) count.textContent = "";
+      return;
+    }
+    eventi.forEach((ev) => {
+      const item = document.createElement("div");
+      item.className = "audit-item";
+      const quando = new Date(ev.created_at).toLocaleString("it-IT", {
+        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+      });
+      const dettagli = ev.details && Object.keys(ev.details).length
+        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" · ")
+        : "";
+      item.innerHTML = `
+        <div class="audit-main">
+          <strong>${_sanitize(AUDIT_ACTION_LABEL[ev.action] || ev.action)}</strong>
+          ${dettagli ? `<span class="audit-details">${_sanitize(dettagli)}</span>` : ""}
+        </div>
+        <div class="audit-meta">
+          <span>${_sanitize(ev.user_email || "sistema")}</span>
+          <time>${_sanitize(quando)}</time>
+        </div>`;
+      list.appendChild(item);
+    });
+    auditOffset += eventi.length;
+    if (count) count.textContent = `${auditOffset} eventi`;
+    if (auditHasMore) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "audit-load-more";
+      btn.className = "inbox-load-more";
+      btn.textContent = "Carica altri eventi";
+      btn.addEventListener("click", () => {
+        btn.disabled = true;
+        btn.textContent = "Carico…";
+        caricaAudit({ append: true });
+      });
+      list.appendChild(btn);
+    }
+  } catch {
+    list.innerHTML = '<p class="inbox-empty">Registro non disponibile.</p>';
+  }
+}
+
+/* ============================================================
+   INTEGRAZIONI — stato canali e webhook
+   ============================================================ */
+
+async function caricaIntegrazioni() {
+  const status = document.getElementById("integrazioni-status");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/integrazioni/stato`);
+    if (!res.ok) {
+      if (status) { status.textContent = "Stato non disponibile."; status.style.color = "var(--red)"; }
+      return;
+    }
+    const d = await res.json();
+
+    const waStato = document.getElementById("integ-whatsapp-stato");
+    const waSub = document.getElementById("integ-whatsapp-sub");
+    if (waStato && waSub) {
+      waStato.textContent = d.whatsapp.connesso ? "Connesso" : "Non connesso";
+      waStato.classList.add(d.whatsapp.connesso ? "on" : "off");
+      waSub.textContent = d.whatsapp.connesso
+        ? `Numero ID ${d.whatsapp.phone_number_id || "configurato"}`
+        : "Nessun numero collegato";
+    }
+
+    const igStato = document.getElementById("integ-instagram-stato");
+    const igSub = document.getElementById("integ-instagram-sub");
+    if (igStato && igSub) {
+      igStato.textContent = d.instagram.connesso ? "Connesso" : "Non connesso";
+      igStato.classList.add(d.instagram.connesso ? "on" : "off");
+      igSub.textContent = d.instagram.connesso
+        ? `Account ${d.instagram.ig_user_id || "collegato"}`
+        : "Nessun account collegato";
+    }
+
+    const whStato = document.getElementById("integ-webhook-stato");
+    const whSub = document.getElementById("integ-webhook-sub");
+    if (whStato && whSub) {
+      whStato.textContent = d.webhook_meta.configurato ? "Attivo" : "Da configurare";
+      whStato.classList.add(d.webhook_meta.configurato ? "on" : "off");
+      whSub.textContent = d.webhook_meta.configurato
+        ? "Credenziali Meta presenti sul server"
+        : "Serve META_APP_SECRET e META_VERIFY_TOKEN";
+    }
+  } catch {
+    if (status) { status.textContent = "Errore di connessione."; status.style.color = "var(--red)"; }
+  }
+}
+
+document.getElementById("integrazioni-config")?.addEventListener("click", () => {
+  const btn = document.querySelector('[data-view="onboarding"]');
+  if (btn) btn.click();
+});
+
+/* ============================================================
+   STAMPA REPORT + SCORCIATOIE TASTIERA
+   ============================================================ */
+
+document.getElementById("report-print")?.addEventListener("click", () => window.print());
+
+(function inizializzaScorciatoie() {
+  const ordineViste = [
+    "panoramica", "onboarding", "assistente", "recensioni",
+    "prenotazioni", "report", "documenti", "inbox",
+    "impostazioni", "integrazioni", "audit",
+  ];
+
+  function pannelloScorciatoie() {
+    let overlay = document.getElementById("shortcuts-overlay");
+    if (overlay) { overlay.remove(); return; }
+    overlay = document.createElement("div");
+    overlay.id = "shortcuts-overlay";
+    overlay.innerHTML = `
+      <div class="shortcuts-panel" role="dialog" aria-modal="true" aria-label="Scorciatoie da tastiera">
+        <h3>Scorciatoie da tastiera</h3>
+        <dl>
+          <dt>/</dt><dd>ricerca globale</dd>
+          <dt>1 – 9</dt><dd>vai alle viste in ordine di menu</dd>
+          <dt>0</dt><dd>vista Audit</dd>
+          <dt>?</dt><dd>questo pannello</dd>
+          <dt>Esc</dt><dd>chiudi pannelli e ricerca</dd>
+        </dl>
+        <p>Premi Esc o clicca fuori per chiudere.</p>
+      </div>`;
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+
+    if (e.key === "?") { e.preventDefault(); pannelloScorciatoie(); return; }
+    if (e.key === "Escape") { document.getElementById("shortcuts-overlay")?.remove(); return; }
+
+    const n = Number(e.key);
+    if (!Number.isNaN(n) && e.key !== " ") {
+      const view = n === 0 ? "audit" : ordineViste[n - 1];
+      if (view) {
+        const btn = document.querySelector(`[data-view="${view}"]`);
+        if (btn) { e.preventDefault(); btn.click(); }
+      }
+    }
+  });
 })();

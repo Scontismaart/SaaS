@@ -1,4 +1,3 @@
-import json
 import logging
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -25,6 +24,8 @@ def _init_plan_maps():
     for slug, plan in PLANS.items():
         if plan.stripe_price_id:
             PRICE_TO_PLAN[plan.stripe_price_id] = slug
+        if plan.stripe_price_id_yearly:
+            PRICE_TO_PLAN[plan.stripe_price_id_yearly] = slug
         PRODUCT_TO_PLAN[f"prod_{slug}"] = slug
 
 

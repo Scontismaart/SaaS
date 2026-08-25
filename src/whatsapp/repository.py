@@ -679,7 +679,7 @@ class Repository(TenantScopedRepository):
 
     # ── HITL: Ticket State Machine ──────────────────────────────
 
-    async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None) -> list[dict]:
+    async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None, limit: int | None = None, offset: int = 0) -> list[dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
                 """WITH enriched AS (
@@ -719,8 +719,9 @@ class Repository(TenantScopedRepository):
                      AND ($3::text IS NULL OR priorita = $3)
                    ORDER BY pending_staff_at ASC NULLS LAST,
                             claimed_at ASC NULLS LAST,
-                            created_at ASC""",
-                org_id, status, priorita
+                            created_at ASC
+                   LIMIT $4::int OFFSET $5::int""",
+                org_id, status, priorita, limit, offset
             )
             return [dict(r) for r in rows]
 

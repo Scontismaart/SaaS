@@ -34,6 +34,11 @@ def _load_project_env() -> None:
 
 def is_demo_mode() -> bool:
     _load_project_env()
+    # Bloccante B1 (fail-closed): in produzione l'accesso anonimo demo e'
+    # sempre negato, qualunque sia il valore di DEMO_MODE nell'ambiente.
+    from src.core.security.docs import is_production
+    if is_production():
+        return False
     return os.getenv("DEMO_MODE", "").strip().lower() in ("1", "true", "yes")
 
 

@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Melpis — Il tuo assistente clienti su WhatsApp</title>
-    <meta name="description" content="Melpis risponde ai tuoi clienti su WhatsApp, gestisce prenotazioni e recensioni mentre tu lavori. Prova gratuita di 14 giorni, nessuna carta richiesta.">
+    <title>Melpis — Assistente AI per WhatsApp Business</title>
+    <meta name="description" content="Melpis risponde ai tuoi clienti su WhatsApp, gestisce prenotazioni su calendario e prepara risposte alle recensioni mentre tu lavori. Prova gratuita di 7 giorni.">
     <link rel="canonical" href="https://melpis.it/">
 
-    <!-- Open Graph -->
+    <!-- Open Graph / Meta -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://melpis.it/">
     <meta property="og:title" content="Melpis — Risposte su WhatsApp. In tempo reale.">
-    <meta property="og:description" content="Risponde ai clienti, gestisce prenotazioni e recensioni su WhatsApp. Mentre tu lavori, lui non stacca mai.">
+    <meta property="og:description" content="L'assistente AI per WhatsApp Business che risponde ai clienti, conferma prenotazioni e gestisce recensioni. Mai più un cliente senza risposta.">
     <meta property="og:image" content="https://melpis.it/og-image.jpg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -20,13 +20,13 @@
     <meta name="twitter:title" content="Melpis — Risposte su WhatsApp. In tempo reale.">
     <meta name="twitter:description" content="L'assistente AI che non lascia mai un cliente senza risposta su WhatsApp Business.">
     <meta name="twitter:image" content="https://melpis.it/og-image.jpg">
-    <meta name="theme-color" content="#080a08">
+    <meta name="theme-color" content="#ffffff">
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080a08'/%3E%3Cpath d='M9 11h14v8H15l-3.5 3.2V19H9z' fill='none' stroke='%235eff00' stroke-width='1.8'/%3E%3C/svg%3E">
+    <link rel="icon" href="logo.webp" type="image/webp">
 
-    <!-- Font self-hosted: Outfit variabile (300–800) -->
+    <!-- Font self-hosted: Outfit variabile -->
     <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="style.css?v=1">
+    <link rel="stylesheet" href="style.css?v=white-theme-7">
 
     <script type="application/ld+json">
     {
@@ -37,12 +37,69 @@
       "operatingSystem": "Web",
       "description": "Assistente AI per WhatsApp Business: risposte automatiche ai clienti, gestione prenotazioni e recensioni per attività di servizio.",
       "offers": [
-        { "@type": "Offer", "name": "Essenziale", "price": "49", "priceCurrency": "EUR" },
-        { "@type": "Offer", "name": "Crescita", "price": "99", "priceCurrency": "EUR" },
-        { "@type": "Offer", "name": "Scala", "price": "199", "priceCurrency": "EUR" }
+        { "@type": "Offer", "name": "Essenziale", "price": "29", "priceCurrency": "EUR" },
+        { "@type": "Offer", "name": "Crescita", "price": "69", "priceCurrency": "EUR" },
+        { "@type": "Offer", "name": "Scala", "price": "149", "priceCurrency": "EUR" }
       ]
     }
     </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Ho bisogno di un account WhatsApp Business?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sì, Melpis si collega al tuo numero WhatsApp tramite l'infrastruttura ufficiale Meta Cloud API. Se hai già un account l'attivazione richiede pochi minuti; se non ce l'hai, la nostra procedura guidata ti assisterà passo dopo passo."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Quanto tempo ci vuole per configurare l'assistente?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "La configurazione base richiede meno di 10 minuti: colleghi WhatsApp, carichi gli orari e il tuo menu/listino prezzi. Melpis è immediatamente pronto a rispondere."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Cosa succede se supero le conversazioni incluse nel piano?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Se raggiungi la quota di conversazioni del piano, l'assistente va in pausa per il resto del mese: riprende automaticamente al rinnovo o passando a un piano superiore."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "L'AI può inventare risposte o dare informazioni errate?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Melpis adotta una tecnologia RAG rigorosa e guardrail deterministici: risponde solo basandosi sulle informazioni caricate nella tua scheda attività. In caso di richieste fuori perimetro o ambigue, trasferisce la chat a un operatore umano."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Posso disdire l'abbonamento o cambiare piano quando voglio?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Certamente. Puoi modificare o cancellare il tuo piano in qualsiasi momento con un solo click dal portale di fatturazione Stripe integrato nella dashboard, senza penali o vincoli."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "I dati dei miei clienti sono al sicuro e conformi al GDPR?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sì, Melpis è progettato secondo i principi di Privacy by Design con isolamento multi-tenant rigoroso, crittografia dei token e gestione trasparente dei consensi e dell'opt-out."
+          }
+        }
+      ]
+    }
+    </script>
+    <script defer data-domain="melpis.it" data-api="/plausible/api/event" src="/plausible/js/script.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Salta al contenuto</a>
@@ -52,9 +109,11 @@
 <!-- Mobile Nav Overlay -->
 <div class="nav-overlay" id="navOverlay" aria-hidden="true">
     <nav aria-label="Menu mobile">
+        <a href="#panoramica" onclick="closeNav()">Panoramica</a>
         <a href="#funzionalita" onclick="closeNav()">Funzionalità</a>
         <a href="#come-funziona" onclick="closeNav()">Come funziona</a>
-        <a href="#piani" onclick="closeNav()">Piani</a>
+        <a href="#confronto" onclick="closeNav()">Perché Melpis</a>
+        <a href="#piani" onclick="closeNav()">Piani &amp; Prezzi</a>
         <a href="#faq" onclick="closeNav()">Domande</a>
         <a href="/app/" class="overlay-login">Accedi al pannello</a>
     </nav>
@@ -66,16 +125,19 @@
 <!-- Navbar -->
 <nav class="navbar" aria-label="Navigazione principale">
     <div class="navbar-pill" id="navbarPill">
-        <a href="/" class="brand" aria-label="Melpis — home">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 5h15v9h-9l-4.5 4v-4H4.5V5Z" stroke="#5eff00" stroke-width="1.8" stroke-linejoin="round"/></svg>
-            Melpis
+        <a href="index.html" class="brand" aria-label="Melpis — home">
+            <img src="logo.webp" alt="Melpis Logo" class="brand-logo" width="32" height="32">
+            <span>Melpis</span>
         </a>
         <div class="nav-links">
+            <a href="#panoramica" class="nav-underline">Panoramica</a>
             <a href="#funzionalita" class="nav-underline">Funzionalità</a>
             <a href="#come-funziona" class="nav-underline">Come funziona</a>
+            <a href="#confronto" class="nav-underline">Confronto</a>
             <a href="#piani" class="nav-underline">Piani</a>
+            <a href="#faq" class="nav-underline">FAQ</a>
             <a href="/app/" class="login-link">Accedi</a>
-            <button type="button" class="btn-primary btn-nav group" data-signup>
+            <button type="button" class="btn-primary btn-nav group" data-signup data-track-location="nav">
                 Inizia gratis
                 <span class="btn-icon btn-icon-dark" aria-hidden="true">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
@@ -94,200 +156,341 @@
 
     <!-- ============ HERO ============ -->
     <section class="hero">
-        <div class="container hero-grid">
-            <div class="hero-copy reveal visible">
-                <span class="hero-badge">
-                    <span class="badge-dot" aria-hidden="true"><span class="badge-ping"></span></span>
-                    Assistente AI per WhatsApp Business
-                </span>
-                <h1>Risposte su&nbsp;WhatsApp.<br><span class="text-lime">In tempo reale.</span></h1>
-                <p class="hero-sub">Mentre ti occupi dei tuoi clienti, Melpis risponde sui messaggi, conferma le prenotazioni e prepara le risposte alle recensioni. Nessun cliente resta in attesa.</p>
+        <div class="container">
+            <div class="hero-content reveal visible">
+                <h1>Risposte su&nbsp;WhatsApp.<br><span class="text-lime">In tempo reale, h24.</span></h1>
+                <p class="hero-sub">Mentre sei in servizio, in salone o con un cliente, Melpis risponde ai messaggi, conferma le prenotazioni su calendario ed elabora le risposte alle recensioni. Nessun cliente aspetta, nessuna richiesta persa.</p>
                 <div class="hero-cta">
-                    <button type="button" class="btn-primary btn-lg magnetic" data-signup>
+                    <button type="button" class="btn-primary btn-lg magnetic" data-signup data-track-location="hero">
                         Inizia la prova gratuita
                         <span class="btn-icon btn-icon-dark" aria-hidden="true">
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                         </span>
                     </button>
-                    <a href="#funzionalita" class="btn-secondary btn-lg">Scopri come funziona</a>
+                    <a href="#panoramica" class="btn-secondary btn-lg">Scopri il pannello</a>
                 </div>
-                <p class="hero-micro">14 giorni gratuiti, nessuna carta richiesta.</p>
-            </div>
-
-            <!-- 3D Phone Mockup -->
-            <div class="hero-phone reveal reveal-1 visible">
-                <div class="phone-container animate-float" id="phoneContainer">
-                    <div class="phone-frame" id="phoneFrame">
-                        <div class="volume-buttons" aria-hidden="true"></div>
-                        <div class="power-button" aria-hidden="true"></div>
-                        <div class="phone-screen">
-                            <div class="screen-reflection" id="screenReflection" aria-hidden="true"></div>
-                            <div class="dynamic-island" aria-hidden="true"><div class="dynamic-island-camera"></div></div>
-
-                            <div class="ios-statusbar" aria-hidden="true">
-                                <span>18:30</span>
-                                <svg width="34" height="10" viewBox="0 0 34 10" fill="currentColor"><rect x="0" y="5" width="2.5" height="5" rx="0.8"/><rect x="4" y="3.5" width="2.5" height="6.5" rx="0.8"/><rect x="8" y="2" width="2.5" height="8" rx="0.8"/><rect x="12" y="0.5" width="2.5" height="9.5" rx="0.8"/><rect x="19" y="1" width="13" height="8" rx="2.5" fill="none" stroke="currentColor"/><rect x="20.5" y="2.5" width="8.5" height="5" rx="1.2"/><rect x="33" y="3.5" width="1" height="3" rx="0.5"/></svg>
-                            </div>
-
-                            <div class="wa-header">
-                                <div class="wa-header-left">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-                                    <div class="wa-avatar" aria-hidden="true">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4.5 5h15v9h-9l-4.5 4v-4H4.5V5Z" stroke="#080a08" stroke-width="2" stroke-linejoin="round"/></svg>
-                                    </div>
-                                    <div class="wa-title">
-                                        <strong>Melpis AI</strong>
-                                        <span>online</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="chat-area chat-scroll" aria-hidden="true">
-                                <div class="chat-day">Oggi</div>
-                                <div class="chat-row">
-                                    <div class="bubble-in-chat">Buonasera, avete un tavolo per stasera alle 20:00 per 4 persone?
-                                        <span class="msg-meta">18:30</span>
-                                    </div>
-                                </div>
-                                <div class="chat-row chat-row-out">
-                                    <div class="bubble-out-chat">Buonasera! Confermo il tavolo per 4 persone alle 20:00. A che nome lascio la prenotazione?
-                                        <span class="msg-meta msg-meta-out">
-                                            18:30
-                                            <svg width="14" height="11" viewBox="0 0 16 11" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 5.5 4.5 9 11 1.5"/><path d="M6.5 8.5 8 10l6.5-8"/></svg>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="chat-row">
-                                    <div class="bubble-in-chat">Marco, grazie!
-                                        <span class="msg-meta">18:31</span>
-                                    </div>
-                                </div>
-                                <div class="typing-pill">
-                                    <span class="tdot"></span><span class="tdot tdot-2"></span><span class="tdot tdot-3"></span>
-                                </div>
-                            </div>
-
-                            <div class="wa-inputbar" aria-hidden="true">
-                                <div class="wa-input-fake">Messaggio</div>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#5eff00" aria-hidden="true"><path d="M3 20.5v-17c0-.6.6-1 1.2-.8l16 8c.6.3.6 1.2 0 1.5l-16 8c-.6.3-1.2-.1-1.2-.7Z"/></svg>
-                            </div>
-                            <div class="home-indicator" aria-hidden="true"></div>
-                        </div>
-                    </div>
+                <div class="hero-trust">
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg> 7 giorni gratis</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg> Nessuna carta richiesta</span>
+                    <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg> Conforme GDPR</span>
                 </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ============ PROBLEMA ============ -->
-    <section class="section section-problem">
-        <div class="container-narrow center">
-            <h2 class="reveal display-md">Ogni cliente che aspetta,<br>è un cliente che se ne va.</h2>
-            <p class="lead reveal reveal-1">Un messaggio senza risposta diventa una prenotazione persa — o una recensione che arriva con settimane di ritardo. E quando sei in sala, in salone o in officina, non puoi stare attaccato al telefono.</p>
-            <div class="problem-statement reveal reveal-2">
-                <p>Con <strong class="text-lime">Melpis</strong>, non devi più scegliere tra servire chi hai davanti e rispondere a chi ti scrive.</p>
             </div>
         </div>
     </section>
 
     <!-- ============ VERTICALI ============ -->
-    <div class="verticals-banner">
+    <section class="verticals-section">
         <div class="container">
-            <p class="verticals-label">Progettato per le attività che non possono stare al telefono</p>
-            <ul class="verticals-list">
-                <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v7M4 3v4a3 3 0 0 0 6 0V3M7 10v11M17 3c-1.5 1.5-2.5 4-2.5 7H17v11M17 3v18" transform="scale(0.85) translate(2 1)"/></svg> Ristoranti &amp; Bar</li>
-                <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16M4 12h16M6 4c1.5 1.5 4 2 6 2s4.5-.5 6-2M8 16c0 2 1.8 4 4 4s4-2 4-4"/></svg> Saloni &amp; Spa</li>
-                <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="7" r="3"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg> Studi &amp; Professionisti</li>
-                <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg> Palestre</li>
-                <li><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-4a3 3 0 0 1 6 0v4"/></svg> Hotel &amp; B&amp;B</li>
-            </ul>
+            <div class="verticals-dock reveal">
+                <p class="verticals-label">
+                    Pensato per le attività di servizio che non possono stare al telefono
+                </p>
+                <ul class="verticals-chips">
+                    <li class="vertical-chip">
+                        <span class="vertical-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v7M4 3v4a3 3 0 0 0 6 0V3M7 10v11M17 3c-1.5 1.5-2.5 4-2.5 7H17v11M17 3v18" transform="scale(0.85) translate(2 1)"/></svg>
+                        </span>
+                        <span class="vertical-text">Ristoranti &amp; Pizzerie</span>
+                    </li>
+                    <li class="vertical-chip">
+                        <span class="vertical-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16M4 12h16M6 4c1.5 1.5 4 2 6 2s4.5-.5 6-2M8 16c0 2 1.8 4 4 4s4-2 4-4"/></svg>
+                        </span>
+                        <span class="vertical-text">Saloni di Bellezza &amp; Spa</span>
+                    </li>
+                    <li class="vertical-chip">
+                        <span class="vertical-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="3"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/></svg>
+                        </span>
+                        <span class="vertical-text">Studi Medici &amp; Professionisti</span>
+                    </li>
+                    <li class="vertical-chip">
+                        <span class="vertical-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/></svg>
+                        </span>
+                        <span class="vertical-text">Centri Fitness &amp; Palestre</span>
+                    </li>
+                    <li class="vertical-chip">
+                        <span class="vertical-icon" aria-hidden="true">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-4a3 3 0 0 1 6 0v4"/></svg>
+                        </span>
+                        <span class="vertical-text">Hotel, Resort &amp; B&amp;B</span>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </div>
+    </section>
+
+    <!-- ============ PRODUCT SHOWCASE ============ -->
+    <section id="panoramica" class="section section-showcase section-elev">
+        <div class="container">
+            <div class="center reveal">
+                <h2 class="display-md">La tua attività risponde.<br><span class="text-lime">Tu mantieni la regia.</span></h2>
+                <p class="lead">Una visuale limpida su ogni messaggio gestito in autonomia, prenotazione salvata su calendario ed escalation all'operatore. Nessuna scatola nera, zero allucinazioni.</p>
+            </div>
+
+            <!-- Apple-Style Seamless Screen Switcher -->
+            <div class="showcase-switcher-wrap reveal reveal-1">
+                <div class="showcase-switcher" role="tablist" aria-label="Visualizzazione schermate">
+                    <button type="button" class="switcher-btn active" data-target="0" role="tab" aria-selected="true" id="tab-0">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        1. Panoramica Flussi
+                    </button>
+                    <button type="button" class="switcher-btn" data-target="1" role="tab" aria-selected="false" id="tab-1">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                        2. Prenotazioni &amp; Calendario
+                    </button>
+                    <div class="switcher-glider" aria-hidden="true"></div>
+                </div>
+            </div>
+
+            <!-- 3D Layered Deck Stage -->
+            <div class="showcase-stage reveal reveal-1" id="showcaseStage">
+                <div class="showcase-glow-core" aria-hidden="true"></div>
+                <div class="showcase-glow-ambient" aria-hidden="true"></div>
+
+                <div class="deck-container" id="deckContainer">
+                    <!-- Deck Card 0: Panoramica (Foreground Default) -->
+                    <div class="deck-card deck-card-front" id="deckCard0" data-index="0" role="tabpanel" aria-labelledby="tab-0">
+                        <div class="deck-media-wrap">
+                            <img 
+                                src="dashboard-pc.webp" 
+                                alt="Pannello di controllo Melpis - Panoramica gestione WhatsApp AI per attività" 
+                                class="showcase-img"
+                                width="1920"
+                                height="1080"
+                                loading="lazy"
+                            />
+
+                            <!-- Floating Badges: Panoramica -->
+                            <div class="showcase-badge badge-top-left" aria-hidden="true">
+                                <div class="badge-icon-wrap">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                </div>
+                                <div class="badge-copy">
+                                    <strong>Risposte entro 5s</strong>
+                                    <span>RAG &amp; Knowledge Base</span>
+                                </div>
+                            </div>
+
+                            <div class="showcase-badge badge-bottom-right" aria-hidden="true">
+                                <div class="badge-icon-wrap">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                                </div>
+                                <div class="badge-copy">
+                                    <strong>Escalation Umana (HITL)</strong>
+                                    <span>Sintesi pronta in 1 clic</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Peek Hint for Background state -->
+                        <div class="deck-peek-pill" aria-hidden="true">
+                            <span>Clicca per visualizzare</span>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l10-10M17 7H7m10 0v10"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- Deck Card 1: Prenotazioni (Background Default) -->
+                    <div class="deck-card deck-card-back" id="deckCard1" data-index="1" role="tabpanel" aria-labelledby="tab-1">
+                        <div class="deck-media-wrap">
+                            <img 
+                                src="prenotazioni.webp" 
+                                alt="Pannello di controllo Melpis - Gestione calendario e prenotazioni WhatsApp" 
+                                class="showcase-img"
+                                width="1920"
+                                height="1080"
+                                loading="lazy"
+                            />
+
+                            <!-- Floating Badges: Prenotazioni -->
+                            <div class="showcase-badge badge-top-left" aria-hidden="true">
+                                <div class="badge-icon-wrap">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div class="badge-copy">
+                                    <strong>Google Calendar Sync</strong>
+                                    <span>Slot verificati in tempo reale</span>
+                                </div>
+                            </div>
+
+                            <div class="showcase-badge badge-bottom-right" aria-hidden="true">
+                                <div class="badge-icon-wrap">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                </div>
+                                <div class="badge-copy">
+                                    <strong>Zero Sovrapposizioni</strong>
+                                    <span>Disponibilità oraria automatica</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Peek Hint for Background state -->
+                        <div class="deck-peek-pill" aria-hidden="true">
+                            <span>Clicca per visualizzare</span>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17l10-10M17 7H7m10 0v10"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apple-Style Value Pillars Grid -->
+            <div class="pillars-grid reveal reveal-2">
+                <article class="pillar-card spotlight">
+                    <div class="pillar-top">
+                        <span class="pillar-tag">Onboarding</span>
+                        <div class="pillar-metric">&lt; 10 min</div>
+                    </div>
+                    <h3>Setup guidato in meno di 10 minuti</h3>
+                    <p>Procedura guidata passo dopo passo: colleghi WhatsApp, carichi orari e listino e sei subito operativo.</p>
+                </article>
+
+                <article class="pillar-card spotlight">
+                    <div class="pillar-top">
+                        <span class="pillar-tag">Velocità &amp; Accuratezza</span>
+                        <div class="pillar-metric">&lt; 5s</div>
+                    </div>
+                    <h3>Tempo medio di risposta &lt; 5 secondi</h3>
+                    <p>Elaborazione rapida con guardrail di sicurezza: cita solo i tuoi listini e orari senza mai inventare informazioni.</p>
+                </article>
+
+                <article class="pillar-card spotlight">
+                    <div class="pillar-top">
+                        <span class="pillar-tag">Conformità</span>
+                        <div class="pillar-metric">100%</div>
+                    </div>
+                    <h3>100% Conforme GDPR &amp; Meta API Ufficiale</h3>
+                    <p>Infrastruttura Meta Cloud API ufficiale, gestione consenso e opt-out: nessun rischio di ban, dati dei clienti al sicuro.</p>
+                </article>
+            </div>
+        </div>
+    </section>
 
     <!-- ============ FUNZIONALITÀ ============ -->
     <section id="funzionalita" class="section section-elev">
         <div class="container">
-            <h2 class="reveal display-md center">Tutto quello che serve.<br>Niente di più.</h2>
+            <div class="center reveal">
+                <h2 class="display-md">Tutto quello che serve.<br><span class="text-lime">Niente di superfluo.</span></h2>
+                <p class="lead">Tecnologia avanzata progettata per integrarsi senza attrito nei tuoi ritmi quotidiani.</p>
+            </div>
 
             <div class="bento">
-                <!-- Feature 1: large -->
-                <article class="bento-item span-2 spotlight reveal">
-                    <div class="glass-card h-full">
-                        <div class="glass-card-inner feature-large">
-                            <div class="feature-copy">
-                                <div class="feature-icon" aria-hidden="true">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                                </div>
-                                <h3>Risposte WhatsApp in tempo reale</h3>
-                                <p>Mentre sei in servizio, Melpis risponde ai clienti su WhatsApp. Veloce, preciso, nella lingua del cliente. Le tue regole, la sua voce.</p>
+                <!-- Feature 1: Hero Large span-2 -->
+                <article class="bento-card bento-hero span-2 spotlight reveal">
+                    <div class="bento-card-inner">
+                        <div class="bento-top">
+                            <div class="bento-icon-box" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                             </div>
-                            <ul class="feature-checklist">
-                                <li><span class="check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Domande frequenti</li>
-                                <li><span class="check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Orari e disponibilità</li>
-                                <li><span class="check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Menu e servizi</li>
-                                <li><span class="check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Prenotazioni e modifiche</li>
+                            <div class="bento-pill-group">
+                                <span class="bento-tag">Motore RAG Nativo</span>
+                                <span class="bento-tag bento-tag-ghost">5 Lingue Riconosciute</span>
+                            </div>
+                        </div>
+
+                        <div class="bento-hero-grid">
+                            <div class="bento-hero-copy">
+                                <h3>Risposte WhatsApp in tempo reale</h3>
+                                <p>Mentre sei occupato, Melpis risponde con precisione naturale e nel tono della tua attività. Riconosce automaticamente la lingua del cliente (Italiano, Inglese, Francese, Tedesco, Spagnolo).</p>
+                                
+                                <div class="bento-lang-pills" aria-hidden="true">
+                                    <span class="lang-pill">Italiano</span>
+                                    <span class="lang-pill">English</span>
+                                    <span class="lang-pill">Français</span>
+                                    <span class="lang-pill">Deutsch</span>
+                                    <span class="lang-pill">Español</span>
+                                </div>
+                            </div>
+
+                            <ul class="bento-checklist">
+                                <li>
+                                    <span class="bento-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+                                    <span>Risposte istantanee a domande frequenti e orari</span>
+                                </li>
+                                <li>
+                                    <span class="bento-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+                                    <span>Consultazione automatica di listini e menu</span>
+                                </li>
+                                <li>
+                                    <span class="bento-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+                                    <span>Supporto multilingua senza configurazione manuale</span>
+                                </li>
+                                <li>
+                                    <span class="bento-check" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+                                    <span>Messaggi opt-out e gestione consenso conforme GDPR</span>
+                                </li>
                             </ul>
                         </div>
                     </div>
                 </article>
 
-                <article class="bento-item spotlight reveal reveal-1">
-                    <div class="glass-card h-full">
-                        <div class="glass-card-inner feature-small">
-                            <div class="feature-icon" aria-hidden="true">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <!-- Feature 2: Prenotazioni -->
+                <article class="bento-card spotlight reveal reveal-1">
+                    <div class="bento-card-inner">
+                        <div class="bento-top">
+                            <div class="bento-icon-box" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             </div>
-                            <h3>Prenotazioni automatiche</h3>
-                            <p>Legge il calendario, controlla i posti disponibili e conferma. Il cliente scopre subito se c'è posto.</p>
+                            <span class="bento-tag">2-Way Sync</span>
                         </div>
+                        <h3>Prenotazioni automatiche</h3>
+                        <p>Controlla gli slot disponibili sul calendario in tempo reale, registra i dati e invia conferme e promemoria anti no-show.</p>
                     </div>
                 </article>
 
-                <article class="bento-item spotlight reveal">
-                    <div class="glass-card h-full">
-                        <div class="glass-card-inner feature-small">
-                            <div class="feature-icon" aria-hidden="true">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                <!-- Feature 3: Passaggio all'umano (HITL) -->
+                <article class="bento-card spotlight reveal reveal-2">
+                    <div class="bento-card-inner">
+                        <div class="bento-top">
+                            <div class="bento-icon-box" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
                             </div>
-                            <h3>Passa all'umano quando serve</h3>
-                            <p>Richieste delicate o fuori copione? Finiscono direttamente a te, con tutta la conversazione pronta.</p>
+                            <span class="bento-tag">HITL Safety</span>
                         </div>
+                        <h3>Passaggio all'umano (HITL)</h3>
+                        <p>Se il cliente richiede espressamente un operatore o pone domande sensibili, la chat passa a te con la sintesi pronta.</p>
                     </div>
                 </article>
 
-                <article class="bento-item spotlight reveal reveal-1">
-                    <div class="glass-card h-full">
-                        <div class="glass-card-inner feature-small">
-                            <div class="feature-icon" aria-hidden="true">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                <!-- Feature 4: Recensioni Google -->
+                <article class="bento-card spotlight reveal reveal-1">
+                    <div class="bento-card-inner">
+                        <div class="bento-top">
+                            <div class="bento-icon-box" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                             </div>
-                            <h3>Gestione recensioni</h3>
-                            <p>Analizza il tono e prepara bozze di risposta da approvare in un click. La tua reputazione non si ferma quando lavori.</p>
+                            <span class="bento-tag">Google Business</span>
                         </div>
+                        <h3>Gestione recensioni Google</h3>
+                        <p>Analizza il sentiment, intercetta le recensioni ricevute e genera bozze di risposta professionali pronte per l'approvazione.</p>
                     </div>
                 </article>
 
-                <article class="bento-item spotlight reveal reveal-2">
-                    <div class="glass-card h-full">
-                        <div class="glass-card-inner feature-small glow-corner">
-                            <div class="feature-icon" aria-hidden="true">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                <!-- Feature 5: Report serale -->
+                <article class="bento-card spotlight reveal reveal-2">
+                    <div class="bento-card-inner">
+                        <div class="bento-top">
+                            <div class="bento-icon-box" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                             </div>
-                            <h3>Report serale</h3>
-                            <p>Ogni sera un riepilogo di messaggi, prenotazioni e suggerimenti operativi. Pronto quando arrivi tu.</p>
+                            <span class="bento-tag">Report Serale</span>
                         </div>
+                        <h3>Report serale &amp; KPI</h3>
+                        <p>Ogni sera ricevi su WhatsApp il riassunto dei contatti serviti, delle prenotazioni chiuse e dei messaggi da verificare.</p>
                     </div>
                 </article>
 
-                <article class="bento-item spotlight reveal reveal-3">
-                    <div class="glass-card h-full">
-                        <div class="glass-card-inner feature-small">
-                            <div class="feature-icon" aria-hidden="true">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                <!-- Feature 6: Knowledge Base -->
+                <article class="bento-card spotlight reveal reveal-3">
+                    <div class="bento-card-inner">
+                        <div class="bento-top">
+                            <div class="bento-icon-box" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                             </div>
-                            <h3>Impara il tuo business</h3>
-                            <p>Carichi menu, listini, orari e regole. L'assistente risponde con le informazioni della tua attività, non con frasi generiche.</p>
+                            <span class="bento-tag">Zero Allucinazioni</span>
                         </div>
+                        <h3>Knowledge base zero allucinazioni</h3>
+                        <p>Carica PDF, menu, listini e condizioni: Melpis cita solo le tue informazioni ufficiali senza mai inventare risposte.</p>
                     </div>
                 </article>
             </div>
@@ -297,113 +500,282 @@
     <!-- ============ COME FUNZIONA ============ -->
     <section id="come-funziona" class="section section-elev-2">
         <div class="container">
-            <h2 class="reveal display-md center">Come funziona</h2>
-            <ol class="steps">
-                <li class="step reveal">
-                    <span class="step-num" aria-hidden="true">1</span>
-                    <h3>Colleghi</h3>
-                    <p>Colleghi Melpis al tuo numero WhatsApp Business in pochi minuti. Nessuna installazione, nessun tecnico.</p>
-                </li>
-                <li class="step reveal reveal-1">
-                    <span class="step-num" aria-hidden="true">2</span>
-                    <h3>Personalizzi</h3>
-                    <p>Carichi orari, menu, servizi e regole di risposta. Definisci anche quando passare a un umano.</p>
-                </li>
-                <li class="step reveal reveal-2">
-                    <span class="step-num" aria-hidden="true">3</span>
-                    <h3>Lavori</h3>
-                    <p>Melpis gestisce messaggi, prenotazioni e recensioni. Tu fai quello che sai fare meglio.</p>
-                </li>
-            </ol>
+            <div class="center reveal">
+                <h2 class="display-md">Come funziona in 3 passi</h2>
+                <p class="lead">Nessun software complicato da installare. Tutto avviene tramite l'infrastruttura ufficiale Meta.</p>
+            </div>
+
+            <div class="steps-wrapper">
+                <ol class="steps-grid">
+                    <!-- Step 1 -->
+                    <li class="step-card spotlight reveal">
+                        <div class="step-card-inner">
+                            <div class="step-header">
+                                <span class="step-number" aria-hidden="true">01</span>
+                                <div class="step-icon-tile" aria-hidden="true">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                </div>
+                            </div>
+                            <h3>Colleghi WhatsApp</h3>
+                            <p>Colleghi il tuo numero WhatsApp Business in pochi minuti con le API ufficiali Meta. Nessun rischio di ban del numero.</p>
+                            <div class="step-footer-chip" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                <span>Meta Cloud API Ufficiale</span>
+                            </div>
+                        </div>
+                    </li>
+
+                    <!-- Step 2 -->
+                    <li class="step-card spotlight reveal reveal-1">
+                        <div class="step-card-inner">
+                            <div class="step-header">
+                                <span class="step-number" aria-hidden="true">02</span>
+                                <div class="step-icon-tile" aria-hidden="true">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                </div>
+                            </div>
+                            <h3>Carichi le tue regole</h3>
+                            <p>Inserisci orari, listini, menu o documenti PDF. Scegli se attivare prenotazioni, recensioni e criteri di escalation.</p>
+                            <div class="step-footer-chip" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                <span>Listini, PDF &amp; Orari Sincronizzati</span>
+                            </div>
+                        </div>
+                    </li>
+
+                    <!-- Step 3 -->
+                    <li class="step-card spotlight reveal reveal-2">
+                        <div class="step-card-inner">
+                            <div class="step-header">
+                                <span class="step-number" aria-hidden="true">03</span>
+                                <div class="step-icon-tile" aria-hidden="true">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                </div>
+                            </div>
+                            <h3>Melpis lavora per te</h3>
+                            <p>I tuoi clienti ricevono risposte istantanee giorno e notte. Tu mantieni il pieno controllo dalla dashboard.</p>
+                            <div class="step-footer-chip" aria-hidden="true">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="2.5" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                <span>Operatività h24 &amp; Controllo Totale</span>
+                            </div>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ CONFRONTO ============ -->
+    <section id="confronto" class="section section-comparison">
+        <div class="container">
+            <div class="center reveal">
+                <h2 class="display-md">Perché Melpis è diverso</h2>
+                <p class="lead">Dimentica i vecchi risponditori automatici a pulsanti che fanno scappare i clienti.</p>
+            </div>
+
+            <div class="compare-grid reveal reveal-1">
+                <!-- Old Way -->
+                <article class="compare-card compare-old spotlight">
+                    <div class="compare-header">
+                        <span class="compare-badge compare-badge-old">Chatbot Tradizionali / Risposta Manuale</span>
+                    </div>
+                    <ul class="compare-list">
+                        <li>
+                            <span class="compare-icon cross-badge" aria-hidden="true">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d1364e" stroke-width="2.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </span>
+                            <span>Risposte rigide a pulsanti ("Premi 1 per info")</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon cross-badge" aria-hidden="true">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d1364e" stroke-width="2.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </span>
+                            <span>Clienti in attesa per ore durante i picchi di lavoro</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon cross-badge" aria-hidden="true">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d1364e" stroke-width="2.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </span>
+                            <span>Nessun controllo automatico della disponibilità slot</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon cross-badge" aria-hidden="true">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d1364e" stroke-width="2.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </span>
+                            <span>Risposte generiche che causano incomprensioni</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon cross-badge" aria-hidden="true">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#d1364e" stroke-width="2.8" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </span>
+                            <span>Stress continuo di dover controllare lo smartphone</span>
+                        </li>
+                    </ul>
+                </article>
+
+                <!-- Melpis Way -->
+                <article class="compare-card compare-new spotlight">
+                    <div class="compare-header">
+                        <span class="compare-badge compare-badge-new">Melpis Assistente AI</span>
+                    </div>
+                    <ul class="compare-list">
+                        <li>
+                            <span class="compare-icon check-badge" aria-hidden="true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            </span>
+                            <span><strong>Conversazione fluida e naturale</strong> come un operatore reale</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon check-badge" aria-hidden="true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            </span>
+                            <span><strong>Risposte in meno di 5 secondi</strong>, 24 ore su 24</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon check-badge" aria-hidden="true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            </span>
+                            <span><strong>Sincronizzazione automatica</strong> con il tuo calendario</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon check-badge" aria-hidden="true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            </span>
+                            <span><strong>Risposte basate esclusivamente</strong> sui tuoi documenti (RAG)</span>
+                        </li>
+                        <li>
+                            <span class="compare-icon check-badge" aria-hidden="true">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                            </span>
+                            <span><strong>Passaggio trasparente all'umano</strong> quando serve</span>
+                        </li>
+                    </ul>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============ SOCIAL PROOF (nascosta finché non ci sono testimonianze reali - Task 20) ============ -->
+    <section id="testimonial" class="section section-elev" hidden>
+        <div class="container">
+            <div class="center reveal">
+                <h2 class="display-md">Chi usa Melpis non torna indietro</h2>
+                <p class="lead">Storie reali di attività che hanno smesso di perdere clienti su WhatsApp.</p>
+            </div>
+
+            <!-- Testimonianze reali: verranno popolate solo con contenuti verificati (Task 20). Vietato inserire testimonianze finte. -->
+            <div class="testimonial-grid">
+                <figure class="testimonial-card reveal reveal-1">
+                    <blockquote><!-- Testimonianza reale 1 --></blockquote>
+                    <figcaption>
+                        <!-- foto / nome / attività-città -->
+                    </figcaption>
+                </figure>
+
+                <figure class="testimonial-card reveal reveal-2">
+                    <blockquote><!-- Testimonianza reale 2 --></blockquote>
+                    <figcaption>
+                        <!-- foto / nome / attività-città -->
+                    </figcaption>
+                </figure>
+
+                <figure class="testimonial-card reveal reveal-3">
+                    <blockquote><!-- Testimonianza reale 3 --></blockquote>
+                    <figcaption>
+                        <!-- foto / nome / attività-città -->
+                    </figcaption>
+                </figure>
+            </div>
         </div>
     </section>
 
     <!-- ============ PREZZI ============ -->
-    <section id="piani" class="section">
+    <section id="piani" class="section section-elev">
         <div class="container">
             <div class="center reveal">
-                <span class="eyebrow-tag">Piani</span>
-                <h2 class="display-md">Prezzi semplici e trasparenti</h2>
-                <p class="lead">Limiti pubblici, nessun costo nascosto. Cancellazione in qualsiasi momento.</p>
+                <h2 class="display-md">Prezzi chiari, nessun costo nascosto</h2>
+                <p class="lead">Prova gratuita di 7 giorni su tutti i piani. Nessuna carta richiesta.</p>
             </div>
 
             <div class="billing-toggle reveal">
-                <span class="toggle-label" id="labelMonthly">Mensile</span>
+                <span class="toggle-label active" id="labelMonthly">Mensile</span>
                 <button type="button" class="pricing-toggle-btn" id="pricingToggle" role="switch" aria-checked="false" aria-label="Fatturazione annuale">
                     <span class="pricing-toggle-knob"></span>
                 </button>
-                <span class="toggle-label active" id="labelYearly">Annuale</span>
-                <span class="save-badge">fino a −24%</span>
+                <span class="toggle-label" id="labelYearly">Annuale</span>
+                <span class="save-badge">fino a −17% di sconto</span>
             </div>
 
             <div class="pricing-grid">
                 <!-- Essenziale -->
                 <article class="pricing-card reveal reveal-1">
                     <h3>Essenziale</h3>
-                    <p class="plan-desc">Per iniziare a non perdere più messaggi.</p>
+                    <p class="plan-desc">Ideale per iniziare a non perdere più messaggi e prenotazioni.</p>
                     <div class="price-row">
-                        <span class="price-value" data-monthly="49" data-yearly="39">49</span>€
+                        <span class="price-value" data-monthly="29" data-yearly="24">29</span>€
                         <span class="price-period">/mese</span>
                     </div>
-                    <p class="yearly-note hidden">Fatturato 470€/anno</p>
+                    <p class="yearly-note hidden">Fatturato 288€/anno (risparmi 60€)</p>
                     <ul class="plan-list">
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Risposte AI su WhatsApp H24</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 300 conversazioni AI/mese</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Scheda attività: orari, menu, servizi</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Prenotazioni automatiche</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 1 utente dashboard</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Risposte AI WhatsApp h24</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 300 conversazioni AI/mese incluse</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Scheda attività: orari, menu, listino</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Gestione prenotazioni su calendario</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 1 utente dashboard</li>
                     </ul>
-                    <button type="button" class="btn-outline btn-block" data-signup data-plan="essenziale">Inizia gratis</button>
+                    <button type="button" class="btn-outline btn-block" data-signup data-plan="essenziale" data-track-location="pricing_essenziale">Inizia gratis</button>
                 </article>
 
                 <!-- Crescita (consigliato) -->
-                <article class="pricing-card featured reveal reveal-2">
+                <article class="pricing-card featured reveal reveal-2" style="background: #ffffff !important;">
                     <span class="featured-badge">Il più scelto</span>
-                    <h3 class="text-lime">Crescita</h3>
-                    <p class="plan-desc">Per attività in crescita che non vogliono perdere nulla.</p>
+                    <h3>Crescita</h3>
+                    <p class="plan-desc">Per attività strutturate che vogliono massimizzare le conversioni.</p>
                     <div class="price-row">
-                        <span class="price-value" data-monthly="99" data-yearly="79">99</span>€
+                        <span class="price-value" data-monthly="69" data-yearly="59">69</span>€
                         <span class="price-period">/mese</span>
                     </div>
-                    <p class="yearly-note hidden">Fatturato 950€/anno</p>
+                    <p class="yearly-note hidden">Fatturato 708€/anno (risparmi 120€)</p>
                     <ul class="plan-list">
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> <strong>Tutto di Essenziale</strong></li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> <strong>1.200 conversazioni AI/mese</strong></li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Recensioni automatiche</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Passaggio all'umano (ticket)</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Report giornalieri e settimanali</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 3 utenti dashboard</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> <strong>Tutto di Essenziale</strong></li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> <strong>1.200 conversazioni AI/mese</strong></li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Gestione recensioni Google automatiche</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Passaggio all'operatore umano (HITL)</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Report serale e analytics settimanali</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 3 utenti dashboard</li>
                     </ul>
-                    <button type="button" class="btn-primary btn-block" data-signup data-plan="crescita">Prova Crescita gratis</button>
+                    <button type="button" class="btn-primary btn-block" data-signup data-plan="crescita" data-track-location="pricing_crescita">Prova Crescita gratis</button>
                 </article>
 
                 <!-- Scala -->
                 <article class="pricing-card reveal reveal-3">
                     <h3>Scala</h3>
-                    <p class="plan-desc">Per gruppi e chi ha volumi importanti.</p>
+                    <p class="plan-desc">Per catene, hotel e gruppi ad alto volume di contatti.</p>
                     <div class="price-row">
-                        <span class="price-value" data-monthly="199" data-yearly="159">199</span>€
+                        <span class="price-value" data-monthly="149" data-yearly="129">149</span>€
                         <span class="price-period">/mese</span>
                     </div>
-                    <p class="yearly-note hidden">Fatturato 1.910€/anno</p>
+                    <p class="yearly-note hidden">Fatturato 1.548€/anno (risparmi 240€)</p>
                     <ul class="plan-list">
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> <strong>Tutto di Crescita</strong></li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 5.000 conversazioni AI/mese</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Knowledge base su documenti (PDF, listini)</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Fino a 5 sedi, utenti illimitati</li>
-                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5eff00" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Account manager dedicato</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> <strong>Tutto di Crescita</strong></li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> 5.000 conversazioni AI/mese</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Knowledge base avanzata su PDF e cataloghi</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Fino a 5 sedi con utenti illimitati</li>
+                        <li><span class="check" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E8A38" stroke-width="3" stroke-linecap="round"><path d="M20 6L9 17l-5-5"/></svg></span> Account manager e setup prioritario</li>
                     </ul>
                     <a class="btn-outline btn-block" href="mailto:sales@melpis.it?subject=Melpis%20Scala%20—%20richiesta%20demo">Parla con noi</a>
                 </article>
             </div>
-            <p class="trial-note center">Tutti i piani: prova gratuita di 14 giorni o 150 conversazioni (quella che arriva prima). Nessuna carta richiesta. Oltre il limite incluso, nessun blocco del servizio: continui a un costo aggiuntivo di 0,08€ per conversazione.</p>
+            <p class="trial-note center">Prova gratuita di 7 giorni o 150 conversazioni senza impegno. Se raggiungi la quota del piano, l'assistente va in pausa per il resto del mese: riprende automaticamente al rinnovo o passando a un piano superiore.</p>
         </div>
     </section>
 
     <!-- ============ FAQ ============ -->
-    <section id="faq" class="section section-elev border-top">
+    <section id="faq" class="section border-top">
         <div class="container-narrow">
-            <h2 class="display-md center reveal">Domande frequenti</h2>
+            <div class="center reveal">
+                <h2 class="display-md">Tutto quello che vuoi sapere</h2>
+            </div>
             <div class="faq-list">
                 <div class="faq-item reveal">
                     <button type="button" class="faq-q" aria-expanded="false">
@@ -411,16 +783,16 @@
                         <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                     <div class="faq-answer" hidden>
-                        <p>Sì, Melpis si collega al tuo account WhatsApp Business API. Se ce l'hai già, l'attivazione richiede pochi minuti; se non ce l'hai, ti guidiamo noi nella creazione.</p>
+                        <p>Sì, Melpis si collega al tuo numero WhatsApp tramite l'infrastruttura ufficiale Meta Cloud API. Se hai già un account l'attivazione richiede pochi minuti; se non ce l'hai, la nostra procedura guidata ti assisterà passo dopo passo.</p>
                     </div>
                 </div>
                 <div class="faq-item reveal reveal-1">
                     <button type="button" class="faq-q" aria-expanded="false">
-                        <span>Quanto tempo ci vuole per configurarlo?</span>
+                        <span>Quanto tempo ci vuole per configurare l'assistente?</span>
                         <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                     <div class="faq-answer" hidden>
-                        <p>La configurazione base richiede circa 15 minuti: colleghi WhatsApp, carichi orari e menu, definisci le regole di risposta. Il team Melpis ti assiste in ogni passo.</p>
+                        <p>La configurazione base richiede meno di 10 minuti: colleghi WhatsApp, carichi gli orari e il tuo menu/listino prezzi. Melpis è immediatamente pronto a rispondere.</p>
                     </div>
                 </div>
                 <div class="faq-item reveal reveal-2">
@@ -429,34 +801,34 @@
                         <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                     <div class="faq-answer" hidden>
-                        <p>Niente si blocca. Continuiamo a rispondere ai tuoi clienti anche oltre il limite, a un piccolo costo aggiuntivo per conversazione (0,08€). Ricevi un avviso quando arrivi all'80% del piano.</p>
+                        <p>Se raggiungi la quota di conversazioni del piano, l'assistente va in pausa per il resto del mese: riprende automaticamente al rinnovo o passando a un piano superiore.</p>
                     </div>
                 </div>
                 <div class="faq-item reveal reveal-3">
                     <button type="button" class="faq-q" aria-expanded="false">
-                        <span>L'AI può dare informazioni sbagliate ai miei clienti?</span>
+                        <span>L'AI può inventare risposte o dare informazioni errate?</span>
                         <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                     <div class="faq-answer" hidden>
-                        <p>L'assistente usa solo le informazioni della tua scheda attività e dei documenti caricati. Puoi rivedere le bozze delle risposte alle recensioni prima della pubblicazione, definisci tu i confini di ciò che può dire, e le richieste sensibili arrivano sempre a un umano.</p>
+                        <p>No. Melpis adotta una tecnologia RAG rigorosa e guardrail deterministici: risponde solo basandosi sulle informazioni caricate nella tua scheda attività. In caso di richieste fuori perimetro o ambigue, trasferisce la chat a un operatore umano.</p>
                     </div>
                 </div>
                 <div class="faq-item reveal reveal-4">
                     <button type="button" class="faq-q" aria-expanded="false">
-                        <span>Posso cambiare piano o cancellare quando voglio?</span>
+                        <span>Posso disdire l'abbonamento o cambiare piano quando voglio?</span>
                         <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                     <div class="faq-answer" hidden>
-                        <p>Sì, in un click dalla dashboard, senza vincoli se scegli il mensile. Con il piano annuale hai diritto al rimborso della parte non utilizzata entro i primi 30 giorni.</p>
+                        <p>Certamente. Puoi modificare o cancellare il tuo piano in qualsiasi momento con un solo click dal portale di fatturazione Stripe integrato nella dashboard, senza penali o vincoli.</p>
                     </div>
                 </div>
                 <div class="faq-item reveal reveal-4">
                     <button type="button" class="faq-q" aria-expanded="false">
-                        <span>Come funziona la prova gratuita?</span>
+                        <span>I dati dei miei clienti sono al sicuro e conformi al GDPR?</span>
                         <svg class="faq-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                     </button>
                     <div class="faq-answer" hidden>
-                        <p>Hai 14 giorni oppure 150 conversazioni, quello che arriva prima, senza inserire la carta. Alla scadenza scegli se attivare un abbonamento: nel frattempo i tuoi dati restano salvati e il servizio va in pausa.</p>
+                        <p>Sì, Melpis è progettato secondo i principi di Privacy by Design con isolamento multi-tenant rigoroso, crittografia dei token e gestione trasparente dei consensi e dell'opt-out.</p>
                     </div>
                 </div>
             </div>
@@ -465,16 +837,20 @@
 
     <!-- ============ CTA FINALE ============ -->
     <section class="section section-cta">
-        <div class="container-narrow center reveal">
-            <h2 class="display-lg">Pronto a non perdere<br>più un cliente?</h2>
-            <p class="lead">Attiva Melpis in 5 minuti. Se non fa per te, non paghi niente.</p>
-            <button type="button" class="btn-primary btn-xl magnetic" data-signup>
-                Inizia la prova gratuita
-                <span class="btn-icon btn-icon-dark" aria-hidden="true">
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                </span>
-            </button>
-            <p class="hero-micro">Nessuna carta richiesta. Attivazione guidata inclusa.</p>
+        <div class="container">
+            <div class="cta-box center reveal">
+                <h2 class="display-lg">Pronto a non perdere<br>più un cliente?</h2>
+                <p class="lead">Attiva Melpis in 5 minuti. Prova gratuita di 7 giorni, nessuna carta di credito richiesta.</p>
+                <div class="cta-actions">
+                    <button type="button" class="btn-primary btn-xl magnetic" data-signup data-track-location="footer">
+                        Inizia la prova gratuita
+                        <span class="btn-icon btn-icon-dark" aria-hidden="true">
+                            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                        </span>
+                    </button>
+                </div>
+                <p class="hero-micro">Nessun costo iniziale. Assistenza alla configurazione inclusa.</p>
+            </div>
         </div>
     </section>
 
@@ -484,34 +860,36 @@
 <footer class="footer">
     <div class="container footer-grid">
         <div class="footer-brand-col">
-            <a href="/" class="brand" aria-label="Melpis — home">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4.5 5h15v9h-9l-4.5 4v-4H4.5V5Z" stroke="#5eff00" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                Melpis
+            <a href="index.html" class="brand" aria-label="Melpis — home">
+                <img src="logo.webp" alt="Melpis Logo" class="brand-logo" width="32" height="32">
+                <span>Melpis</span>
             </a>
-            <p>L'assistente AI che risponde ai tuoi clienti su WhatsApp Business, gestisce prenotazioni e recensioni — mentre tu fai il tuo lavoro.</p>
+            <p>L'assistente AI per WhatsApp Business che risponde ai tuoi clienti, gestisce prenotazioni su calendario e prepara risposte alle recensioni.</p>
         </div>
         <nav class="footer-col" aria-label="Prodotto">
-            <h4>Prodotto</h4>
+            <h3>Prodotto</h3>
             <ul>
                 <li><a href="#funzionalita">Funzionalità</a></li>
-                <li><a href="#piani">Prezzi</a></li>
-                <li><a href="#faq">Domande frequenti</a></li>
+                <li><a href="#demo-live">Live Demo</a></li>
+                <li><a href="#come-funziona">Come funziona</a></li>
+                <li><a href="#confronto">Confronto</a></li>
+                <li><a href="#piani">Piani e Prezzi</a></li>
                 <li><a href="/app/">Accedi al pannello</a></li>
             </ul>
         </nav>
         <nav class="footer-col" aria-label="Supporto">
-            <h4>Supporto</h4>
+            <h3>Supporto</h3>
             <ul>
                 <li><a href="mailto:support@melpis.it">support@melpis.it</a></li>
                 <li><a href="mailto:sales@melpis.it">Diventa partner</a></li>
             </ul>
         </nav>
         <nav class="footer-col" aria-label="Legale">
-            <h4>Legale</h4>
+            <h3>Legale</h3>
             <ul>
-                <li><a href="/privacy/">Privacy Policy</a></li>
-                <li><a href="/termini/">Termini di Servizio</a></li>
-                <li><a href="/cookie/">Cookie Policy</a></li>
+                <li><a href="privacy.html">Privacy Policy</a></li>
+                <li><a href="termini.html">Termini di Servizio</a></li>
+                <li><a href="cookie.html">Cookie Policy</a></li>
             </ul>
         </nav>
     </div>
@@ -526,7 +904,7 @@
     <div class="modal-panel">
         <button type="button" class="modal-close" data-modal-close aria-label="Chiudi finestra">&times;</button>
         <h2 id="signupTitle">Inizia la prova gratuita</h2>
-        <p class="modal-sub">14 giorni o 150 conversazioni. Nessuna carta richiesta.</p>
+        <p class="modal-sub">7 giorni o 150 conversazioni. Nessuna carta richiesta.</p>
         <form id="signupForm" novalidate>
             <div class="field">
                 <label for="su-nome">Nome dell'attività</label>
@@ -542,7 +920,7 @@
             </div>
             <div class="field field-check">
                 <input type="checkbox" id="su-termini" required>
-                <label for="su-termini">Ho letto la <a href="/privacy/">Privacy Policy</a> e accetto i <a href="/termini/">Termini di Servizio</a>.</label>
+                <label for="su-termini">Ho letto la <a href="privacy.html" target="_blank">Privacy Policy</a> e accetto i <a href="termini.html" target="_blank">Termini di Servizio</a>.</label>
             </div>
             <p class="form-error" id="signupError" role="alert" hidden></p>
             <button type="submit" class="btn-primary btn-block" id="signupSubmit">
@@ -552,7 +930,7 @@
                 </span>
             </button>
             <p class="form-success" id="signupSuccess" hidden>
-                Account creato. Ti abbiamo inviato un'email per verificare l'indirizzo: completala e poi
+                Account creato con successo! Ti abbiamo inviato un'email di verifica: confermala e poi
                 <a href="/app/">accedi al pannello</a>.
             </p>
             <p class="modal-foot">Hai già un account? <a href="/app/">Accedi</a></p>
@@ -560,6 +938,12 @@
     </div>
 </div>
 
-<script src="app.js?v=1" defer></script>
+<!-- Cookie Notice -->
+<div class="cookie-notice" id="cookieNotice" hidden role="region" aria-label="Informativa breve cookie">
+    <p>Melpis usa solo cookie tecnici necessari al login. Le statistiche sono anonymous e senza cookie. <a href="/cookie/">Dettagli</a></p>
+    <button type="button" id="cookieOk" class="btn-primary">OK</button>
+</div>
+
+<script src="app.js?v=4" defer></script>
 </body>
 </html>

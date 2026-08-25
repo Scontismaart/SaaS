@@ -7,6 +7,7 @@ Nessun token transita dal client (niente localStorage, niente header Bearer).
 
 import hashlib
 import os
+import re
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -264,3 +265,181 @@ async def me(user: dict = Depends(get_organization_context)):
         "user_id": user.get("user_id"),
         "source": user.get("source"),
     }
+
+
+# ── Sicurezza account: cambio password/email (proxy Supabase) ──────────
+# La sessione valida nel cookie HttpOnly è la prova d'identità: Supabase
+# non richiede la password corrente per il cambio. Rate limit per IP anti
+# abuso; policy password identica alla registrazione (register.py).
+
+_ACCOUNT_CHANGE_MAX = 5
+_ACCOUNT_CHANGE_WINDOW = 60 * 60
+_PASSWORD_MIN = 10
+_SPECIAL_RE = re.compile(r"[^A-Za-z0-9]")
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class PasswordChange(BaseModel):
+    password: str
+
+
+class EmailChange(BaseModel):
+    email: str
+
+
+def _account_throttle_key(ip: str) -> str:
+    return f"auth:account:{ip}"
+
+
+async def _check_account_throttle(ip: str) -> None:
+    if await throttle.is_throttled(
+        _account_throttle_key(ip), _ACCOUNT_CHANGE_MAX, _ACCOUNT_CHANGE_WINDOW
+    ):
+        raise HTTPException(
+            429, "Troppe modifiche account. Riprova tra un'ora."
+        )
+
+
+def _require_access_token(request: Request) -> str:
+    token = request.cookies.get(bff.access_cookie_name())
+    if not token:
+        raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
+    return token
+
+
+async def _supabase_update_user(token: str, payload: dict) -> dict:
+    import httpx
+
+    client = await bff._client()
+    try:
+        resp = await client.put(
+            f"{bff._supabase_url()}/auth/v1/user",
+            json=payload,
+            headers={
+                "apikey": bff._anon_key(),
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+    except httpx.HTTPError:
+        raise HTTPException(502, "Servizio autenticazione non raggiungibile")
+    if resp.status_code == 401:
+        raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
+    if resp.status_code == 422:
+        raise HTTPException(
+            422, "Dati non validi (password troppo debole o email non accettata)"
+        )
+    if resp.status_code == 429:
+        raise HTTPException(429, "Troppe richieste. Riprova tra qualche minuto")
+    if resp.status_code >= 400:
+        raise HTTPException(502, "Modifica non riuscita, riprova")
+    return resp.json()
+
+
+@router.post("/password")
+async def change_password(body: PasswordChange, request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    pwd = body.password
+    if len(pwd) < _PASSWORD_MIN or not _SPECIAL_RE.search(pwd):
+        raise HTTPException(
+            422,
+            f"La password deve avere almeno {_PASSWORD_MIN} caratteri "
+            "e includere almeno un carattere speciale (es. ! @ # $ %)",
+        )
+    token = _require_access_token(request)
+    await _supabase_update_user(token, {"password": pwd})
+    return {"ok": True, "message": "Password aggiornata"}
+
+
+@router.post("/email")
+async def change_email(body: EmailChange, request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    email = body.email.strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(422, "Email non valida")
+    token = _require_access_token(request)
+    user = await _supabase_update_user(token, {"email": email})
+    # Con "Confirm email" attivo Supabase compila new_email e invia il link:
+    # la vecchia email resta attiva fino alla conferma.
+    conferma_richiesta = bool(user.get("new_email"))
+    return {
+        "ok": True,
+        "email": user.get("email"),
+        "conferma_richiesta": conferma_richiesta,
+        "message": (
+            "Controlla la nuova casella: ti è arrivato il link di conferma"
+            if conferma_richiesta
+            else "Email aggiornata"
+        ),
+    }
+
+
+# ── Recupero password (recover + reset) ────────────────────────────────
+# Recover: l'utente NON è autenticato, quindi niente sessione; Supabase
+# invia l'email con il link di recovery. Risposta sempre identica a
+# prescindere dall'esistenza dell'account: nessuna enumerazione.
+# Reset: il link di recovery rimanda al frontend con access_token +
+# type=recovery nell'hash dell'URL; il token viene usato come Bearer per
+# PUT /auth/v1/user (stessa via del cambio password da autenticato).
+# Rate limit condiviso con le altre modifiche account (5/ora/IP).
+
+
+class RecoverRequest(BaseModel):
+    email: str
+
+
+class ResetPassword(BaseModel):
+    access_token: str
+    password: str
+
+
+@router.post("/recover")
+async def recover_password(body: RecoverRequest, request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    email = body.email.strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(422, "Email non valida")
+
+    import httpx
+
+    client = await bff._client()
+    try:
+        await client.post(
+            f"{bff._supabase_url()}/auth/v1/recover",
+            json={"email": email},
+            headers={"apikey": bff._anon_key(), "Content-Type": "application/json"},
+        )
+    except httpx.HTTPError:
+        # Nessuna enumerazione account: la risposta resta identica anche
+        # se Supabase non è raggiungibile in questo momento.
+        pass
+    return {
+        "ok": True,
+        "message": "Se l'email e' registrata riceverai un link di recupero.",
+    }
+
+
+@router.post("/reset")
+async def reset_password(body: ResetPassword, request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    pwd = body.password
+    if len(pwd) < _PASSWORD_MIN or not _SPECIAL_RE.search(pwd):
+        raise HTTPException(
+            422,
+            f"La password deve avere almeno {_PASSWORD_MIN} caratteri "
+            "e includere almeno un carattere speciale (es. ! @ # $ %)",
+        )
+    await _supabase_update_user(body.access_token, {"password": pwd})
+    return {"ok": True, "message": "Password aggiornata, ora puoi accedere"}

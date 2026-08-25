@@ -200,7 +200,7 @@ class TestSla:
             assert data["tickets"][0]["priorita"] == "alta"
 
             response_media = await client.get("/api/inbox/tickets?priorita=media")
-            assert response_media.json() == {"tickets": []}
+            assert response_media.json() == {"tickets": [], "has_more": False}
 
     async def test_phone_and_last_message_preview(self, async_client):
         from src.whatsapp.repository import Repository as WRepo

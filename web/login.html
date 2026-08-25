@@ -17,7 +17,7 @@
     </div>
 
     <h1 id="accesso-title">Accedi a Melpis</h1>
-    <p class="accesso-help">Gestisci assistente, prenotazioni e documenti da un unico pannello. Sessione protetta: nessun token esposto al browser.</p>
+    <p class="accesso-help" id="accesso-help">Gestisci assistente, prenotazioni e documenti da un unico pannello. Sessione protetta: nessun token esposto al browser.</p>
 
     <p class="accedi-error" id="accedi-error" role="alert"></p>
 
@@ -38,6 +38,31 @@
         <button type="submit" class="review-analyze" id="accesso-save">Accedi</button>
       </div>
     </form>
+
+    <!-- Recupero password: visibile dal link "Password dimenticata?" -->
+    <form id="form-recover" hidden novalidate>
+      <p class="doc-config-status">Inserisci l'email con cui ti sei registrato: se esiste un account, riceverai un link per impostare una nuova password.</p>
+      <label for="recover-email">Email</label>
+      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" placeholder="nome@attivita.it">
+      <p class="doc-config-status" id="recover-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="recover-save">Invia link di recupero</button>
+      </div>
+      <p class="accedi-foot"><a href="#" id="recover-back">← Torna al login</a></p>
+    </form>
+
+    <!-- Nuova password: visibile solo con link di recovery (#access_token=...&type=recovery) -->
+    <form id="form-reset" hidden novalidate>
+      <p class="doc-config-status">Imposta una nuova password: almeno 10 caratteri e un carattere speciale.</p>
+      <label for="reset-password">Nuova password</label>
+      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" placeholder="••••••••">
+      <p class="doc-config-status" id="reset-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="reset-save">Aggiorna password</button>
+      </div>
+    </form>
+
+    <p class="accedi-foot" id="forgot-link-row"><a href="#" id="forgot-link">Password dimenticata?</a></p>
 
     <p class="accedi-foot">Non hai un account? <a id="link-registrati" href="/registrati/">Registrati</a></p>
     <p class="accedi-foot"><a href="/">← Torna alla home</a></p>

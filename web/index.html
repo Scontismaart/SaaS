@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Melpis — Pannello di controllo</title>
 <link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23080a08'/%3E%3Cpath d='M9 11h14v8H15l-3.5 3.2V19H9z' fill='none' stroke='%235eff00' stroke-width='1.8'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="style.css?v=bff-2">
+<link rel="icon" href="logo.webp" type="image/webp">
+<link rel="stylesheet" href="style.css?v=fase3-1">
 </head>
 <body>
 
@@ -18,8 +18,8 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <div class="sidebar-brand-row">
-        <span class="sidebar-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="9" fill="#121214"/><path d="M9 11h14v8H15l-3.5 3.2V19H9z" stroke="#5eff00" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <span class="sidebar-mark" aria-hidden="true" style="background:transparent; padding:0; overflow:hidden; display:inline-flex; align-items:center; justify-content:center;">
+          <img src="logo.webp" alt="Melpis" width="32" height="32" style="border-radius:8px; object-fit:cover; display:block;">
         </span>
         <div class="sidebar-brand-text">
           <span class="sidebar-brand-eyebrow">Pannello</span>
@@ -28,7 +28,7 @@
       </div>
     </div>
 
-    <nav class="sidebar-nav" aria-label="Sezioni del pannello">
+    <nav class="sidebar-nav" id="sidebar-nav" aria-label="Sezioni del pannello">
       <button class="nav-item active" type="button" data-view="panoramica">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
@@ -77,6 +77,24 @@
         </span>
         Inbox <span class="nav-badge" data-notification-badge="inbox" hidden></span>
       </button>
+      <button class="nav-item" type="button" data-view="impostazioni">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.55a.5.5 0 0 0 .12-.64l-1.9-3.3a.5.5 0 0 0-.61-.22l-2.36.95a7.6 7.6 0 0 0-2.6-1.5L13.7.94a.5.5 0 0 0-.5-.42h-3.8a.5.5 0 0 0-.5.42l-.35 2.5c-.96.35-1.83.87-2.6 1.5l-2.36-.95a.5.5 0 0 0-.6.22l-1.91 3.3a.5.5 0 0 0 .12.64l2.01 1.56a7.6 7.6 0 0 0 0 3L2.2 14.27a.5.5 0 0 0-.12.64l1.9 3.3c.13.21.39.3.61.21l2.36-.95c.77.64 1.64 1.16 2.6 1.51l.35 2.5c.04.24.25.42.5.42h3.8c.25 0 .46-.18.5-.42l.35-2.5c.96-.35 1.83-.87 2.6-1.5l2.36.94c.22.09.48 0 .6-.22l1.91-3.3a.5.5 0 0 0-.12-.63l-2.01-1.57Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        </span>
+        Impostazioni
+      </button>
+      <button class="nav-item" type="button" data-view="integrazioni">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M9 7H7a4 4 0 0 0 0 8h2M15 7h2a4 4 0 0 1 0 8h-2M8.5 11h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </span>
+        Integrazioni
+      </button>
+      <button class="nav-item" type="button" data-view="audit">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M12 8v4l2.5 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8"/></svg>
+        </span>
+        Audit
+      </button>
     </nav>
 
     <div class="sidebar-cta">
@@ -85,16 +103,65 @@
     </div>
   </aside>
 
+  <div class="sidebar-overlay" id="sidebar-overlay" hidden></div>
+
   <!-- ============ CONTENUTO ============ -->
   <div class="main" id="main-content">
 
+    <div class="net-banner offline" id="net-banner" hidden></div>
+
     <header class="topbar">
-      <span class="topbar-title" id="topbar-title">Panoramica</span>
+      <div class="topbar-left">
+        <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Apri il menu di navigazione" aria-expanded="false" aria-controls="sidebar-nav">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <span class="topbar-title" id="topbar-title">Panoramica</span>
+        <div class="global-search" id="global-search">
+          <svg class="global-search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input type="search" id="global-search-input" placeholder="Cerca ticket, prenotazioni, documenti…" aria-label="Ricerca globale" autocomplete="off">
+          <div class="global-search-results" id="global-search-results" hidden></div>
+        </div>
+      </div>
       <div class="topbar-right">
         <span class="topbar-meta" id="topbar-date"></span>
         <button type="button" class="accesso-btn" id="billing-btn" hidden>Gestisci Abbonamento</button>
+        <div class="notif-wrap">
+          <button type="button" class="bell-btn" id="notif-bell" aria-haspopup="menu" aria-expanded="false" aria-controls="notif-panel" aria-label="Centro notifiche">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 9.5a6 6 0 1 0-12 0v2.9c0 .6-.24 1.18-.66 1.6L4.1 15.24c-.63.63-.19 1.76.71 1.76h14.38c.9 0 1.34-1.13.71-1.76l-1.24-1.24a2.26 2.26 0 0 1-.66-1.6V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <span class="bell-badge" id="bell-badge" hidden></span>
+          </button>
+          <div class="notif-panel" id="notif-panel" role="menu" aria-label="Elenco notifiche" hidden>
+            <span class="notif-panel-title">Notifiche</span>
+            <div class="notif-list" id="notif-list"></div>
+          </div>
+        </div>
         <button type="button" class="accesso-btn" id="accesso-btn">Accedi</button>
-        <span class="status-pill"><span class="status-pill-dot" aria-hidden="true"></span>Assistente attivo</span>
+        <div class="user-menu" id="user-menu" hidden>
+          <button type="button" class="user-menu-btn" id="user-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="user-dropdown">
+            <span class="avatar-dot" id="avatar-initial" aria-hidden="true">U</span>
+            <span class="user-menu-email" id="user-menu-email"></span>
+            <svg class="chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="user-dropdown" id="user-dropdown" role="menu" hidden>
+            <div class="user-dropdown-head">
+              <span class="avatar-dot avatar-lg" id="dropdown-initial" aria-hidden="true">U</span>
+              <div class="user-dropdown-meta">
+                <strong id="dropdown-email"></strong>
+                <span class="ruolo-chip ruolo-owner" id="dropdown-ruolo"></span>
+              </div>
+            </div>
+            <button type="button" class="user-dropdown-item theme-toggle" id="theme-toggle" role="menuitem">
+              <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 13.5A8.5 8.5 0 0 1 10.5 4a7 7 0 1 0 9.5 9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+              <span id="theme-toggle-label">Tema scuro</span>
+            </button>
+            <button type="button" class="user-dropdown-item logout" id="logout-btn" role="menuitem">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 4h4v16h-4M10 8l-4 4 4 4M6 12h9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Esci
+            </button>
+          </div>
+        </div>
+        <span class="status-pill status-pill-desktop"><span class="status-pill-dot" aria-hidden="true"></span>Assistente attivo</span>
       </div>
     </header>
 
@@ -156,6 +223,7 @@
 
         <div class="onboarding-panel">
           <div class="onboarding-progress"><span id="onboarding-progress-bar"></span></div>
+          <span class="onboarding-autosave-badge" id="onboarding-autosave" hidden></span>
 
           <section class="onboarding-page" data-onboarding-page="0">
             <span class="onboarding-kicker">Profilo attività</span>
@@ -309,6 +377,15 @@
     <section class="view view-hidden" data-view-panel="prenotazioni">
       <p class="view-intro">Gestisci prenotazioni e disponibilità: quello che l'assistente salva da WhatsApp finisce qui, insieme alle prenotazioni inserite a mano.</p>
 
+      <div class="booking-export-bar">
+        <label class="wizard-label" for="booking-export-da">Export prenotazioni completate</label>
+        <div class="wizard-inline">
+          <input class="wizard-input" id="booking-export-da" type="date" aria-label="Data inizio">
+          <input class="wizard-input" id="booking-export-a" type="date" aria-label="Data fine">
+          <button type="button" class="report-refresh" id="booking-export-csv">Esporta CSV</button>
+        </div>
+      </div>
+
       <div class="booking-layout">
         <div class="dash-card booking-calendar-card">
           <div class="dash-card-header">
@@ -388,6 +465,11 @@
         <div class="booking-detail-note">
           <span>Note</span>
           <p id="booking-detail-note"></p>
+        </div>
+        <div class="booking-detail-actions" id="booking-detail-actions" hidden>
+          <button type="button" class="btn-success" id="booking-confirm-btn" hidden>Conferma</button>
+          <button type="button" class="btn-danger-outline" id="booking-reject-btn" hidden>Rifiuta</button>
+          <button type="button" class="btn-danger-outline" id="booking-cancel-btn" hidden>Annulla prenotazione</button>
         </div>
       </section>
     </div>
@@ -496,9 +578,17 @@
         </div>
         <div class="report-footer">
           <span class="report-timestamp" id="report-timestamp"></span>
-          <button type="button" class="report-refresh" id="report-refresh" aria-label="Rigenera report">
-            Rigenera
-          </button>
+          <div class="report-footer-actions">
+            <button type="button" class="report-refresh" id="report-print" aria-label="Stampa il report">
+              Stampa
+            </button>
+            <button type="button" class="report-refresh" id="report-export-csv" aria-label="Esporta prenotazioni in CSV">
+              Esporta CSV
+            </button>
+            <button type="button" class="report-refresh" id="report-refresh" aria-label="Rigenera report">
+              Rigenera
+            </button>
+          </div>
         </div>
       </div>
       <p class="report-empty-hint" id="report-empty-hint">Nessun report ancora generato per oggi.</p>
@@ -534,7 +624,7 @@
         <div class="dash-card-header">
           <span class="dash-card-title">Chiedi ai documenti</span>
         </div>
-        <textarea class="doc-query-input" id="doc-query" rows="3" placeholder="Es. «Avete opzioni senza glutine?» oppure «Quanto costa la fiorentina?»"></textarea>
+        <textarea class="doc-query-input" id="doc-query" rows="3" placeholder="Es. Â«Avete opzioni senza glutine?Â» oppure Â«Quanto costa la fiorentina?Â»"></textarea>
         <div class="doc-query-row">
           <button type="button" class="review-analyze" id="doc-chiedi-btn">Chiedi</button>
         </div>
@@ -583,7 +673,178 @@
       </div>
     </section>
 
+    <!-- ---------- VISTA: IMPOSTAZIONI ---------- -->
+    <section class="view view-hidden" data-view-panel="impostazioni">
+      <p class="view-intro">Modifica il profilo dell'assistente senza rifare l'onboarding: le modifiche valgono per tutte le nuove conversazioni.</p>
+
+      <p class="doc-config-status" id="settings-status" hidden></p>
+
+      <div class="settings-grid">
+        <div class="dash-card settings-wide">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Profilo attività</span>
+          </div>
+          <label class="wizard-label" for="settings-name">Nome attività</label>
+          <input class="wizard-input" id="settings-name" type="text" placeholder="Es. Trattoria Da Mario">
+          <div class="wizard-two">
+            <div>
+              <label class="wizard-label" for="settings-hours">Orari</label>
+              <textarea class="wizard-input" id="settings-hours" rows="4" placeholder="Es. Martedì-Sabato 09:00-19:00"></textarea>
+            </div>
+            <div>
+              <label class="wizard-label" for="settings-tone">Tono di voce</label>
+              <textarea class="wizard-input" id="settings-tone" rows="4" placeholder="Gentile, preciso, professionale..."></textarea>
+            </div>
+          </div>
+          <label class="wizard-label" for="settings-services">Servizi principali, uno per riga</label>
+          <textarea class="wizard-input" id="settings-services" rows="5"></textarea>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Lingue</span>
+          </div>
+          <p class="settings-help">L'assistente rileva la lingua del cliente e risponde nella stessa lingua. L'italiano è sempre attivo.</p>
+          <div class="escalation-list" id="settings-lingue-grid"></div>
+          <label class="wizard-label" for="settings-lingua-default">Lingua di default</label>
+          <select class="wizard-input" id="settings-lingua-default"></select>
+        </div>
+
+        <div class="dash-card settings-wide">
+          <div class="dash-card-header">
+            <span class="dash-card-title">Regole escalation</span>
+          </div>
+          <p class="settings-help">Quando una richiesta matcha una regola, la conversazione passa a un operatore umano.</p>
+          <div class="escalation-list" id="settings-escalation-list"></div>
+          <label class="wizard-label" for="settings-extra-rule">Aggiungi regola</label>
+          <div class="wizard-inline">
+            <input class="wizard-input" id="settings-extra-rule" type="text" placeholder="Es. richieste fuori listino">
+            <button type="button" class="report-refresh" id="settings-add-rule">Aggiungi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <span class="doc-config-status inline" id="settings-save-status" role="status"></span>
+        <button type="button" class="review-analyze" id="settings-save">Salva modifiche</button>
+      </div>
+
+      <div class="dash-card settings-wide">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Localizzazione</span>
+        </div>
+        <p class="settings-help">Il fuso orario è usato per reminder prenotazioni, report giornalieri e scadenze SLA.</p>
+        <label class="wizard-label" for="settings-timezone">Fuso orario</label>
+        <div class="wizard-inline">
+          <select class="wizard-input" id="settings-timezone" style="max-width:280px"></select>
+          <button type="button" class="report-refresh" id="settings-timezone-save">Salva fuso orario</button>
+        </div>
+        <p class="security-status" id="settings-timezone-status" role="status"></p>
+      </div>
+
+      <div class="dash-card settings-wide settings-security">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Sicurezza account</span>
+        </div>
+        <p class="settings-help">La sessione attiva è la prova della tua identità: non serve inserire la password attuale. Dopo il cambio, le altre sessioni restano valide finché non scadono.</p>
+        <div class="security-grid">
+          <form id="security-password-form" autocomplete="off">
+            <label class="wizard-label" for="security-password">Nuova password</label>
+            <input class="wizard-input" id="security-password" type="password" autocomplete="new-password" placeholder="Min 10 caratteri, 1 speciale">
+            <label class="wizard-label" for="security-password-confirm">Conferma password</label>
+            <input class="wizard-input" id="security-password-confirm" type="password" autocomplete="new-password" placeholder="Ripeti la nuova password">
+            <button type="submit" class="report-refresh security-submit">Aggiorna password</button>
+            <p class="security-status" id="security-password-status" role="status"></p>
+          </form>
+          <form id="security-email-form" autocomplete="off">
+            <label class="wizard-label" for="security-email">Nuova email</label>
+            <input class="wizard-input" id="security-email" type="email" autocomplete="email" placeholder="nuova@email.it">
+            <button type="submit" class="report-refresh security-submit">Aggiorna email</button>
+            <p class="security-status" id="security-email-status" role="status"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: INTEGRAZIONI ---------- -->
+    <section class="view view-hidden" data-view-panel="integrazioni">
+      <p class="view-intro">Stato delle connessioni ai canali: qui vedi cosa è collegato e cosa va configurato.</p>
+
+      <div class="integrazioni-grid">
+        <div class="dash-card integrazione-card" id="integ-whatsapp">
+          <div class="integrazione-head">
+            <span class="integrazione-icona">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16v11H4v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <div>
+              <h3 class="integrazione-titolo">WhatsApp</h3>
+              <span class="integrazione-sub" id="integ-whatsapp-sub">Verifica stato…</span>
+            </div>
+            <span class="integrazione-stato" id="integ-whatsapp-stato">…</span>
+          </div>
+          <p class="settings-help" id="integ-whatsapp-help">Collega il numero WhatsApp Business dall'onboarding per ricevere e rispondere ai messaggi dei clienti.</p>
+        </div>
+
+        <div class="dash-card integrazione-card" id="integ-instagram">
+          <div class="integrazione-head">
+            <span class="integrazione-icona">
+              <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="4.5" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="3.6" stroke="currentColor" stroke-width="1.8"/><circle cx="16.8" cy="7.2" r="1" fill="currentColor"/></svg>
+            </span>
+            <div>
+              <h3 class="integrazione-titolo">Instagram</h3>
+              <span class="integrazione-sub" id="integ-instagram-sub">Verifica stato…</span>
+            </div>
+            <span class="integrazione-stato" id="integ-instagram-stato">…</span>
+          </div>
+          <p class="settings-help">Rispondi ai DM Instagram con lo stesso assistente: la connessione si configura durante l'onboarding.</p>
+        </div>
+
+        <div class="dash-card integrazione-card" id="integ-webhook">
+          <div class="integrazione-head">
+            <span class="integrazione-icona">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M13 3 5 13h5l-1 8 8-10h-5l1-8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+            </span>
+            <div>
+              <h3 class="integrazione-titolo">Webhook Meta</h3>
+              <span class="integrazione-sub" id="integ-webhook-sub">Verifica stato…</span>
+            </div>
+            <span class="integrazione-stato" id="integ-webhook-stato">…</span>
+          </div>
+          <p class="settings-help">Il webhook riceve i messaggi in tempo reale da Meta. La configurazione è lato server (variabili d'ambiente).</p>
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <span class="doc-config-status inline" id="integrazioni-status" role="status"></span>
+        <button type="button" class="report-refresh" id="integrazioni-config">Configura in Onboarding</button>
+      </div>
+    </section>
+
+    <!-- ---------- VISTA: AUDIT ---------- -->
+    <section class="view view-hidden" data-view-panel="audit">
+      <p class="view-intro">Registro delle azioni sensibili sull'account: impostazioni modificate, prenotazioni gestite, documenti rimossi.</p>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <span class="dash-card-title">Attività recente</span>
+          <span class="dash-card-meta" id="audit-count"></span>
+        </div>
+        <div class="audit-list" id="audit-list"></div>
+      </div>
+    </section>
+
   </div>
+</div>
+
+<div class="confirm-modal-backdrop" id="confirm-modal" hidden>
+  <section class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-desc">
+    <h3 id="confirm-title">Conferma azione</h3>
+    <p id="confirm-desc"></p>
+    <div class="confirm-actions">
+      <button type="button" class="report-refresh" id="confirm-cancel-btn">Annulla</button>
+      <button type="button" class="btn-danger" id="confirm-ok-btn">Conferma</button>
+    </div>
+  </section>
 </div>
 
 <div class="thread-modal-backdrop" id="thread-modal" hidden>
@@ -600,6 +861,6 @@
 <script src="config.js"></script>
 <script src="vendor/fullcalendar.min.js"></script>
 <script src="vendor/dompurify.min.js"></script>
-<script src="app.js?v=bff-5"></script>
+<script src="app.js?v=fase3-1"></script>
 </body>
 </html>

@@ -398,6 +398,8 @@ body {
 
 .main {
   flex: 1;
+  min-width: 0; /* flex item: permette allo shell di restringersi sotto la
+                   min-content della topbar (senza, overflow-x su tablet) */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -2685,6 +2687,12 @@ body.booking-modal-open { overflow: hidden; }
 
   .kpi-card {
     grid-column: auto;
+  }
+
+  /* Topbar: a md la riga non entra tutta — nascondi meta e pill (già nascosti a sm) */
+  .topbar-meta,
+  .status-pill-desktop {
+    display: none;
   }
 
   .onboarding-rail {

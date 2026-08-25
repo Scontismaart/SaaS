@@ -22,7 +22,7 @@ COPY landing/fonts/ /usr/share/nginx/html/fonts/
 COPY login.html login.js register.html register.js auth.js auth.css /usr/share/nginx/html/
 
 # ── Dashboard (sotto /app/) ─────────────────────────────────
-COPY index.html style.css app.js /usr/share/nginx/html/app/
+COPY index.html style.css app.js logo.webp /usr/share/nginx/html/app/
 COPY fonts/ /usr/share/nginx/html/app/fonts/
 COPY vendor/ /usr/share/nginx/html/app/vendor/
 COPY config.template.js /usr/share/nginx/html/app/config.template.js

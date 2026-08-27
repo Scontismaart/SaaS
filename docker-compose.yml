@@ -6,6 +6,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./src:/app/src
       - chroma_data:/app/data/chroma
     networks:
       - app_internal

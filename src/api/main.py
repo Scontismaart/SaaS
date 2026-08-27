@@ -179,6 +179,11 @@ async def lifespan(app: FastAPI):
                 whatsapp_service=None, app_config=None,
             )
             _imposta_fonte_dati_per_scheduler()
+            try:
+                from src.core.documenti.embeddings import _modello
+                asyncio.create_task(asyncio.to_thread(_modello))
+            except Exception as e:
+                print(f"[startup] Embedding model warmup warning: {e}")
     else:
         app.state.repo = None
         app.state.pool = None
@@ -239,6 +244,9 @@ app.include_router(register_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]
+public_url = (os.getenv("PUBLIC_APP_URL") or "").strip().rstrip("/")
+if public_url and public_url not in allow_origins:
+    allow_origins.append(public_url)
 if not allow_origins:
     raise RuntimeError(
         "CORS_ORIGINS e' impostata ma vuota dopo il parsing. "

@@ -89,7 +89,7 @@ def genera_e_caching():
     storico = _ottieni_storico()
     report = genera_report(storico)
     _report_cache[oggi] = report
-    print(f"[scheduler] Report per {oggi} generato e cachato.")
+    logger.info("[scheduler] Report per %s generato e cachato.", oggi)
 
 
 def _run_retention():
@@ -325,7 +325,7 @@ def avvia_scheduler():
         replace_existing=True,
     )
     _scheduler.start()
-    print("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00, suspension notice 08:00, report settimanale lun 08:30.")
+    logger.info("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00, suspension notice 08:00, report settimanale lun 08:30.")
 
 
 def ferma_scheduler():
@@ -333,4 +333,4 @@ def ferma_scheduler():
     if _scheduler:
         _scheduler.shutdown(wait=False)
         _scheduler = None
-        print("[scheduler] Arrestato.")
+        logger.info("[scheduler] Arrestato.")

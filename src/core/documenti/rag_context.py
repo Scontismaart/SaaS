@@ -15,9 +15,12 @@ puo' contenere chunk di un altro.
 """
 
 import asyncio
+import logging
 from dataclasses import dataclass, field
 
 from src.core.documenti.embeddings import vettorizza
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_K = 3
 DEFAULT_TIMEOUT = 3.0
@@ -58,7 +61,7 @@ async def recupera_contesto_documenti(
             timeout=timeout,
         )
     except Exception as e:
-        print(f"[rag_context] retrieval non disponibile org={organization_id}: {e}")
+        logger.warning("[rag_context] retrieval non disponibile org=%s: %s", organization_id, e)
         return ContestoDocumenti()
 
     if not risultati:

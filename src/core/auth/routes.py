@@ -17,7 +17,8 @@ from pydantic import BaseModel
 from src.core.auth import bff, throttle
 from src.core.auth.audit import audit_log
 from src.core.auth.csrf import clear_csrf_token, issue_csrf_token
-from src.core.auth.dependencies import get_organization_context, get_repo
+from src.core.auth.denylist import is_token_revoked, revoke_token
+from src.core.auth.dependencies import get_organization_context, get_repo, require_ruolo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -100,7 +101,7 @@ def _set_session_cookies(response: Response, data: dict) -> None:
     common = {
         "httponly": True,
         "secure": bff.cookie_secure(),
-        "samesite": "strict",
+        "samesite": "lax",
         "path": "/",
     }
     response.set_cookie(bff.access_cookie_name(), data["access_token"], **common)
@@ -131,11 +132,12 @@ async def login(body: LoginRequest, request: Request, response: Response):
 @router.post("/refresh")
 async def refresh(request: Request, response: Response):
     rt = request.cookies.get(bff.refresh_cookie_name())
-    if not rt:
+    if not rt or await is_token_revoked(rt):
         raise HTTPException(status_code=401, detail="Sessione scaduta")
     # user_key anonimo: digest del token, mai il token grezzo in memoria
     user_key = hashlib.sha256(rt.encode()).hexdigest()
     data = await bff.refresh(rt, user_key)
+    await revoke_token(rt)
     _set_session_cookies(response, data)
     csrf_token = issue_csrf_token(response)
     return {"ok": True, "csrf_token": csrf_token}
@@ -251,14 +253,18 @@ async def google_callback(request: Request):
 @router.post("/logout")
 async def logout(request: Request, response: Response):
     at = request.cookies.get(bff.access_cookie_name())
+    rt = request.cookies.get(bff.refresh_cookie_name())
     if at:
+        await revoke_token(at)
         await bff.logout(at)
+    if rt:
+        await revoke_token(rt)
     _clear_session_cookies(response)
     return {"ok": True}
 
 
 @router.get("/me")
-async def me(user: dict = Depends(get_organization_context)):
+async def me(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     return {
         "email": user.get("email"),
         "organization_id": user.get("organization_id"),

@@ -1,4 +1,11 @@
-const API_BASE = window.MELPIS_API_BASE ?? "http://localhost:8000";
+const API_BASE =
+  typeof window !== "undefined" && typeof window.MELPIS_API_BASE === "string"
+    ? window.MELPIS_API_BASE
+    : "";
+
+if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
+  console.warn("[App] window.MELPIS_API_BASE non definita, fallback sicuro su same-origin ('')");
+}
 const PROFILO_ID = "trattoria_da_mario";
 
 /* ============================================================
@@ -15,11 +22,20 @@ const PROFILO_ID = "trattoria_da_mario";
 
 let sessione = null; // { email, organization_id, ruolo } | null
 
+function _escapeHtml(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function _sanitize(v) {
-  if (typeof DOMPurify !== "undefined") {
+  if (typeof DOMPurify !== "undefined" && typeof DOMPurify.sanitize === "function") {
     return DOMPurify.sanitize(v == null ? "" : String(v));
   }
-  return String(v == null ? "" : v);
+  return _escapeHtml(v);
 }
 
 /* ============================================================
@@ -266,7 +282,13 @@ async function caricaSessione() {
       aggiornaBottoneAccesso();
       return false;
     }
-    sessione = await res.json();
+    const data = await res.json();
+    if (!data || data.source === "anonymous" || !data.user_id || !data.organization_id) {
+      sessione = null;
+      aggiornaBottoneAccesso();
+      return false;
+    }
+    sessione = data;
     aggiornaBottoneAccesso();
     return true;
   } catch {
@@ -599,11 +621,9 @@ navItems.forEach((btn) => {
     };
     topbarTitle.textContent = titles[viewName] || viewName;
     if (viewName === "impostazioni") {
-      // Hub a tab: precarico i dati di tutti i pane (lazy per tab sarebbe
-      // over-engineering: sono tre chiamate leggere). Il fuso orario si
-      // gestisce da solo (IIFE inizializzaTimezone con flag "caricato").
       caricaIntegrazioni();
       caricaAudit();
+      if (typeof caricaTimezone === "function") caricaTimezone();
     }
     if (viewName === "account") caricaAccount();
 
@@ -1645,7 +1665,8 @@ async function aggiornaPrenotazioni() {
   try {
     const res = await apiFetch(`${API_BASE}/api/bookings`);
     if (!res.ok) return;
-    const prenotazioni = await res.json();
+    const raw = await res.json().catch(() => []);
+    const prenotazioni = Array.isArray(raw) ? raw : [];
     bookingRecords = prenotazioni;
     const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
     prenotazioniInAttesaCount = pending.length;
@@ -1721,7 +1742,8 @@ async function aggiornaSemaforo(data = null) {
   try {
     const res = await apiFetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
     if (!res.ok) return;
-    const slots = await res.json();
+    const raw = await res.json().catch(() => []);
+    const slots = Array.isArray(raw) ? raw : [];
     bookingAvailability = new Map(slots.map((slot) => [String(slot.ora).slice(0, 5), slot]));
     availabilityList.innerHTML = "";
     slots.forEach((slot) => {
@@ -1986,7 +2008,8 @@ async function aggiornaTrends() {
       trendList.appendChild(_errorState("Impossibile caricare le statistiche.", aggiornaTrends));
       return;
     }
-    const eventi = await res.json();
+    const raw = await res.json().catch(() => []);
+    const eventi = Array.isArray(raw) ? raw : [];
     const recensioni = eventi.filter(e => e.tipo_evento === "recensione");
     const totale = recensioni.length;
 
@@ -2146,17 +2169,18 @@ async function aggiornaReport(forza = false) {
     const url = `${API_BASE}/api/report${forza ? "?forza=true" : ""}`;
     const res = await apiFetch(url);
     if (!res.ok) return;
-    const report = await res.json();
+    const report = await res.json().catch(() => ({}));
+    if (!report || !report.statistiche) return;
     reportSection.hidden = false;
     if (reportEmptyHint) reportEmptyHint.hidden = true;
-    reportDate.textContent = report.statistiche.periodo;
-    reportTotale.textContent = report.statistiche.totale_messaggi;
-    reportAi.textContent = report.statistiche.gestiti_da_ai;
-    reportUmano.textContent = report.statistiche.girati_a_umano;
-    reportAnalisi.textContent = report.analisi_testuale;
-    reportTimestamp.textContent = "Generato: " + new Date(report.generato_il).toLocaleTimeString("it-IT", {
+    reportDate.textContent = report.statistiche?.periodo || "";
+    reportTotale.textContent = report.statistiche?.totale_messaggi ?? "0";
+    reportAi.textContent = report.statistiche?.gestiti_da_ai ?? "0";
+    reportUmano.textContent = report.statistiche?.girati_a_umano ?? "0";
+    reportAnalisi.textContent = report.analisi_testuale || "";
+    reportTimestamp.textContent = report.generato_il ? "Generato: " + new Date(report.generato_il).toLocaleTimeString("it-IT", {
       hour: "2-digit", minute: "2-digit",
-    });
+    }) : "";
     if (report.suggerimenti && report.suggerimenti.length > 0) {
       reportSuggestions.hidden = false;
       reportSuggestionsList.innerHTML = "";
@@ -2251,7 +2275,8 @@ async function aggiornaPrioritari() {
       priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", aggiornaPrioritari));
       return;
     }
-    const eventi = await res.json();
+    const rawEventi = await res.json().catch(() => []);
+    const eventi = Array.isArray(rawEventi) ? rawEventi : [];
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
       const li = document.createElement("li");
@@ -2274,7 +2299,7 @@ async function aggiornaPrioritari() {
       msg.textContent = e.testo_originale;
       const cat = document.createElement("span");
       cat.classList.add("priority-item-cat");
-      cat.textContent = (e.dettagli.categoria || e.dettagli.sentiment || "generico");
+      cat.textContent = (e.dettagli?.categoria || e.dettagli?.sentiment || "generico");
       li.appendChild(badge);
       li.appendChild(msg);
       li.appendChild(cat);
@@ -2292,10 +2317,11 @@ async function aggiornaRiepilogo() {
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
     if (!res.ok) {
       ticketList.innerHTML = "";
-      ticketList.appendChild(_errorState("Impossibile caricare l'attivitÃ  recente.", aggiornaRiepilogo));
+      ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", aggiornaRiepilogo));
       return;
     }
-    const storico = await res.json();
+    const rawStorico = await res.json().catch(() => []);
+    const storico = Array.isArray(rawStorico) ? rawStorico : [];
     const totale = storico.length;
     const gestitiAi = storico.filter((e) => e.gestito_da_ai).length;
     const girati = totale - gestitiAi;
@@ -2306,7 +2332,7 @@ async function aggiornaRiepilogo() {
     if (totale === 0) {
       ticketList.appendChild(_emptyState(
         ICONS.chat,
-        "Nessuna attivitÃ  ancora",
+        "Nessuna attività ancora",
         "Parla con l'assistente dalla sezione Assistente: le conversazioni compaiono qui.",
         "Prova l'assistente",
         () => document.querySelector('[data-view="assistente"]')?.click()
@@ -2622,385 +2648,24 @@ docChiediBtn.addEventListener("click", async () => {
 });
 
 /* ============================================================
-   INBOX (HITL) â€” ticket escalati all'operatore umano
+   INBOX (HITL) — Layout a 3 colonne
    ============================================================ */
 
-const inboxList = document.getElementById("inbox-list");
-const inboxCount = document.getElementById("inbox-count");
 let inboxState = {
-  status: "ALL",
-  priorita: "",
+  mainFilter: "all",
+  quickFilter: "all",
+  selectedTicketId: null,
+  tickets: [],
+  team: [],
+  isLoading: false,
 };
 
-function filtersAttivi() {
-  return inboxState.status !== "ALL" || Boolean(inboxState.priorita);
-}
-
 const TICKET_STATUS_LABEL = {
-  AI_ACTIVE: "Automazione",
-  PENDING_STAFF: "In attesa",
+  AI_ACTIVE: "AI",
+  PENDING_STAFF: "Richiede operatore",
   CLAIMED: "Preso in carico",
   RESOLVED: "Risolto",
 };
-
-function formatInboxDate(value) {
-  if (!value) return "";
-  const d = new Date(value);
-  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
-function formatSla(sla_due_at, is_overdue) {
-  if (!sla_due_at) return null;
-  const due = new Date(sla_due_at);
-  const now = new Date();
-  const minutes = Math.max(0, Math.round((due - now) / 60000));
-  if (is_overdue) return { text: "SLA superato", overdue: true };
-  if (minutes <= 0) return { text: "SLA scaduto", overdue: true };
-  return { text: `SLA ${minutes} min`, overdue: false };
-}
-
-let inboxPrimoCaricamento = true;
-let inboxOffset = 0;
-let inboxHasMore = false;
-const INBOX_PAGE_SIZE = 20;
-
-async function caricaInbox({ append = false } = {}) {
-  if (!inboxList) return;
-  if (!append) {
-    inboxOffset = 0;
-    if (inboxPrimoCaricamento) {
-      inboxList.innerHTML = _skeletonList(3);
-      inboxPrimoCaricamento = false;
-    }
-  }
-  try {
-    const params = new URLSearchParams();
-    if (inboxState.status !== "ALL") params.set("status", inboxState.status);
-    if (inboxState.priorita) params.set("priorita", inboxState.priorita);
-    params.set("limit", String(INBOX_PAGE_SIZE));
-    params.set("offset", String(inboxOffset));
-    const res = await apiFetch(`${API_BASE}/api/inbox/tickets?${params.toString()}`);
-    if (!res.ok) {
-      if (!append && inboxList) {
-        inboxList.innerHTML = "";
-        inboxList.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
-      }
-      return;
-    }
-    const data = await res.json();
-    const tickets = data.tickets || [];
-    inboxHasMore = Boolean(data.has_more);
-
-    let team = [];
-    try {
-      const teamRes = await apiFetch(`${API_BASE}/api/inbox/team`);
-      if (teamRes.ok) team = (await teamRes.json()).members || [];
-    } catch (e) {
-      console.error("Impossibile caricare il team:", e);
-    }
-
-    if (!append) {
-      inboxList.innerHTML = "";
-      if (!tickets.length) {
-        inboxCount.textContent = "0 ticket";
-        inboxList.appendChild(_emptyState(
-          ICONS.inbox,
-          filtersAttivi() ? "Nessun ticket con questi filtri" : "Nessun ticket aperto",
-          "Quando l'assistente incontra una richiesta delicata, la conversazione finisce qui per la presa in carico."
-        ));
-        return;
-      }
-    } else {
-      document.getElementById("inbox-load-more")?.remove();
-    }
-
-    tickets.forEach((t) => renderInboxCard(inboxList, t, team));
-    inboxOffset += tickets.length;
-    inboxCount.textContent = `${inboxOffset} ticket`;
-
-    if (inboxHasMore) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.id = "inbox-load-more";
-      btn.className = "inbox-load-more";
-      btn.textContent = "Carica altri ticket";
-      btn.addEventListener("click", () => {
-        btn.disabled = true;
-        btn.textContent = "Caricoâ€¦";
-        caricaInbox({ append: true });
-      });
-      inboxList.appendChild(btn);
-    }
-  } catch (err) {
-    console.error("Impossibile caricare l'inbox:", err);
-    if (!append && inboxList) {
-      inboxList.innerHTML = "";
-      inboxList.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
-    }
-  }
-}
-
-function renderInboxCard(container, t, team) {
-  team = team || [];
-  const card = document.createElement("div");
-  card.className = "inbox-card";
-  card.classList.add(`prio-${t.priorita}`);
-  if (t.is_overdue) card.classList.add("overdue");
-
-  const top = document.createElement("div");
-  top.className = "inbox-card-top";
-
-  const left = document.createElement("div");
-  left.style.flex = "1";
-  left.style.minWidth = "0";
-
-  const title = document.createElement("h3");
-  title.className = "inbox-card-title";
-  title.textContent = t.phone_number || "Cliente";
-
-  const isInstagram = t.canale === "instagram";
-  if (isInstagram) {
-    const igBadge = document.createElement("span");
-    igBadge.className = "ticket-tag";
-    igBadge.textContent = "Instagram";
-    title.appendChild(document.createTextNode(" "));
-    title.appendChild(igBadge);
-  }
-
-  const meta = document.createElement("div");
-  meta.className = "inbox-card-meta";
-  const assigned = t.assigned_nome ? ` Â· ${t.assigned_nome}` : "";
-  meta.textContent = `${TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status}${assigned}`;
-  left.appendChild(title);
-  left.appendChild(meta);
-
-  const tags = document.createElement("div");
-  tags.className = "inbox-tags";
-
-  const prioTag = document.createElement("span");
-  prioTag.className = "ticket-tag";
-  prioTag.textContent = t.priorita;
-  tags.appendChild(prioTag);
-
-  const sla = formatSla(t.sla_due_at, t.is_overdue);
-  if (sla) {
-    const slaEl = document.createElement("span");
-    slaEl.className = "inbox-sla";
-    if (sla.overdue) slaEl.classList.add("overdue");
-    slaEl.textContent = sla.text;
-    slaEl.title = t.sla_due_at ? `Scadenza: ${formatInboxDate(t.sla_due_at)}` : "";
-    tags.appendChild(slaEl);
-  }
-
-  if (t.pending_staff_at) {
-    const pend = document.createElement("span");
-    pend.className = "inbox-card-meta";
-    pend.textContent = ` Â· attesa da ${formatInboxDate(t.pending_staff_at)}`;
-    meta.textContent += pend.textContent;
-  }
-
-  top.appendChild(left);
-  top.appendChild(tags);
-  card.appendChild(top);
-
-  if (t.last_message_preview) {
-    const msg = document.createElement("p");
-    msg.className = "inbox-card-msg";
-    msg.textContent = t.last_message_preview;
-    card.appendChild(msg);
-  }
-
-  const actions = document.createElement("div");
-  actions.className = "inbox-actions";
-
-  const threadBtn = document.createElement("button");
-  threadBtn.type = "button";
-  threadBtn.className = "inbox-btn";
-  threadBtn.textContent = "Conversazione";
-  threadBtn.title = "Apri lo storico completo dei messaggi";
-  threadBtn.addEventListener("click", () => apriThreadConversazione(t));
-  actions.appendChild(threadBtn);
-
-  if ((t.ticket_status === "PENDING_STAFF" || t.ticket_status === "CLAIMED") && team.length) {
-    const assignWrap = document.createElement("div");
-    assignWrap.className = "inbox-assign";
-    const assignSel = document.createElement("select");
-    assignSel.className = "inbox-assign-select";
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Assegna aâ€¦";
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    assignSel.appendChild(placeholder);
-    team.forEach((m) => {
-      const opt = document.createElement("option");
-      opt.value = m.user_id;
-      opt.textContent = `${m.nome || m.email}${m.user_id === t.assigned_to ? " (assegnato)" : ""}`;
-      assignSel.appendChild(opt);
-    });
-    assignSel.addEventListener("change", async () => {
-      if (!assignSel.value) return;
-      assignSel.disabled = true;
-      try {
-        const res = await apiFetch(`${API_BASE}/api/inbox/assign/${encodeURIComponent(t.id)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ assigned_to: assignSel.value, expected_version: t.version }),
-        });
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || "Impossibile assegnare.");
-        }
-        await caricaInbox();
-      } catch (err) {
-        assignSel.disabled = false;
-        toast(err.message, "error");
-      }
-    });
-    assignWrap.appendChild(assignSel);
-    actions.appendChild(assignWrap);
-  }
-
-  if (t.ticket_status === "PENDING_STAFF") {
-    const claim = document.createElement("button");
-    claim.type = "button";
-    claim.className = "inbox-btn primary";
-    claim.textContent = "Claim";
-    claim.title = "Prendi in carico";
-    claim.addEventListener("click", async () => {
-      try {
-        const res = await apiFetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(t.id)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expected_version: t.version }),
-        });
-        if (!res.ok) throw new Error("Impossibile fare il claim.");
-        await caricaInbox();
-      } catch (err) {
-        toast(err.message, "error");
-      }
-    });
-    actions.appendChild(claim);
-  }
-
-  if (t.ticket_status === "CLAIMED") {
-    const release = document.createElement("button");
-    release.type = "button";
-    release.className = "inbox-btn";
-    release.textContent = "Rilascia";
-    release.addEventListener("click", async () => {
-      try {
-        const res = await apiFetch(`${API_BASE}/api/inbox/release/${encodeURIComponent(t.id)}`, { method: "POST" });
-        if (!res.ok) throw new Error("Impossibile rilasciare.");
-        await caricaInbox();
-      } catch (err) {
-        toast(err.message, "error");
-      }
-    });
-    actions.appendChild(release);
-
-    const risolvi = document.createElement("button");
-    risolvi.type = "button";
-    risolvi.className = "inbox-btn";
-    risolvi.textContent = "Risolvi";
-    risolvi.addEventListener("click", async () => {
-      try {
-        const res = await apiFetch(`${API_BASE}/api/inbox/resolve/${encodeURIComponent(t.id)}`, { method: "POST" });
-        if (!res.ok) throw new Error("Impossibile risolvere.");
-        await caricaInbox();
-      } catch (err) {
-        toast(err.message, "error");
-      }
-    });
-    actions.appendChild(risolvi);
-
-    const replyToggle = document.createElement("button");
-    replyToggle.type = "button";
-    replyToggle.className = "inbox-btn";
-    replyToggle.textContent = "Rispondi";
-    replyToggle.addEventListener("click", () => {
-      replyArea.classList.toggle("open");
-      replyToggle.textContent = replyArea.classList.contains("open") ? "Chiudi" : "Rispondi";
-    });
-    actions.appendChild(replyToggle);
-  }
-
-  card.appendChild(actions);
-
-  const replyArea = document.createElement("div");
-  replyArea.className = "inbox-reply";
-  const canaleLabel = isInstagram ? "Instagram" : "WhatsApp";
-  const replyInput = document.createElement("textarea");
-  replyInput.className = "inbox-reply-input";
-  replyInput.rows = 2;
-  replyInput.placeholder = `Scrivi la risposta da inviare su ${canaleLabel}...`;
-  const replyRow = document.createElement("div");
-  replyRow.className = "inbox-reply-row";
-  const invia = document.createElement("button");
-  invia.type = "button";
-  invia.className = "inbox-btn primary";
-  invia.textContent = `Invia su ${canaleLabel}`;
-  const replyStatus = document.createElement("p");
-  replyStatus.className = "inbox-status";
-  invia.addEventListener("click", async () => {
-    const content = replyInput.value.trim();
-    if (!content) return;
-    invia.disabled = true;
-    replyStatus.textContent = "Invio...";
-    try {
-      const res = await apiFetch(`${API_BASE}/api/inbox/reply/${encodeURIComponent(t.id)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          message_type: "text",
-          idempotency_key: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
-        }),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || "Impossibile inviare.");
-      }
-      replyStatus.textContent = `Inviato su ${canaleLabel}.`;
-      replyInput.value = "";
-    } catch (err) {
-      replyStatus.classList.add("error");
-      replyStatus.textContent = err.message;
-    } finally {
-      invia.disabled = false;
-    }
-  });
-  replyRow.appendChild(invia);
-  replyArea.appendChild(replyInput);
-  replyArea.appendChild(replyRow);
-  replyArea.appendChild(replyStatus);
-  card.appendChild(replyArea);
-
-  container.appendChild(card);
-}
-
-document.querySelectorAll("[data-inbox-status]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    inboxState.status = btn.dataset.inboxStatus;
-    document.querySelectorAll("[data-inbox-status]").forEach((b) => b.classList.toggle("active", b === btn));
-    caricaInbox();
-  });
-});
-
-document.querySelectorAll("[data-priorita]").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    inboxState.priorita = btn.dataset.priorita;
-    document.querySelectorAll("[data-priorita]").forEach((b) => b.classList.toggle("active", b === btn));
-    caricaInbox();
-  });
-});
-
-/* ---------- Thread conversazione (storico messaggi) ---------- */
-
-const threadModal = document.getElementById("thread-modal");
-const threadModalTitle = document.getElementById("thread-modal-title");
-const threadMsgs = document.getElementById("thread-msgs");
-const threadFoot = document.getElementById("thread-foot");
 
 const MESSAGE_STATUS_LABEL = {
   received_pending_ai: "ricevuto",
@@ -3014,124 +2679,864 @@ const MESSAGE_STATUS_LABEL = {
   failed: "non inviato",
 };
 
-function chiudiThreadConversazione() {
-  if (threadModal) threadModal.hidden = true;
+const AVATAR_COLOR_PALETTES = [
+  { bg: "#EBF5FF", text: "#1E40AF" },
+  { bg: "#F0FDF4", text: "#166534" },
+  { bg: "#FEF3C7", text: "#92400E" },
+  { bg: "#FEE2E2", text: "#991B1B" },
+  { bg: "#F3E8FF", text: "#6B21A8" },
+  { bg: "#ECFDF5", text: "#065F46" },
+  { bg: "#FFF1F2", text: "#9F1239" },
+  { bg: "#F5F3FF", text: "#5B21B6" },
+];
+
+function _getAvatarColors(identifier) {
+  let hash = 0;
+  const str = String(identifier || "");
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return AVATAR_COLOR_PALETTES[Math.abs(hash) % AVATAR_COLOR_PALETTES.length];
 }
 
-/* ---------- Feedback ðŸ‘/ðŸ‘Ž sulle risposte AI (task 12) ---------- */
-
-function creaControlliFeedback(messaggio) {
-  const wrap = document.createElement("div");
-  wrap.className = "thread-feedback";
-
-  const btnUp = document.createElement("button");
-  btnUp.type = "button";
-  btnUp.className = "thread-feedback-btn";
-  btnUp.textContent = "ðŸ‘";
-  btnUp.title = "Risposta utile";
-
-  const btnDown = document.createElement("button");
-  btnDown.type = "button";
-  btnDown.className = "thread-feedback-btn";
-  btnDown.textContent = "ðŸ‘Ž";
-  btnDown.title = "Risposta da migliorare";
-
-  // Stato corrente: feedback del cliente (emoji) + voti staff.
-  const cliente = messaggio.feedback_customer;
-  const upStaff = messaggio.feedback_staff_up || 0;
-  const downStaff = messaggio.feedback_staff_down || 0;
-  if (cliente === "up") btnUp.classList.add("customer");
-  if (cliente === "down") btnDown.classList.add("customer");
-
-  const count = document.createElement("span");
-  count.className = "thread-feedback-count";
-  count.textContent = `${upStaff}/${downStaff}`;
-
-  const invia = async (value, premuto) => {
-    btnUp.disabled = true;
-    btnDown.disabled = true;
-    try {
-      const res = await apiFetch(
-        `${API_BASE}/api/inbox/messages/${encodeURIComponent(messaggio.id)}/feedback`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ value }),
-        },
-      );
-      if (!res.ok) throw new Error(`Errore ${res.status}`);
-      premuto.classList.add("selected");
-      if (value === "up") count.textContent = `${upStaff + 1}/${downStaff}`;
-      else count.textContent = `${upStaff}/${downStaff + 1}`;
-    } catch (err) {
-      console.error("Feedback non inviato:", err);
-      btnUp.disabled = false;
-      btnDown.disabled = false;
-    }
-  };
-  btnUp.addEventListener("click", () => invia("up", btnUp));
-  btnDown.addEventListener("click", () => invia("down", btnDown));
-
-  wrap.appendChild(btnUp);
-  wrap.appendChild(btnDown);
-  wrap.appendChild(count);
-  return wrap;
+function _getAvatarInitial(nameOrPhone) {
+  if (!nameOrPhone) return "C";
+  const trimmed = nameOrPhone.trim();
+  if (trimmed.startsWith("+")) {
+    return trimmed.slice(-2);
+  }
+  const parts = trimmed.split(" ").filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return trimmed.slice(0, 2).toUpperCase();
 }
 
-async function apriThreadConversazione(ticket) {
-  if (!threadModal || !threadMsgs) return;
-  threadModalTitle.textContent = `Conversazione â€” ${ticket.phone_number || "cliente"}`;
-  threadMsgs.innerHTML = "";
-  threadFoot.textContent = "Caricamento messaggi...";
-  threadModal.hidden = false;
+function formatInboxDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  const now = new Date();
+  const diffSec = Math.floor((now - d) / 1000);
+  if (diffSec < 60) return "Adesso";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} min fa`;
+  const diffOre = Math.floor(diffMin / 60);
+  if (diffOre < 24 && d.getDate() === now.getDate()) return `${diffOre} ore fa`;
+  if (diffOre < 48 && (now.getDate() - d.getDate() === 1 || diffOre < 24)) return "Ieri";
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+}
+
+function formatSla(sla_due_at, is_overdue) {
+  if (!sla_due_at) return null;
+  const due = new Date(sla_due_at);
+  const now = new Date();
+  const minutes = Math.max(0, Math.round((due - now) / 60000));
+  if (is_overdue) return { text: "SLA superato", overdue: true };
+  if (minutes <= 0) return { text: "SLA scaduto", overdue: true };
+  return { text: `SLA ${minutes} min`, overdue: false };
+}
+
+function formatMessageContent(rawText) {
+  if (!rawText) return "";
+  let text = String(rawText);
+  // Escapa caratteri HTML base
+  text = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Riconosci link markdown [testo](url)
+  text = text.replace(/\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g, (match, linkText, url) => {
+    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="thread-link">${linkText}</a>`;
+  });
+
+  // Riconosci URL raw non racchiusi in tag
+  text = text.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<)]+)/g, (match, prefix, url) => {
+    const href = url.startsWith("www.") ? `https://${url}` : url;
+    return `${prefix}<a href="${href}" target="_blank" rel="noopener noreferrer" class="thread-link">${url}</a>`;
+  });
+
+  // Newline in <br>
+  text = text.replace(/\n/g, "<br>");
+
+  if (typeof DOMPurify !== "undefined" && DOMPurify.sanitize) {
+    return DOMPurify.sanitize(text, { ADD_ATTR: ["target", "rel", "class"] });
+  }
+  return text;
+}
+
+/* ---------- Caricamento e Filtri Inbox ---------- */
+
+async function caricaInbox() {
+  const container = document.getElementById("inbox-list");
+  if (!container) return;
+
+  if (!inboxState.tickets.length) {
+    container.innerHTML = _skeletonList(4);
+  }
+
   try {
-    const res = await apiFetch(`${API_BASE}/api/inbox/tickets/${encodeURIComponent(ticket.id)}/messages?limit=200`);
-    if (!res.ok) throw new Error(`Errore ${res.status}`);
-    const data = await res.json();
-    const messages = data.messages || [];
-    if (!messages.length) {
-      threadFoot.textContent = "Nessun messaggio nello storico.";
+    const [ticketsRes, teamRes] = await Promise.all([
+      apiFetch(`${API_BASE}/api/inbox/tickets?limit=100`),
+      apiFetch(`${API_BASE}/api/inbox/team`).catch(() => ({ ok: false })),
+    ]);
+
+    if (!ticketsRes.ok) {
+      container.innerHTML = "";
+      container.appendChild(_errorState("Impossibile caricare le conversazioni.", () => caricaInbox()));
       return;
     }
-    messages.forEach((m) => {
-      const bubble = document.createElement("div");
-      bubble.className = `thread-bubble ${m.direction === "outbound" ? "out" : "in"}`;
-      const text = document.createElement("p");
-      text.className = "thread-bubble-text";
-      text.textContent = m.content_text || `(messaggio ${m.message_type} senza testo)`;
-      const meta = document.createElement("span");
-      meta.className = "thread-bubble-meta";
-      const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
-      const quando = formatInboxDate(m.created_at);
-      meta.textContent = m.direction === "outbound" ? `${quando} Â· ${status}` : quando;
-      bubble.appendChild(text);
-      bubble.appendChild(meta);
-      // Feedback ðŸ‘/ðŸ‘Ž sulle risposte generate dall'AI (task 12 guardrails):
-      // aiuta a capire quali prompt funzionano meglio.
-      if (m.direction === "outbound" && m.handling_type === "ai_handled") {
-        bubble.appendChild(creaControlliFeedback(m));
+
+    const data = await ticketsRes.json();
+    inboxState.tickets = data.tickets || [];
+
+    if (teamRes.ok) {
+      try {
+        const teamData = await teamRes.json();
+        inboxState.team = teamData.members || [];
+      } catch (e) {
+        inboxState.team = [];
       }
-      threadMsgs.appendChild(bubble);
-    });
-    threadFoot.textContent = `${data.total} messaggi nello storico`;
-    threadMsgs.scrollTop = threadMsgs.scrollHeight;
+    }
+
+    aggiornaContatoriFiltri();
+    renderInboxConversazioni();
+
+    // Se c'era un ticket selezionato o siamo su desktop e nessun ticket è selezionato, seleziona il primo
+    if (inboxState.selectedTicketId) {
+      const exists = inboxState.tickets.some((t) => t.id === inboxState.selectedTicketId);
+      if (exists) {
+        caricaDettaglioTicket(inboxState.selectedTicketId);
+      } else {
+        const firstVisible = getFilteredTickets()[0];
+        if (firstVisible && window.innerWidth >= 1024) {
+          selezionaTicket(firstVisible.id);
+        } else {
+          inboxState.selectedTicketId = null;
+          mostraPlaceholderDettaglio();
+        }
+      }
+    } else if (window.innerWidth >= 768) {
+      const firstVisible = getFilteredTickets()[0];
+      if (firstVisible) {
+        selezionaTicket(firstVisible.id);
+      } else {
+        mostraPlaceholderDettaglio();
+      }
+    }
   } catch (err) {
-    console.error("Impossibile caricare la conversazione:", err);
-    threadFoot.textContent = "Impossibile caricare la conversazione.";
+    console.error("Errore caricamento inbox:", err);
+    container.innerHTML = "";
+    container.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
   }
 }
 
-if (document.getElementById("thread-modal-close")) {
-  document.getElementById("thread-modal-close").addEventListener("click", chiudiThreadConversazione);
+function getFilteredTickets() {
+  let list = [...inboxState.tickets];
+
+  // 1. Filtro Principale (Colonna 1)
+  const mf = inboxState.mainFilter;
+  if (mf === "ai_managed") {
+    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
+  } else if (mf === "pending_staff") {
+    list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
+  } else if (mf === "escalated") {
+    list = list.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+  } else if (mf === "channel_whatsapp") {
+    list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
+  } else if (mf === "channel_instagram") {
+    list = list.filter((t) => (t.canale || "").toLowerCase() === "instagram");
+  } else if (mf === "status_open") {
+    list = list.filter((t) => t.ticket_status !== "RESOLVED");
+  } else if (mf === "status_pending") {
+    list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
+  } else if (mf === "status_resolved") {
+    list = list.filter((t) => t.ticket_status === "RESOLVED");
+  }
+
+  // 2. Quick Filter (Colonna 2 chips)
+  const qf = inboxState.quickFilter;
+  if (qf === "whatsapp") {
+    list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
+  } else if (qf === "instagram") {
+    list = list.filter((t) => (t.canale || "").toLowerCase() === "instagram");
+  } else if (qf === "ai") {
+    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
+  } else if (qf === "human") {
+    list = list.filter((t) => t.ticket_status === "CLAIMED");
+  } else if (qf === "escalated") {
+    list = list.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+  }
+
+  return list;
 }
-if (threadModal) {
-  threadModal.addEventListener("click", (e) => {
-    if (e.target === threadModal) chiudiThreadConversazione();
+
+function aggiornaContatoriFiltri() {
+  const all = inboxState.tickets;
+  const countAll = all.length;
+  const countWa = all.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp").length;
+  const countIg = all.filter((t) => (t.canale || "").toLowerCase() === "instagram").length;
+  const countEscalated = all.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue).length;
+
+  const elAll = document.getElementById("chip-cnt-all");
+  const elWa = document.getElementById("chip-cnt-wa");
+  const elIg = document.getElementById("chip-cnt-ig");
+  const elEsc = document.getElementById("chip-cnt-escalated");
+
+  if (elAll) elAll.textContent = countAll;
+  if (elWa) elWa.textContent = countWa;
+  if (elIg) elIg.textContent = countIg;
+  if (elEsc) elEsc.textContent = countEscalated;
+}
+
+function renderInboxConversazioni() {
+  const container = document.getElementById("inbox-list");
+  if (!container) return;
+
+  const tickets = getFilteredTickets();
+  container.innerHTML = "";
+
+  if (!tickets.length) {
+    container.appendChild(
+      _emptyState(
+        ICONS.inbox,
+        "Nessuna conversazione",
+        "Non ci sono conversazioni corrispondenti ai filtri selezionati."
+      )
+    );
+    return;
+  }
+
+  tickets.forEach((t) => {
+    const row = document.createElement("div");
+    row.className = "inbox-conv-row";
+    if (t.id === inboxState.selectedTicketId) {
+      row.classList.add("active");
+    }
+    row.dataset.ticketId = t.id;
+
+    // Avatar
+    const colors = _getAvatarColors(t.phone_number || t.id);
+    const initial = _getAvatarInitial(t.phone_number || "Cliente");
+    const avatarEl = document.createElement("div");
+    avatarEl.className = "inbox-conv-avatar";
+    avatarEl.style.backgroundColor = colors.bg;
+    avatarEl.style.color = colors.text;
+    avatarEl.textContent = initial;
+
+    // Body
+    const bodyEl = document.createElement("div");
+    bodyEl.className = "inbox-conv-body";
+
+    // Top Line: Nome + Tempo relativo
+    const topLine = document.createElement("div");
+    topLine.className = "inbox-conv-top-line";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "inbox-conv-name";
+    nameEl.textContent = t.phone_number || "Cliente";
+
+    const timeEl = document.createElement("span");
+    timeEl.className = "inbox-conv-time";
+    timeEl.textContent = formatRelativeTime(t.last_message_at || t.created_at);
+
+    topLine.appendChild(nameEl);
+    topLine.appendChild(timeEl);
+
+    // Meta Line: Canale + Stato
+    const metaLine = document.createElement("div");
+    metaLine.className = "inbox-conv-meta-line";
+
+    const isIg = (t.canale || "").toLowerCase() === "instagram";
+    const channelIcon = document.createElement("span");
+    channelIcon.className = `conv-channel-icon ${isIg ? "icon-ig" : "icon-wa"}`;
+    channelIcon.innerHTML = isIg
+      ? '<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="5" stroke="#E1306C" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#E1306C" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1" fill="#E1306C"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="none"><path d="M12 21a9 9 0 1 0-4.5-1.2L3 21l1.2-4.5A9 9 0 0 0 12 21Z" stroke="#25D366" stroke-width="2" stroke-linejoin="round"/></svg>';
+
+    const channelName = document.createElement("span");
+    channelName.textContent = isIg ? "Instagram" : "WhatsApp";
+
+    const sep = document.createElement("span");
+    sep.className = "conv-meta-sep";
+    sep.textContent = "·";
+
+    const statusPill = document.createElement("span");
+    statusPill.className = `conv-status-pill status-${(t.ticket_status || "").toLowerCase()}`;
+
+    let statusText = TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status;
+    let statusIcon = "";
+    if (t.ticket_status === "AI_ACTIVE") {
+      statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4" stroke="currentColor" stroke-width="1.8"/></svg>';
+    } else if (t.ticket_status === "PENDING_STAFF") {
+      statusIcon = '<span class="inbox-dot-red"></span>';
+    } else if (t.ticket_status === "CLAIMED") {
+      statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>';
+      if (t.assigned_nome) statusText = `Preso da ${t.assigned_nome}`;
+    } else if (t.ticket_status === "RESOLVED") {
+      statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l5 5L20 7" stroke="#0e8a38" stroke-width="2.2" stroke-linecap="round"/></svg>';
+    }
+
+    statusPill.innerHTML = `${statusIcon} <span>${statusText}</span>`;
+
+    metaLine.appendChild(channelIcon);
+    metaLine.appendChild(channelName);
+    metaLine.appendChild(sep);
+    metaLine.appendChild(statusPill);
+
+    // Preview
+    const previewEl = document.createElement("p");
+    previewEl.className = "inbox-conv-preview";
+    previewEl.textContent = t.last_message_preview || "(Nessun messaggio recente)";
+
+    bodyEl.appendChild(topLine);
+    bodyEl.appendChild(metaLine);
+    bodyEl.appendChild(previewEl);
+
+    row.appendChild(avatarEl);
+    row.appendChild(bodyEl);
+
+    row.addEventListener("click", () => {
+      selezionaTicket(t.id);
+      // Su mobile switcha a vista dettaglio
+      if (window.innerWidth < 768) {
+        document.querySelector(".inbox-view")?.classList.add("show-detail");
+      }
+    });
+
+    container.appendChild(row);
   });
 }
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && threadModal && !threadModal.hidden) chiudiThreadConversazione();
-});
+
+function selezionaTicket(ticketId) {
+  inboxState.selectedTicketId = ticketId;
+
+  // Evidenzia riga attiva
+  document.querySelectorAll(".inbox-conv-row").forEach((row) => {
+    row.classList.toggle("active", row.dataset.ticketId === ticketId);
+  });
+
+  caricaDettaglioTicket(ticketId);
+}
+
+function mostraPlaceholderDettaglio() {
+  const emptyEl = document.getElementById("inbox-detail-empty");
+  const contentEl = document.getElementById("inbox-detail-content");
+  if (emptyEl) emptyEl.hidden = false;
+  if (contentEl) contentEl.hidden = true;
+}
+
+function creaControlliFeedback(m) {
+  const container = document.createElement("div");
+  container.className = "thread-feedback";
+
+  const upBtn = document.createElement("button");
+  upBtn.type = "button";
+  upBtn.className = "thread-feedback-btn";
+  upBtn.innerHTML = `👍 ${m.feedback_staff_up || 0}`;
+  upBtn.title = "Risposta appropriata";
+
+  const downBtn = document.createElement("button");
+  downBtn.type = "button";
+  downBtn.className = "thread-feedback-btn";
+  downBtn.innerHTML = `👎 ${m.feedback_staff_down || 0}`;
+  downBtn.title = "Risposta da migliorare";
+
+  upBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try {
+      const res = await apiFetch(`${API_BASE}/api/inbox/messages/${encodeURIComponent(m.id)}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: "up" }),
+      });
+      if (res.ok) {
+        upBtn.classList.add("selected");
+        toast("Feedback registrato", "success");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  downBtn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+    try {
+      const res = await apiFetch(`${API_BASE}/api/inbox/messages/${encodeURIComponent(m.id)}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: "down" }),
+      });
+      if (res.ok) {
+        downBtn.classList.add("selected");
+        toast("Feedback registrato", "success");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  container.appendChild(upBtn);
+  container.appendChild(downBtn);
+  return container;
+}
+
+/* ---------- Dettaglio Conversazione & Thread ---------- */
+
+async function caricaDettaglioTicket(ticketId) {
+  const emptyEl = document.getElementById("inbox-detail-empty");
+  const contentEl = document.getElementById("inbox-detail-content");
+  if (!contentEl) return;
+
+  const ticket = inboxState.tickets.find((t) => t.id === ticketId);
+  if (!ticket) {
+    mostraPlaceholderDettaglio();
+    return;
+  }
+
+  if (emptyEl) emptyEl.hidden = true;
+  contentEl.hidden = false;
+
+  // 1. Header Dettaglio
+  const nameEl = document.getElementById("inbox-detail-name");
+  const phoneEl = document.getElementById("inbox-detail-phone");
+  const avatarEl = document.getElementById("inbox-detail-avatar");
+  const channelBadge = document.getElementById("inbox-detail-channel");
+  const actionsEl = document.getElementById("inbox-detail-actions");
+
+  if (nameEl) nameEl.textContent = ticket.phone_number || "Cliente";
+  if (phoneEl) phoneEl.textContent = ticket.phone_number || "";
+
+  if (avatarEl) {
+    const colors = _getAvatarColors(ticket.phone_number || ticket.id);
+    avatarEl.style.backgroundColor = colors.bg;
+    avatarEl.style.color = colors.text;
+    avatarEl.textContent = _getAvatarInitial(ticket.phone_number || "Cliente");
+  }
+
+  const isIg = (ticket.canale || "").toLowerCase() === "instagram";
+  if (channelBadge) {
+    channelBadge.className = `inbox-channel-badge ${isIg ? "ig" : "wa"}`;
+    channelBadge.innerHTML = isIg
+      ? '<svg viewBox="0 0 24 24" fill="none" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor"/></svg><span>Instagram</span>'
+      : '<svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 21a9 9 0 1 0-4.5-1.2L3 21l1.2-4.5A9 9 0 0 0 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>WhatsApp</span>';
+  }
+
+  // Pulsanti Azione (Claim / Resolve / Release / Assign)
+  if (actionsEl) {
+    actionsEl.innerHTML = "";
+
+    // Assegna a (se team disponibile e ticket aperto)
+    if (ticket.ticket_status !== "RESOLVED" && inboxState.team.length > 0) {
+      const assignSel = document.createElement("select");
+      assignSel.className = "inbox-action-select";
+      const placeholderOpt = document.createElement("option");
+      placeholderOpt.value = "";
+      placeholderOpt.textContent = "Assegna a…";
+      placeholderOpt.disabled = true;
+      placeholderOpt.selected = !ticket.assigned_to;
+      assignSel.appendChild(placeholderOpt);
+
+      inboxState.team.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.user_id;
+        opt.textContent = `${m.nome || m.email}${m.user_id === ticket.assigned_to ? " (assegnato)" : ""}`;
+        if (m.user_id === ticket.assigned_to) opt.selected = true;
+        assignSel.appendChild(opt);
+      });
+
+      assignSel.addEventListener("change", async () => {
+        if (!assignSel.value) return;
+        assignSel.disabled = true;
+        try {
+          const res = await apiFetch(`${API_BASE}/api/inbox/assign/${encodeURIComponent(ticket.id)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ assigned_to: assignSel.value, expected_version: ticket.version }),
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || "Impossibile assegnare.");
+          }
+          toast("Ticket assegnato con successo", "success");
+          await caricaInbox();
+        } catch (err) {
+          assignSel.disabled = false;
+          toast(err.message, "error");
+        }
+      });
+      actionsEl.appendChild(assignSel);
+    }
+
+    // Tasto Claim
+    if (ticket.ticket_status === "PENDING_STAFF" || ticket.ticket_status === "AI_ACTIVE") {
+      const claimBtn = document.createElement("button");
+      claimBtn.type = "button";
+      claimBtn.className = "inbox-action-btn primary";
+      claimBtn.textContent = "Prendi in carico";
+      claimBtn.title = "Prendi in carico la conversazione per rispondere manualmente";
+      claimBtn.addEventListener("click", async () => {
+        claimBtn.disabled = true;
+        claimBtn.textContent = "Carico…";
+        try {
+          const res = await apiFetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(ticket.id)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expected_version: ticket.version }),
+          });
+          if (!res.ok) throw new Error("Impossibile fare il claim del ticket.");
+          toast("Hai preso in carico la conversazione", "success");
+          await caricaInbox();
+        } catch (err) {
+          toast(err.message, "error");
+          claimBtn.disabled = false;
+          claimBtn.textContent = "Prendi in carico";
+        }
+      });
+      actionsEl.appendChild(claimBtn);
+    }
+
+    // Tasti Rilascia e Risolvi per CLAIMED
+    if (ticket.ticket_status === "CLAIMED") {
+      const releaseBtn = document.createElement("button");
+      releaseBtn.type = "button";
+      releaseBtn.className = "inbox-action-btn";
+      releaseBtn.textContent = "Rilascia";
+      releaseBtn.title = "Rilascia all'assistente AI o ad altri operatori";
+      releaseBtn.addEventListener("click", async () => {
+        releaseBtn.disabled = true;
+        try {
+          const res = await apiFetch(`${API_BASE}/api/inbox/release/${encodeURIComponent(ticket.id)}`, { method: "POST" });
+          if (!res.ok) throw new Error("Impossibile rilasciare il ticket.");
+          toast("Conversazione rilasciata", "info");
+          await caricaInbox();
+        } catch (err) {
+          toast(err.message, "error");
+          releaseBtn.disabled = false;
+        }
+      });
+      actionsEl.appendChild(releaseBtn);
+
+      const resolveBtn = document.createElement("button");
+      resolveBtn.type = "button";
+      resolveBtn.className = "inbox-action-btn primary";
+      resolveBtn.textContent = "Risolvi";
+      resolveBtn.title = "Segna la conversazione come risolta";
+      resolveBtn.addEventListener("click", async () => {
+        resolveBtn.disabled = true;
+        try {
+          const res = await apiFetch(`${API_BASE}/api/inbox/resolve/${encodeURIComponent(ticket.id)}`, { method: "POST" });
+          if (!res.ok) throw new Error("Impossibile risolvere il ticket.");
+          toast("Ticket segnato come risolto", "success");
+          await caricaInbox();
+        } catch (err) {
+          toast(err.message, "error");
+          resolveBtn.disabled = false;
+        }
+      });
+      actionsEl.appendChild(resolveBtn);
+    }
+  }
+
+  // 2. Banner di Stato Discreto (AI / Richiesta Staff)
+  const statusStrip = document.getElementById("inbox-status-strip");
+  const aiBadge = document.getElementById("inbox-ai-badge");
+  const aiBadgeText = document.getElementById("inbox-ai-badge-text");
+
+  if (statusStrip && aiBadge && aiBadgeText) {
+    statusStrip.className = "inbox-status-strip";
+    if (ticket.ticket_status === "AI_ACTIVE") {
+      statusStrip.hidden = false;
+      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4" stroke="currentColor" stroke-width="1.8"/></svg><span>L\'assistente sta gestendo la conversazione</span>';
+    } else if (ticket.ticket_status === "PENDING_STAFF") {
+      statusStrip.hidden = false;
+      statusStrip.classList.add("pending");
+      aiBadge.innerHTML = '<span class="inbox-dot-red"></span><span>Questa conversazione richiede l\'intervento di un operatore.</span>';
+    } else if (ticket.ticket_status === "CLAIMED") {
+      statusStrip.hidden = false;
+      const assignedLabel = ticket.assigned_nome ? `In gestione da ${ticket.assigned_nome}` : "In gestione da te";
+      aiBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg><span>${assignedLabel}</span>`;
+    } else {
+      statusStrip.hidden = false;
+      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12l5 5L20 7" stroke="#0e8a38" stroke-width="2.2" stroke-linecap="round"/></svg><span>Conversazione risolta</span>';
+    }
+  }
+
+  // 3. Thread Messaggi
+  const threadContainer = document.getElementById("inbox-thread-messages");
+  if (threadContainer) {
+    threadContainer.innerHTML = _skeletonList(3);
+    try {
+      const res = await apiFetch(`${API_BASE}/api/inbox/tickets/${encodeURIComponent(ticket.id)}/messages?limit=200`);
+      if (!res.ok) throw new Error("Errore recupero messaggi");
+      const msgData = await res.json();
+      const messages = msgData.messages || [];
+
+      threadContainer.innerHTML = "";
+      if (!messages.length) {
+        threadContainer.innerHTML = '<p class="inbox-empty" style="text-align:center; padding:30px 0;">Nessun messaggio in questa conversazione.</p>';
+      } else {
+        messages.forEach((m) => {
+          const row = document.createElement("div");
+          const isInbound = m.direction === "inbound";
+          row.className = `inbox-msg-row ${isInbound ? "inbound" : "outbound"}`;
+
+          // Avatar
+          const avatar = document.createElement("div");
+          avatar.className = `inbox-msg-avatar ${!isInbound ? "melpis-avatar" : ""}`;
+          if (isInbound) {
+            const colors = _getAvatarColors(ticket.phone_number || ticket.id);
+            avatar.style.backgroundColor = colors.bg;
+            avatar.style.color = colors.text;
+            avatar.textContent = _getAvatarInitial(ticket.phone_number || "Cliente");
+          } else {
+            avatar.innerHTML = '<img src="logo.webp" alt="Melpis" width="28" height="28" style="border-radius:6px; display:block;">';
+          }
+
+          // Bubble
+          const bubble = document.createElement("div");
+          bubble.className = "inbox-msg-bubble";
+
+          // Autore per outbound
+          if (!isInbound) {
+            const author = document.createElement("span");
+            author.className = "inbox-msg-author";
+            author.textContent = m.handling_type === "ai_handled" ? "Melpis AI" : (ticket.assigned_nome || "Operatore");
+            bubble.appendChild(author);
+          }
+
+          // Testo formattato con link cliccabili
+          const textEl = document.createElement("div");
+          textEl.className = "inbox-msg-text";
+          textEl.innerHTML = formatMessageContent(m.content_text || `(messaggio ${m.message_type})`);
+          bubble.appendChild(textEl);
+
+          // Feedback staff per messaggi AI
+          if (!isInbound && m.handling_type === "ai_handled") {
+            bubble.appendChild(creaControlliFeedback(m));
+          }
+
+          // Meta / Timestamp
+          const meta = document.createElement("div");
+          meta.className = "inbox-msg-meta";
+          const quando = formatInboxDate(m.created_at);
+          const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
+          meta.textContent = isInbound ? quando : `${quando} · ${status}`;
+          bubble.appendChild(meta);
+
+          row.appendChild(avatar);
+          row.appendChild(bubble);
+          threadContainer.appendChild(row);
+        });
+      }
+
+      threadContainer.scrollTop = threadContainer.scrollHeight;
+    } catch (err) {
+      console.error("Errore caricamento thread:", err);
+      threadContainer.innerHTML = '<p class="inbox-empty error" style="text-align:center; padding:20px;">Impossibile caricare lo storico dei messaggi.</p>';
+    }
+  }
+
+  // 4. Input Box Risposta
+  const replyForm = document.getElementById("inbox-reply-form");
+  const disabledBanner = document.getElementById("inbox-reply-disabled-banner");
+  const claimInlineBtn = document.getElementById("inbox-claim-inline-btn");
+  const msgInput = document.getElementById("inbox-message-input");
+  const sendBtn = document.getElementById("inbox-send-btn");
+
+  if (ticket.ticket_status === "CLAIMED") {
+    if (replyForm) replyForm.hidden = false;
+    if (disabledBanner) disabledBanner.hidden = true;
+    if (msgInput) {
+      msgInput.disabled = false;
+      msgInput.placeholder = `Scrivi un messaggio su ${isIg ? "Instagram" : "WhatsApp"}…`;
+      msgInput.focus();
+    }
+    if (sendBtn) sendBtn.disabled = false;
+  } else {
+    if (replyForm) replyForm.hidden = true;
+    if (disabledBanner) disabledBanner.hidden = false;
+    const disabledText = document.getElementById("inbox-reply-disabled-text");
+    if (disabledText) {
+      disabledText.textContent = ticket.ticket_status === "RESOLVED"
+        ? "Questa conversazione è risolta."
+        : "Per rispondere manualmente, prendi prima in carico la conversazione.";
+    }
+    if (claimInlineBtn) {
+      claimInlineBtn.style.display = ticket.ticket_status === "RESOLVED" ? "none" : "inline-block";
+      claimInlineBtn.onclick = async () => {
+        try {
+          const res = await apiFetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(ticket.id)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ expected_version: ticket.version }),
+          });
+          if (!res.ok) throw new Error("Impossibile fare il claim.");
+          toast("Preso in carico", "success");
+          await caricaInbox();
+        } catch (e) {
+          toast(e.message, "error");
+        }
+      };
+    }
+  }
+}
+
+/* ---------- Invio Risposta Manuale ---------- */
+
+async function inviaRispostaInbox() {
+  if (!inboxState.selectedTicketId) return;
+  const ticket = inboxState.tickets.find((t) => t.id === inboxState.selectedTicketId);
+  if (!ticket || ticket.ticket_status !== "CLAIMED") return;
+
+  const msgInput = document.getElementById("inbox-message-input");
+  const sendBtn = document.getElementById("inbox-send-btn");
+  if (!msgInput) return;
+
+  const content = msgInput.value.trim();
+  if (!content) return;
+
+  if (sendBtn) sendBtn.disabled = true;
+  msgInput.disabled = true;
+
+  try {
+    const idempotencyKey = crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const res = await apiFetch(`${API_BASE}/api/inbox/reply/${encodeURIComponent(ticket.id)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content,
+        message_type: "text",
+        idempotency_key: idempotencyKey,
+      }),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Invio risposta fallito.");
+    }
+
+    msgInput.value = "";
+    toast("Messaggio inviato", "success");
+    await caricaDettaglioTicket(ticket.id);
+    await caricaInbox();
+  } catch (err) {
+    console.error("Errore invio messaggio:", err);
+    toast(err.message, "error");
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    if (msgInput) {
+      msgInput.disabled = false;
+      msgInput.focus();
+    }
+  }
+}
+
+/* ---------- Setup Event Listeners Inbox ---------- */
+
+function inizializzaEventiInbox() {
+  // 1. Filtri Principali (Colonna 1)
+  document.querySelectorAll("[data-inbox-main-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      inboxState.mainFilter = btn.dataset.inboxMainFilter;
+      document.querySelectorAll("[data-inbox-main-filter]").forEach((b) => b.classList.toggle("active", b === btn));
+
+      // Aggiorna label mobile
+      const activeLabel = document.getElementById("inbox-mobile-active-label");
+      if (activeLabel) activeLabel.textContent = btn.querySelector(".inbox-nav-text")?.textContent || "Filtri";
+
+      // Chiudi drawer mobile/tablet se aperto
+      document.getElementById("inbox-filters-panel")?.classList.remove("open");
+      const backdrop = document.getElementById("inbox-filter-backdrop");
+      if (backdrop) backdrop.hidden = true;
+
+      renderInboxConversazioni();
+    });
+  });
+
+  // 2. Quick Filters (Colonna 2 chips)
+  document.querySelectorAll("[data-quick-filter]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      inboxState.quickFilter = chip.dataset.quickFilter;
+      document.querySelectorAll("[data-quick-filter]").forEach((c) => c.classList.toggle("active", c === chip));
+      renderInboxConversazioni();
+    });
+  });
+
+  // 3. Form Invio Risposta
+  const replyForm = document.getElementById("inbox-reply-form");
+  if (replyForm) {
+    replyForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      inviaRispostaInbox();
+    });
+  }
+
+  const sendBtn = document.getElementById("inbox-send-btn");
+  if (sendBtn) {
+    sendBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      inviaRispostaInbox();
+    });
+  }
+
+  const msgInput = document.getElementById("inbox-message-input");
+  if (msgInput) {
+    msgInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        inviaRispostaInbox();
+      }
+    });
+  }
+
+  // 4. Mobile Controls (Back button & Filter drawer toggle)
+  const backBtn = document.getElementById("inbox-back-to-list");
+  if (backBtn) {
+    backBtn.addEventListener("click", () => {
+      document.querySelector(".inbox-view")?.classList.remove("show-detail");
+    });
+  }
+
+  const filterToggle = document.getElementById("inbox-filter-toggle");
+  const filterClose = document.getElementById("inbox-filters-close");
+  const filterBackdrop = document.getElementById("inbox-filter-backdrop");
+  const filterPanel = document.getElementById("inbox-filters-panel");
+
+  if (filterToggle && filterPanel) {
+    filterToggle.addEventListener("click", () => {
+      filterPanel.classList.add("open");
+      if (filterBackdrop) filterBackdrop.hidden = false;
+    });
+  }
+
+  if (filterClose && filterPanel) {
+    filterClose.addEventListener("click", () => {
+      filterPanel.classList.remove("open");
+      if (filterBackdrop) filterBackdrop.hidden = true;
+    });
+  }
+
+  if (filterBackdrop && filterPanel) {
+    filterBackdrop.addEventListener("click", () => {
+      filterPanel.classList.remove("open");
+      filterBackdrop.hidden = true;
+    });
+  }
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", inizializzaEventiInbox);
+} else {
+  inizializzaEventiInbox();
+}
 
 /* ---------- Auto-refresh inbox + polling ---------- */
 
@@ -3325,6 +3730,10 @@ notifBell?.addEventListener("click", () => {
     vaiAdAccesso();
     return;
   }
+  document.body.classList.add("authenticated");
+  document.querySelectorAll(".app-shell").forEach((el) => {
+    el.style.visibility = "";
+  });
   if (sessionStorage.getItem("melpis_benvenuto")) {
     sessionStorage.removeItem("melpis_benvenuto");
     toast("Benvenuto in Melpis: il tuo periodo di prova Ã¨ attivo.", "success");
@@ -3513,10 +3922,12 @@ notifBell?.addEventListener("click", () => {
 })();
 
 /* ============================================================
-   IMPOSTAZIONI â€” fuso orario organizzazione
+   IMPOSTAZIONI — fuso orario organizzazione
    ============================================================ */
 
-(async function inizializzaTimezone() {
+let caricaTimezone;
+
+(function inizializzaTimezone() {
   const select = document.getElementById("settings-timezone");
   const saveBtn = document.getElementById("settings-timezone-save");
   const status = document.getElementById("settings-timezone-status");
@@ -3570,7 +3981,7 @@ notifBell?.addEventListener("click", () => {
     }
   });
 
-  await carica();
+  caricaTimezone = carica;
 })();
 
 /* ============================================================

@@ -25,15 +25,14 @@ COPY login.html login.js register.html register.js auth.js auth.css /usr/share/n
 COPY index.html style.css app.js logo.webp /usr/share/nginx/html/app/
 COPY fonts/ /usr/share/nginx/html/app/fonts/
 COPY vendor/ /usr/share/nginx/html/app/vendor/
-COPY config.template.js /usr/share/nginx/html/app/config.template.js
+COPY config.template.js /usr/share/nginx/html/config.template.js
 
-# Genera config.js dal template con envsubst. MELPIS_API_BASE vuota (default)
-# = same-origin. Non usiamo l'envsubst_template di default perché serve una
-# variabile nostra su un file custom.
+# Genera config.js dal template con envsubst nella root pubblica.
+# MELPIS_API_BASE vuota (default) = same-origin.
 RUN apk add --no-cache gettext && \
-    envsubst '${MELPIS_API_BASE}' < /usr/share/nginx/html/app/config.template.js \
-        > /usr/share/nginx/html/app/config.js && \
-    rm /usr/share/nginx/html/app/config.template.js && \
+    envsubst '${MELPIS_API_BASE}' < /usr/share/nginx/html/config.template.js \
+        > /usr/share/nginx/html/config.js && \
+    rm /usr/share/nginx/html/config.template.js && \
     chown -R nginx:nginx /usr/share/nginx/html
 
 # Sostituisce il default.conf dell'immagine base.

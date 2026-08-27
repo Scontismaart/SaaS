@@ -1,8 +1,11 @@
-/* ============================================================
-   AUTH — helper condivisi tra /accedi/ e /registrati/
-   ============================================================ */
+const AUTH_API_BASE =
+  typeof window !== "undefined" && typeof window.MELPIS_API_BASE === "string"
+    ? window.MELPIS_API_BASE
+    : "";
 
-const AUTH_API_BASE = window.MELPIS_API_BASE ?? "http://localhost:8000";
+if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
+  console.warn("[Auth] window.MELPIS_API_BASE non definita, fallback sicuro su same-origin ('')");
+}
 
 const AUTH_PARAMS = new URLSearchParams(window.location.search);
 const NEXT_PATH = safeNext(AUTH_PARAMS.get("next"));

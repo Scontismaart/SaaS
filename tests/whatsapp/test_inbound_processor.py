@@ -593,7 +593,7 @@ class TestGuardrailsProcessor:
         ])
         captured = {}
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control", **kwargs):
             captured["intent"] = intent
             captured["variante"] = variante
             return RispostaOutput(
@@ -788,7 +788,7 @@ class TestRagContestoWhatsapp:
         ])
         captured = {}
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control", **kwargs):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Di giorno siamo aperti dalle 12:00.",
@@ -834,7 +834,7 @@ class TestRagContestoWhatsapp:
 
         mock_repo.search_similar = AsyncMock(side_effect=broken_search)
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control", **kwargs):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Siamo aperti dalle 12:00.",
@@ -865,7 +865,7 @@ class TestRagContestoWhatsapp:
 
         mock_repo.search_similar = AsyncMock(side_effect=hanging_search)
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control", **kwargs):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Siamo aperti dalle 12:00.",
@@ -898,7 +898,7 @@ class TestRagContestoWhatsapp:
         mock_repo.search_similar = AsyncMock(return_value=[])
         captured = {}
 
-        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control"):
+        async def fake_risposta(messaggio, profilo, billing=None, contesto_documenti="", intent=None, variante="control", **kwargs):
             captured["contesto"] = contesto_documenti
             return RispostaOutput(
                 risposta="Grazie della richiesta.",

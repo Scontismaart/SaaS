@@ -3,6 +3,8 @@ import logging
 import os
 from datetime import datetime, timezone
 
+_LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+
 try:
     os.makedirs(_LOG_DIR, exist_ok=True)
     _handler = logging.FileHandler(os.path.join(_LOG_DIR, "security-audit.log"), encoding="utf-8")

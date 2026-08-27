@@ -75,6 +75,7 @@ def test_cors_whitespace_stripped(monkeypatch):
 @pytest.mark.skipif(not HAS_MAIN, reason=f"Cannot import main.py: {globals().get('_import_error', 'unknown')}")
 def test_cors_fail_closed_on_empty(monkeypatch):
     monkeypatch.setenv("CORS_ORIGINS", " , ")
+    monkeypatch.setenv("PUBLIC_APP_URL", "")
     import importlib
     with pytest.raises(RuntimeError, match="CORS_ORIGINS"):
         importlib.reload(importlib.import_module("src.api.main"))

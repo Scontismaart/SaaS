@@ -47,6 +47,8 @@ def genera_risposta(
     billing: dict | None = None,
     intent: str | None = None,
     variante: str = "control",
+    contesto_disponibilita: str = "",
+    tentativi_falliti: int = 0,
 ) -> RispostaOutput:
     """Esegue la crew su un singolo messaggio e restituisce l'output
     strutturato e validato.
@@ -62,7 +64,9 @@ def genera_risposta(
     for model in [route.model, *route.fallback_models]:
         try:
             crew = crea_crew(profilo, messaggio, cronologia, route_request=route_request,
-                             model=model, variante=variante)
+                             model=model, variante=variante,
+                             contesto_disponibilita=contesto_disponibilita,
+                             tentativi_falliti=tentativi_falliti)
             return _validate_output(crew.kickoff())
         except Exception as exc:
             errors.append(f"{model}: {exc}")
@@ -72,10 +76,13 @@ def genera_risposta(
 async def genera_risposta_async(
     messaggio: MessaggioInput,
     profilo: ProfiloAttivita,
+    cronologia: list[tuple[str, str]] | None = None,
     billing: dict | None = None,
     contesto_documenti: str = "",
     intent: str | None = None,
     variante: str = "control",
+    contesto_disponibilita: str = "",
+    tentativi_falliti: int = 0,
 ) -> RispostaOutput:
     """Versione asincrona di genera_risposta per essere usata da route
     FastAPI che girano in un event loop già attivo.
@@ -89,8 +96,11 @@ async def genera_risposta_async(
     async with LLM_CONCURRENCY_SEM:
         for model in [route.model, *route.fallback_models]:
             try:
-                crew = crea_crew(profilo, messaggio, route_request=route_request, model=model,
-                                 contesto_documenti=contesto_documenti, variante=variante)
+                crew = crea_crew(profilo, messaggio, cronologia=cronologia,
+                                 route_request=route_request, model=model,
+                                 contesto_documenti=contesto_documenti, variante=variante,
+                                 contesto_disponibilita=contesto_disponibilita,
+                                 tentativi_falliti=tentativi_falliti)
                 return _validate_output(await crew.kickoff_async())
             except Exception as exc:
                 errors.append(f"{model}: {exc}")

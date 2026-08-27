@@ -179,6 +179,11 @@ async def lifespan(app: FastAPI):
                 whatsapp_service=None, app_config=None,
             )
             _imposta_fonte_dati_per_scheduler()
+            try:
+                from src.core.documenti.embeddings import _modello
+                asyncio.create_task(asyncio.to_thread(_modello))
+            except Exception as e:
+                print(f"[startup] Embedding model warmup warning: {e}")
     else:
         app.state.repo = None
         app.state.pool = None
@@ -239,6 +244,9 @@ app.include_router(register_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]
+public_url = (os.getenv("PUBLIC_APP_URL") or "").strip().rstrip("/")
+if public_url and public_url not in allow_origins:
+    allow_origins.append(public_url)
 if not allow_origins:
     raise RuntimeError(
         "CORS_ORIGINS e' impostata ma vuota dopo il parsing. "
@@ -402,43 +410,115 @@ async def _record_ai_usage(repo, organization_id: str | None, task_type: str,
 
 
 @app.post("/api/messaggio", response_model=RispostaOutput)
-def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_mario"):
-    # Endpoint demo della dashboard: usa solo i profili demo statici. Il
-    # profilo onboarding configurato dal wizard e' org-scoped e alimenta il
-    # responder WhatsApp reale (organizations.business_profile), non questo
-    # percorso demo.
-    profilo = PROFILI_DEMO.get(profilo_id)
+async def ricevi_messaggio(
+    request: Request,
+    messaggio: MessaggioInput,
+    profilo_id: str = "trattoria_da_mario",
+):
+    # Se l'utente è autenticato nella dashboard, usa il profilo reale
+    # dell'organizzazione (business_profile/onboarding) e il semaforo DB.
+    # Altrimenti fallback al profilo demo statico (PROFILI_DEMO).
+    org_id = None
+    profilo = None
+    try:
+        from src.core.auth.dependencies import get_organization_context
+        user = await get_organization_context(request)
+        if user and user.get("source") != "anonymous" and user.get("organization_id"):
+            org_id = user["organization_id"]
+            repo = getattr(request.app.state, "repo", None)
+            if repo:
+                org_data = await repo.get_organization(org_id)
+                if org_data and org_data.get("business_profile"):
+                    from src.whatsapp.inbound_processor import _profile_from_dict
+                    profilo = _profile_from_dict(
+                        org_data["business_profile"],
+                        fallback_name=org_data.get("name", "Attività"),
+                    )
+    except Exception as e:
+        logger.debug("Fallback to static demo profile: %s", e)
+
     if profilo is None:
-        raise HTTPException(status_code=404, detail=f"Profilo '{profilo_id}' non trovato")
+        profilo = PROFILI_DEMO.get(profilo_id)
+        if profilo is None:
+            raise HTTPException(status_code=404, detail=f"Profilo '{profilo_id}' non trovato")
 
     cronologia = conv_store.recupera_cronologia(messaggio.id_conversazione)
 
+    # Pre-fetch disponibilità da semaforo (DB reale se org autenticata, demo altrimenti)
+    from src.agents.prompts import estrai_date_da_testo, formatta_disponibilita
+    contesto_disp = ""
     try:
-        risposta = genera_risposta(messaggio, profilo, cronologia)
+        date_candidate = estrai_date_da_testo(messaggio.testo)
+        if date_candidate:
+            all_slots = []
+            booking_svc = getattr(request.app.state, "booking_service", None)
+            for d in date_candidate[:3]:
+                if org_id and booking_svc:
+                    slots = await booking_svc.semaforo_giorno(org_id, d)
+                else:
+                    from src.core.prenotazioni import semaforo_giorno
+                    slots = semaforo_giorno(d)
+                all_slots.extend([s.model_dump() if hasattr(s, "model_dump") else s for s in slots])
+            if all_slots:
+                contesto_disp = formatta_disponibilita(all_slots)
     except Exception as e:
+        logger.warning("Semaforo pre-fetch failed in ricevi_messaggio: %s", e)
+
+    tentativi = conv_store.tentativi_prenotazione(messaggio.id_conversazione)
+
+    from src.core.crew_runner import genera_risposta_async
+    try:
+        risposta = await genera_risposta_async(
+            messaggio, profilo,
+            cronologia=cronologia,
+            contesto_disponibilita=contesto_disp,
+            tentativi_falliti=tentativi,
+        )
+    except Exception as e:
+        logger.error("Error generating AI response in ricevi_messaggio: %s", e)
         raise HTTPException(status_code=502, detail=f"Errore nella generazione della risposta: {e}")
 
     conv_store.aggiungi(messaggio.id_conversazione, messaggio.testo, risposta.risposta)
 
-    prenotazione_salvata = None
+    prenotazione_id = None
     pren = risposta.prenotazione
     if pren and pren.data and pren.ora and pren.coperti:
-        from src.core.prenotazioni import crea_prenotazione_dashboard
-        from src.models.schemas import PrenotazioneManualeInput
-        try:
-            demo_input = PrenotazioneManualeInput(
-                nome_cliente=pren.nome_cliente or "Cliente",
-                telefono=pren.telefono or "",
-                data=pren.data,
-                ora=pren.ora,
-                coperti=pren.coperti,
-                note=pren.note,
-                stato="In attesa" if risposta.richiede_umano else "Confermato da IA",
-                origine="WhatsApp",
-            )
-            prenotazione_salvata = crea_prenotazione_dashboard(demo_input)
-        except Exception as e:
-            print(f"[demo] Booking save failed: {e}")
+        booking_svc = getattr(request.app.state, "booking_service", None)
+        if org_id and booking_svc:
+            try:
+                created = await booking_svc.create_booking(
+                    org_id=org_id,
+                    nome_cliente=pren.nome_cliente or "Cliente Dashboard",
+                    telefono=pren.telefono or "",
+                    data=pren.data,
+                    ora=pren.ora,
+                    coperti=pren.coperti,
+                    note=pren.note,
+                    origine="Dashboard",
+                    richiede_intervento=risposta.richiede_umano,
+                    id_conversazione=messaggio.id_conversazione,
+                )
+                prenotazione_id = created.get("id") if isinstance(created, dict) else getattr(created, "id", None)
+            except Exception as e:
+                logger.warning("[dashboard] Real booking save failed: %s", e)
+        else:
+            from src.core.prenotazioni import crea_prenotazione_dashboard
+            from src.models.schemas import PrenotazioneManualeInput
+            try:
+                demo_input = PrenotazioneManualeInput(
+                    nome_cliente=pren.nome_cliente or "Cliente",
+                    telefono=pren.telefono or "",
+                    data=pren.data,
+                    ora=pren.ora,
+                    coperti=pren.coperti,
+                    note=pren.note,
+                    stato="In attesa" if risposta.richiede_umano else "Confermato da IA",
+                    origine="WhatsApp",
+                )
+                creata = crea_prenotazione_dashboard(demo_input)
+                prenotazione_id = getattr(creata, "id", None)
+            except Exception as e:
+                logger.warning("[demo] Booking save failed: %s", e)
 
     _storico_eventi.append(
         EventoDashboard(
@@ -453,7 +533,7 @@ def ricevi_messaggio(messaggio: MessaggioInput, profilo_id: str = "trattoria_da_
                 "categoria": risposta.categoria,
                 "richiede_umano": risposta.richiede_umano,
                 "motivo": risposta.motivo,
-                "prenotazione_id": prenotazione_salvata.id if prenotazione_salvata else None,
+                "prenotazione_id": prenotazione_id,
             },
         )
     )

@@ -69,21 +69,8 @@ def crea_llm(
     model: str | None = None,
     temperature: float = 0.4,
     route_request: LLMRouteRequest | None = None,
+    max_tokens: int | None = None,
 ) -> LLM:
-    """Restituisce un'istanza LLM configurata sul provider indicato dal
-    prefisso del model id (default OpenRouter), pronta per un Agent CrewAI.
-
-    temperature bassa (0.4) di proposito: per un assistente che
-    risponde a clienti reali vogliamo risposte più prevedibili,
-    non creative.
-
-    Privacy (sempre attiva): su OpenRouter viene negato l'uso dei dati per
-    training (extra_body provider.data_collection='deny'): se un endpoint
-    servisse solo provider che addestrano, la richiesta fallisce invece di
-    "perdere" i dati. Groq e Cerebras non addestrano per policy, quindi non
-    ricevono il parametro (specifico di OpenRouter) e sono ammessi solo per
-    questa garanzia. Nessun interruttore per disattivare la protezione.
-    """
     selected_model = model
     if selected_model is None and route_request is not None:
         selected_model = route_llm(route_request).model
@@ -98,10 +85,14 @@ def crea_llm(
             f"la chiave API per il provider '{provider}'."
         )
 
+    if max_tokens is None:
+        max_tokens = int(os.getenv("LLM_MAX_TOKENS", "250"))
+
     llm_params: dict[str, object] = {
         "model": selected_model,
         "api_key": api_key,
         "temperature": temperature,
+        "max_tokens": max_tokens,
     }
 
     if provider == "openrouter":

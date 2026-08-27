@@ -29,8 +29,9 @@ TRATTORIA_DA_MARIO = ProfiloAttivita(
         "Possibilità di eventi privati/gruppi numerosi (oltre 10 persone) su richiesta",
     ],
     note_speciali=[
-        "Qualsiasi domanda che menzioni allergie o intolleranze alimentari specifiche "
-        "va SEMPRE girata a un umano: non rispondere mai nel merito, anche se sembra una domanda semplice.",
+        "Richieste di garanzie mediche o sicurezza alimentare su allergie/intolleranze gravi "
+        "vanno girate a un umano; se un'allergia è indicata come semplice nota/dettaglio di una prenotazione, "
+        "registrala nelle note di prenotazione e procedi.",
         "Richieste per eventi privati o gruppi oltre 10 persone vanno girate a un umano "
         "(serve valutazione disponibilità caso per caso).",
         "Reclami su esperienze passate (cibo, servizio, attesa) vanno sempre girati a un umano, "

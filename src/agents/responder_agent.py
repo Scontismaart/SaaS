@@ -25,6 +25,8 @@ def crea_responder_agent(
     route_request: LLMRouteRequest | None = None,
     model: str | None = None,
     variante: str = "control",
+    contesto_disponibilita: str = "",
+    tentativi_falliti: int = 0,
 ) -> Agent:
     """Costruisce l'agente con il backstory calibrato sul profilo attività.
     Il backstory in CrewAI funziona come parte del system prompt. La
@@ -37,7 +39,11 @@ def crea_responder_agent(
             "corretto, riconoscendo sempre quando un caso va girato a un umano "
             "invece di essere gestito in autonomia."
         ),
-        backstory=costruisci_system_prompt(profilo, variante=variante),
+        backstory=costruisci_system_prompt(
+            profilo, variante=variante,
+            contesto_disponibilita=contesto_disponibilita,
+            tentativi_falliti=tentativi_falliti,
+        ),
         llm=crea_llm(model=model, route_request=route_request),
         verbose=False,
         allow_delegation=False,
@@ -84,11 +90,17 @@ def crea_crew(
     model: str | None = None,
     contesto_documenti: str = "",
     variante: str = "control",
+    contesto_disponibilita: str = "",
+    tentativi_falliti: int = 0,
 ) -> Crew:
     """Assembla agente + task in una Crew pronta per il kickoff.
     Process.sequential è l'unico sensato con un solo task."""
 
-    agent = crea_responder_agent(profilo, route_request=route_request, model=model, variante=variante)
+    agent = crea_responder_agent(
+        profilo, route_request=route_request, model=model, variante=variante,
+        contesto_disponibilita=contesto_disponibilita,
+        tentativi_falliti=tentativi_falliti,
+    )
     task = crea_responder_task(agent, messaggio, cronologia, contesto_documenti)
 
     return Crew(

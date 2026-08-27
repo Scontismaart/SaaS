@@ -48,7 +48,11 @@ def clear_csrf_token(response: Response) -> None:
 
 def _allowed_origins() -> set[str]:
     raw = os.getenv("CSRF_TRUSTED_ORIGINS") or os.getenv("CORS_ORIGINS", "")
-    return {origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()}
+    origins = {origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()}
+    public_url = (os.getenv("PUBLIC_APP_URL") or "").strip().rstrip("/")
+    if public_url:
+        origins.add(public_url)
+    return origins
 
 
 def _request_origin(request: Request) -> str | None:
@@ -66,8 +70,14 @@ def _request_origin(request: Request) -> str | None:
 
 def _same_origin(request: Request, origin: str) -> bool:
     parsed = urlparse(origin)
-    host = request.headers.get("host")
-    return bool(host and parsed.netloc == host and parsed.scheme in {"http", "https"})
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if not host or parsed.scheme not in {"http", "https"}:
+        return False
+    if parsed.netloc == host:
+        return True
+    if parsed.hostname == host:
+        return True
+    return False
 
 
 def is_cookie_authenticated_mutation(request: Request) -> bool:

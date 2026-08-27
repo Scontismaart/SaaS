@@ -28,9 +28,9 @@ _DEFAULT_PREMIUM_MODEL = "openai/gpt-4.1"
 # non ha credito (tutti i modelli rispondono 402 payment_required).
 _DEFAULT_FALLBACK_MODELS = (
     "openai/gpt-4o-mini,"
-    "anthropic/claude-3.5-haiku,"
-    "google/gemini-flash-1.5,"
-    "groq/openai/gpt-oss-20b"
+    "anthropic/claude-3-haiku,"
+    "google/gemini-2.0-flash-001,"
+    "groq/llama-3.3-70b-versatile"
 )
 
 _FAQ_KEYWORDS = {

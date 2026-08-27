@@ -4411,6 +4411,56 @@ html[data-theme="dark"] .toast {
   color: var(--ink-muted);
 }
 
+.onboarding-draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg-elev-2, rgba(94, 255, 0, 0.08));
+  border: 1px solid var(--accent, #5eff00);
+}
+
+.onboarding-draft-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.onboarding-draft-banner-text strong {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.onboarding-draft-banner-text span {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+.onboarding-draft-discard-btn {
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong, rgba(0, 0, 0, 0.2));
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.onboarding-draft-discard-btn:hover {
+  background: var(--red-soft, rgba(255, 77, 77, 0.12));
+  border-color: var(--red, #ff4d4d);
+  color: var(--red, #ff4d4d);
+}
+
 .shortcuts-overlay {
   position: fixed;
   inset: 0;

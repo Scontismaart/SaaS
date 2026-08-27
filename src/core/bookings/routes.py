@@ -75,7 +75,7 @@ async def create_booking(body: dict, request: Request,
                          user: dict = Depends(require_ruolo("owner", "manager"))):
     service = _get_booking_service(request)
     try:
-        return await service.create_booking(
+        b = await service.create_booking(
             org_id=user["organization_id"],
             nome_cliente=body.get("nome_cliente"),
             telefono=body.get("telefono", ""),
@@ -93,6 +93,8 @@ async def create_booking(body: dict, request: Request,
         })
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e))
+    await _audit_booking(request, user, "prenotazione.creata_manualmente", b)
+    return b
 
 
 @router.get("/{booking_id}")
@@ -171,6 +173,7 @@ async def mark_no_show(booking_id: str, request: Request,
     b = await service.mark_no_show(user["organization_id"], booking_id)
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    await _audit_booking(request, user, "prenotazione.no_show", b)
     return b
 
 
@@ -181,4 +184,5 @@ async def mark_completed(booking_id: str, request: Request,
     b = await service.mark_completed(user["organization_id"], booking_id)
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    await _audit_booking(request, user, "prenotazione.completata", b)
     return b

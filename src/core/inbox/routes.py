@@ -1,8 +1,10 @@
+import logging
 import os
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from src.core.auth.audit import audit_log
 from src.core.auth.dependencies import require_ruolo
 from src.core.inbox.schemas import (
     AssignRequest,
@@ -25,6 +27,7 @@ from src.whatsapp.repository import Repository as WhatsAppRepository
 from src.whatsapp.service import WhatsAppService
 
 router = APIRouter(prefix="/api/inbox", tags=["inbox"])
+logger = logging.getLogger(__name__)
 
 
 def _get_wrepo(request: Request) -> WhatsAppRepository:
@@ -32,6 +35,26 @@ def _get_wrepo(request: Request) -> WhatsAppRepository:
     if pool is None:
         raise HTTPException(500, "Database not available")
     return WhatsAppRepository(pool=pool)
+
+
+async def _audit_inbox(request: Request, user: dict, action: str, conversation_id: str, details: dict | None = None) -> None:
+    repo = getattr(request.app.state, "repo", None)
+    org_id = user.get("organization_id")
+    if repo is None or not org_id:
+        return
+    try:
+        await audit_log(
+            repo,
+            organization_id=org_id,
+            action=action,
+            user_id=user.get("user_id"),
+            auth_user_id=user.get("auth_user_id"),
+            target_table="conversations",
+            target_id=str(conversation_id) if conversation_id else None,
+            details=details or {},
+        )
+    except Exception as exc:
+        logger.warning("audit inbox fallito: %s", exc)
 
 
 def _get_app_config() -> AppConfig:
@@ -177,6 +200,14 @@ async def claim_ticket(
                                        expected_version=body.expected_version, organization_id=org_id)
     if not result:
         raise HTTPException(status_code=409, detail="Conflict: ticket already claimed or version mismatch")
+    await _audit_inbox(
+        request, user, "inbox.ticket_claimed", conversation_id,
+        details={
+            "phone_number": conv.get("phone_number"),
+            "assigned_to": str(result["assigned_to"]) if result.get("assigned_to") else None,
+            "version": result.get("version"),
+        },
+    )
     return ClaimResponse(
         id=str(result["id"]),
         ticket_status=result["ticket_status"],
@@ -219,6 +250,14 @@ async def resolve_ticket(
     result = await wrepo.resolve_ticket(conversation_id, _require_user_id(user), organization_id=org_id)
     if not result:
         raise HTTPException(status_code=409, detail="Cannot resolve: not assigned to you or not CLAIMED")
+    await _audit_inbox(
+        request, user, "inbox.ticket_resolved", conversation_id,
+        details={
+            "phone_number": conv.get("phone_number"),
+            "ticket_status": result.get("ticket_status"),
+            "version": result.get("version"),
+        },
+    )
     return {"ticket_status": result["ticket_status"], "version": result["version"]}
 
 

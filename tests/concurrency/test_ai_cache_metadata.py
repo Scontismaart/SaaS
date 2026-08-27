@@ -31,6 +31,8 @@ DROP TABLE IF EXISTS bookings CASCADE;
 DROP TABLE IF EXISTS messages CASCADE;
 DROP TABLE IF EXISTS conversations CASCADE;
 DROP TABLE IF EXISTS contacts CASCADE;
+DROP TABLE IF EXISTS user_profiles CASCADE;
+DROP TABLE IF EXISTS event_log CASCADE;
 DROP TABLE IF EXISTS organizations CASCADE;
 DROP TABLE IF EXISTS usage_events CASCADE;
 DROP TABLE IF EXISTS outbound_dedup CASCADE;
@@ -42,7 +44,22 @@ CREATE TABLE organizations (
     trial_end TIMESTAMPTZ,
     messages_used_this_period INT NOT NULL DEFAULT 0,
     messages_limit INT NOT NULL DEFAULT 1000,
+    sla_minutes INT NOT NULL DEFAULT 15,
     business_profile JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE TABLE IF NOT EXISTS user_profiles (
+    id UUID PRIMARY KEY,
+    nome TEXT,
+    email TEXT
+);
+
+CREATE TABLE IF NOT EXISTS event_log (
+    id UUID PRIMARY KEY,
+    organization_id UUID,
+    priorita TEXT,
+    dettagli JSONB,
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE TABLE bookings (

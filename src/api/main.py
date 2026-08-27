@@ -347,6 +347,7 @@ async def _audit(request: Request, user: dict, action: str, target_table: str | 
             repo,
             organization_id=organization_id,
             action=action,
+            user_id=user.get("user_id"),
             auth_user_id=user.get("auth_user_id"),
             target_table=target_table,
             target_id=target_id,
@@ -667,7 +668,7 @@ async def lista_audit(
                 "action": r["action"],
                 "target_table": r["target_table"],
                 "target_id": r["target_id"],
-                "details": r["details"],
+                "details": json.loads(r["details"]) if isinstance(r["details"], str) else (r["details"] or {}),
                 "created_at": r["created_at"].isoformat(),
                 "user_email": r["user_email"],
             }

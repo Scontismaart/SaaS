@@ -420,13 +420,14 @@ let notificationItems = {
   recensioni: 0,
   conoscenza: 0,
 };
+let prenotazioniInAttesaCount = 0;
 
 /* Chiavi delle notifiche nate prima della riorganizzazione della sidebar:
-   la migrazione preserva lo stato "giÃ  letto" (timestamp) di chi le aveva
+   la migrazione preserva lo stato "già letto" (timestamp) di chi le aveva
    viste, altrimenti le notifiche ricomparirebbero come nuove. */
 const NOTIF_KEY_MIGRATION = {
   documenti: "conoscenza",
-  report: null, // badge rimosso: la voce non esiste piÃ¹
+  report: null, // badge rimosso: la voce non esiste più
   panoramica: null, // badge aggregato rimosso (ora Inbox e Recensioni hanno i propri)
   assistente: null,
 };
@@ -462,6 +463,14 @@ function salvaStatoNotifiche(stato) {
 function aggiornaBadgeNotifiche(stato) {
   notificationBadges.forEach((badge) => {
     const key = badge.dataset.notificationBadge;
+    if (key === "prenotazioni") {
+      // Badge persistente per prenotazioni in_attesa: visibile da qualsiasi vista finché non confermate/rifiutate
+      const inAttesa = Number(prenotazioniInAttesaCount || 0);
+      badge.textContent = inAttesa > 99 ? "99+" : String(inAttesa);
+      badge.hidden = inAttesa === 0;
+      badge.title = inAttesa > 0 ? `Da confermare: ${inAttesa}` : "";
+      return;
+    }
     const totale = Number(notificationItems[key] || 0);
     const viste = Number(stato.viste?.[key] || 0);
     const nonViste = Math.max(0, totale - viste);
@@ -534,6 +543,14 @@ async function aggiornaNotifiche() {
       recensioni: summary.recensioni_da_approvare || 0,
       conoscenza: summary.documenti || 0,
     };
+    try {
+      const bRes = await apiFetch(`${API_BASE}/api/bookings`);
+      if (bRes.ok) {
+        const list = await bRes.json();
+        prenotazioniInAttesaCount = list.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa").length;
+        if (bookingPendingValue) bookingPendingValue.textContent = String(prenotazioniInAttesaCount);
+      }
+    } catch { /* ignora errore fetch secondario */ }
     const stato = leggiStatoNotifiche();
     if (!stato.inizializzato) {
       stato.inizializzato = true;
@@ -726,11 +743,14 @@ function aggiornaDefaultLingua() {
   }
 }
 
+const ONBOARDING_DRAFT_KEY = "melpis_onboarding_bozza";
+let dbProfileRecord = null;
+
 function profiloOnboarding() {
   const vertical = verticaleCorrente();
   return {
     verticale: onboardingState.selectedVertical,
-    nome_attivita: onboardingEls.name.value.trim() || "Nuova attivitÃ ",
+    nome_attivita: onboardingEls.name.value.trim() || "Nuova attività",
     orari: onboardingEls.hours.value.trim() || "Orari da configurare",
     tono: onboardingEls.tone.value.trim() || vertical?.tono || "",
     servizi: righeDaTextarea(onboardingEls.services.value),
@@ -740,6 +760,72 @@ function profiloOnboarding() {
     lingue_supportate: lingueSelezionate(),
     lingua_default: onboardingEls.linguaDefault?.value || onboardingState.linguaDefault,
   };
+}
+
+function salvaBozzaOnboarding() {
+  /* Bozza in localStorage: il wizard resta riprendibile anche se il
+     browser si chiude a metà. I dati sono non-sensibili (profilo attività). */
+  try {
+    const bozza = {
+      step: onboardingState.step,
+      salvata_at: new Date().toISOString(),
+      profilo: profiloOnboarding(),
+      extraRules: onboardingState.extraRules || [],
+    };
+    localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(bozza));
+    const badge = document.getElementById("onboarding-autosave");
+    if (badge) {
+      const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      badge.textContent = `Bozza salvata · ${ora}`;
+      badge.hidden = false;
+    }
+  } catch { /* localStorage pieno/bloccato: non blocca il wizard */ }
+}
+
+function leggiBozzaOnboarding() {
+  try {
+    const raw = localStorage.getItem(ONBOARDING_DRAFT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function pulisciBozzaOnboarding() {
+  try {
+    localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+  } catch { /* storage non disponibile */ }
+  const banner = document.getElementById("onboarding-draft-banner");
+  if (banner) banner.hidden = true;
+  const badge = document.getElementById("onboarding-autosave");
+  if (badge) badge.hidden = true;
+}
+
+function applicaProfiloAForm(record, extraRules = null) {
+  if (!record) return;
+  if (record.verticale) onboardingState.selectedVertical = record.verticale;
+  if (onboardingEls.name) onboardingEls.name.value = record.nome_attivita || "";
+  if (onboardingEls.hours) onboardingEls.hours.value = record.orari || "";
+  if (onboardingEls.tone) onboardingEls.tone.value = record.tono || "";
+  if (onboardingEls.services) {
+    onboardingEls.services.value = Array.isArray(record.servizi)
+      ? record.servizi.join("\n")
+      : (record.servizi || "");
+  }
+  if (onboardingEls.whatsapp) onboardingEls.whatsapp.checked = Boolean(record.whatsapp_collegato);
+  if (onboardingEls.docs) onboardingEls.docs.checked = Boolean(record.documenti_importati);
+  onboardingState.profileLoaded = true;
+  if (record.lingue_supportate?.length) onboardingState.lingue = record.lingue_supportate;
+  if (record.lingua_default) onboardingState.linguaDefault = record.lingua_default;
+  if (extraRules && Array.isArray(extraRules)) {
+    onboardingState.extraRules = extraRules;
+  }
+  if (record.nome_attivita) {
+    const bn = document.getElementById("business-name");
+    const cbn = document.getElementById("chat-business-name");
+    if (bn) bn.textContent = record.nome_attivita;
+    if (cbn) cbn.textContent = record.nome_attivita;
+  }
 }
 
 function renderOnboardingStep() {
@@ -755,21 +841,6 @@ function renderOnboardingStep() {
   onboardingEls.prev.disabled = onboardingState.step === 0;
   onboardingEls.next.textContent = onboardingState.step === 6 ? "Completa" : "Avanti";
   salvaBozzaOnboarding();
-}
-
-function salvaBozzaOnboarding() {
-  /* Bozza in localStorage: il wizard resta riprendibile anche se il
-     browser si chiude a metÃ . I dati sono non-sensibili (profilo attivitÃ ). */
-  try {
-    const bozza = { step: onboardingState.step, salvata_at: new Date().toISOString(), profilo: profiloOnboarding() };
-    localStorage.setItem("melpis_onboarding_bozza", JSON.stringify(bozza));
-    const badge = document.getElementById("onboarding-autosave");
-    if (badge) {
-      const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
-      badge.textContent = `Bozza salvata Â· ${ora}`;
-      badge.hidden = false;
-    }
-  } catch { /* localStorage pieno/bloccato: non blocca il wizard */ }
 }
 
 function renderVerticals() {
@@ -792,6 +863,7 @@ function renderVerticals() {
       }
       renderVerticals();
       renderEscalationRules();
+      salvaBozzaOnboarding();
     });
     onboardingEls.verticalGrid.appendChild(card);
   });
@@ -805,6 +877,8 @@ function renderEscalationRules() {
     const label = document.createElement("label");
     label.className = "wizard-check";
     label.innerHTML = `<input class="onboarding-rule" type="checkbox" value="${_sanitize(rule.replaceAll('"', "&quot;"))}" checked> ${_sanitize(rule)}`;
+    const input = label.querySelector("input");
+    input?.addEventListener("change", () => salvaBozzaOnboarding());
     onboardingEls.escalationList.appendChild(label);
   });
 }
@@ -813,28 +887,16 @@ async function caricaProfiloOnboarding() {
   try {
     const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
     if (res.status === 401) {
-      onboardingEls.status.textContent = "Serve la config di accesso: clicca \"Configura accesso\" in alto.";
+      onboardingEls.status.textContent = 'Serve la config di accesso: clicca "Configura accesso" in alto.';
       onboardingEls.status.style.color = "var(--red)";
-      return;
+      return null;
     }
-    if (!res.ok) return;
+    if (!res.ok) return null;
     const data = await res.json();
-    const record = data.profilo;
-    if (!record) return;
-    onboardingState.selectedVertical = record.verticale;
-    onboardingEls.name.value = record.nome_attivita || "";
-    onboardingEls.hours.value = record.orari || "";
-    onboardingEls.tone.value = record.tono || "";
-    onboardingEls.services.value = (record.servizi || []).join("\n");
-    onboardingEls.whatsapp.checked = Boolean(record.whatsapp_collegato);
-    onboardingEls.docs.checked = Boolean(record.documenti_importati);
-    onboardingState.profileLoaded = true;
-    onboardingState.lingue = record.lingue_supportate?.length ? record.lingue_supportate : ["it"];
-    onboardingState.linguaDefault = record.lingua_default || "it";
-    document.getElementById("business-name").textContent = record.nome_attivita;
-    document.getElementById("chat-business-name").textContent = record.nome_attivita;
+    dbProfileRecord = data.profilo || null;
+    return dbProfileRecord;
   } catch {
-    /* profilo assente: wizard parte da template */
+    return null;
   }
 }
 
@@ -865,7 +927,44 @@ async function inizializzaOnboarding() {
       onboardingEls.services.value = first.servizi.join("\n");
       onboardingEls.testMessage.value = first.esempio;
     }
-    await caricaProfiloOnboarding();
+    const savedProfile = await caricaProfiloOnboarding();
+    const bozzaLocale = leggiBozzaOnboarding();
+
+    let usaBozza = false;
+    if (bozzaLocale && bozzaLocale.profilo) {
+      if (!savedProfile || !savedProfile.updated_at) {
+        usaBozza = true;
+      } else {
+        const draftDate = new Date(bozzaLocale.salvata_at || 0);
+        const dbDate = new Date(savedProfile.updated_at || savedProfile.created_at || 0);
+        usaBozza = draftDate >= dbDate;
+      }
+    }
+
+    const banner = document.getElementById("onboarding-draft-banner");
+    const timeHint = document.getElementById("onboarding-draft-time-hint");
+
+    if (usaBozza && bozzaLocale.profilo) {
+      applicaProfiloAForm(bozzaLocale.profilo, bozzaLocale.extraRules);
+      if (typeof bozzaLocale.step === "number" && bozzaLocale.step >= 0 && bozzaLocale.step <= 6) {
+        onboardingState.step = bozzaLocale.step;
+      }
+      if (banner) {
+        banner.hidden = false;
+        if (timeHint && bozzaLocale.salvata_at) {
+          try {
+            const d = new Date(bozzaLocale.salvata_at);
+            timeHint.textContent = `Bozza salvata il ${d.toLocaleDateString("it-IT")} alle ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}.`;
+          } catch {
+            timeHint.textContent = "Bozza recuperata in locale.";
+          }
+        }
+      }
+    } else if (savedProfile) {
+      applicaProfiloAForm(savedProfile);
+      if (banner) banner.hidden = true;
+    }
+
     renderVerticals();
     renderEscalationRules();
     renderLingue();
@@ -890,13 +989,15 @@ async function salvaProfiloOnboarding() {
   }
   const data = await res.json();
   const record = data.profilo;
+  dbProfileRecord = record;
+  pulisciBozzaOnboarding();
   document.getElementById("business-name").textContent = record.nome_attivita;
   document.getElementById("chat-business-name").textContent = record.nome_attivita;
   return record;
 }
 
 /* ============================================================
-   ONBOARDING â€” accesso dal banner in "Assistente" (voce nav rimossa)
+   ONBOARDING — accesso dal banner in "Assistente" (voce nav rimossa)
    ============================================================ */
 
 function apriOnboarding() {
@@ -906,9 +1007,6 @@ function apriOnboarding() {
     v.classList.toggle("view-hidden", v.dataset.viewPanel !== "onboarding");
   });
   topbarTitle.textContent = "Configurazione assistente";
-  // Pre-compila il wizard dal profilo salvato: il wizard Ã¨ l'unico editor
-  // della configurazione assistente (le card duplicate in Impostazioni sono
-  // state rimosse).
   inizializzaOnboarding();
 }
 
@@ -918,6 +1016,37 @@ function chiudiOnboarding() {
 
 document.getElementById("onboarding-banner-cta")?.addEventListener("click", apriOnboarding);
 document.getElementById("onboarding-chiudi")?.addEventListener("click", chiudiOnboarding);
+document.getElementById("onboarding-draft-discard")?.addEventListener("click", () => {
+  pulisciBozzaOnboarding();
+  onboardingState.step = 0;
+  onboardingState.extraRules = [];
+  if (dbProfileRecord) {
+    applicaProfiloAForm(dbProfileRecord);
+  } else {
+    const first = onboardingState.verticals[0];
+    if (first) {
+      onboardingState.selectedVertical = first.id;
+      onboardingEls.tone.value = first.tono;
+      onboardingEls.services.value = first.servizi.join("\n");
+      onboardingEls.testMessage.value = first.esempio;
+      onboardingEls.name.value = "";
+      onboardingEls.hours.value = "";
+      onboardingState.lingue = LINGUE_DEFAULT_PER_VERTICALE[first.id] || ["it"];
+    }
+  }
+  renderVerticals();
+  renderEscalationRules();
+  renderLingue();
+  renderOnboardingStep();
+  toast("Bozza locale scartata. Ripartito dal profilo iniziale.", "info");
+});
+
+[onboardingEls.name, onboardingEls.hours, onboardingEls.tone, onboardingEls.services].forEach((el) => {
+  el?.addEventListener("input", () => salvaBozzaOnboarding());
+});
+[onboardingEls.whatsapp, onboardingEls.docs].forEach((el) => {
+  el?.addEventListener("change", () => salvaBozzaOnboarding());
+});
 
 
 /* â”€â”€ Sicurezza account: cambio password/email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -1051,6 +1180,7 @@ onboardingEls.addRule?.addEventListener("click", () => {
   onboardingState.extraRules.push(rule);
   onboardingEls.extraRule.value = "";
   renderEscalationRules();
+  salvaBozzaOnboarding();
 });
 
 onboardingEls.previewBtn?.addEventListener("click", async () => {
@@ -1518,8 +1648,12 @@ async function aggiornaPrenotazioni() {
     const prenotazioni = await res.json();
     bookingRecords = prenotazioni;
     const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
+    prenotazioniInAttesaCount = pending.length;
     bookingCount.textContent = `${prenotazioni.length} prenotazioni`;
     if (bookingPendingValue) bookingPendingValue.textContent = pending.length;
+    const statoNotif = leggiStatoNotifiche();
+    aggiornaBadgeNotifiche(statoNotif);
+    aggiornaCampana();
     if (!bookingCalendar) inizializzaCalendarioPrenotazioni();
     if (!bookingCalendar) return;
     bookingCalendar.removeAllEvents();
@@ -3102,13 +3236,10 @@ document.addEventListener("keydown", (event) => {
    ============================================================ */
 
 const NOTIF_LABELS = {
-  panoramica: "Panoramica",
-  assistente: "Assistente",
-  recensioni: "Recensioni",
-  prenotazioni: "Prenotazioni",
-  documenti: "Documenti",
-  report: "Report",
   inbox: "Inbox",
+  prenotazioni: "Prenotazioni",
+  recensioni: "Recensioni",
+  conoscenza: "Conoscenza",
 };
 
 const notifBell = document.getElementById("notif-bell");
@@ -3119,6 +3250,10 @@ const bellBadge = document.getElementById("bell-badge");
 function conteggioNonViste() {
   const stato = leggiStatoNotifiche();
   return Object.keys(NOTIF_LABELS).map((key) => {
+    if (key === "prenotazioni") {
+      // Nel pannello campana mostra sempre il count reale di in_attesa (azione richiesta)
+      return { key, nonViste: Number(prenotazioniInAttesaCount || 0) };
+    }
     const totale = Number(notificationItems[key] || 0);
     const viste = Number(stato.viste?.[key] || 0);
     return { key, nonViste: Math.max(0, totale - viste) };

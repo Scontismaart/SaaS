@@ -30,6 +30,8 @@ async def get_prenotazioni_completate(
     """
     if stati is None:
         stati = ["completata"]
+    if not stati:
+        return []
 
     placeholders = ", ".join(f"${i}" for i in range(4, 4 + len(stati)))
 

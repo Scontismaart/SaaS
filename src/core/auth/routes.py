@@ -15,6 +15,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from src.core.auth import bff, throttle
+from src.core.auth.audit import audit_log
 from src.core.auth.csrf import clear_csrf_token, issue_csrf_token
 from src.core.auth.dependencies import get_organization_context, get_repo
 
@@ -350,7 +351,27 @@ async def change_password(body: PasswordChange, request: Request):
             "e includere almeno un carattere speciale (es. ! @ # $ %)",
         )
     token = _require_access_token(request)
-    await _supabase_update_user(token, {"password": pwd})
+    res_user = await _supabase_update_user(token, {"password": pwd})
+    repo = getattr(request.app.state, "repo", None)
+    auth_user_id = res_user.get("id") if isinstance(res_user, dict) else None
+    if repo and auth_user_id:
+        try:
+            memberships = await repo.get_memberships_by_auth(str(auth_user_id))
+            if memberships:
+                org_id = str(memberships[0]["organization_id"])
+                u_id = str(memberships[0]["user_id"])
+                await audit_log(
+                    repo,
+                    organization_id=org_id,
+                    action="account.password_cambiata",
+                    user_id=u_id,
+                    auth_user_id=str(auth_user_id),
+                    target_table="user_profiles",
+                    target_id=u_id,
+                    details={"email": res_user.get("email"), "ip": ip},
+                )
+        except Exception:
+            pass
     return {"ok": True, "message": "Password aggiornata"}
 
 
@@ -367,10 +388,35 @@ async def change_email(body: EmailChange, request: Request):
     user = await _supabase_update_user(token, {"email": email})
     # Con "Confirm email" attivo Supabase compila new_email e invia il link:
     # la vecchia email resta attiva fino alla conferma.
-    conferma_richiesta = bool(user.get("new_email"))
+    conferma_richiesta = bool(user.get("new_email")) if isinstance(user, dict) else False
+    auth_user_id = user.get("id") if isinstance(user, dict) else None
+    repo = getattr(request.app.state, "repo", None)
+    if repo and auth_user_id:
+        try:
+            memberships = await repo.get_memberships_by_auth(str(auth_user_id))
+            if memberships:
+                org_id = str(memberships[0]["organization_id"])
+                u_id = str(memberships[0]["user_id"])
+                await audit_log(
+                    repo,
+                    organization_id=org_id,
+                    action="account.email_cambiata",
+                    user_id=u_id,
+                    auth_user_id=str(auth_user_id),
+                    target_table="user_profiles",
+                    target_id=u_id,
+                    details={
+                        "old_email": user.get("email"),
+                        "new_email": email,
+                        "conferma_richiesta": conferma_richiesta,
+                        "ip": ip,
+                    },
+                )
+        except Exception:
+            pass
     return {
         "ok": True,
-        "email": user.get("email"),
+        "email": user.get("email") if isinstance(user, dict) else None,
         "conferma_richiesta": conferma_richiesta,
         "message": (
             "Controlla la nuova casella: ti è arrivato il link di conferma"

@@ -110,7 +110,7 @@
       <div class="topbar-right">
         <span class="topbar-meta" id="topbar-date"></span>
         <div class="notif-wrap">
-          <button type="button" class="bell-btn" id="notif-bell" aria-haspopup="menu" aria-expanded="false" aria-controls="notif-panel" aria-label="Centro notifiche">
+          <button type="button" class="bell-btn" id="notif-bell" aria-haspopup="menu" aria-expanded="false" aria-controls="notif-panel" aria-label="Centro notifiche" title="Novità non ancora viste">
             <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 9.5a6 6 0 1 0-12 0v2.9c0 .6-.24 1.18-.66 1.6L4.1 15.24c-.63.63-.19 1.76.71 1.76h14.38c.9 0 1.34-1.13.71-1.76l-1.24-1.24a2.26 2.26 0 0 1-.66-1.6V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
             <span class="bell-badge" id="bell-badge" hidden></span>
           </button>
@@ -277,6 +277,18 @@
           <div class="onboarding-head-row">
             <div class="onboarding-progress"><span id="onboarding-progress-bar"></span></div>
             <button type="button" class="report-refresh" id="onboarding-chiudi">Chiudi configurazione</button>
+          </div>
+          <div class="onboarding-draft-banner" id="onboarding-draft-banner" hidden>
+            <div class="onboarding-draft-banner-text">
+              <span class="onboarding-draft-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <div>
+                <strong>Riprendiamo da dove avevi lasciato</strong>
+                <span id="onboarding-draft-time-hint">Bozza recuperata in locale.</span>
+              </div>
+            </div>
+            <button type="button" class="onboarding-draft-discard-btn" id="onboarding-draft-discard">Scarta bozza</button>
           </div>
           <span class="onboarding-autosave-badge" id="onboarding-autosave" hidden></span>
 
@@ -527,7 +539,7 @@
           <input class="doc-config-input" id="booking-name" type="text" placeholder="Nome cliente" required>
           <input class="doc-config-input" id="booking-phone" type="tel" placeholder="Telefono">
           <input class="doc-config-input" id="booking-date" type="date" required>
-          <input class="doc-config-input" id="booking-time" type="time" step="900" required>
+          <input class="doc-config-input" id="booking-time" type="time" step="3600" required>
           <input class="doc-config-input" id="booking-seats" type="number" min="1" max="50" placeholder="Coperti" required>
           <textarea class="doc-query-input booking-note" id="booking-note" rows="2" placeholder="Note (opzionale)"></textarea>
           <button type="submit" class="review-analyze">Salva prenotazione</button>

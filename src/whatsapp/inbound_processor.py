@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import logging
 import uuid
@@ -208,11 +209,17 @@ class InboundProcessor:
             return
 
         # Check se il ticket è CLAIMED da un operatore - se sì, non generare risposta AI
-        conversation = await self.repo.get_conversation(str(msg["conversation_id"]), org_id)
-        if conversation and conversation.get("ticket_status") == "CLAIMED":
-            logger.info("Ticket %s is CLAIMED, skipping AI response for message %s", msg["conversation_id"], msg["id"])
-            await self._finalize_message(msg["id"], handling_type="claimed_by_operator", organization_id=org_id)
-            return
+        get_conv_fn = getattr(self.repo, "get_conversation", None)
+        if get_conv_fn is not None:
+            conv_res = get_conv_fn(str(msg["conversation_id"]), org_id)
+            if inspect.isawaitable(conv_res):
+                conversation = await conv_res
+            else:
+                conversation = conv_res
+            if isinstance(conversation, dict) and conversation.get("ticket_status") == "CLAIMED":
+                logger.info("Ticket %s is CLAIMED, skipping AI response for message %s", msg["conversation_id"], msg["id"])
+                await self._finalize_message(msg["id"], handling_type="claimed_by_operator", organization_id=org_id)
+                return
 
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
         if tenant_config is not None:

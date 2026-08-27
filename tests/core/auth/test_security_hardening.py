@@ -104,8 +104,13 @@ async def test_rls_blocks_cross_tenant_direct_query(pg_pool, sample_org, other_o
                 SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
             $$ LANGUAGE sql STABLE;
         """)
-        await conn.execute("DROP ROLE IF EXISTS authenticated")
-        await conn.execute("CREATE ROLE authenticated")
+        await conn.execute("""
+            DO $$ BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+                    CREATE ROLE authenticated;
+                END IF;
+            END $$;
+        """)
         await conn.execute("GRANT USAGE ON SCHEMA public, auth TO authenticated")
         await conn.execute("GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated")
         await conn.execute(

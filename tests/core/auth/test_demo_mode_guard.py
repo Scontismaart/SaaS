@@ -41,6 +41,7 @@ def test_startup_bloccato_senza_encryption_key(monkeypatch):
 
 def test_startup_bloccato_chiave_invalida(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("DEMO_MODE", raising=False)
     monkeypatch.setenv("ENCRYPTION_KEY", "non-una-chiave")
     with pytest.raises(RuntimeError, match="B4"):
         assert_production_safe()
@@ -49,6 +50,7 @@ def test_startup_bloccato_chiave_invalida(monkeypatch):
 def test_startup_ok_con_chiave_valida(monkeypatch):
     from cryptography.fernet import Fernet
     monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("DEMO_MODE", raising=False)
     monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
     assert_production_safe()
 

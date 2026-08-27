@@ -16,6 +16,10 @@ class SlotPienoError(ValueError):
         self.alternative = alternative or []
 
 
+class BookingNotFoundError(ValueError):
+    pass
+
+
 class BookingService:
     def __init__(self, repo, whatsapp_service=None, app_config=None, calendar_service=None):
         self.repo = repo
@@ -25,11 +29,13 @@ class BookingService:
 
     # ── Disponibilità ──────────────────────────────────────────
 
-    async def _coperti_prenotati(self, org_id, data, ora):
+    async def _coperti_prenotati(self, org_id, data, ora, exclude_booking_id=None):
         bookings = await self.repo.list_bookings(org_id, data)
         fascia = f"{int(ora[:2]):02d}:00"
         occupati = 0
         for b in bookings:
+            if exclude_booking_id is not None and str(b["id"]) == str(exclude_booking_id):
+                continue
             if b["stato"] in STATI_LIBERI:
                 continue
             ora_b = b["ora"]
@@ -46,8 +52,11 @@ class BookingService:
             return settings["capienze_orarie"]
         return {f: 40 for f in SLOT_ORE}
 
-    async def verifica_disponibilita(self, org_id, data, ora, coperti=None):
-        prenotati = await self._coperti_prenotati(org_id, data, ora)
+    async def verifica_disponibilita(self, org_id, data, ora, coperti=None,
+                                     exclude_booking_id=None):
+        prenotati = await self._coperti_prenotati(
+            org_id, data, ora, exclude_booking_id=exclude_booking_id
+        )
         fascia = f"{int(ora[:2]):02d}:00"
         capienze = await self._get_capienze(org_id)
         massimi = capienze.get(fascia, 40)
@@ -56,7 +65,9 @@ class BookingService:
         if coperti and coperti > liberi:
             alternative = [
                 f for f in SLOT_ORE
-                if f != fascia and (capienze.get(f, 0) - await self._coperti_prenotati(org_id, data, f)) >= coperti
+                if f != fascia and (capienze.get(f, 0) - await self._coperti_prenotati(
+                    org_id, data, f, exclude_booking_id=exclude_booking_id
+                )) >= coperti
             ][:2]
         if liberi <= 0:
             stato = "rosso"
@@ -116,6 +127,15 @@ class BookingService:
     async def create_booking(self, org_id, nome_cliente, data, ora, coperti,
                               telefono="", note="", tipo_evento="", origine="Dashboard",
                               richiede_intervento=False, id_conversazione="", source_message_id=None):
+        values = self._validated_booking_values(
+            nome_cliente, telefono, data, ora, coperti, note
+        )
+        nome_cliente = values["nome_cliente"]
+        telefono = values["telefono"]
+        data = values["data"]
+        ora = values["ora"]
+        coperti = values["coperti"]
+        note = values["note"]
         disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
         if coperti > disp.coperti_liberi:
             raise SlotPienoError(
@@ -141,10 +161,114 @@ class BookingService:
                 logger.exception("calendar=sync_fail create_booking id=%s", booking.get("id"))
         return booking
 
+    @staticmethod
+    def _validated_booking_values(nome_cliente, telefono, data, ora, coperti, note):
+        if not isinstance(nome_cliente, str) or not nome_cliente.strip():
+            raise ValueError("nome_cliente obbligatorio")
+        if not isinstance(telefono, str):
+            raise ValueError("telefono non valido")
+        if not isinstance(note, str):
+            raise ValueError("note non valide")
+        if not isinstance(data, str):
+            raise ValueError("data non valida")
+        try:
+            date.fromisoformat(data)
+        except ValueError as exc:
+            raise ValueError("data non valida: usare YYYY-MM-DD") from exc
+        if not isinstance(ora, str):
+            raise ValueError("ora non valida")
+        try:
+            ore, minuti = ora.split(":")
+            parsed_ora = time(int(ore), int(minuti))
+        except (ValueError, TypeError) as exc:
+            raise ValueError("ora non valida: usare HH:MM") from exc
+        if parsed_ora.second or parsed_ora.microsecond:
+            raise ValueError("ora non valida: usare HH:MM")
+        if not isinstance(coperti, int) or isinstance(coperti, bool) or coperti <= 0:
+            raise ValueError("coperti deve essere un intero positivo")
+        return {
+            "nome_cliente": nome_cliente.strip(),
+            "telefono": telefono.strip(),
+            "data": data,
+            "ora": f"{parsed_ora.hour:02d}:{parsed_ora.minute:02d}",
+            "coperti": coperti,
+            "note": note.strip(),
+        }
+
+    async def update_booking(self, org_id, booking_id, **changes):
+        current = await self._get_booking_or_raise(org_id, booking_id)
+        values = {
+            "nome_cliente": changes.get("nome_cliente", current.get("nome_cliente", "")),
+            "telefono": changes.get("telefono", current.get("telefono", "")),
+            "data": changes.get("data", self._format_date(current.get("data"))),
+            "ora": changes.get("ora", self._format_time(current.get("ora"))),
+            "coperti": changes.get("coperti", current.get("coperti")),
+            "note": changes.get("note", current.get("note", "")),
+        }
+        values = self._validated_booking_values(**values)
+        schedule_changed = any(
+            values[key] != self._format_booking_value(key, current.get(key))
+            for key in ("data", "ora", "coperti")
+        )
+        if schedule_changed:
+            disp = await self.verifica_disponibilita(
+                org_id, values["data"], values["ora"], values["coperti"],
+                exclude_booking_id=booking_id,
+            )
+            if values["coperti"] > disp.coperti_liberi:
+                raise SlotPienoError(
+                    f"slot pieno per {values['coperti']} coperti alle {values['ora']}",
+                    alternative=disp.alternative,
+                )
+        new_status = "in_attesa" if schedule_changed else current["stato"]
+        updated = await self.repo.update_booking_details(
+            org_id, booking_id, stato=new_status, **values
+        )
+        if not updated:
+            raise ValueError(f"booking {booking_id} non trovato")
+        if schedule_changed and self.whatsapp:
+            try:
+                sent = await self.send_booking_reconfirmation(org_id, updated)
+                if not sent:
+                    raise RuntimeError("notifica WhatsApp di riconferma non inviata")
+            except Exception:
+                logger.exception("booking=reconfirmation_failed id=%s", booking_id)
+                await self.repo.update_booking_details(
+                    org_id, booking_id, stato=current["stato"],
+                    nome_cliente=current.get("nome_cliente", ""),
+                    telefono=current.get("telefono", ""),
+                    data=self._format_date(current.get("data")),
+                    ora=self._format_time(current.get("ora")),
+                    coperti=current.get("coperti"), note=current.get("note", ""),
+                )
+                raise
+        if self.calendar_service:
+            try:
+                await self.calendar_service.sync_booking_state(updated, org_id)
+            except Exception:
+                logger.exception("calendar=sync_fail update_booking id=%s", booking_id)
+        return updated
+
+    @staticmethod
+    def _format_date(value):
+        return value.isoformat() if isinstance(value, date) else str(value)
+
+    @staticmethod
+    def _format_time(value):
+        return value.strftime("%H:%M") if isinstance(value, time) else str(value)[:5]
+
+    @classmethod
+    def _format_booking_value(cls, key, value):
+        if key == "data":
+            return cls._format_date(value)
+        if key == "ora":
+            return cls._format_time(value)
+        return value
+
     async def _get_booking_or_raise(self, org_id, booking_id):
         b = await self.repo.get_booking(org_id, booking_id)
         if not b:
-            raise ValueError(f"booking {booking_id} non trovato")
+            raise BookingNotFoundError(f"booking {booking_id} non trovato")
         return b
 
     # ── WhatsApp ───────────────────────────────────────────────
@@ -155,20 +279,41 @@ class BookingService:
         from src.whatsapp.config import load_tenant_config
         return await load_tenant_config(org_id, self.app_config, self.whatsapp.repo)
 
-    async def _send_whatsapp(self, org_id, to_number, text, category="service"):
+    async def _send_whatsapp(self, org_id, to_number, text, category="service",
+                             idempotency_key=None, raise_on_error=False):
         if not self.whatsapp or not to_number:
-            return
+            return False
         tenant = await self._load_tenant_config(org_id)
         if not tenant:
-            return
+            return False
         try:
             await self.whatsapp.send_whatsapp_message(
                 org_id=org_id, to_number=to_number,
                 payload={"to": to_number, "type": "text", "text": {"body": text}},
                 category=category, meta_client=None, tenant_config=tenant,
+                idempotency_key=idempotency_key,
             )
+            return True
         except Exception as e:
             logger.error("WhatsApp send failed for org %s: %s", org_id, e)
+            if raise_on_error:
+                raise
+            return False
+
+    async def send_booking_reconfirmation(self, org_id, booking):
+        booking_id = str(booking["id"])
+        data = self._format_date(booking["data"])
+        ora = self._format_time(booking["ora"])
+        text = (
+            f"Ciao {booking['nome_cliente']}, abbiamo ricevuto una modifica alla tua "
+            f"prenotazione del {data} alle {ora} per {booking['coperti']} persone. "
+            "Per confermarla, rispondi SI."
+        )
+        key = f"booking-reconfirmation:{booking_id}:{data}:{ora}:{booking['coperti']}"
+        return await self._send_whatsapp(
+            org_id, booking.get("telefono", ""), text,
+            idempotency_key=key, raise_on_error=True,
+        )
 
     # ── Lifecycle ──────────────────────────────────────────────
 

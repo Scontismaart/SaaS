@@ -127,3 +127,33 @@ async def test_cross_tenant_isolation(booking_service, repo, sample_org, other_o
         other_org["id"], "2026-08-01", "20:00"
     )
     assert disp_other.coperti_liberi == 40
+
+
+async def test_update_booking_keeps_status_for_profile_change(booking_service, sample_org):
+    b = await booking_service.create_booking(
+        sample_org["id"], nome_cliente="Mario", data="2026-08-01",
+        ora="20:00", coperti=4,
+    )
+    await booking_service.confirm(sample_org["id"], b["id"])
+
+    updated = await booking_service.update_booking(
+        sample_org["id"], b["id"], nome_cliente="Mario Rossi", note="Finestra"
+    )
+
+    assert updated["stato"] == "confermata"
+    assert updated["nome_cliente"] == "Mario Rossi"
+
+
+async def test_update_booking_schedule_returns_to_pending(booking_service, sample_org):
+    b = await booking_service.create_booking(
+        sample_org["id"], nome_cliente="Mario", data="2026-08-01",
+        ora="20:00", coperti=4,
+    )
+    await booking_service.confirm(sample_org["id"], b["id"])
+
+    updated = await booking_service.update_booking(
+        sample_org["id"], b["id"], data="2026-08-02"
+    )
+
+    assert updated["stato"] == "in_attesa"
+    assert updated["data"].isoformat() == "2026-08-02"

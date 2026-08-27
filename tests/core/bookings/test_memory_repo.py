@@ -1,4 +1,5 @@
 from datetime import date, time
+from unittest.mock import AsyncMock
 import pytest
 import uuid
 
@@ -111,3 +112,67 @@ async def test_booking_service_demo_aggiorna_impostazioni():
     assert settings["capienze_orarie"]["20:00"] == 8
     disp = await svc.verifica_disponibilita(org, "2026-08-01", "20:00")
     assert disp.coperti_massimi == 8
+
+
+async def test_booking_service_update_profile_fields_keeps_status_and_skips_notification():
+    repo = InMemoryBookingRepo()
+    svc = BookingService(repo=repo, whatsapp_service=AsyncMock(), app_config=object())
+    svc._load_tenant_config = AsyncMock(return_value=object())
+    org = uuid.uuid4()
+    booking = await repo.create_booking(
+        organization_id=org, nome_cliente="Mario", telefono="+393331234567",
+        data="2026-08-01", ora="20:00", coperti=4, stato="confermata",
+    )
+
+    updated = await svc.update_booking(
+        org, booking["id"], nome_cliente="Mario Rossi", note="Finestra"
+    )
+
+    assert updated["stato"] == "confermata"
+    assert updated["nome_cliente"] == "Mario Rossi"
+    svc.whatsapp.send_whatsapp_message.assert_not_awaited()
+
+
+async def test_booking_service_update_schedule_excludes_booking_and_notifies():
+    repo = InMemoryBookingRepo()
+    whatsapp = AsyncMock()
+    whatsapp.send_whatsapp_message = AsyncMock(return_value={"status": "sent"})
+    svc = BookingService(repo=repo, whatsapp_service=whatsapp, app_config=object())
+    svc._load_tenant_config = AsyncMock(return_value=object())
+    org = uuid.uuid4()
+    await repo.upsert_booking_settings(org, capienze_orarie={"20:00": 4})
+    booking = await repo.create_booking(
+        organization_id=org, nome_cliente="Mario", telefono="+393331234567",
+        data="2026-08-01", ora="20:00", coperti=4, stato="confermata",
+    )
+
+    updated = await svc.update_booking(
+        org, booking["id"], ora="20:30"
+    )
+
+    assert updated["stato"] == "in_attesa"
+    assert updated["ora"] == time(20, 30)
+    whatsapp.send_whatsapp_message.assert_awaited_once()
+    assert whatsapp.send_whatsapp_message.await_args.kwargs["idempotency_key"].startswith(
+        "booking-reconfirmation:"
+    )
+
+
+async def test_booking_service_update_schedule_rolls_back_when_notification_fails():
+    repo = InMemoryBookingRepo()
+    whatsapp = AsyncMock()
+    whatsapp.send_whatsapp_message = AsyncMock(side_effect=RuntimeError("Meta down"))
+    svc = BookingService(repo=repo, whatsapp_service=whatsapp, app_config=object())
+    svc._load_tenant_config = AsyncMock(return_value=object())
+    org = uuid.uuid4()
+    booking = await repo.create_booking(
+        organization_id=org, nome_cliente="Mario", telefono="+393331234567",
+        data="2026-08-01", ora="20:00", coperti=4, stato="confermata",
+    )
+
+    with pytest.raises(RuntimeError, match="Meta down"):
+        await svc.update_booking(org, booking["id"], data="2026-08-02")
+
+    restored = await repo.get_booking(org, booking["id"])
+    assert restored["data"] == date(2026, 8, 1)
+    assert restored["stato"] == "confermata"

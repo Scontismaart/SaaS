@@ -95,6 +95,25 @@ class CoreRepository(TenantScopedRepository):
             """, organization_id, booking_id, stato)
             return dict(row) if row else None
 
+    async def update_booking_details(self, organization_id, booking_id,
+                                     nome_cliente, telefono, data, ora,
+                                     coperti, note, stato):
+        if isinstance(data, str):
+            data = date.fromisoformat(data)
+        if isinstance(ora, str):
+            ore, minuti = ora.split(":")
+            ora = time(int(ore), int(minuti))
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE bookings SET nome_cliente = $3, telefono = $4,
+                    data = $5, ora = $6, coperti = $7, note = $8,
+                    stato = $9, updated_at = NOW()
+                WHERE organization_id = $1 AND id = $2
+                RETURNING *
+            """, organization_id, booking_id, nome_cliente, telefono,
+                data, ora, coperti, note, stato)
+            return dict(row) if row else None
+
     async def update_booking_payment(self, organization_id, booking_id,
                                       payment_status, session_id=None):
         async with self.pool.acquire() as conn:

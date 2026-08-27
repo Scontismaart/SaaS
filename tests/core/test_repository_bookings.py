@@ -61,6 +61,22 @@ async def test_update_booking_status(repo, sample_org):
 
 
 @pytest.mark.asyncio
+async def test_update_booking_details_is_tenant_scoped(repo, sample_org):
+    created = await repo.create_booking(
+        organization_id=sample_org["id"], nome_cliente="Test",
+        data=date(2026, 7, 25), ora=time(20, 0), coperti=2,
+    )
+    updated = await repo.update_booking_details(
+        sample_org["id"], created["id"], "Updated", "+39000",
+        date(2026, 7, 26), time(21, 0), 3, "Note", "in_attesa",
+    )
+    assert updated["nome_cliente"] == "Updated"
+    assert updated["data"] == date(2026, 7, 26)
+    assert updated["ora"] == time(21, 0)
+    assert updated["coperti"] == 3
+
+
+@pytest.mark.asyncio
 async def test_booking_requires_positive_coperti(repo, sample_org):
     with pytest.raises(Exception):
         await repo.create_booking(

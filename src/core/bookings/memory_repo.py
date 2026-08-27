@@ -88,6 +88,28 @@ class InMemoryBookingRepo:
                 return deepcopy(b)
         return None
 
+    async def update_booking_details(self, organization_id, booking_id,
+                                     nome_cliente, telefono, data, ora,
+                                     coperti, note, stato):
+        if isinstance(data, str):
+            data = date.fromisoformat(data)
+        if isinstance(ora, str):
+            ore, minuti = ora.split(":")
+            ora = time(int(ore), int(minuti))
+        for b in self._bookings:
+            if b["organization_id"] == organization_id and str(b["id"]) == str(booking_id):
+                b.update({
+                    "nome_cliente": nome_cliente,
+                    "telefono": telefono,
+                    "data": data,
+                    "ora": ora,
+                    "coperti": coperti,
+                    "note": note,
+                    "stato": stato,
+                })
+                return deepcopy(b)
+        return None
+
     async def update_booking_reminder_status(self, organization_id, booking_id,
                                              reminder_status, responded_at=None):
         for b in self._bookings:

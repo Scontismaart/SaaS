@@ -39,6 +39,15 @@ class PrenotazioneManualeInput(DatiPrenotazione):
     origine: str = Field(default="Dashboard")
 
 
+class PrenotazioneModificaInput(BaseModel):
+    nome_cliente: str | None = None
+    telefono: str | None = None
+    data: str | None = None
+    ora: str | None = None
+    coperti: int | None = None
+    note: str | None = None
+
+
 class PrenotazioneCalendario(BaseModel):
     id: str
     nome_cliente: str = ""

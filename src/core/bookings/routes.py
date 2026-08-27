@@ -2,8 +2,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from src.core.auth.audit import audit_log
 from src.core.auth.dependencies import require_ruolo
-from src.core.bookings import SlotPienoError
-from src.models.schemas import DisponibilitaSlot
+from src.core.bookings import BookingNotFoundError, SlotPienoError
+from src.models.schemas import DisponibilitaSlot, PrenotazioneModificaInput
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/bookings", tags=["bookings"])
@@ -77,11 +77,11 @@ async def create_booking(body: dict, request: Request,
     try:
         return await service.create_booking(
             org_id=user["organization_id"],
-            nome_cliente=body["nome_cliente"],
+            nome_cliente=body.get("nome_cliente"),
             telefono=body.get("telefono", ""),
-            data=body["data"],
-            ora=body["ora"],
-            coperti=body["coperti"],
+            data=body.get("data"),
+            ora=body.get("ora"),
+            coperti=body.get("coperti"),
             note=body.get("note", ""),
             tipo_evento=body.get("tipo_evento", ""),
             origine=body.get("origine", "Dashboard"),
@@ -103,6 +103,29 @@ async def get_booking(booking_id: str, request: Request,
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
     return b
+
+
+@router.put("/{booking_id}")
+async def update_booking(booking_id: str, body: PrenotazioneModificaInput,
+                         request: Request,
+                         user: dict = Depends(require_ruolo("owner", "manager"))):
+    service = _get_booking_service(request)
+    try:
+        updated = await service.update_booking(
+            user["organization_id"], booking_id,
+            **body.model_dump(exclude_unset=True),
+        )
+    except SlotPienoError as e:
+        raise HTTPException(status_code=409, detail={
+            "messaggio": str(e),
+            "alternative": e.alternative,
+        })
+    except BookingNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    await _audit_booking(request, user, "prenotazione.modificata", updated)
+    return updated
 
 
 @router.post("/{booking_id}/confirm")

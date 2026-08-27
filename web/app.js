@@ -1224,8 +1224,6 @@ chatSuggestions.addEventListener("click", (e) => {
 
 const bookingCalendarEl = document.getElementById("booking-calendar");
 const bookingCount = document.getElementById("booking-count");
-const bookingDayList = document.getElementById("booking-day-list");
-const bookingDayLabel = document.getElementById("booking-day-label");
 const availabilityList = document.getElementById("availability-list");
 const availabilityDate = document.getElementById("availability-date");
 const bookingForm = document.getElementById("booking-form");
@@ -1235,7 +1233,15 @@ const capacitySave = document.getElementById("capacity-save");
 const capacityStatus = document.getElementById("capacity-status");
 let bookingCalendar = null;
 let bookingOpenHours = {};
+let bookingAvailability = new Map();
+let bookingRecords = [];
+let bookingPendingOnly = false;
+let bookingEditingId = null;
+let bookingPollTimer = null;
+let bookingSnapshot = new Map();
 const bookingModal = document.getElementById("booking-modal");
+const bookingSummary = document.getElementById("booking-summary");
+const bookingPendingValue = document.getElementById("booking-pending-value");
 const bookingDetail = {
   title: document.getElementById("booking-modal-title"),
   date: document.getElementById("booking-detail-date"),
@@ -1275,13 +1281,19 @@ function aggiornaAzioniPrenotazione(p) {
   const confermaBtn = document.getElementById("booking-confirm-btn");
   const rifiutaBtn = document.getElementById("booking-reject-btn");
   const annullaBtn = document.getElementById("booking-cancel-btn");
-  if (!confermaBtn || !rifiutaBtn || !annullaBtn) return;
+  const noShowBtn = document.getElementById("booking-no-show-btn");
+  const completedBtn = document.getElementById("booking-completed-btn");
+  const editBtn = document.getElementById("booking-edit-btn");
+  if (!confermaBtn || !rifiutaBtn || !annullaBtn || !noShowBtn || !completedBtn || !editBtn) return;
   const stato = statoNormalizzatoPrenotazione(p);
   const finale = STATI_FINALI_PRENOTAZIONE.includes(stato);
   confermaBtn.hidden = staff || finale || stato === "confermata";
   rifiutaBtn.hidden = staff || finale || stato === "rifiutata";
   annullaBtn.hidden = staff || finale;
-  wrap.hidden = confermaBtn.hidden && rifiutaBtn.hidden && annullaBtn.hidden;
+  noShowBtn.hidden = staff || finale || stato !== "confermata";
+  completedBtn.hidden = staff || finale || stato !== "confermata";
+  editBtn.hidden = staff || finale;
+  wrap.hidden = [confermaBtn, rifiutaBtn, annullaBtn, noShowBtn, completedBtn, editBtn].every((button) => button.hidden);
 }
 
 async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo = "", descrizione = "", label = "Conferma" } = {}) {
@@ -1291,7 +1303,7 @@ async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo
     const ok = await confermaDestructiva({ titolo, descrizione, label });
     if (!ok) return;
   }
-  const bottoni = ["booking-confirm-btn", "booking-reject-btn", "booking-cancel-btn"]
+  const bottoni = ["booking-confirm-btn", "booking-reject-btn", "booking-cancel-btn", "booking-no-show-btn", "booking-completed-btn", "booking-edit-btn"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   bottoni.forEach((b) => { b.disabled = true; });
@@ -1301,16 +1313,18 @@ async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.detail || "Operazione non riuscita.");
     }
+    prenotazioneCorrente = await res.json();
     chiudiDettaglioPrenotazione();
     toast(
       azione === "confirm" ? "Prenotazione confermata."
         : azione === "reject" ? "Prenotazione rifiutata."
-          : "Prenotazione annullata.",
+          : azione === "mark-no-show" ? "Prenotazione segnata come no-show."
+            : azione === "mark-completed" ? "Prenotazione completata."
+              : "Prenotazione annullata.",
       azione === "confirm" ? "success" : "info",
     );
     await Promise.all([
       aggiornaPrenotazioni(),
-      p.data ? aggiornaListaGiorno(p.data) : Promise.resolve(),
       p.data ? aggiornaSemaforo(p.data) : Promise.resolve(),
     ]);
   } catch (err) {
@@ -1342,6 +1356,24 @@ document.getElementById("booking-cancel-btn")?.addEventListener("click", () => {
   });
 });
 
+document.getElementById("booking-no-show-btn")?.addEventListener("click", () => {
+  eseguiAzionePrenotazione("mark-no-show", {
+    chiediConferma: true,
+    titolo: "Segnare come no-show?",
+    descrizione: "La prenotazione verrà chiusa come no-show.",
+    label: "Segna no-show",
+  });
+});
+
+document.getElementById("booking-completed-btn")?.addEventListener("click", () => {
+  eseguiAzionePrenotazione("mark-completed", {
+    chiediConferma: true,
+    titolo: "Segnare come completata?",
+    descrizione: "La prenotazione verrà registrata come completata.",
+    label: "Completa",
+  });
+});
+
 function apriDettaglioPrenotazione(prenotazione) {
   if (!bookingModal || !prenotazione) return;
   const valore = (dato, fallback = "Non indicato") => dato || fallback;
@@ -1370,75 +1402,112 @@ function chiudiDettaglioPrenotazione() {
   document.body.classList.remove("booking-modal-open");
 }
 
+function apriBookingModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.hidden = false;
+  document.body.classList.add("booking-modal-open");
+}
+
+function chiudiBookingModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.hidden = true;
+  if (![...document.querySelectorAll(".booking-modal")].some((element) => !element.hidden)) {
+    document.body.classList.remove("booking-modal-open");
+  }
+}
+
+function apriFormPrenotazione(prenotazione = null) {
+  bookingEditingId = prenotazione?.id || null;
+  bookingForm?.reset();
+  document.getElementById("booking-name").value = prenotazione?.nome_cliente || "";
+  document.getElementById("booking-phone").value = prenotazione?.telefono || "";
+  document.getElementById("booking-date").value = prenotazione?.data || bookingCalendar?.getDate()?.toISOString().slice(0, 10) || oggiIso();
+  document.getElementById("booking-time").value = String(prenotazione?.ora || "20:00").slice(0, 5);
+  document.getElementById("booking-seats").value = prenotazione?.coperti || "";
+  document.getElementById("booking-note").value = prenotazione?.note || "";
+  bookingStatusText.textContent = "";
+  document.getElementById("booking-create-title").textContent = bookingEditingId ? "Modifica prenotazione" : "Nuova prenotazione";
+  apriBookingModal("booking-create-modal");
+}
+
 document.querySelectorAll("[data-booking-close]").forEach((element) => {
   element.addEventListener("click", chiudiDettaglioPrenotazione);
 });
+[
+  ["[data-booking-create-close]", "booking-create-modal"],
+  ["[data-booking-availability-close]", "booking-availability-modal"],
+  ["[data-booking-export-close]", "booking-export-modal"],
+  ["[data-booking-actions-close]", "booking-actions-modal"],
+].forEach(([selector, id]) => {
+  document.querySelectorAll(selector).forEach((element) => element.addEventListener("click", () => chiudiBookingModal(id)));
+});
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") chiudiDettaglioPrenotazione();
+  if (event.key !== "Escape") return;
+  document.querySelectorAll(".booking-modal").forEach((modal) => { modal.hidden = true; });
+  document.body.classList.remove("booking-modal-open");
+});
+
+document.getElementById("booking-new-trigger")?.addEventListener("click", () => apriFormPrenotazione());
+document.getElementById("booking-new-fab")?.addEventListener("click", () => apriFormPrenotazione());
+document.getElementById("booking-edit-btn")?.addEventListener("click", () => {
+  if (!prenotazioneCorrente) return;
+  chiudiDettaglioPrenotazione();
+  apriFormPrenotazione(prenotazioneCorrente);
+});
+document.getElementById("booking-actions-trigger")?.addEventListener("click", () => apriBookingModal("booking-actions-modal"));
+document.getElementById("booking-open-availability")?.addEventListener("click", () => {
+  chiudiBookingModal("booking-actions-modal");
+  apriBookingModal("booking-availability-modal");
+});
+document.getElementById("booking-open-export")?.addEventListener("click", () => {
+  chiudiBookingModal("booking-actions-modal");
+  apriBookingModal("booking-export-modal");
 });
 
 function inizializzaCalendarioPrenotazioni() {
-  if (!bookingCalendarEl || bookingCalendar || !window.FullCalendar) return;
+  if (!bookingCalendarEl || !window.FullCalendar) return;
+  const slotRange = intervalloSlotPrenotazioni();
+  if (bookingCalendar) {
+    bookingCalendar.setOption("slotMinTime", slotRange.min);
+    bookingCalendar.setOption("slotMaxTime", slotRange.max);
+    return;
+  }
   bookingCalendar = new FullCalendar.Calendar(bookingCalendarEl, {
-    initialView: "timeGridWeek",
+    initialView: "timeGridDay",
     locale: "it",
     height: "auto",
     allDaySlot: false,
     nowIndicator: true,
     slotDuration: "00:15:00",
     slotLabelInterval: "01:00:00",
-    slotMinTime: "00:00:00",
-    slotMaxTime: "24:00:00",
-    slotLaneClassNames(info) {
-      const hour = `${String(info.date.getHours()).padStart(2, "0")}:00`;
-      return bookingOpenHours[hour] === 0 ? ["booking-closed-slot"] : [];
+    slotMinTime: slotRange.min,
+    slotMaxTime: slotRange.max,
+    slotLabelContent(info) {
+      const ora = `${String(info.date.getHours()).padStart(2, "0")}:00`;
+      const slot = bookingAvailability.get(ora);
+      const liberi = slot ? `${slot.coperti_liberi} liberi` : "Chiuso";
+      const stato = slot?.stato || "rosso";
+      return { html: `<span class="booking-slot-label booking-slot-${_sanitize(stato)}"><span class="booking-slot-dot"></span>${_sanitize(ora)} · ${_sanitize(liberi)}</span>` };
     },
-    slotLaneDidMount(info) {
-      const hour = `${String(info.date.getHours()).padStart(2, "0")}:00`;
-      if (bookingOpenHours[hour] === 0) {
-        info.el.style.display = "none";
-        const row = info.el.closest("tr");
-        if (row) {
-          row.classList.add("booking-closed-slot");
-          row.style.display = "none";
-        }
-      }
-    },
-    slotLabelDidMount(info) {
-      const hour = `${String(info.date.getHours()).padStart(2, "0")}:00`;
-      if (bookingOpenHours[hour] === 0) {
-        info.el.style.display = "none";
-        const row = info.el.closest("tr");
-        if (row) {
-          row.classList.add("booking-closed-slot");
-          row.style.display = "none";
-        }
-      }
-    },
-    eventDidMount(info) {
-      info.el.title = "Doppio click per vedere tutti i dettagli";
-      info.el.addEventListener("dblclick", () => {
-        apriDettaglioPrenotazione(info.event.extendedProps);
-      });
-    },
+    eventClick(info) { apriDettaglioPrenotazione(info.event.extendedProps); },
     selectable: true,
-    headerToolbar: {
-      left: "prev,next today",
-      center: "title",
-      right: "dayGridMonth,timeGridWeek,timeGridDay",
-    },
+    headerToolbar: false,
     select(info) {
-      document.getElementById("booking-date").value = info.startStr.slice(0, 10);
-      document.getElementById("booking-time").value = info.startStr.slice(11, 16) || "20:00";
-      aggiornaSemaforo(info.startStr.slice(0, 10));
-      aggiornaListaGiorno(info.startStr.slice(0, 10));
+      apriFormPrenotazione({
+        data: info.startStr.slice(0, 10),
+        ora: info.startStr.slice(11, 16) || "20:00",
+      });
+      bookingCalendar.unselect();
     },
     datesSet(info) {
       aggiornaSemaforo(info.startStr.slice(0, 10));
-      aggiornaListaGiorno(info.startStr.slice(0, 10));
+      aggiornaToolbarCalendario();
     },
   });
   bookingCalendar.render();
+  aggiornaToolbarCalendario();
 }
 
 async function aggiornaPrenotazioni() {
@@ -1447,84 +1516,69 @@ async function aggiornaPrenotazioni() {
     const res = await apiFetch(`${API_BASE}/api/bookings`);
     if (!res.ok) return;
     const prenotazioni = await res.json();
+    bookingRecords = prenotazioni;
+    const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
     bookingCount.textContent = `${prenotazioni.length} prenotazioni`;
+    if (bookingPendingValue) bookingPendingValue.textContent = pending.length;
     if (!bookingCalendar) inizializzaCalendarioPrenotazioni();
     if (!bookingCalendar) return;
     bookingCalendar.removeAllEvents();
-    prenotazioni.forEach((p) => {
+    const mostrabili = bookingPendingOnly ? pending : prenotazioni;
+    mostrabili.forEach((p) => {
       if (!p.data || !p.ora) return;
       const ora = String(p.ora).slice(0, 5);
       bookingCalendar.addEvent({
         id: p.id,
-        title: `${ora} Â· ${p.nome_cliente || "Cliente"} Â· ${p.coperti || "?"} coperti`,
+        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
         start: `${p.data}T${ora}:00`,
         end: `${p.data}T${ora}:00`,
         backgroundColor: colorePrenotazione(p.stato),
         borderColor: colorePrenotazione(p.stato),
+        classNames: statoNormalizzatoPrenotazione(p) === "in_attesa" ? ["booking-event-pending"] : [],
         extendedProps: p,
       });
     });
-    aggiornaListaGiorno(document.getElementById("booking-date")?.value || oggiIso(), prenotazioni);
+    verificaPrenotazioneAggiornata(prenotazioni);
+    bookingSnapshot = new Map(prenotazioni.map((p) => [String(p.id), JSON.stringify(p)]));
   } catch (err) {
     console.error("Impossibile caricare le prenotazioni:", err);
   }
 }
 
-function aggiornaListaGiorno(data, prenotazioni = null) {
-  if (!bookingDayList) return;
-  const giorno = prenotazioni || [];
-  const render = (items) => {
-    bookingDayLabel.textContent = new Date(`${data}T12:00:00`).toLocaleDateString("it-IT", {
-      weekday: "short", day: "2-digit", month: "2-digit",
-    });
-    bookingDayList.innerHTML = "";
-    if (!items.length) {
-      bookingDayList.innerHTML = '<p class="booking-empty">Nessuna prenotazione per questo giorno.</p>';
-      return;
-    }
-    items.sort((a, b) => `${a.ora}${a.nome_cliente}`.localeCompare(`${b.ora}${b.nome_cliente}`));
-    const visibili = items.slice(0, 8);
-    visibili.forEach((p) => {
-      const item = document.createElement("article");
-      item.className = "booking-row";
-      const ora = String(p.ora || "").slice(0, 5);
-      item.innerHTML = `
-        <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
-        <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` Â· ${_sanitize(p.telefono)}` : ""}</span></div>
-        <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
-      bookingDayList.appendChild(item);
-    });
-    if (items.length > visibili.length) {
-      const more = document.createElement("button");
-      more.type = "button";
-      more.className = "inbox-load-more";
-      more.textContent = `Mostra tutte (${items.length})`;
-      more.addEventListener("click", () => {
-        more.remove();
-        items.slice(visibili.length).forEach((p) => {
-          const item = document.createElement("article");
-          item.className = "booking-row";
-          const ora = String(p.ora || "").slice(0, 5);
-          item.innerHTML = `
-            <time class="booking-row-time">${_sanitize(ora) || "--:--"}</time>
-            <div class="booking-row-main"><strong>${_sanitize(p.nome_cliente) || "Cliente"}</strong><span>${_sanitize(p.coperti) || "?"} coperti${p.telefono ? ` Â· ${_sanitize(p.telefono)}` : ""}</span></div>
-            <span class="booking-row-status" style="--booking-color:${_sanitize(colorePrenotazione(p.stato))}">${_sanitize(p.stato) || "In attesa"}</span>`;
-          bookingDayList.appendChild(item);
-        });
-      }, { once: true });
-      bookingDayList.appendChild(more);
-    }
-  };
-  if (prenotazioni) {
-    render(prenotazioni.filter((p) => p.data === data));
-  } else {
-    apiFetch(`${API_BASE}/api/bookings`).then((res) => res.json()).then((all) => render(all.filter((p) => p.data === data))).catch(() => render([]));
+function intervalloSlotPrenotazioni() {
+  const aperte = Object.entries(bookingOpenHours)
+    .filter(([, capienza]) => Number(capienza) > 0)
+    .map(([ora]) => Number(ora.slice(0, 2)))
+    .sort((a, b) => a - b);
+  if (!aperte.length) return { min: "00:00:00", max: "24:00:00" };
+  const min = `${String(aperte[0]).padStart(2, "0")}:00:00`;
+  const max = aperte.at(-1) === 23 ? "24:00:00" : `${String(aperte.at(-1) + 1).padStart(2, "0")}:00:00`;
+  return { min, max };
+}
+
+function aggiornaToolbarCalendario() {
+  if (!bookingCalendar) return;
+  const vista = bookingCalendar.view.type;
+  document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.bookingCalendarView === vista));
+  });
+}
+
+function verificaPrenotazioneAggiornata(prenotazioni) {
+  if (!prenotazioneCorrente?.id || bookingModal?.hidden) return;
+  const next = prenotazioni.find((p) => String(p.id) === String(prenotazioneCorrente.id));
+  const warning = document.getElementById("booking-detail-stale-warning");
+  if (!next || bookingSnapshot.get(String(next.id)) !== JSON.stringify(next)) {
+    warning.textContent = next
+      ? "Questa prenotazione è stata modificata. Ricarica per vedere lo stato aggiornato."
+      : "Questa prenotazione è stata cancellata. Ricarica per vedere lo stato aggiornato.";
+    warning.hidden = false;
   }
 }
 
 async function aggiornaSemaforo(data = null) {
   if (!availabilityList) return;
-  const targetDate = data || document.getElementById("booking-date")?.value || oggiIso();
+  const targetDate = data || bookingCalendar?.getDate()?.toISOString().slice(0, 10) || oggiIso();
   availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString("it-IT", {
     weekday: "short",
     day: "2-digit",
@@ -1534,6 +1588,7 @@ async function aggiornaSemaforo(data = null) {
     const res = await apiFetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
     if (!res.ok) return;
     const slots = await res.json();
+    bookingAvailability = new Map(slots.map((slot) => [String(slot.ora).slice(0, 5), slot]));
     availabilityList.innerHTML = "";
     slots.forEach((slot) => {
       const item = document.createElement("div");
@@ -1545,9 +1600,18 @@ async function aggiornaSemaforo(data = null) {
       `;
       availabilityList.appendChild(item);
     });
+    aggiornaRiepilogoPrenotazioni(targetDate, slots);
+    bookingCalendar?.render();
   } catch (err) {
     console.error("Impossibile caricare il semaforo:", err);
   }
+}
+
+function aggiornaRiepilogoPrenotazioni(data, slots) {
+  const prenotazioniGiorno = bookingRecords.filter((p) => p.data === data && !STATI_FINALI_PRENOTAZIONE.includes(statoNormalizzatoPrenotazione(p)));
+  const coperti = prenotazioniGiorno.reduce((totale, p) => totale + (Number(p.coperti) || 0), 0);
+  const liberi = slots.reduce((totale, slot) => totale + (Number(slot.coperti_liberi) || 0), 0);
+  if (bookingSummary) bookingSummary.textContent = `${prenotazioniGiorno.length} prenotazioni · ${coperti} coperti · ${liberi} posti liberi`;
 }
 
 async function aggiornaImpostazioniPrenotazioni() {
@@ -1558,6 +1622,11 @@ async function aggiornaImpostazioniPrenotazioni() {
     const data = await res.json();
     const capienze = data.capienze_orarie || {};
     bookingOpenHours = capienze;
+    const standard = document.getElementById("booking-standard-capacity");
+    if (standard) {
+      const valori = Object.values(capienze).filter((value) => Number(value) > 0);
+      standard.value = valori.length ? Math.max(...valori) : "";
+    }
     bookingSettingsGrid.innerHTML = (data.fasce_orarie || []).map((ora) => `
       <label class="booking-setting"><span>${_sanitize(ora)}</span><input type="number" min="0" max="500" data-capacity-hour="${_sanitize(ora)}" value="${_sanitize(capienze[ora] ?? 40)}"></label>
     `).join("");
@@ -1578,8 +1647,8 @@ bookingForm?.addEventListener("submit", async (e) => {
     note: document.getElementById("booking-note").value.trim(),
   };
   try {
-    const res = await apiFetch(`${API_BASE}/api/bookings`, {
-      method: "POST",
+    const res = await apiFetch(`${API_BASE}/api/bookings${bookingEditingId ? `/${encodeURIComponent(bookingEditingId)}` : ""}`, {
+      method: bookingEditingId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
@@ -1587,14 +1656,17 @@ bookingForm?.addEventListener("submit", async (e) => {
       const err = await res.json().catch(() => null);
       throw new Error(err?.detail?.messaggio || err?.detail || "Errore salvataggio");
     }
+    const wasEditing = Boolean(bookingEditingId);
     bookingForm.reset();
     document.getElementById("booking-date").value = payload.data;
-    bookingStatusText.textContent = "Prenotazione aggiunta.";
+    bookingStatusText.textContent = wasEditing ? "Modifica salvata." : "Prenotazione aggiunta.";
     bookingStatusText.style.color = "var(--sage)";
+    bookingEditingId = null;
+    chiudiBookingModal("booking-create-modal");
     await aggiornaPrenotazioni();
     await aggiornaSemaforo(payload.data);
   } catch (err) {
-    bookingStatusText.textContent = err.message;
+    bookingStatusText.textContent = bookingEditingId ? "Modifica non salvata, riprova." : err.message;
     bookingStatusText.style.color = "var(--red)";
   }
 });
@@ -1620,6 +1692,7 @@ capacitySave?.addEventListener("click", async () => {
     capacityStatus.textContent = "Capienza aggiornata.";
     capacityStatus.style.color = "var(--sage)";
     await aggiornaSemaforo();
+    await aggiornaPrenotazioni();
     capacityStatus.textContent += " Le modifiche sono attive subito.";
   } catch (err) {
     capacityStatus.textContent = err.message;
@@ -1627,10 +1700,49 @@ capacitySave?.addEventListener("click", async () => {
   }
 });
 
-document.getElementById("booking-date")?.addEventListener("change", (event) => {
-  aggiornaSemaforo(event.target.value);
-  aggiornaListaGiorno(event.target.value);
+document.getElementById("booking-standard-capacity")?.addEventListener("change", (event) => {
+  const value = Math.max(0, parseInt(event.target.value, 10) || 0);
+  document.querySelectorAll("[data-capacity-hour]").forEach((input) => {
+    if (parseInt(input.value, 10) > 0) input.value = value;
+  });
 });
+
+document.getElementById("booking-pending-count")?.addEventListener("click", () => {
+  bookingPendingOnly = !bookingPendingOnly;
+  document.getElementById("booking-pending-count").setAttribute("aria-pressed", String(bookingPendingOnly));
+  aggiornaPrenotazioni();
+});
+
+document.querySelectorAll("[data-booking-calendar-command]").forEach((button) => {
+  button.addEventListener("click", () => {
+    if (!bookingCalendar) return;
+    const command = button.dataset.bookingCalendarCommand;
+    if (command === "prev") bookingCalendar.prev();
+    if (command === "next") bookingCalendar.next();
+    if (command === "today") bookingCalendar.today();
+  });
+});
+
+document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
+  button.addEventListener("click", () => bookingCalendar?.changeView(button.dataset.bookingCalendarView));
+});
+
+function prenotazioniVisibili() {
+  const panel = document.querySelector('[data-view-panel="prenotazioni"]');
+  return Boolean(panel && !panel.classList.contains("view-hidden") && !document.hidden);
+}
+
+function sincronizzaPollingPrenotazioni() {
+  window.clearInterval(bookingPollTimer);
+  bookingPollTimer = null;
+  if (!prenotazioniVisibili()) return;
+  bookingPollTimer = window.setInterval(() => {
+    aggiornaPrenotazioni();
+    aggiornaSemaforo();
+  }, 30000);
+}
+
+document.addEventListener("visibilitychange", sincronizzaPollingPrenotazioni);
 
 /* ============================================================
    RECENSIONI

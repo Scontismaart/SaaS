@@ -156,3 +156,24 @@ async def test_list_bookings(async_client, sample_org):
     })
     assert resp.status_code == 200
     assert len(resp.json()) == 2
+
+
+async def test_update_booking(async_client, sample_org):
+    headers = {
+        "X-API-Key": API_KEY,
+        "X-Organization-Id": str(sample_org["id"]),
+    }
+    create_resp = await async_client.post("/api/bookings", json={
+        "nome_cliente": "Mario", "telefono": "+393331234567",
+        "data": "2026-08-01", "ora": "20:00", "coperti": 4,
+    }, headers=headers)
+    b_id = create_resp.json()["id"]
+    await async_client.post(f"/api/bookings/{b_id}/confirm", headers=headers)
+
+    resp = await async_client.put(f"/api/bookings/{b_id}", json={
+        "nome_cliente": "Mario Rossi", "note": "Finestra",
+    }, headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.json()["nome_cliente"] == "Mario Rossi"
+    assert resp.json()["stato"] == "confermata"

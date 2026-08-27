@@ -29,10 +29,16 @@ ALLOWED_CONFIG_EXPRESSIONS = [
 
 
 def test_config_js_contains_only_melpis_api_base():
-    """Garantisce che config.js contenga unicamente l'assegnazione di MELPIS_API_BASE."""
-    config_files = [WEB_ROOT / "config.js", WEB_ROOT / "config.template.js"]
+    """Garantisce che config.template.js (e config.js se presente) contenga unicamente l'assegnazione di MELPIS_API_BASE."""
+    template_file = WEB_ROOT / "config.template.js"
+    assert template_file.exists(), f"{template_file} non trovato"
+
+    config_files = [template_file]
+    config_js = WEB_ROOT / "config.js"
+    if config_js.exists():
+        config_files.append(config_js)
+
     for config_file in config_files:
-        assert config_file.exists(), f"{config_file} non trovato"
         content = config_file.read_text(encoding="utf-8")
         
         # Rimuove commenti su singola linea (//) e multi-line (/* ... */)

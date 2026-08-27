@@ -1,8 +1,10 @@
 """Test generazione CSV prenotazioni (no Docker)."""
 
-from datetime import date, time
+import uuid
+import pytest
+from datetime import date, time, timedelta, datetime
 
-from src.core.report.csv_export import _COLONNE, genera_csv
+from src.core.report.csv_export import _COLONNE, genera_csv, get_prenotazioni_completate
 
 
 def test_csv_header_corretto():
@@ -85,3 +87,51 @@ def test_csv_encoding_utf8():
     csv_bytes = genera_csv(prenotazioni)
     testo = csv_bytes.decode("utf-8-sig")
     assert "José García Müller" in testo
+
+
+@pytest.mark.asyncio
+async def test_filtro_data_servizio_non_created_at(pg_pool):
+    """Export deve usare data servizio, non created_at."""
+    org_id = uuid.uuid4()
+    domani = date.today() + timedelta(days=1)
+
+    async with pg_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO organizations (id, name)
+            VALUES ($1, 'Test')
+        """, org_id)
+
+        # Prenotazione per domani, creata OGGI, stato confermata
+        await conn.execute("""
+            INSERT INTO bookings (organization_id, nome_cliente, data, ora, coperti, stato, created_at)
+            VALUES ($1, 'Cliente Domani', $2, '20:00', 4, 'confermata', NOW())
+        """, org_id, domani)
+
+        # Prenotazione per oggi, creata IERI, stato completata
+        await conn.execute("""
+            INSERT INTO bookings (organization_id, nome_cliente, data, ora, coperti, stato, created_at)
+            VALUES ($1, 'Cliente Oggi', $2, '19:00', 2, 'completata', NOW() - INTERVAL '2 days')
+        """, org_id, date.today())
+
+    # Query con stati=['confermata'] per domani: deve restituire la prenotazione di domani
+    risultati = await get_prenotazioni_completate(
+        pg_pool, str(org_id), domani, domani, stati=["confermata"]
+    )
+    assert len(risultati) == 1
+    assert risultati[0]["nome_cliente"] == "Cliente Domani"
+    assert risultati[0]["stato"] == "confermata"
+    assert risultati[0]["data"] == domani
+
+    # Query default (solo completata): deve restituire la prenotazione di oggi
+    risultati_default = await get_prenotazioni_completate(
+        pg_pool, str(org_id), date.today(), date.today()
+    )
+    assert len(risultati_default) == 1
+    assert risultati_default[0]["nome_cliente"] == "Cliente Oggi"
+    assert risultati_default[0]["stato"] == "completata"
+
+    # Query con entrambi gli stati
+    risultati_entrambi = await get_prenotazioni_completate(
+        pg_pool, str(org_id), date.today(), domani, stati=["confermata", "completata"]
+    )
+    assert len(risultati_entrambi) == 2

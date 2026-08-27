@@ -207,6 +207,13 @@ class InboundProcessor:
                 logger.error("Org suspended message send failed for %s: %s", msg["id"], e)
             return
 
+        # Check se il ticket è CLAIMED da un operatore - se sì, non generare risposta AI
+        conversation = await self.repo.get_conversation(str(msg["conversation_id"]), org_id)
+        if conversation and conversation.get("ticket_status") == "CLAIMED":
+            logger.info("Ticket %s is CLAIMED, skipping AI response for message %s", msg["conversation_id"], msg["id"])
+            await self._finalize_message(msg["id"], handling_type="claimed_by_operator", organization_id=org_id)
+            return
+
         tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
         if tenant_config is not None:
             business_profile_raw = getattr(tenant_config, "business_profile", None) or {}

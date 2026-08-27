@@ -3569,11 +3569,119 @@ async function caricaIntegrazioni() {
   } catch {
     if (status) { status.textContent = "Errore di connessione."; status.style.color = "var(--red)"; }
   }
+
+  // Google Calendar status (endpoint dedicato)
+  await caricaStatoCalendar();
 }
 
 document.getElementById("integrazioni-config")?.addEventListener("click", () => {
   apriOnboarding();
 });
+
+/* ============================================================
+   GOOGLE CALENDAR — stato, connect, disconnect
+   ============================================================ */
+
+async function caricaStatoCalendar() {
+  const stato = document.getElementById("integ-calendar-stato");
+  const sub = document.getElementById("integ-calendar-sub");
+  const help = document.getElementById("integ-calendar-help");
+  const btnConnect = document.getElementById("integ-calendar-connect");
+  const btnDisconnect = document.getElementById("integ-calendar-disconnect");
+
+  if (!stato || !sub) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/calendar/status`);
+    if (!res.ok) {
+      stato.textContent = "Errore";
+      stato.className = "integrazione-stato off";
+      sub.textContent = "Impossibile verificare lo stato";
+      return;
+    }
+    const d = await res.json();
+    if (d.connected) {
+      stato.textContent = "Connesso";
+      stato.className = "integrazione-stato on";
+      const calId = d.calendar_id || "Calendario predefinito";
+      const sync = d.sync_enabled ? "Sincronizzazione attiva" : "Sincronizzazione disattivata";
+      sub.textContent = `${calId} — ${sync}`;
+      if (help) help.textContent = d.last_sync_at
+        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString()}`
+        : "Sincronizza le prenotazioni con Google Calendar.";
+      if (btnConnect) btnConnect.hidden = true;
+      if (btnDisconnect) btnDisconnect.hidden = false;
+    } else {
+      stato.textContent = "Non connesso";
+      stato.className = "integrazione-stato off";
+      sub.textContent = "Nessun account Google collegato";
+      if (btnConnect) btnConnect.hidden = false;
+      if (btnDisconnect) btnDisconnect.hidden = true;
+    }
+  } catch {
+    stato.textContent = "Errore";
+    stato.className = "integrazione-stato off";
+    sub.textContent = "Errore di connessione";
+  }
+}
+
+document.getElementById("integ-calendar-connect")?.addEventListener("click", () => {
+  window.location.href = `${API_BASE}/api/calendar/auth`;
+});
+
+document.getElementById("integ-calendar-disconnect")?.addEventListener("click", async () => {
+  if (!confirm("Disconnettere Google Calendar? Le prenotazioni esistenti restano, ma non verranno più sincronizzate.")) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/calendar/disconnect`, { method: "DELETE" });
+    if (res.ok) {
+      toast("Google Calendar disconnesso.");
+      await caricaStatoCalendar();
+    } else {
+      toast("Errore durante la disconnessione.", "error");
+    }
+  } catch {
+    toast("Errore di connessione.", "error");
+  }
+});
+
+/* Gestione redirect OAuth callback */
+(function gestisciCalendarRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const cal = params.get("calendar");
+  if (cal === "connected") {
+    const url = new URL(window.location);
+    url.searchParams.delete("calendar");
+    window.history.replaceState({}, "", url);
+    const btn = document.querySelector('[data-view="impostazioni"]');
+    if (btn) btn.click();
+    setTimeout(() => {
+      const tabBtn = document.querySelector('[data-settings-tab-btn="integrazioni"]');
+      if (tabBtn) tabBtn.click();
+    }, 100);
+    setTimeout(() => toast("Google Calendar connesso con successo!", "success"), 400);
+  } else if (cal === "error") {
+    const reason = params.get("reason") || "errore_sconosciuto";
+    const url = new URL(window.location);
+    url.searchParams.delete("calendar");
+    url.searchParams.delete("reason");
+    window.history.replaceState({}, "", url);
+    const btn = document.querySelector('[data-view="impostazioni"]');
+    if (btn) btn.click();
+    setTimeout(() => {
+      const tabBtn = document.querySelector('[data-settings-tab-btn="integrazioni"]');
+      if (tabBtn) tabBtn.click();
+    }, 100);
+    const msgs = {
+      no_refresh_token: "Autorizzazione negata: la tua app Google non è in produzione. Aggiungi il tuo account come test user nella Google Cloud Console.",
+      invalid_state: "Sessione scaduta: riprova la connessione.",
+      invalid_nonce: "Sessione scaduta: riprova la connessione.",
+      nonce_expired: "Timeout: la richiesta è scaduta, riprova.",
+      missing_code: "Autorizzazione annullata.",
+      server_error: "Errore del server: riprova più tardi.",
+    };
+    setTimeout(() => toast(msgs[reason] || `Errore: ${reason}`, "error"), 400);
+  }
+})();
 
 /* ============================================================
    STAMPA REPORT + SCORCIATOIE TASTIERA

@@ -20,18 +20,29 @@ async def get_prenotazioni_completate(
     org_id: str,
     inizio: date,
     fine: date,
+    stati: list[str] | None = None,
 ) -> list[dict]:
-    """Recupera le prenotazioni completate nel periodo per l'organizzazione."""
+    """Recupera le prenotazioni nel periodo per l'organizzazione.
+
+    Filtra per data del servizio (campo `data`), non per created_at.
+    Per default include solo prenotazioni 'completata' (contabilità).
+    Per export pre-servizio usare stati=['confermata'] o ['confermata','completata'].
+    """
+    if stati is None:
+        stati = ["completata"]
+
+    placeholders = ", ".join(f"${i}" for i in range(4, 4 + len(stati)))
+
     async with pool.acquire() as conn:
-        rows = await conn.fetch("""
+        rows = await conn.fetch(f"""
             SELECT data, ora, coperti, nome_cliente, stato
             FROM bookings
             WHERE organization_id = $1
-              AND created_at >= $2
-              AND created_at < $3 + INTERVAL '1 day'
-              AND stato = 'completata'
+              AND data >= $2
+              AND data <= $3
+              AND stato IN ({placeholders})
             ORDER BY data, ora
-        """, org_id, inizio, fine)
+        """, org_id, inizio, fine, *stati)
     return [dict(r) for r in rows]
 
 

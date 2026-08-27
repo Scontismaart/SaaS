@@ -55,7 +55,7 @@ def mock_repo(sample_msg):
     repo.faq_cache_store = AsyncMock(return_value=None)
     repo.pool = MagicMock()
     repo.claim_message_and_check_quota = AsyncMock(return_value={
-        "status": "claimed", 
+        "status": "claimed",
         "ai_reply_cache": None,
         "billed_at": None,
         "sent_at": None,
@@ -70,6 +70,11 @@ def mock_repo(sample_msg):
     repo.escalate_to_human = AsyncMock(return_value={"id": str(uuid.uuid4()), "ticket_status": "PENDING_STAFF"})
     repo.record_usage = AsyncMock()
     repo.get_org_business_profile = AsyncMock(return_value={})
+    # Default: conversazione non CLAIMED (AI_ACTIVE) per non bloccare il flusso normale
+    repo.get_conversation = AsyncMock(return_value={
+        "id": sample_msg["conversation_id"],
+        "ticket_status": "AI_ACTIVE"
+    })
     return repo
 
 
@@ -131,6 +136,31 @@ class TestInboundProcessor:
         assert "assistente automatico" not in body
         assert body == "Ti passo una persona dello staff, un attimo!"
         mock_repo.try_mark_replied.assert_awaited_with(sample_msg["id"], handling_type="escalated", organization_id=sample_msg["organization_id"])
+
+    async def test_claimed_ticket_skips_ai_response(
+        self, app_config, mock_repo, mock_service, sample_msg
+    ):
+        """Quando un ticket è CLAIMED da un operatore, l'AI non deve rispondere."""
+        mock_repo.get_conversation = AsyncMock(return_value={
+            "id": sample_msg["conversation_id"],
+            "ticket_status": "CLAIMED",
+            "assigned_to": uuid.uuid4()
+        })
+        
+        with patch("src.whatsapp.inbound_processor.genera_risposta_async", AsyncMock()) as mock_genera:
+            processor = InboundProcessor(app_config, mock_repo, mock_service)
+            await processor.process_next_batch()
+        
+        # L'assistente AI non deve essere invocato
+        mock_genera.assert_not_called()
+        # Il messaggio deve essere finalizzato senza risposta AI
+        mock_repo.try_mark_replied.assert_awaited_with(
+            sample_msg["id"], 
+            handling_type="claimed_by_operator", 
+            organization_id=sample_msg["organization_id"]
+        )
+        # Nessun messaggio WhatsApp inviato al cliente
+        mock_service.send_whatsapp_message.assert_not_called()
 
     async def test_ai_reply_sent_when_no_escalation(
         self, app_config, mock_repo, mock_service, fake_tenant_config, sample_msg
@@ -265,6 +295,10 @@ class TestInboundProcessor:
         repo.update_heartbeat = AsyncMock()
         repo.get_org_subscription_state = AsyncMock(return_value=None)
         repo.get_org_business_profile = AsyncMock(return_value={})
+        repo.get_conversation = AsyncMock(return_value={
+            "id": race_msg["conversation_id"],
+            "ticket_status": "AI_ACTIVE"
+        })
         repo.pool = MagicMock()
 
         with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant_config)):

@@ -30,6 +30,17 @@ services:
     image: whatsapp-ai-responder-web:latest
     ports:
       - "8080:80"
+    volumes:
+      - ./web/index.html:/usr/share/nginx/html/app/index.html:ro
+      - ./web/style.css:/usr/share/nginx/html/app/style.css:ro
+      - ./web/app.js:/usr/share/nginx/html/app/app.js:ro
+      - ./web/config.js:/usr/share/nginx/html/config.js:ro
+      - ./web/auth.js:/usr/share/nginx/html/auth.js:ro
+      - ./web/login.js:/usr/share/nginx/html/login.js:ro
+      - ./web/login.html:/usr/share/nginx/html/login.html:ro
+      - ./web/register.js:/usr/share/nginx/html/register.js:ro
+      - ./web/register.html:/usr/share/nginx/html/register.html:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - app_internal
     restart: unless-stopped

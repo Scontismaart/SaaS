@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, Header, HTTPException, Request
 
 from src.core.auth.api_key_guard import api_key_request_allowed
+from src.core.auth.denylist import is_token_revoked
 
 # Firme JWT emesse da Supabase Auth: i progetti con le chiavi di firma
 # asimmetriche (default 2025+) usano ES256, i piu' vecchi RS256. L'alg e'
@@ -148,6 +149,8 @@ async def get_current_user(
             "ruolo": "service_role",
             "source": "api_key",
         }
+    if await is_token_revoked(token):
+        raise HTTPException(status_code=401, detail="Sessione revocata: effettua di nuovo il login")
     payload = await verify_supabase_jwt(token)
     return {
         "auth_user_id": payload["sub"],

@@ -123,7 +123,7 @@ async def lifespan(app: FastAPI):
             )
             app.state.repo = CoreRepository(pool=pool)
             app.state.pool = pool
-            print("[startup] Database pool created successfully.")
+            logger.info("[startup] Database pool created successfully.")
 
             # Webhook WhatsApp reale: prima non era mai montato, quindi Meta non
             # poteva raggiungere l'app in nessun deploy. Serve il pool (per
@@ -148,7 +148,7 @@ async def lifespan(app: FastAPI):
                 )
                 app.include_router(instagram_router)
             else:
-                print(
+                logger.warning(
                     "[startup] META_APP_SECRET o META_VERIFY_TOKEN non configurati: "
                     "webhook WhatsApp/Instagram NON montati. Impostali in .env per riceverli."
                 )
@@ -168,7 +168,7 @@ async def lifespan(app: FastAPI):
                 calendar_service=calendar_service,
             )
         except Exception as e:
-            print(f"[startup] Database connection failed: {e}. Running without pool.")
+            logger.warning("[startup] Database connection failed: %s. Running without pool.", e)
             app.state.repo = None
             app.state.pool = None
             app.state.wrepo = None
@@ -183,7 +183,7 @@ async def lifespan(app: FastAPI):
                 from src.core.documenti.embeddings import _modello
                 asyncio.create_task(asyncio.to_thread(_modello))
             except Exception as e:
-                print(f"[startup] Embedding model warmup warning: {e}")
+                logger.warning("[startup] Embedding model warmup warning: %s", e)
     else:
         app.state.repo = None
         app.state.pool = None
@@ -282,6 +282,19 @@ async def _rate_limit_check(key: str, limit: int | None = None,
 
 
 @app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'",
+    )
+    return response
+
+
+@app.middleware("http")
 async def trace_id_middleware(request: Request, call_next):
     trace_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
     request.state.trace_id = trace_id
@@ -355,7 +368,7 @@ async def _audit(request: Request, user: dict, action: str, target_table: str | 
         )
     except Exception as e:
         # L'audit non deve mai far fallire la richiesta principale.
-        print(f"[audit_log] scrittura fallita per action={action}: {e}")
+        logger.warning("[audit_log] scrittura fallita per action=%s: %s", action, e)
 
 
 _storico_eventi: list[EventoDashboard] = []
@@ -377,7 +390,7 @@ async def _get_billing_snapshot(repo, organization_id: str | None) -> dict | Non
     try:
         return await repo.get_organization_billing(organization_id)
     except Exception as e:
-        print(f"[llm_routing] billing snapshot non disponibile org={organization_id}: {e}")
+        logger.warning("[llm_routing] billing snapshot non disponibile org=%s: %s", organization_id, e)
         return None
 
 
@@ -407,7 +420,7 @@ async def _record_ai_usage(repo, organization_id: str | None, task_type: str,
             },
         )
     except Exception as e:
-        print(f"[llm_routing] usage logging fallito org={organization_id}: {e}")
+        logger.warning("[llm_routing] usage logging fallito org=%s: %s", organization_id, e)
 
 
 @app.post("/api/messaggio", response_model=RispostaOutput)
@@ -477,7 +490,7 @@ async def ricevi_messaggio(
         )
     except Exception as e:
         logger.error("Error generating AI response in ricevi_messaggio: %s", e)
-        raise HTTPException(status_code=502, detail=f"Errore nella generazione della risposta: {e}")
+        raise HTTPException(status_code=502, detail="Impossibile generare la risposta al momento. Riprova più tardi.")
 
     conv_store.aggiungi(messaggio.id_conversazione, messaggio.testo, risposta.risposta)
 
@@ -764,9 +777,10 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
             )
         )
     except Exception as e:
+        logger.error("Error generating review draft: %s", e)
         raise HTTPException(
             status_code=502,
-            detail=f"Errore nella generazione della bozza risposta: {e}",
+            detail="Impossibile generare la bozza di risposta. Riprova più tardi.",
         )
 
     stato = "bozza_generata"
@@ -793,7 +807,7 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
             # invece di restituire un id fittizio mai salvato.
             esistente = await repo.get_review_by_external_id(org_id, recensione.external_id)
             if esistente is None:
-                print(f"[recensione] Conflitto univoco senza riga trovata org={org_id} external_id={recensione.external_id}")
+                logger.error("[recensione] Conflitto univoco senza riga trovata org=%s external_id=%s", org_id, recensione.external_id)
                 raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
             review_id = str(esistente["id"])
             stato = esistente["stato"]
@@ -802,7 +816,7 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
             # id fittizio (uuid locale) mai persistito restituito al chiamante,
             # che poi falliva silenziosamente su /approva. Ora logghiamo e
             # segnaliamo l'errore invece di mentire sul successo.
-            print(f"[recensione] Persistenza fallita org={org_id} external_id={recensione.external_id}: {e}")
+            logger.error("[recensione] Persistenza fallita org=%s external_id=%s: %s", org_id, recensione.external_id, e)
             raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
 
     await _record_ai_usage(
@@ -873,9 +887,10 @@ def ottieni_report(forza: bool = False, user: dict = Depends(require_ruolo("owne
     try:
         report = genera_report_completo(_storico_eventi)
     except Exception as e:
+        logger.error("Error generating daily report: %s", e)
         raise HTTPException(
             status_code=502,
-            detail=f"Errore nella generazione del report: {e}",
+            detail="Impossibile generare il report. Riprova più tardi.",
         )
 
     set_report_cache(oggi, report)
@@ -911,7 +926,8 @@ async def report_settimanale(
     try:
         risultato = await genera_e_invia_report_settimanale(pool, str(org_id), forza=forza)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Errore generazione report: {e}")
+        logger.error("Errore generazione report settimanale: %s", e)
+        raise HTTPException(status_code=502, detail="Errore durante la generazione o invio del report settimanale")
 
     return risultato
 

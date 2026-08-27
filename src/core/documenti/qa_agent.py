@@ -1,5 +1,8 @@
+import logging
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, crea_llm, route_llm
 from src.core.documenti.embeddings import vettorizza
+
+logger = logging.getLogger(__name__)
 
 
 async def rispondi(
@@ -67,7 +70,7 @@ async def rispondi(
             "Impossibile generare una risposta."
         )
     except Exception as e:
-        print(f"[qa_agent] Errore LLM: {e}")
+        logger.error("[qa_agent] Errore LLM: %s", e)
         risposta = (
             "Non ho potuto analizzare i documenti in questo momento. "
             "Riprova più tardi."

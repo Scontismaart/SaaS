@@ -86,7 +86,7 @@ def crea_llm(
         )
 
     if max_tokens is None:
-        max_tokens = int(os.getenv("LLM_MAX_TOKENS", "1500"))
+        max_tokens = int(os.getenv("LLM_MAX_TOKENS", "250"))
 
     llm_params: dict[str, object] = {
         "model": selected_model,

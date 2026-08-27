@@ -23,6 +23,7 @@ class MessaggioInput(BaseModel):
     canale: CanaleMessaggio = Field(default=CanaleMessaggio.DEMO)
     timestamp: datetime = Field(default_factory=datetime.now)
     id_conversazione: str = Field(default="demo-001")
+    telefono_mittente: str = Field(default="")
 
 
 class DatiPrenotazione(BaseModel):

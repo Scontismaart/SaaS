@@ -5,7 +5,11 @@ import uuid
 
 from pydantic import ValidationError
 
-from src.agents.prompts import assegna_variante
+from src.agents.prompts import (
+    assegna_variante,
+    estrai_date_da_testo,
+    formatta_disponibilita,
+)
 from src.core.billing.suspension import is_org_suspended
 from src.core.bookings import SlotPienoError
 from src.core.crew_runner import genera_risposta_async
@@ -240,6 +244,7 @@ class InboundProcessor:
             testo=text,
             canale=CanaleMessaggio(canale),
             id_conversazione=str(msg.get("conversation_id", "")),
+            telefono_mittente=str(content.get("from", "")),
         )
 
         intent_result = await classifica_intent(text)
@@ -322,9 +327,28 @@ class InboundProcessor:
                 heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"], org_id))
                 try:
                     contesto = await recupera_contesto_documenti(str(org_id), text, self.repo, q_emb=q_emb)
+
+                    # Pre-fetch semaforo: estrae date dal testo e fornisce
+                    # la disponibilità reale al prompt LLM. Best-effort:
+                    # se fallisce, il LLM opera senza dati di disponibilità.
+                    contesto_disp = ""
+                    if self.booking_service and intent_result.intent in ("prenotazione", "booking", "disponibilita", "faq"):
+                        try:
+                            date_candidate = estrai_date_da_testo(text)
+                            if date_candidate:
+                                all_slots = []
+                                for d in date_candidate[:3]:  # max 3 date
+                                    slots = await self.booking_service.semaforo_giorno(org_id, d)
+                                    all_slots.extend([s.model_dump() if hasattr(s, 'model_dump') else s for s in slots])
+                                if all_slots:
+                                    contesto_disp = formatta_disponibilita(all_slots)
+                        except Exception as e:
+                            logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id, e)
+
                     risposta = await genera_risposta_async(
                         messaggio, profilo, billing=state, contesto_documenti=contesto.testo,
                         intent=intent_result.intent, variante=variante_prompt,
+                        contesto_disponibilita=contesto_disp,
                     )
                 finally:
                     heartbeat_task.cancel()

@@ -218,57 +218,63 @@ const RUOLO_LABEL = {
 
 function aggiornaBottoneAccesso() {
   const btn = document.getElementById("accesso-btn");
-  const userMenu = document.getElementById("user-menu");
   if (btn) btn.hidden = Boolean(sessione);
-  if (userMenu) userMenu.hidden = !sessione;
-/* Il billing non Ã¨ piÃ¹ una CTA in topbar: vive nella vista "Piano e
-   abbonamento" della sidebar (gruppo Account). */
+
   if (!sessione) {
-    chiudiMenuUtente();
+    chiudiSidebarAccountMenu();
     return;
   }
   const email = sessione.email || "utente";
   const iniziale = (email[0] || "U").toUpperCase();
-  const avatarInitial = document.getElementById("avatar-initial");
-  const dropdownInitial = document.getElementById("dropdown-initial");
-  if (avatarInitial) avatarInitial.textContent = iniziale;
-  if (dropdownInitial) dropdownInitial.textContent = iniziale;
-  const menuEmail = document.getElementById("user-menu-email");
-  const dropdownEmail = document.getElementById("dropdown-email");
-  if (menuEmail) menuEmail.textContent = email;
-  if (dropdownEmail) dropdownEmail.textContent = email;
-  const ruoloEl = document.getElementById("dropdown-ruolo");
-  if (ruoloEl) {
-    ruoloEl.textContent = RUOLO_LABEL[sessione.ruolo] || sessione.ruolo || "Ospite";
-    ruoloEl.className = `ruolo-chip ruolo-${sessione.ruolo || "staff"}`;
-  }
+
+  // Sidebar account trigger
+  const sbAvatar = document.getElementById("sidebar-avatar-initial");
+  const sbEmail = document.getElementById("sidebar-account-email");
+  if (sbAvatar) sbAvatar.textContent = iniziale;
+  if (sbEmail) sbEmail.textContent = email;
 }
 
-function toggleMenuUtente(force) {
-  const dropdown = document.getElementById("user-dropdown");
-  const menuBtn = document.getElementById("user-menu-btn");
-  if (!dropdown || !menuBtn) return;
+function toggleSidebarAccountMenu(force) {
+  const dropdown = document.getElementById("sidebar-account-dropdown");
+  const btn = document.getElementById("sidebar-account-trigger");
+  if (!dropdown || !btn) return;
   const apri = typeof force === "boolean" ? force : dropdown.hidden;
   dropdown.hidden = !apri;
-  menuBtn.setAttribute("aria-expanded", String(apri));
+  btn.setAttribute("aria-expanded", String(apri));
 }
 
-function chiudiMenuUtente() {
-  toggleMenuUtente(false);
+function chiudiSidebarAccountMenu() {
+  toggleSidebarAccountMenu(false);
 }
 
-document.getElementById("user-menu-btn")?.addEventListener("click", () => {
-  chiudiPannelloNotifiche();
-  toggleMenuUtente();
+document.getElementById("sidebar-account-trigger")?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleSidebarAccountMenu();
 });
 
-document.getElementById("logout-btn")?.addEventListener("click", async () => {
+document.getElementById("sidebar-menu-impostazioni")?.addEventListener("click", () => {
+  chiudiSidebarAccountMenu();
+  apriVistaImpostazioni("generale");
+});
+
+document.getElementById("sidebar-menu-piano")?.addEventListener("click", () => {
+  chiudiSidebarAccountMenu();
+  apriVistaImpostazioni("piano");
+});
+
+document.getElementById("sidebar-logout-btn")?.addEventListener("click", async () => {
   await faiLogout();
   window.location.href = "/accedi/";
 });
 
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#sidebar-account-trigger") && !e.target.closest("#sidebar-account-dropdown")) {
+    chiudiSidebarAccountMenu();
+  }
+});
+
 /* Login su pagina dedicata /accedi/, registrazione su /registrati/
-   (pagine standalone). Il modal Ã¨ stato rimosso. */
+   (pagine standalone). Il modal è stato rimosso. */
 function vaiAdAccesso() {
   const next = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `/accedi/?next=${next}`;
@@ -317,9 +323,9 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
    ============================================================ */
 
 const ACCOUNT_PLANS = [
-  { slug: "starter", nome: "Essenziale", prezzo: "â‚¬29/mese", limite: "300 conversazioni/mese" },
-  { slug: "pro", nome: "Crescita", prezzo: "â‚¬69/mese", limite: "1.200 conversazioni/mese" },
-  { slug: "business", nome: "Scala", prezzo: "â‚¬149/mese", limite: "5.000 conversazioni/mese" },
+  { slug: "starter", nome: "Essenziale", prezzo: "€29/mese", limite: "300 conversazioni/mese" },
+  { slug: "pro", nome: "Crescita", prezzo: "€69/mese", limite: "1.200 conversazioni/mese" },
+  { slug: "business", nome: "Scala", prezzo: "€149/mese", limite: "5.000 conversazioni/mese" },
 ];
 
 function accountStatoPill(stato) {
@@ -340,8 +346,16 @@ async function caricaAccount() {
     accountStatoPill(stato);
 
     const corrente = ACCOUNT_PLANS.find((p) => p.slug === sub.plan);
-    document.getElementById("account-plan-nome").textContent = corrente ? corrente.nome : "â€”";
-    document.getElementById("account-plan-prezzo").textContent = corrente ? corrente.prezzo : "";
+    const planName = corrente ? corrente.nome : "—";
+    const planPrice = corrente ? corrente.prezzo : "";
+
+    const nameEl = document.getElementById("account-plan-nome");
+    const priceEl = document.getElementById("account-plan-prezzo");
+    const sbPlanEl = document.getElementById("sidebar-account-plan");
+
+    if (nameEl) nameEl.textContent = planName;
+    if (priceEl) priceEl.textContent = planPrice;
+    if (sbPlanEl) sbPlanEl.textContent = corrente ? "Piano " + corrente.nome : "Piano e abbonamento";
 
     const rinnovo = document.getElementById("account-rinnovo");
     const dataIt = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("it-IT"); };
@@ -350,7 +364,7 @@ async function caricaAccount() {
     else if (sub.current_period_end) rinnovo.textContent = `Prossimo rinnovo: ${dataIt(sub.current_period_end)}.`;
     else rinnovo.textContent = "Nessun rinnovo programmato.";
 
-    // Card cambio piano: quella attiva Ã¨ evidenziata e non cliccabile.
+    // Card cambio piano: quella attiva è evidenziata e non cliccabile.
     const wrap = document.getElementById("account-plans");
     wrap.innerHTML = "";
     ACCOUNT_PLANS.forEach((p) => {
@@ -516,13 +530,41 @@ function segnaNotificheViste(viewName) {
    Impostazioni â€” mai un no-op silenzioso. */
 const VIEW_FALLBACK = {
   audit: { view: "impostazioni", tab: "audit" },
-  integrazioni: { view: "impostazioni", tab: "integrazioni" },
+  integrazioni: { view: "impostazioni", tab: "whatsapp" },
+  account: { view: "impostazioni", tab: "piano" },
+  piano: { view: "impostazioni", tab: "piano" },
+  fatturazione: { view: "impostazioni", tab: "fatturazione" },
+  sicurezza: { view: "impostazioni", tab: "sicurezza" },
+  profilo: { view: "impostazioni", tab: "profilo" },
   documenti: { view: "conoscenza" },
   report: { view: "panoramica" },
   onboarding: { view: "assistente" },
 };
 
+function apriVistaImpostazioni(cat = "generale") {
+  segnaNotificheViste("impostazioni");
+  chiudiMenuMobile();
+  chiudiSidebarAccountMenu();
+
+  navItems.forEach((n) => n.classList.remove("active"));
+  views.forEach((v) => {
+    v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
+  });
+
+  const titles = {
+    piano: "Piano e abbonamento",
+    fatturazione: "Piano e abbonamento",
+  };
+  topbarTitle.textContent = titles[cat] || "Impostazioni";
+
+  attivaCategoriaImpostazioni(cat);
+}
+
 function apriView(key) {
+  if (key === "impostazioni") {
+    apriVistaImpostazioni("generale");
+    return true;
+  }
   const btn = document.querySelector(`.nav-item[data-view="${key}"]`);
   if (btn) {
     btn.click();
@@ -530,30 +572,97 @@ function apriView(key) {
   }
   const dest = VIEW_FALLBACK[key];
   if (!dest) return false;
+  if (dest.view === "impostazioni") {
+    apriVistaImpostazioni(dest.tab || "generale");
+    return true;
+  }
   const container = document.querySelector(`.nav-item[data-view="${dest.view}"]`);
   if (container) container.click();
-  if (dest.tab) attivaTabImpostazioni(dest.tab);
+  if (dest.tab) attivaCategoriaImpostazioni(dest.tab);
   return true;
 }
 
-/* --- Tab Impostazioni: Generale / Integrazioni / Audit --- */
+/* --- Sotto-sidebar Impostazioni & Account (Pattern a due riquadri) --- */
 
-function attivaTabImpostazioni(tab) {
-  document.querySelectorAll("[data-settings-tab-btn]").forEach((b) => {
-    const on = b.dataset.settingsTabBtn === tab;
+function attivaCategoriaImpostazioni(cat) {
+  const MAPPATURA_LEGACY = {
+    generale: "generale",
+    integrazioni: "whatsapp",
+    audit: "audit",
+    account: "piano",
+    piano: "piano",
+    fatturazione: "fatturazione",
+    profilo: "profilo",
+    "assistente-regole": "assistente-regole",
+    assistente: "assistente-regole",
+    sicurezza: "sicurezza",
+    whatsapp: "whatsapp",
+    instagram: "instagram",
+    calendar: "calendar",
+    webhook: "webhook",
+  };
+  const targetCat = MAPPATURA_LEGACY[cat] || cat || "generale";
+
+  document.querySelectorAll("[data-settings-cat-btn]").forEach((b) => {
+    const on = b.dataset.settingsCatBtn === targetCat;
     b.classList.toggle("active", on);
     b.setAttribute("aria-selected", String(on));
   });
-  document.querySelectorAll("[data-settings-pane]").forEach((p) => {
-    p.hidden = p.dataset.settingsPane !== tab;
+
+  document.querySelectorAll("[data-settings-panel]").forEach((p) => {
+    const on = p.dataset.settingsPanel === targetCat;
+    p.hidden = !on;
   });
-  if (tab === "integrazioni") caricaIntegrazioni();
-  if (tab === "audit") caricaAudit();
+
+  // Carica i dati specifici della categoria attiva
+  if (targetCat === "generale") {
+    if (typeof caricaTimezone === "function") caricaTimezone();
+  } else if (targetCat === "profilo" || targetCat === "assistente-regole") {
+    if (typeof caricaProfiloImpostazioni === "function") caricaProfiloImpostazioni();
+  } else if (["whatsapp", "instagram", "calendar", "webhook"].includes(targetCat)) {
+    if (typeof caricaIntegrazioni === "function") caricaIntegrazioni();
+  } else if (targetCat === "piano" || targetCat === "fatturazione") {
+    if (typeof caricaAccount === "function") caricaAccount();
+  } else if (targetCat === "audit") {
+    if (typeof caricaAudit === "function") caricaAudit();
+  }
 }
 
-document.querySelectorAll("[data-settings-tab-btn]").forEach((btn) => {
-  btn.addEventListener("click", () => attivaTabImpostazioni(btn.dataset.settingsTabBtn));
+function attivaTabImpostazioni(tab) {
+  attivaCategoriaImpostazioni(tab);
+}
+
+document.querySelectorAll("[data-settings-cat-btn]").forEach((btn) => {
+  btn.addEventListener("click", () => attivaCategoriaImpostazioni(btn.dataset.settingsCatBtn));
 });
+
+// Ricerca live nelle impostazioni
+const settingsSearchInput = document.getElementById("settings-search-input");
+if (settingsSearchInput) {
+  settingsSearchInput.addEventListener("input", () => {
+    const q = settingsSearchInput.value.trim().toLowerCase();
+    const catBtns = document.querySelectorAll("[data-settings-cat-btn]");
+    const groups = document.querySelectorAll(".settings-nav-group");
+    const emptyMsg = document.getElementById("settings-search-empty");
+    let matchCount = 0;
+
+    catBtns.forEach((btn) => {
+      const text = (btn.textContent + " " + (btn.dataset.keywords || "")).toLowerCase();
+      const match = !q || text.includes(q);
+      btn.style.display = match ? "" : "none";
+      if (match) matchCount++;
+    });
+
+    groups.forEach((grp) => {
+      const visibleBtns = grp.querySelectorAll('[data-settings-cat-btn]:not([style*="display: none"])');
+      grp.style.display = visibleBtns.length ? "" : "none";
+    });
+
+    if (emptyMsg) {
+      emptyMsg.hidden = matchCount > 0;
+    }
+  });
+}
 
 async function aggiornaNotifiche() {
   try {
@@ -598,11 +707,20 @@ navItems.forEach((btn) => {
     segnaNotificheViste(viewName);
 
     // Su mobile il drawer resta aperto dopo la navigazione: chiudilo sempre
-    // (no-op su desktop dove il drawer non Ã¨ mai "aperto").
     chiudiMenuMobile();
 
     navItems.forEach((n) => n.classList.remove("active"));
     btn.classList.add("active");
+
+    if (viewName === "account") {
+      views.forEach((v) => {
+        v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
+      });
+      topbarTitle.textContent = "Piano e abbonamento";
+      attivaCategoriaImpostazioni("piano");
+      caricaAccount();
+      return;
+    }
 
     views.forEach((v) => {
       v.classList.toggle("view-hidden", v.dataset.viewPanel !== viewName);
@@ -613,7 +731,7 @@ navItems.forEach((btn) => {
       inbox: "Inbox",
       prenotazioni: "Prenotazioni",
       recensioni: "Recensioni",
-      assistente: "Assistente",
+      assistente: "Simulatore AI",
       conoscenza: "Conoscenza",
       impostazioni: "Impostazioni",
       account: "Piano e abbonamento",
@@ -621,15 +739,16 @@ navItems.forEach((btn) => {
     };
     topbarTitle.textContent = titles[viewName] || viewName;
     if (viewName === "impostazioni") {
-      caricaIntegrazioni();
-      caricaAudit();
-      if (typeof caricaTimezone === "function") caricaTimezone();
+      attivaCategoriaImpostazioni("generale");
     }
     if (viewName === "account") caricaAccount();
 
     if (viewName === "panoramica") {
+      avviaPanoramicaPolling();
       aggiornaRiepilogo();
       aggiornaPrioritari();
+    } else {
+      fermaPanoramicaPolling();
     }
     if (viewName === "assistente") {
       // Il wizard salva solo owner/manager (gate lato API): per lo staff
@@ -642,8 +761,13 @@ navItems.forEach((btn) => {
     if (viewName === "prenotazioni") {
       await aggiornaImpostazioniPrenotazioni();
       inizializzaCalendarioPrenotazioni();
-      aggiornaPrenotazioni();
-      aggiornaSemaforo();
+      await aggiornaPrenotazioni();
+      await aggiornaSemaforo();
+      if (bookingCalendar) {
+        bookingCalendar.updateSize();
+        bookingCalendar.render();
+      }
+      renderTabellaPrenotazioniGiorno();
     }
     if (viewName === "documenti" || viewName === "conoscenza") {
       aggiornaConteggio();
@@ -1404,7 +1528,7 @@ const bookingDetail = {
 };
 
 function oggiIso() {
-  return new Date().toISOString().slice(0, 10);
+  return _toDateKey(new Date());
 }
 
 function colorePrenotazione(stato) {
@@ -1524,6 +1648,23 @@ document.getElementById("booking-completed-btn")?.addEventListener("click", () =
   });
 });
 
+function formattaUnitaVerticale(num, singolare = false) {
+  const v = (typeof dbProfileRecord !== "undefined" && dbProfileRecord?.verticale)
+    || (typeof onboardingState !== "undefined" && onboardingState?.selectedVertical)
+    || "ristorante";
+  const n = Number(num) || 0;
+  if (v === "parrucchiere" || v === "centro_estetico") {
+    return singolare || n === 1 ? `${n} persona` : `${n} persone`;
+  }
+  if (v === "studio_medico_dentista") {
+    return singolare || n === 1 ? `${n} paziente` : `${n} pazienti`;
+  }
+  if (v === "hotel_bnb") {
+    return singolare || n === 1 ? `${n} ospite` : `${n} ospiti`;
+  }
+  return singolare || n === 1 ? `${n} coperto` : `${n} coperti`;
+}
+
 function apriDettaglioPrenotazione(prenotazione) {
   if (!bookingModal || !prenotazione) return;
   const valore = (dato, fallback = "Non indicato") => dato || fallback;
@@ -1536,7 +1677,7 @@ function apriDettaglioPrenotazione(prenotazione) {
   bookingDetail.title.textContent = valore(prenotazione.nome_cliente, "Cliente");
   bookingDetail.date.textContent = data;
   bookingDetail.time.textContent = valore(prenotazione.ora);
-  bookingDetail.seats.textContent = prenotazione.coperti ? `${prenotazione.coperti} coperti` : "Non indicati";
+  bookingDetail.seats.textContent = prenotazione.coperti ? formattaUnitaVerticale(prenotazione.coperti) : "Non indicati";
   bookingDetail.status.textContent = valore(prenotazione.stato);
   bookingDetail.phone.textContent = valore(prenotazione.telefono);
   bookingDetail.origin.textContent = valore(prenotazione.origine);
@@ -1573,7 +1714,7 @@ function apriFormPrenotazione(prenotazione = null) {
   bookingForm?.reset();
   document.getElementById("booking-name").value = prenotazione?.nome_cliente || "";
   document.getElementById("booking-phone").value = prenotazione?.telefono || "";
-  document.getElementById("booking-date").value = prenotazione?.data || bookingCalendar?.getDate()?.toISOString().slice(0, 10) || oggiIso();
+  document.getElementById("booking-date").value = prenotazione?.data || (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : "") || oggiIso();
   document.getElementById("booking-time").value = String(prenotazione?.ora || "20:00").slice(0, 5);
   document.getElementById("booking-seats").value = prenotazione?.coperti || "";
   document.getElementById("booking-note").value = prenotazione?.note || "";
@@ -1622,42 +1763,128 @@ function inizializzaCalendarioPrenotazioni() {
   if (bookingCalendar) {
     bookingCalendar.setOption("slotMinTime", slotRange.min);
     bookingCalendar.setOption("slotMaxTime", slotRange.max);
+    bookingCalendar.updateSize();
     return;
   }
   bookingCalendar = new FullCalendar.Calendar(bookingCalendarEl, {
     initialView: "timeGridDay",
+    timeZone: "local",
     locale: "it",
     height: "auto",
     allDaySlot: false,
     nowIndicator: true,
     slotDuration: "00:15:00",
+    snapDuration: "00:15:00",
     slotLabelInterval: "01:00:00",
     slotMinTime: slotRange.min,
     slotMaxTime: slotRange.max,
     slotLabelContent(info) {
-      const ora = `${String(info.date.getHours()).padStart(2, "0")}:00`;
-      const slot = bookingAvailability.get(ora);
-      const liberi = slot ? `${slot.coperti_liberi} liberi` : "Chiuso";
-      const stato = slot?.stato || "rosso";
-      return { html: `<span class="booking-slot-label booking-slot-${_sanitize(stato)}"><span class="booking-slot-dot"></span>${_sanitize(ora)} · ${_sanitize(liberi)}</span>` };
+      const ora = `${String(info.date.getHours()).padStart(2, "0")}:${String(info.date.getMinutes()).padStart(2, "0")}`;
+      const slot = bookingAvailability.get(ora.slice(0, 5));
+      const liberi = slot ? `${slot.coperti_liberi} liberi` : "Disponibile";
+      const stato = slot?.stato || "verde";
+      return { html: `<span class="booking-slot-label booking-slot-${_sanitize(stato)}"><span class="booking-slot-dot"></span>${_sanitize(ora)}</span>` };
     },
     eventClick(info) { apriDettaglioPrenotazione(info.event.extendedProps); },
     selectable: true,
     headerToolbar: false,
     select(info) {
       apriFormPrenotazione({
-        data: info.startStr.slice(0, 10),
-        ora: info.startStr.slice(11, 16) || "20:00",
+        data: _toDateKey(info.start),
+        ora: `${String(info.start.getHours()).padStart(2, "0")}:${String(info.start.getMinutes()).padStart(2, "0")}`,
       });
       bookingCalendar.unselect();
     },
     datesSet(info) {
-      aggiornaSemaforo(info.startStr.slice(0, 10));
+      const dateKey = _toDateKey(info.start);
+      aggiornaSemaforo(dateKey);
+      renderTabellaPrenotazioniGiorno(dateKey);
       aggiornaToolbarCalendario();
     },
   });
   bookingCalendar.render();
   aggiornaToolbarCalendario();
+}
+
+function renderTabellaPrenotazioniGiorno(data = null) {
+  const tableBody = document.getElementById("booking-table-body");
+  const countEl = document.getElementById("booking-table-day-count");
+  const titleEl = document.getElementById("booking-table-day-title");
+  if (!tableBody) return;
+
+  const targetDate = data ? _toDateKey(data) : (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
+  
+  if (titleEl) {
+    try {
+      const dObj = new Date(`${targetDate}T12:00:00`);
+      titleEl.textContent = `Prenotazioni di ${dObj.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}`;
+    } catch {
+      titleEl.textContent = `Prenotazioni del ${targetDate}`;
+    }
+  }
+
+  const prenotazioniGiorno = (bookingRecords || [])
+    .filter((p) => _toDateKey(p.data) === targetDate)
+    .sort((a, b) => String(a.ora || "").localeCompare(String(b.ora || "")));
+
+  if (countEl) {
+    countEl.textContent = `${prenotazioniGiorno.length} prenotazioni`;
+  }
+
+  if (!prenotazioniGiorno.length) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="booking-table-empty">
+          Nessuna prenotazione per ${targetDate}. Clicca "+ Nuova prenotazione" per aggiungerne una.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tableBody.innerHTML = prenotazioniGiorno.map((p) => {
+    const ora = String(p.ora || "").slice(0, 5);
+    const stato = statoNormalizzatoPrenotazione(p);
+    let badgeClass = "booking-badge-confermata";
+    if (stato.includes("attesa")) badgeClass = "booking-badge-in_attesa";
+    else if (stato.includes("intervento")) badgeClass = "booking-badge-richiede_intervento";
+    else if (stato.includes("cancell") || stato.includes("rifiut")) badgeClass = "booking-badge-cancellata";
+
+    return `
+      <tr data-booking-id="${_sanitize(p.id)}">
+        <td class="booking-row-time">${_sanitize(ora)}</td>
+        <td class="booking-row-client">${_sanitize(p.nome_cliente || "Cliente")}</td>
+        <td>${_sanitize(p.telefono || "—")}</td>
+        <td>${_sanitize(formattaUnitaVerticale(p.coperti || 1))}</td>
+        <td><span class="booking-origin-tag">${_sanitize(p.origine || "WhatsApp")}</span></td>
+        <td>${_sanitize(p.note || "—")}</td>
+        <td><span class="booking-badge ${badgeClass}">${_sanitize(p.stato || "confermata")}</span></td>
+        <td style="text-align: right;">
+          <button type="button" class="report-refresh" data-open-booking-id="${_sanitize(p.id)}" style="padding: 4px 10px; font-size: 0.75rem;">
+            Dettagli
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  tableBody.querySelectorAll("[data-open-booking-id]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const bId = btn.dataset.openBookingId;
+      const item = bookingRecords.find((b) => String(b.id) === String(bId));
+      if (item) apriDettaglioPrenotazione(item);
+    });
+  });
+
+  tableBody.querySelectorAll("tr[data-booking-id]").forEach((tr) => {
+    tr.style.cursor = "pointer";
+    tr.addEventListener("click", () => {
+      const bId = tr.dataset.bookingId;
+      const item = bookingRecords.find((b) => String(b.id) === String(bId));
+      if (item) apriDettaglioPrenotazione(item);
+    });
+  });
 }
 
 async function aggiornaPrenotazioni() {
@@ -1681,18 +1908,33 @@ async function aggiornaPrenotazioni() {
     const mostrabili = bookingPendingOnly ? pending : prenotazioni;
     mostrabili.forEach((p) => {
       if (!p.data || !p.ora) return;
+      const dKey = _toDateKey(p.data);
       const ora = String(p.ora).slice(0, 5);
+      const [h, m] = ora.split(":").map(Number);
+      const totalEndMinutes = (isNaN(m) ? 0 : m) + 15;
+      const endH = totalEndMinutes >= 60 ? (h + 1) : h;
+      const endM = totalEndMinutes >= 60 ? (totalEndMinutes - 60) : totalEndMinutes;
+      const oraFine = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
       bookingCalendar.addEvent({
         id: p.id,
-        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${p.coperti || "?"} coperti`,
-        start: `${p.data}T${ora}:00`,
-        end: `${p.data}T${ora}:00`,
+        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${formattaUnitaVerticale(p.coperti || 1)}`,
+        start: `${dKey}T${ora}:00`,
+        end: `${dKey}T${oraFine}:00`,
         backgroundColor: colorePrenotazione(p.stato),
         borderColor: colorePrenotazione(p.stato),
         classNames: statoNormalizzatoPrenotazione(p) === "in_attesa" ? ["booking-event-pending"] : [],
         extendedProps: p,
       });
     });
+    const slotRange = intervalloSlotPrenotazioni();
+    bookingCalendar.setOption("slotMinTime", slotRange.min);
+    bookingCalendar.setOption("slotMaxTime", slotRange.max);
+    bookingCalendar.updateSize();
+    bookingCalendar.render();
+    
+    const currentDate = bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
+    renderTabellaPrenotazioniGiorno(currentDate);
+
     verificaPrenotazioneAggiornata(prenotazioni);
     bookingSnapshot = new Map(prenotazioni.map((p) => [String(p.id), JSON.stringify(p)]));
   } catch (err) {
@@ -1701,13 +1943,21 @@ async function aggiornaPrenotazioni() {
 }
 
 function intervalloSlotPrenotazioni() {
-  const aperte = Object.entries(bookingOpenHours)
+  const aperte = Object.entries(bookingOpenHours || {})
     .filter(([, capienza]) => Number(capienza) > 0)
-    .map(([ora]) => Number(ora.slice(0, 2)))
-    .sort((a, b) => a - b);
-  if (!aperte.length) return { min: "00:00:00", max: "24:00:00" };
-  const min = `${String(aperte[0]).padStart(2, "0")}:00:00`;
-  const max = aperte.at(-1) === 23 ? "24:00:00" : `${String(aperte.at(-1) + 1).padStart(2, "0")}:00:00`;
+    .map(([ora]) => Number(ora.slice(0, 2)));
+
+  const orePrenotazioni = (bookingRecords || [])
+    .filter((p) => p.ora)
+    .map((p) => Number(String(p.ora).slice(0, 2)));
+
+  const tutte = [...aperte, ...orePrenotazioni].filter((h) => !isNaN(h));
+  if (!tutte.length) return { min: "06:00:00", max: "24:00:00" };
+
+  const minH = Math.min(...tutte);
+  const maxH = Math.max(...tutte);
+  const min = `${String(Math.max(0, Math.min(minH, 6))).padStart(2, "0")}:00:00`;
+  const max = maxH >= 23 ? "24:00:00" : `${String(Math.max(maxH + 1, 23)).padStart(2, "0")}:00:00`;
   return { min, max };
 }
 
@@ -1733,7 +1983,7 @@ function verificaPrenotazioneAggiornata(prenotazioni) {
 
 async function aggiornaSemaforo(data = null) {
   if (!availabilityList) return;
-  const targetDate = data || bookingCalendar?.getDate()?.toISOString().slice(0, 10) || oggiIso();
+  const targetDate = data ? _toDateKey(data) : (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
   availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString("it-IT", {
     weekday: "short",
     day: "2-digit",
@@ -1757,6 +2007,7 @@ async function aggiornaSemaforo(data = null) {
       availabilityList.appendChild(item);
     });
     aggiornaRiepilogoPrenotazioni(targetDate, slots);
+    renderTabellaPrenotazioniGiorno(targetDate);
     bookingCalendar?.render();
   } catch (err) {
     console.error("Impossibile caricare il semaforo:", err);
@@ -1764,10 +2015,21 @@ async function aggiornaSemaforo(data = null) {
 }
 
 function aggiornaRiepilogoPrenotazioni(data, slots) {
-  const prenotazioniGiorno = bookingRecords.filter((p) => p.data === data && !STATI_FINALI_PRENOTAZIONE.includes(statoNormalizzatoPrenotazione(p)));
+  const prenotazioniGiorno = (bookingRecords || []).filter((p) => p.data === data && !STATI_FINALI_PRENOTAZIONE.includes(statoNormalizzatoPrenotazione(p)));
   const coperti = prenotazioniGiorno.reduce((totale, p) => totale + (Number(p.coperti) || 0), 0);
-  const liberi = slots.reduce((totale, slot) => totale + (Number(slot.coperti_liberi) || 0), 0);
-  if (bookingSummary) bookingSummary.textContent = `${prenotazioniGiorno.length} prenotazioni · ${coperti} coperti · ${liberi} posti liberi`;
+  const liberi = (slots || []).reduce((totale, slot) => totale + (Number(slot.coperti_liberi) || 0), 0);
+  if (bookingSummary) bookingSummary.textContent = `${prenotazioniGiorno.length} prenotazioni · ${formattaUnitaVerticale(coperti)} · ${liberi} posti liberi`;
+
+  const emptyNotice = document.getElementById("booking-day-empty");
+  if (emptyNotice) {
+    emptyNotice.hidden = prenotazioniGiorno.length > 0;
+    const emptyBtn = document.getElementById("booking-empty-new-btn");
+    if (emptyBtn) {
+      emptyBtn.onclick = () => {
+        apriFormPrenotazione({ data: data ? _toDateKey(data) : oggiIso(), ora: "20:00" });
+      };
+    }
+  }
 }
 
 async function aggiornaImpostazioniPrenotazioni() {
@@ -1819,8 +2081,12 @@ bookingForm?.addEventListener("submit", async (e) => {
     bookingStatusText.style.color = "var(--sage)";
     bookingEditingId = null;
     chiudiBookingModal("booking-create-modal");
+    if (bookingCalendar) {
+      bookingCalendar.gotoDate(payload.data);
+    }
     await aggiornaPrenotazioni();
     await aggiornaSemaforo(payload.data);
+    renderTabellaPrenotazioniGiorno(payload.data);
   } catch (err) {
     bookingStatusText.textContent = bookingEditingId ? "Modifica non salvata, riprova." : err.message;
     bookingStatusText.style.color = "var(--red)";
@@ -2266,25 +2532,125 @@ function _errorState(messaggio, retryFn) {
   return wrap;
 }
 
-async function aggiornaPrioritari() {
-  priorityList.innerHTML = _skeletonList(3);
+async function caricaStatoOnboarding() {
+  try {
+    const [resDoc, resBook, resWa] = await Promise.allSettled([
+      apiFetch(`${API_BASE}/api/documenti/conteggio`),
+      apiFetch(`${API_BASE}/api/bookings/settings`),
+      apiFetch(`${API_BASE}/api/whatsapp/settings`)
+    ]);
+
+    let hasDocs = false;
+    if (resDoc.status === "fulfilled" && resDoc.value?.ok) {
+      const d = await resDoc.value.json().catch(() => ({}));
+      hasDocs = Number(d.chunk_indicizzati || 0) > 0;
+    }
+
+    let hasBookingHours = false;
+    if (resBook.status === "fulfilled" && resBook.value?.ok) {
+      const b = await resBook.value.json().catch(() => ({}));
+      const capienze = b.capienze_orarie || {};
+      hasBookingHours = Object.values(capienze).some((v) => Number(v) > 0);
+    }
+
+    let hasWa = false;
+    if (resWa.status === "fulfilled" && resWa.value?.ok) {
+      const w = await resWa.value.json().catch(() => ({}));
+      hasWa = Boolean(w.phone_number_id || w.status === "connected" || w.configured);
+    }
+
+    return {
+      hasDocs,
+      hasBookingHours,
+      hasWa,
+      isFullyConfigured: hasDocs && hasBookingHours && hasWa,
+    };
+  } catch {
+    return { hasDocs: true, hasBookingHours: true, hasWa: true, isFullyConfigured: true };
+  }
+}
+
+async function aggiornaPrioritari(silent = false) {
+  if (!silent && !priorityList.children.length) {
+    priorityList.innerHTML = _skeletonList(3);
+  }
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
     if (!res.ok) {
-      priorityList.innerHTML = "";
-      priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", aggiornaPrioritari));
+      if (!silent) {
+        priorityList.innerHTML = "";
+        priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", () => aggiornaPrioritari()));
+      }
       return;
     }
     const rawEventi = await res.json().catch(() => []);
     const eventi = Array.isArray(rawEventi) ? rawEventi : [];
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
+      const cfg = await caricaStatoOnboarding();
       const li = document.createElement("li");
-      li.appendChild(_emptyState(
-        ICONS.check,
-        "Tutto sotto controllo",
-        "Nessuna richiesta urgente: l'assistente sta gestendo le conversazioni."
-      ));
+      if (!cfg.isFullyConfigured) {
+        li.className = "onboarding-checklist-item";
+        li.innerHTML = `
+          <div class="onboarding-checklist-card">
+            <div class="onboarding-checklist-header">
+              <div class="onboarding-checklist-icon-wrap" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <div>
+                <h3 class="onboarding-checklist-title">Completa la configurazione iniziale</h3>
+                <p class="onboarding-checklist-sub">Segui questi 3 passaggi per attivare l'assistente con i tuoi clienti.</p>
+              </div>
+            </div>
+            <div class="onboarding-checklist-steps">
+              <div class="onboarding-step-row">
+                <div class="onboarding-step-left">
+                  <span class="onboarding-step-indicator ${cfg.hasWa ? "done" : "todo"}">${cfg.hasWa ? "✓" : "1"}</span>
+                  <span class="onboarding-step-text ${cfg.hasWa ? "done" : ""}">Collega il numero WhatsApp Business</span>
+                </div>
+                ${cfg.hasWa
+                  ? '<span class="onboarding-step-done-badge">Completato</span>'
+                  : '<button type="button" class="onboarding-step-btn" data-action="setup-wa">Collega →</button>'}
+              </div>
+              <div class="onboarding-step-row">
+                <div class="onboarding-step-left">
+                  <span class="onboarding-step-indicator ${cfg.hasDocs ? "done" : "todo"}">${cfg.hasDocs ? "✓" : "2"}</span>
+                  <span class="onboarding-step-text ${cfg.hasDocs ? "done" : ""}">Carica menu o listino (Knowledge Base)</span>
+                </div>
+                ${cfg.hasDocs
+                  ? '<span class="onboarding-step-done-badge">Completato</span>'
+                  : '<button type="button" class="onboarding-step-btn" data-action="setup-docs">Carica PDF →</button>'}
+              </div>
+              <div class="onboarding-step-row">
+                <div class="onboarding-step-left">
+                  <span class="onboarding-step-indicator ${cfg.hasBookingHours ? "done" : "todo"}">${cfg.hasBookingHours ? "✓" : "3"}</span>
+                  <span class="onboarding-step-text ${cfg.hasBookingHours ? "done" : ""}">Configura orari e capienza tavoli</span>
+                </div>
+                ${cfg.hasBookingHours
+                  ? '<span class="onboarding-step-done-badge">Completato</span>'
+                  : '<button type="button" class="onboarding-step-btn" data-action="setup-booking">Configura →</button>'}
+              </div>
+            </div>
+          </div>
+        `;
+        li.querySelector('[data-action="setup-wa"]')?.addEventListener("click", () => {
+          document.querySelector('[data-view="impostazioni"]')?.click();
+          setTimeout(() => document.querySelector('[data-settings-tab="whatsapp"]')?.click(), 50);
+        });
+        li.querySelector('[data-action="setup-docs"]')?.addEventListener("click", () => {
+          document.querySelector('[data-view="conoscenza"]')?.click();
+        });
+        li.querySelector('[data-action="setup-booking"]')?.addEventListener("click", () => {
+          document.querySelector('[data-view="impostazioni"]')?.click();
+          setTimeout(() => document.querySelector('[data-settings-tab="regole"]')?.click(), 50);
+        });
+      } else {
+        li.appendChild(_emptyState(
+          ICONS.check,
+          "Nessun messaggio oggi",
+          "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti."
+        ));
+      }
       priorityList.appendChild(li);
       return;
     }
@@ -2312,34 +2678,271 @@ async function aggiornaPrioritari() {
   }
 }
 
-async function aggiornaRiepilogo() {
+/* ============================================================
+   KPI & SPARKLINE 7 GIORNI (PANORAMICA)
+   ============================================================ */
+
+function generaSparklineSvg(dataPoints, strokeColor, gradientId) {
+  const pts = Array.isArray(dataPoints) && dataPoints.length === 7 ? dataPoints : [0, 0, 0, 0, 0, 0, 0];
+  const maxVal = Math.max(...pts, 1);
+  const width = 120;
+  const height = 28;
+  const padX = 4;
+  const padY = 4;
+  const availW = width - padX * 2;
+  const availH = height - padY * 2;
+
+  const allZero = pts.every((v) => v === 0);
+
+  if (allZero) {
+    const yBaseline = height - padY - 2;
+    return `
+      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
+        <line x1="${padX}" y1="${yBaseline}" x2="${width - padX}" y2="${yBaseline}" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="3,3" />
+      </svg>
+    `;
+  }
+
+  const coords = pts.map((val, i) => {
+    const x = padX + i * (availW / (pts.length - 1));
+    const y = height - padY - (val / maxVal) * availH;
+    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) };
+  });
+
+  let pathD = `M ${coords[0].x} ${coords[0].y}`;
+  for (let i = 1; i < coords.length; i++) {
+    const prev = coords[i - 1];
+    const curr = coords[i];
+    const cpX1 = prev.x + (curr.x - prev.x) / 2;
+    const cpY1 = prev.y;
+    const cpX2 = prev.x + (curr.x - prev.x) / 2;
+    const cpY2 = curr.y;
+    pathD += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
+  }
+
+  const fillD = `${pathD} L ${coords[coords.length - 1].x} ${height} L ${coords[0].x} ${height} Z`;
+  const lastPt = coords[coords.length - 1];
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
+      <defs>
+        <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.3" />
+          <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.0" />
+        </linearGradient>
+      </defs>
+      <path d="${fillD}" fill="url(#${gradientId})" />
+      <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="${lastPt.x}" cy="${lastPt.y}" r="2.5" fill="${strokeColor}" />
+    </svg>
+  `;
+}
+
+function calcolaTrendKpi(oggi, ieri, tipoMetrica) {
+  // tipoMetrica: 'totale' | 'ai' | 'umano'
+  if (ieri === 0 && oggi === 0) {
+    return {
+      testo: tipoMetrica === "umano" ? "Nessuna escalation" : "In linea con ieri",
+      icona: "—",
+      classe: "trend-neutral",
+    };
+  }
+  if (ieri === 0 && oggi > 0) {
+    const isGood = tipoMetrica !== "umano";
+    return {
+      testo: `+${oggi} rispetto a ieri`,
+      icona: "↑",
+      classe: isGood ? "trend-positive" : "trend-warning",
+    };
+  }
+  const diff = oggi - ieri;
+  const pct = Math.round((diff / ieri) * 100);
+  if (pct === 0) {
+    return {
+      testo: "In linea con ieri",
+      icona: "—",
+      classe: "trend-neutral",
+    };
+  }
+  if (pct > 0) {
+    if (tipoMetrica === "ai") {
+      return { testo: `+${pct}% rispetto a ieri`, icona: "↑", classe: "trend-positive" };
+    } else if (tipoMetrica === "umano") {
+      return { testo: `+${pct}% rispetto a ieri`, icona: "↑", classe: "trend-warning" };
+    } else {
+      return { testo: `+${pct}% rispetto a ieri`, icona: "↑", classe: "trend-info" };
+    }
+  } else {
+    // Calo
+    if (tipoMetrica === "ai") {
+      return { testo: `${pct}% rispetto a ieri`, icona: "↓", classe: "trend-neutral" };
+    } else if (tipoMetrica === "umano") {
+      return { testo: `${pct}% rispetto a ieri`, icona: "↓", classe: "trend-positive" };
+    } else {
+      return { testo: `${pct}% rispetto a ieri`, icona: "↓", classe: "trend-neutral" };
+    }
+  }
+}
+
+function applicaBadgeTrend(elId, trendObj) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.className = `kpi-trend-badge ${trendObj.classe}`;
+  el.innerHTML = `
+    <span class="trend-icon">${trendObj.icona}</span>
+    <span class="trend-text">${_sanitize(trendObj.testo)}</span>
+  `;
+}
+
+function _toDateKey(d) {
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+let isPanoramicaPollingActive = false;
+let panoramicaPollingTimer = null;
+
+function avviaPanoramicaPolling() {
+  if (isPanoramicaPollingActive) return;
+  isPanoramicaPollingActive = true;
+  panoramicaPollingTimer = setInterval(async () => {
+    if (!isPanoramicaPollingActive) return;
+    if (document.hidden) return;
+    const currentView = document.querySelector(".nav-item.active")?.dataset?.view || "panoramica";
+    if (currentView !== "panoramica") {
+      fermaPanoramicaPolling();
+      return;
+    }
+    await Promise.all([
+      aggiornaRiepilogo(true),
+      aggiornaPrioritari(true),
+    ]);
+  }, 5000);
+}
+
+function fermaPanoramicaPolling() {
+  isPanoramicaPollingActive = false;
+  if (panoramicaPollingTimer) {
+    clearInterval(panoramicaPollingTimer);
+    panoramicaPollingTimer = null;
+  }
+}
+
+async function aggiornaRiepilogo(silent = false) {
+  if (!silent && !ticketList.children.length) {
+    ticketList.innerHTML = _skeletonList(3);
+  }
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
     if (!res.ok) {
-      ticketList.innerHTML = "";
-      ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", aggiornaRiepilogo));
+      if (!silent) {
+        ticketList.innerHTML = "";
+        ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", () => aggiornaRiepilogo()));
+      }
       return;
     }
     const rawStorico = await res.json().catch(() => []);
     const storico = Array.isArray(rawStorico) ? rawStorico : [];
-    const totale = storico.length;
-    const gestitiAi = storico.filter((e) => e.gestito_da_ai).length;
-    const girati = totale - gestitiAi;
-    statTotale.textContent = totale;
-    statAi.textContent = gestitiAi;
-    statUmano.textContent = girati;
+
+    // Calcolo 7 giorni storici
+    const oggiDate = new Date();
+    const giorni7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(oggiDate);
+      d.setDate(d.getDate() - i);
+      const key = _toDateKey(d);
+      giorni7.push({ dateKey: key, totale: 0, ai: 0, umano: 0 });
+    }
+
+    const oggiKey = _toDateKey(oggiDate);
+    const eventiOggi = [];
+
+    storico.forEach((e) => {
+      if (!e.timestamp) return;
+      const evDate = _toDateKey(e.timestamp);
+      if (evDate === oggiKey) {
+        eventiOggi.push(e);
+      }
+      const giornoObj = giorni7.find((g) => g.dateKey === evDate);
+      if (giornoObj) {
+        giornoObj.totale++;
+        if (e.gestito_da_ai) giornoObj.ai++;
+        else giornoObj.umano++;
+      }
+    });
+
+    const totaleOggi = eventiOggi.length;
+    const gestitiAiOggi = eventiOggi.filter((e) => e.gestito_da_ai).length;
+    const giratiOggi = totaleOggi - gestitiAiOggi;
+
+    if (statTotale) statTotale.textContent = totaleOggi;
+    if (statAi) statAi.textContent = gestitiAiOggi;
+    if (statUmano) statUmano.textContent = giratiOggi;
+
+    // Calcolo trend e sparklines
+    const totalePts = giorni7.map((g) => g.totale);
+    const aiPts = giorni7.map((g) => g.ai);
+    const umanoPts = giorni7.map((g) => g.umano);
+
+    const ieriTotale = totalePts[5] || 0;
+    const ieriAi = aiPts[5] || 0;
+    const ieriUmano = umanoPts[5] || 0;
+
+    // Badges
+    const trendTotale = calcolaTrendKpi(totaleOggi, ieriTotale, "totale");
+    const trendAi = calcolaTrendKpi(gestitiAiOggi, ieriAi, "ai");
+    const trendUmano = calcolaTrendKpi(giratiOggi, ieriUmano, "umano");
+
+    applicaBadgeTrend("trend-totale", trendTotale);
+    applicaBadgeTrend("trend-ai", trendAi);
+    applicaBadgeTrend("trend-umano", trendUmano);
+
+    // Sparklines SVG
+    const sparkTotaleEl = document.getElementById("sparkline-totale");
+    const sparkAiEl = document.getElementById("sparkline-ai");
+    const sparkUmanoEl = document.getElementById("sparkline-umano");
+
+    if (sparkTotaleEl) {
+      sparkTotaleEl.innerHTML = generaSparklineSvg(totalePts, "var(--accent)", "grad-kpi-totale");
+    }
+    if (sparkAiEl) {
+      sparkAiEl.innerHTML = generaSparklineSvg(aiPts, "var(--sage)", "grad-kpi-ai");
+    }
+    if (sparkUmanoEl) {
+      sparkUmanoEl.innerHTML = generaSparklineSvg(umanoPts, "var(--amber)", "grad-kpi-umano");
+    }
+
+    const totSettimana = totalePts.reduce((a, b) => a + b, 0);
+    const aiSettimana = aiPts.reduce((a, b) => a + b, 0);
+    const umanoSettimana = umanoPts.reduce((a, b) => a + b, 0);
+
+    const valTotEl = document.getElementById("sparkline-totale-val");
+    const valAiEl = document.getElementById("sparkline-ai-val");
+    const valUmanoEl = document.getElementById("sparkline-umano-val");
+
+    if (valTotEl) valTotEl.textContent = `${totSettimana} sett.`;
+    if (valAiEl) valAiEl.textContent = `${aiSettimana} sett.`;
+    if (valUmanoEl) valUmanoEl.textContent = `${umanoSettimana} sett.`;
+
     ticketList.innerHTML = "";
-    if (totale === 0) {
+    const eventiDaMostrare = eventiOggi.length > 0 ? eventiOggi.slice().reverse() : storico.slice(0, 15);
+
+    if (eventiDaMostrare.length === 0) {
       ticketList.appendChild(_emptyState(
         ICONS.chat,
-        "Nessuna attività ancora",
-        "Parla con l'assistente dalla sezione Assistente: le conversazioni compaiono qui.",
-        "Prova l'assistente",
+        "In attesa di conversazioni",
+        "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale.",
+        "Prova nel simulatore",
         () => document.querySelector('[data-view="assistente"]')?.click()
       ));
       return;
     }
-    storico.slice().reverse().forEach((e) => {
+
+    eventiDaMostrare.forEach((e) => {
       const li = document.createElement("li");
       li.classList.add("ticket-item", `prio-${e.priorita}`);
       const testoWrap = document.createElement("div");
@@ -2349,9 +2952,10 @@ async function aggiornaRiepilogo() {
       msg.textContent = e.testo_originale;
       const time = document.createElement("span");
       time.classList.add("ticket-item-time");
-      time.textContent = new Date(e.timestamp).toLocaleTimeString("it-IT", {
-        hour: "2-digit", minute: "2-digit",
-      });
+      const isOggi = _toDateKey(e.timestamp) === oggiKey;
+      time.textContent = isOggi
+        ? new Date(e.timestamp).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
+        : new Date(e.timestamp).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) + " " + new Date(e.timestamp).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
       testoWrap.appendChild(msg);
       testoWrap.appendChild(time);
       const tags = document.createElement("div");
@@ -2360,7 +2964,7 @@ async function aggiornaRiepilogo() {
       tipoBadge.classList.add("ticket-tag", `ticket-tag-${e.tipo_evento}`);
       tipoBadge.textContent = e.tipo_evento === "recensione" ? "Recensione" : "Messaggio";
       tags.appendChild(tipoBadge);
-      if (e.tipo_evento === "recensione" && e.dettagli.stelle) {
+      if (e.tipo_evento === "recensione" && e.dettagli?.stelle) {
         const stelleTag = document.createElement("span");
         stelleTag.classList.add("ticket-tag", "ticket-tag-stelle");
         stelleTag.textContent = "\u2605".repeat(e.dettagli.stelle) + "\u2606".repeat(5 - e.dettagli.stelle);
@@ -2387,8 +2991,10 @@ async function aggiornaRiepilogo() {
     });
   } catch (err) {
     console.error("Impossibile aggiornare il riepilogo:", err);
-    ticketList.innerHTML = "";
-    ticketList.appendChild(_errorState("Impossibile caricare l'attivitÃ  recente.", aggiornaRiepilogo));
+    if (!silent) {
+      ticketList.innerHTML = "";
+      ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", () => aggiornaRiepilogo()));
+    }
   }
 }
 
@@ -2435,12 +3041,16 @@ async function aggiornaDocumenti() {
     if (!data.documenti?.length) {
       docLibrary.appendChild(_emptyState(
         ICONS.doc,
-        "Knowledge base vuota",
-        "Carica menu, listini o lista allergeni: l'assistente li userÃ  per rispondere ai clienti.",
-        "Carica il primo documento",
+        "Nessun documento caricato",
+        "Carica il menu, il listino prezzi o la lista allergeni per istruire l'assistente a rispondere con precisione ai clienti.",
+        "📄 Carica il tuo primo PDF",
         () => {
-          document.getElementById("doc-carica-testo")?.focus();
-          document.getElementById("doc-carica-testo")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          const fileInput = document.getElementById("doc-file");
+          if (fileInput) {
+            fileInput.click();
+          } else {
+            document.getElementById("doc-carica-testo")?.focus();
+          }
         }
       ));
       return;
@@ -2772,13 +3382,39 @@ function formatMessageContent(rawText) {
   return text;
 }
 
-/* ---------- Caricamento e Filtri Inbox ---------- */
+/* ---------- Polling & Caricamento Inbox ---------- */
 
-async function caricaInbox() {
+let inboxPollingTimer = null;
+let isInboxPollingActive = false;
+
+function avviaInboxPolling() {
+  fermaInboxPolling();
+  isInboxPollingActive = true;
+  inboxPollingTimer = setInterval(async () => {
+    if (!isInboxPollingActive) return;
+    if (document.hidden) return; // Pausa se la scheda è in background
+    const currentView = document.querySelector(".nav-item.active")?.dataset?.view || "panoramica";
+    if (currentView !== "inbox") {
+      fermaInboxPolling();
+      return;
+    }
+    await caricaInbox(true); // silent = true: nessun skeleton, zero flicker
+  }, 3000);
+}
+
+function fermaInboxPolling() {
+  isInboxPollingActive = false;
+  if (inboxPollingTimer) {
+    clearInterval(inboxPollingTimer);
+    inboxPollingTimer = null;
+  }
+}
+
+async function caricaInbox(silent = false) {
   const container = document.getElementById("inbox-list");
   if (!container) return;
 
-  if (!inboxState.tickets.length) {
+  if (!silent && !inboxState.tickets.length) {
     container.innerHTML = _skeletonList(4);
   }
 
@@ -2789,13 +3425,20 @@ async function caricaInbox() {
     ]);
 
     if (!ticketsRes.ok) {
-      container.innerHTML = "";
-      container.appendChild(_errorState("Impossibile caricare le conversazioni.", () => caricaInbox()));
+      if (!silent) {
+        container.innerHTML = "";
+        container.appendChild(_errorState("Impossibile caricare le conversazioni.", () => caricaInbox()));
+      }
       return;
     }
 
     const data = await ticketsRes.json();
-    inboxState.tickets = data.tickets || [];
+    const newTickets = data.tickets || [];
+
+    const prevSig = (inboxState.tickets || []).map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
+    const newSig = newTickets.map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
+
+    inboxState.tickets = newTickets;
 
     if (teamRes.ok) {
       try {
@@ -2807,13 +3450,16 @@ async function caricaInbox() {
     }
 
     aggiornaContatoriFiltri();
-    renderInboxConversazioni();
+
+    if (prevSig !== newSig || !silent) {
+      renderInboxConversazioni();
+    }
 
     // Se c'era un ticket selezionato o siamo su desktop e nessun ticket è selezionato, seleziona il primo
     if (inboxState.selectedTicketId) {
       const exists = inboxState.tickets.some((t) => t.id === inboxState.selectedTicketId);
       if (exists) {
-        caricaDettaglioTicket(inboxState.selectedTicketId);
+        await caricaDettaglioTicket(inboxState.selectedTicketId, silent);
       } else {
         const firstVisible = getFilteredTickets()[0];
         if (firstVisible && window.innerWidth >= 1024) {
@@ -2833,8 +3479,10 @@ async function caricaInbox() {
     }
   } catch (err) {
     console.error("Errore caricamento inbox:", err);
-    container.innerHTML = "";
-    container.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
+    if (!silent) {
+      container.innerHTML = "";
+      container.appendChild(_errorState("Impossibile caricare l'inbox.", () => caricaInbox()));
+    }
   }
 }
 
@@ -2904,13 +3552,54 @@ function renderInboxConversazioni() {
   container.innerHTML = "";
 
   if (!tickets.length) {
-    container.appendChild(
-      _emptyState(
-        ICONS.inbox,
-        "Nessuna conversazione",
-        "Non ci sono conversazioni corrispondenti ai filtri selezionati."
-      )
-    );
+    if (!inboxState.tickets.length) {
+      const waConfigured = Boolean(window._waConnected || false);
+      if (!waConfigured) {
+        container.appendChild(
+          _emptyState(
+            ICONS.inbox,
+            "Nessuna conversazione",
+            "Collega il tuo account WhatsApp Business o Instagram per iniziare a ricevere i messaggi dei clienti.",
+            "Collega i canali",
+            () => {
+              document.querySelector('[data-view="impostazioni"]')?.click();
+              setTimeout(() => document.querySelector('[data-settings-tab="whatsapp"]')?.click(), 50);
+            }
+          )
+        );
+      } else {
+        container.appendChild(
+          _emptyState(
+            ICONS.inbox,
+            "In attesa di nuovi messaggi",
+            "Le conversazioni dei clienti su WhatsApp e Instagram compariranno automaticamente qui in tempo reale."
+          )
+        );
+      }
+    } else {
+      container.appendChild(
+        _emptyState(
+          ICONS.inbox,
+          "Nessun risultato",
+          "Non ci sono conversazioni corrispondenti ai filtri attivi.",
+          "Mostra tutte",
+          () => {
+            inboxState.mainFilter = "all";
+            inboxState.quickFilter = "all";
+            inboxState.search = "";
+            const searchInput = document.getElementById("inbox-search-input");
+            if (searchInput) searchInput.value = "";
+            document.querySelectorAll(".inbox-nav-filter").forEach((b) => {
+              b.classList.toggle("active", b.dataset.inboxMainFilter === "all");
+            });
+            document.querySelectorAll(".inbox-quick-filter-chip").forEach((b) => {
+              b.classList.toggle("active", b.dataset.inboxQuickFilter === "all");
+            });
+            renderInboxConversazioni();
+          }
+        )
+      );
+    }
     return;
   }
 
@@ -3090,7 +3779,61 @@ function creaControlliFeedback(m) {
 
 /* ---------- Dettaglio Conversazione & Thread ---------- */
 
-async function caricaDettaglioTicket(ticketId) {
+function _renderMsgRow(m, ticket) {
+  const row = document.createElement("div");
+  const isInbound = m.direction === "inbound";
+  row.className = `inbox-msg-row ${isInbound ? "inbound" : "outbound"}`;
+  row.dataset.msgId = m.id;
+
+  // Avatar
+  const avatar = document.createElement("div");
+  avatar.className = `inbox-msg-avatar ${!isInbound ? "melpis-avatar" : ""}`;
+  if (isInbound) {
+    const colors = _getAvatarColors(ticket.phone_number || ticket.id);
+    avatar.style.backgroundColor = colors.bg;
+    avatar.style.color = colors.text;
+    avatar.textContent = _getAvatarInitial(ticket.phone_number || "Cliente");
+  } else {
+    avatar.innerHTML = '<img src="logo.webp" alt="Melpis" width="28" height="28" style="border-radius:6px; display:block;">';
+  }
+
+  // Bubble
+  const bubble = document.createElement("div");
+  bubble.className = "inbox-msg-bubble";
+
+  // Autore per outbound
+  if (!isInbound) {
+    const author = document.createElement("span");
+    author.className = "inbox-msg-author";
+    author.textContent = m.handling_type === "ai_handled" ? "Melpis AI" : (ticket.assigned_nome || "Operatore");
+    bubble.appendChild(author);
+  }
+
+  // Testo formattato con link cliccabili
+  const textEl = document.createElement("div");
+  textEl.className = "inbox-msg-text";
+  textEl.innerHTML = formatMessageContent(m.content_text || `(messaggio ${m.message_type})`);
+  bubble.appendChild(textEl);
+
+  // Feedback staff per messaggi AI
+  if (!isInbound && m.handling_type === "ai_handled") {
+    bubble.appendChild(creaControlliFeedback(m));
+  }
+
+  // Meta / Timestamp
+  const meta = document.createElement("div");
+  meta.className = "inbox-msg-meta";
+  const quando = formatInboxDate(m.created_at);
+  const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
+  meta.textContent = isInbound ? quando : `${quando} · ${status}`;
+  bubble.appendChild(meta);
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  return row;
+}
+
+async function caricaDettaglioTicket(ticketId, silent = false) {
   const emptyEl = document.getElementById("inbox-detail-empty");
   const contentEl = document.getElementById("inbox-detail-content");
   if (!contentEl) return;
@@ -3130,7 +3873,9 @@ async function caricaDettaglioTicket(ticketId) {
   }
 
   // Pulsanti Azione (Claim / Resolve / Release / Assign)
-  if (actionsEl) {
+  if (actionsEl && (!silent || actionsEl.dataset.ticketId !== ticket.id || actionsEl.dataset.ticketStatus !== ticket.ticket_status)) {
+    actionsEl.dataset.ticketId = ticket.id;
+    actionsEl.dataset.ticketStatus = ticket.ticket_status;
     actionsEl.innerHTML = "";
 
     // Assegna a (se team disponibile e ticket aperto)
@@ -3269,78 +4014,80 @@ async function caricaDettaglioTicket(ticketId) {
     }
   }
 
-  // 3. Thread Messaggi
+  // 3. Thread Messaggi (Zero-Flicker)
   const threadContainer = document.getElementById("inbox-thread-messages");
   if (threadContainer) {
-    threadContainer.innerHTML = _skeletonList(3);
+    const isNewTicket = threadContainer.dataset.ticketId !== ticket.id;
+    threadContainer.dataset.ticketId = ticket.id;
+
+    if (!silent && isNewTicket) {
+      threadContainer.innerHTML = _skeletonList(3);
+    }
+
     try {
       const res = await apiFetch(`${API_BASE}/api/inbox/tickets/${encodeURIComponent(ticket.id)}/messages?limit=200`);
       if (!res.ok) throw new Error("Errore recupero messaggi");
       const msgData = await res.json();
       const messages = msgData.messages || [];
 
-      threadContainer.innerHTML = "";
-      if (!messages.length) {
-        threadContainer.innerHTML = '<p class="inbox-empty" style="text-align:center; padding:30px 0;">Nessun messaggio in questa conversazione.</p>';
-      } else {
+      const renderedMsgRows = threadContainer.querySelectorAll(".inbox-msg-row[data-msg-id]");
+      const renderedIds = Array.from(renderedMsgRows).map((r) => r.dataset.msgId);
+      const newIds = messages.map((m) => String(m.id));
+
+      const isSameList =
+        !isNewTicket &&
+        renderedIds.length === newIds.length &&
+        renderedIds.every((id, idx) => id === newIds[idx]);
+
+      if (isSameList && renderedIds.length > 0) {
+        // Aggiorna solo stato metadati in-place
         messages.forEach((m) => {
-          const row = document.createElement("div");
-          const isInbound = m.direction === "inbound";
-          row.className = `inbox-msg-row ${isInbound ? "inbound" : "outbound"}`;
-
-          // Avatar
-          const avatar = document.createElement("div");
-          avatar.className = `inbox-msg-avatar ${!isInbound ? "melpis-avatar" : ""}`;
-          if (isInbound) {
-            const colors = _getAvatarColors(ticket.phone_number || ticket.id);
-            avatar.style.backgroundColor = colors.bg;
-            avatar.style.color = colors.text;
-            avatar.textContent = _getAvatarInitial(ticket.phone_number || "Cliente");
-          } else {
-            avatar.innerHTML = '<img src="logo.webp" alt="Melpis" width="28" height="28" style="border-radius:6px; display:block;">';
+          const row = threadContainer.querySelector(`.inbox-msg-row[data-msg-id="${m.id}"]`);
+          if (row) {
+            const meta = row.querySelector(".inbox-msg-meta");
+            if (meta) {
+              const isInbound = m.direction === "inbound";
+              const quando = formatInboxDate(m.created_at);
+              const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
+              const expectedText = isInbound ? quando : `${quando} · ${status}`;
+              if (meta.textContent !== expectedText) {
+                meta.textContent = expectedText;
+              }
+            }
           }
-
-          // Bubble
-          const bubble = document.createElement("div");
-          bubble.className = "inbox-msg-bubble";
-
-          // Autore per outbound
-          if (!isInbound) {
-            const author = document.createElement("span");
-            author.className = "inbox-msg-author";
-            author.textContent = m.handling_type === "ai_handled" ? "Melpis AI" : (ticket.assigned_nome || "Operatore");
-            bubble.appendChild(author);
-          }
-
-          // Testo formattato con link cliccabili
-          const textEl = document.createElement("div");
-          textEl.className = "inbox-msg-text";
-          textEl.innerHTML = formatMessageContent(m.content_text || `(messaggio ${m.message_type})`);
-          bubble.appendChild(textEl);
-
-          // Feedback staff per messaggi AI
-          if (!isInbound && m.handling_type === "ai_handled") {
-            bubble.appendChild(creaControlliFeedback(m));
-          }
-
-          // Meta / Timestamp
-          const meta = document.createElement("div");
-          meta.className = "inbox-msg-meta";
-          const quando = formatInboxDate(m.created_at);
-          const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
-          meta.textContent = isInbound ? quando : `${quando} · ${status}`;
-          bubble.appendChild(meta);
-
-          row.appendChild(avatar);
-          row.appendChild(bubble);
-          threadContainer.appendChild(row);
         });
-      }
+      } else {
+        const isNearBottom =
+          threadContainer.scrollHeight - threadContainer.scrollTop - threadContainer.clientHeight < 150;
 
-      threadContainer.scrollTop = threadContainer.scrollHeight;
+        threadContainer.innerHTML = "";
+        if (!messages.length) {
+          threadContainer.innerHTML = '<p class="inbox-empty" style="text-align:center; padding:30px 0;">Nessun messaggio in questa conversazione.</p>';
+        } else {
+          messages.forEach((m) => {
+            const row = _renderMsgRow(m, ticket);
+            threadContainer.appendChild(row);
+          });
+        }
+
+        const scrollToBottom = () => {
+          if (threadContainer) {
+            threadContainer.scrollTop = threadContainer.scrollHeight;
+          }
+        };
+
+        if (isNearBottom || isNewTicket || !silent) {
+          scrollToBottom();
+          requestAnimationFrame(scrollToBottom);
+          setTimeout(scrollToBottom, 40);
+          setTimeout(scrollToBottom, 120);
+        }
+      }
     } catch (err) {
       console.error("Errore caricamento thread:", err);
-      threadContainer.innerHTML = '<p class="inbox-empty error" style="text-align:center; padding:20px;">Impossibile caricare lo storico dei messaggi.</p>';
+      if (!silent) {
+        threadContainer.innerHTML = '<p class="inbox-empty error" style="text-align:center; padding:20px;">Impossibile caricare lo storico dei messaggi.</p>';
+      }
     }
   }
 
@@ -3357,7 +4104,7 @@ async function caricaDettaglioTicket(ticketId) {
     if (msgInput) {
       msgInput.disabled = false;
       msgInput.placeholder = `Scrivi un messaggio su ${isIg ? "Instagram" : "WhatsApp"}…`;
-      msgInput.focus();
+      if (!silent) msgInput.focus();
     }
     if (sendBtn) sendBtn.disabled = false;
   } else {
@@ -3621,16 +4368,22 @@ document.addEventListener("keydown", (event) => {
 
 /* Chiusura dropdown su click fuori (menu utente + notifiche) */
 
+function chiudiMenuUtente() {
+  chiudiSidebarAccountMenu();
+}
+
 document.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) return;
-  if (!event.target.closest("#user-menu")) chiudiMenuUtente();
+  if (!event.target.closest("#sidebar-account-btn") && !event.target.closest("#sidebar-account-popover")) {
+    chiudiSidebarAccountMenu();
+  }
   if (!event.target.closest(".notif-wrap")) chiudiPannelloNotifiche();
 });
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   chiudiMenuMobile();
-  chiudiMenuUtente();
+  chiudiSidebarAccountMenu();
   chiudiPannelloNotifiche();
 });
 
@@ -3736,10 +4489,14 @@ notifBell?.addEventListener("click", () => {
   });
   if (sessionStorage.getItem("melpis_benvenuto")) {
     sessionStorage.removeItem("melpis_benvenuto");
-    toast("Benvenuto in Melpis: il tuo periodo di prova Ã¨ attivo.", "success");
+    toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
+  }
+  if (typeof caricaProfiloImpostazioni === "function") {
+    await caricaProfiloImpostazioni();
   }
   aggiornaRiepilogo();
   aggiornaPrioritari();
+  avviaPanoramicaPolling();
   aggiornaReport();
   aggiornaConteggio();
   aggiornaNotifiche();
@@ -3905,20 +4662,26 @@ notifBell?.addEventListener("click", () => {
 
 (function inizializzaTema() {
   const KEY = "melpis_theme";
-  const label = document.getElementById("theme-toggle-label");
+  const topbarLabel = document.getElementById("theme-toggle-label");
+  const sidebarLabel = document.getElementById("sidebar-theme-label");
 
   function applica(tema) {
     document.documentElement.dataset.theme = tema;
-    if (label) label.textContent = tema === "dark" ? "Tema chiaro" : "Tema scuro";
+    const txt = tema === "dark" ? "Tema chiaro" : "Tema scuro";
+    if (topbarLabel) topbarLabel.textContent = txt;
+    if (sidebarLabel) sidebarLabel.textContent = txt;
+  }
+
+  function toggle() {
+    const nuovo = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    localStorage.setItem(KEY, nuovo);
+    applica(nuovo);
   }
 
   applica(localStorage.getItem(KEY) || "light");
 
-  document.getElementById("theme-toggle")?.addEventListener("click", () => {
-    const nuovo = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(KEY, nuovo);
-    applica(nuovo);
-  });
+  document.getElementById("sidebar-theme-toggle")?.addEventListener("click", toggle);
+  document.getElementById("theme-toggle")?.addEventListener("click", toggle);
 })();
 
 /* ============================================================
@@ -3982,6 +4745,269 @@ let caricaTimezone;
   });
 
   caricaTimezone = carica;
+})();
+
+/* ============================================================
+   IMPOSTAZIONI — Profilo attività (Nome, Settore, Tono, Descrizione)
+   ============================================================ */
+
+let caricaProfiloImpostazioni;
+
+(function inizializzaProfiloImpostazioni() {
+  const profileForm = document.getElementById("settings-profile-form");
+  const profileSaveBtn = document.getElementById("settings-profile-save");
+  const profileStatus = document.getElementById("settings-profile-status");
+  const nomeInput = document.getElementById("settings-profile-nome");
+  const vertSelect = document.getElementById("settings-profile-verticale");
+  const descTextarea = document.getElementById("settings-profile-descrizione");
+  const orariTextarea = document.getElementById("settings-profile-orari");
+  const serviziTextarea = document.getElementById("settings-profile-servizi");
+
+  const aiForm = document.getElementById("settings-ai-form");
+  const aiSaveBtn = document.getElementById("settings-ai-save");
+  const aiStatus = document.getElementById("settings-ai-status");
+  const tonoSelect = document.getElementById("settings-ai-tono-select");
+  const tonoCustom = document.getElementById("settings-ai-tono-custom");
+  const defaultLinguaSelect = document.getElementById("settings-ai-lingua-default");
+  const addRuleInput = document.getElementById("settings-new-rule-input");
+  const addRuleBtn = document.getElementById("settings-add-rule-btn");
+
+  let settingsCurrentRules = [];
+
+  const REGOLE_DEFAULT_BASE = [
+    "Allergie gravi, intolleranze alimentari o requisiti medici specifici",
+    "Lamentele, reclami formali o clienti insoddisfatti",
+    "Richieste speciali fuori listino o non coperte dal menu/documenti",
+    "Richieste di sconti personalizzati, convenzioni o accordi commerciali riservati",
+  ];
+
+  function renderSettingsRules() {
+    const container = document.getElementById("settings-rules-list");
+    if (!container) return;
+    container.innerHTML = "";
+    if (!settingsCurrentRules.length) {
+      container.innerHTML = '<p class="settings-help-sm">Nessuna regola attiva. Aggiungine una con il campo sottostante.</p>';
+      return;
+    }
+    settingsCurrentRules.forEach((rule, idx) => {
+      const item = document.createElement("div");
+      item.className = "settings-rule-item";
+
+      const label = document.createElement("label");
+      label.className = "settings-rule-label";
+      label.innerHTML = `<input type="checkbox" class="settings-rule-checkbox" data-rule-index="${idx}" checked> <span>${_sanitize(rule)}</span>`;
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "settings-rule-remove-btn";
+      delBtn.title = "Rimuovi questa regola";
+      delBtn.innerHTML = "✕ Elimina";
+      delBtn.addEventListener("click", () => {
+        settingsCurrentRules.splice(idx, 1);
+        renderSettingsRules();
+      });
+
+      item.appendChild(label);
+      item.appendChild(delBtn);
+      container.appendChild(item);
+    });
+  }
+
+  function aggiornaSelectLinguaDefault(linguaScelta = null) {
+    if (!defaultLinguaSelect) return;
+    const currentVal = linguaScelta || defaultLinguaSelect.value || "it";
+    const selezionate = ["it", ...Array.from(document.querySelectorAll(".settings-lang-opt:checked")).map((cb) => cb.value)];
+
+    const LABELS = {
+      it: "Italiano (it)",
+      en: "English (en)",
+      es: "Español (es)",
+      fr: "Français (fr)",
+      de: "Deutsch (de)",
+    };
+
+    defaultLinguaSelect.innerHTML = "";
+    selezionate.forEach((code) => {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = LABELS[code] || code.toUpperCase();
+      opt.selected = code === currentVal;
+      defaultLinguaSelect.appendChild(opt);
+    });
+
+    if (!selezionate.includes(currentVal)) {
+      defaultLinguaSelect.value = "it";
+    }
+  }
+
+  document.querySelectorAll(".settings-lang-opt").forEach((cb) => {
+    cb.addEventListener("change", () => aggiornaSelectLinguaDefault());
+  });
+
+  addRuleBtn?.addEventListener("click", () => {
+    if (!addRuleInput) return;
+    const text = addRuleInput.value.trim();
+    if (!text) return;
+    settingsCurrentRules.push(text);
+    addRuleInput.value = "";
+    renderSettingsRules();
+  });
+
+  addRuleInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addRuleBtn?.click();
+    }
+  });
+
+  async function carica() {
+    try {
+      const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const prof = data.profilo || {};
+      dbProfileRecord = prof;
+
+      const businessName = prof.nome_attivita || "La tua attività";
+      const bName = document.getElementById("business-name");
+      if (bName) bName.textContent = businessName;
+      const cName = document.getElementById("chat-business-name");
+      if (cName) cName.textContent = businessName;
+
+      // Profilo
+      if (nomeInput && prof.nome_attivita) nomeInput.value = prof.nome_attivita;
+      if (vertSelect && prof.verticale) vertSelect.value = prof.verticale;
+      if (descTextarea && prof.descrizione) descTextarea.value = prof.descrizione;
+      if (orariTextarea && prof.orari) orariTextarea.value = prof.orari;
+      if (serviziTextarea && prof.servizi) {
+        serviziTextarea.value = Array.isArray(prof.servizi) ? prof.servizi.join("\n") : String(prof.servizi);
+      }
+
+      // Tono
+      if (tonoSelect && prof.tono) {
+        const presets = ["professionale_caloroso", "informale_amichevole", "formale_elegante"];
+        if (presets.includes(prof.tono)) {
+          tonoSelect.value = prof.tono;
+          if (tonoCustom) tonoCustom.value = "";
+        } else {
+          tonoSelect.value = "professionale_caloroso";
+          if (tonoCustom) tonoCustom.value = prof.tono;
+        }
+      }
+
+      // Multilingua
+      const supportate = prof.lingue_supportate || ["it"];
+      document.querySelectorAll(".settings-lang-opt").forEach((cb) => {
+        cb.checked = supportate.includes(cb.value);
+      });
+      aggiornaSelectLinguaDefault(prof.lingua_default || "it");
+
+      // Regole escalation
+      if (Array.isArray(prof.regole_escalation) && prof.regole_escalation.length > 0) {
+        settingsCurrentRules = [...prof.regole_escalation];
+      } else {
+        settingsCurrentRules = [...REGOLE_DEFAULT_BASE];
+      }
+      renderSettingsRules();
+    } catch (err) {
+      console.error("Impossibile caricare il profilo attività:", err);
+    }
+  }
+
+  function raccogliPayloadProfilo() {
+    const nome = (nomeInput?.value || "").trim() || dbProfileRecord?.nome_attivita || "La tua attività";
+    const verticale = vertSelect?.value || dbProfileRecord?.verticale || "ristorazione";
+    const descrizione = (descTextarea?.value || "").trim();
+    const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "Martedì - Domenica: 12:00-15:00 / 19:30-23:30";
+
+    const serviziRaw = serviziTextarea?.value || "";
+    const servizi = righeDaTextarea(serviziRaw);
+    if (!servizi.length && Array.isArray(dbProfileRecord?.servizi) && dbProfileRecord.servizi.length) {
+      servizi.push(...dbProfileRecord.servizi);
+    }
+
+    let tono = tonoSelect ? tonoSelect.value : (dbProfileRecord?.tono || "professionale_caloroso");
+    if (tonoCustom && tonoCustom.value.trim()) {
+      tono = tonoCustom.value.trim();
+    }
+
+    const lingueSelezionate = ["it", ...Array.from(document.querySelectorAll(".settings-lang-opt:checked")).map((cb) => cb.value)];
+    const linguaDefault = defaultLinguaSelect?.value || "it";
+
+    const regoleSelezionate = [];
+    document.querySelectorAll(".settings-rule-checkbox").forEach((cb) => {
+      if (cb.checked) {
+        const idx = Number(cb.dataset.ruleIndex);
+        if (settingsCurrentRules[idx]) regoleSelezionate.push(settingsCurrentRules[idx]);
+      }
+    });
+
+    return {
+      verticale,
+      nome_attivita: nome,
+      orari,
+      tono,
+      servizi: servizi.length ? servizi : ["Servizio al tavolo", "Menu alla carta"],
+      regole_escalation: regoleSelezionate.length ? regoleSelezionate : settingsCurrentRules,
+      whatsapp_collegato: Boolean(dbProfileRecord?.whatsapp_collegato),
+      documenti_importati: Boolean(dbProfileRecord?.documenti_importati),
+      lingue_supportate: lingueSelezionate,
+      lingua_default: lingueSelezionate.includes(linguaDefault) ? linguaDefault : "it",
+    };
+  }
+
+  async function eseguiSalvataggio(statusEl, btnEl, successMsg) {
+    if (btnEl) btnEl.disabled = true;
+    if (statusEl) { statusEl.textContent = "Salvo…"; statusEl.style.color = ""; }
+
+    try {
+      const payload = raccogliPayloadProfilo();
+      const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (statusEl) {
+          statusEl.textContent = err.detail || "Errore salvataggio profilo";
+          statusEl.style.color = "var(--red)";
+        }
+        return;
+      }
+      const data = await res.json();
+      dbProfileRecord = data.profilo;
+
+      if (payload.nome_attivita) {
+        const bName = document.getElementById("business-name");
+        if (bName) bName.textContent = payload.nome_attivita;
+        const cName = document.getElementById("chat-business-name");
+        if (cName) cName.textContent = payload.nome_attivita;
+      }
+      if (statusEl) securityStatus(statusEl, successMsg);
+      toast(successMsg, "success");
+    } catch {
+      if (statusEl) {
+        statusEl.textContent = "Errore di connessione";
+        statusEl.style.color = "var(--red)";
+      }
+    } finally {
+      if (btnEl) btnEl.disabled = false;
+    }
+  }
+
+  profileForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    eseguiSalvataggio(profileStatus, profileSaveBtn, "Profilo attività salvato con successo");
+  });
+
+  aiForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    eseguiSalvataggio(aiStatus, aiSaveBtn, "Impostazioni assistente salvate con successo");
+  });
+
+  caricaProfiloImpostazioni = carica;
 })();
 
 /* ============================================================
@@ -4073,55 +5099,426 @@ async function caricaAudit({ append = false } = {}) {
    INTEGRAZIONI â€” stato canali e webhook
    ============================================================ */
 
+/* ============================================================
+   INTEGRAZIONI — stato canali e test di connessione reale
+   ============================================================ */
+
+function _aggiornaBadgeStato(el, statoKey, customLabel) {
+  if (!el) return;
+  el.className = `integrazione-stato badge-status ${statoKey}`;
+  const dot = '<span class="badge-status-dot"></span>';
+  let label = customLabel;
+  if (!label) {
+    if (statoKey === "connected") label = "Connesso";
+    else if (statoKey === "disconnected") label = "Non connesso";
+    else if (statoKey === "expired_token") label = "Errore — Token scaduto";
+    else if (statoKey === "pending" || statoKey === "pending_verification") label = "In attesa di verifica";
+    else label = "Errore";
+  }
+  el.innerHTML = `${dot}<span class="badge-status-label">${_sanitize(label)}</span>`;
+}
+
+async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
+  if (!btn) return;
+  const originalHtml = btn.innerHTML;
+  btn.classList.add("loading");
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Verifico…
+  `;
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/integrazioni/test/${encodeURIComponent(canale)}`, {
+      method: "POST",
+    });
+    const data = await res.json().catch(() => ({}));
+
+    const badgeEl = document.getElementById(`integ-${canale === "calendar" ? "calendar" : canale}-stato`);
+    if (badgeEl && data.status) {
+      _aggiornaBadgeStato(badgeEl, data.status);
+    }
+
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = `integ-test-feedback ${data.success ? "success" : data.status === "expired_token" ? "error" : "warning"}`;
+      feedbackEl.textContent = data.message || (data.success ? "Test completato con successo." : "Errore durante la verifica.");
+    }
+
+    if (data.success) {
+      toast(data.message || "Connessione verificata con successo!", "success");
+    } else {
+      toast(data.message || "Verifica fallita: controlla le impostazioni.", "error");
+    }
+  } catch (err) {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di rete o server non raggiungibile.";
+    }
+    toast("Impossibile eseguire il test di connessione.", "error");
+  } finally {
+    btn.classList.remove("loading");
+    btn.innerHTML = originalHtml;
+  }
+}
+
+/* ============================================================
+   INTEGRAZIONI: WHATSAPP GUIDED SETUP, INSTAGRAM, CALENDAR
+   ============================================================ */
+
+function _setWaWizardStep(stepNum) {
+  [1, 2, 3].forEach((s) => {
+    const tab = document.getElementById(`wa-step-tab-${s}`);
+    const panel = document.getElementById(`wa-wz-panel-${s}`);
+    if (tab) {
+      tab.classList.toggle("active", s === stepNum);
+      tab.classList.toggle("done", s < stepNum);
+    }
+    if (panel) {
+      panel.hidden = (s !== stepNum);
+    }
+  });
+}
+
+async function caricaStatoWhatsApp() {
+  const connectedCard = document.getElementById("integ-whatsapp-connected-card");
+  const wizardCard = document.getElementById("integ-whatsapp-wizard-card");
+  const phoneDisplay = document.getElementById("integ-wa-phone-number-display");
+  const connectedTitle = document.getElementById("integ-wa-connected-title");
+  const connectedSub = document.getElementById("integ-wa-connected-sub");
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/whatsapp/settings`);
+    if (!res.ok) return;
+    const d = await res.json();
+
+    if (d.connesso) {
+      if (connectedCard) connectedCard.hidden = false;
+      if (wizardCard) wizardCard.hidden = true;
+      if (phoneDisplay) phoneDisplay.textContent = d.display_phone_number || d.phone_number_id || "Numero collegato";
+      if (connectedTitle) connectedTitle.textContent = d.verified_name || "WhatsApp Business";
+      if (connectedSub) connectedSub.textContent = "Connesso e pronto a rispondere";
+    } else {
+      if (connectedCard) connectedCard.hidden = true;
+      if (wizardCard) wizardCard.hidden = false;
+      _setWaWizardStep(1);
+    }
+  } catch (err) {
+    console.warn("caricaStatoWhatsApp error:", err);
+  }
+}
+
+async function caricaStatoInstagram() {
+  const connectedCard = document.getElementById("integ-instagram-connected-card");
+  const wizardCard = document.getElementById("integ-instagram-wizard-card");
+  const igIdVal = document.getElementById("integ-ig-id");
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/instagram/account`);
+    if (res.ok) {
+      const d = await res.json();
+      if (connectedCard) connectedCard.hidden = false;
+      if (wizardCard) wizardCard.hidden = true;
+      if (igIdVal) igIdVal.textContent = d.ig_user_id ? `@${d.ig_user_id}` : "Account collegato";
+    } else {
+      if (connectedCard) connectedCard.hidden = true;
+      if (wizardCard) wizardCard.hidden = false;
+    }
+  } catch (err) {
+    if (connectedCard) connectedCard.hidden = true;
+    if (wizardCard) wizardCard.hidden = false;
+  }
+}
+
 async function caricaIntegrazioni() {
   const status = document.getElementById("integrazioni-status");
   try {
-    const res = await apiFetch(`${API_BASE}/api/integrazioni/stato`);
-    if (!res.ok) {
-      if (status) { status.textContent = "Stato non disponibile."; status.style.color = "var(--red)"; }
-      return;
-    }
-    const d = await res.json();
-
-    const waStato = document.getElementById("integ-whatsapp-stato");
-    const waSub = document.getElementById("integ-whatsapp-sub");
-    if (waStato && waSub) {
-      waStato.textContent = d.whatsapp.connesso ? "Connesso" : "Non connesso";
-      waStato.classList.add(d.whatsapp.connesso ? "on" : "off");
-      waSub.textContent = d.whatsapp.connesso
-        ? `Numero ID ${d.whatsapp.phone_number_id || "configurato"}`
-        : "Nessun numero collegato";
-    }
-
-    const igStato = document.getElementById("integ-instagram-stato");
-    const igSub = document.getElementById("integ-instagram-sub");
-    if (igStato && igSub) {
-      igStato.textContent = d.instagram.connesso ? "Connesso" : "Non connesso";
-      igStato.classList.add(d.instagram.connesso ? "on" : "off");
-      igSub.textContent = d.instagram.connesso
-        ? `Account ${d.instagram.ig_user_id || "collegato"}`
-        : "Nessun account collegato";
-    }
-
-    const whStato = document.getElementById("integ-webhook-stato");
-    const whSub = document.getElementById("integ-webhook-sub");
-    if (whStato && whSub) {
-      whStato.textContent = d.webhook_meta.configurato ? "Attivo" : "Da configurare";
-      whStato.classList.add(d.webhook_meta.configurato ? "on" : "off");
-      whSub.textContent = d.webhook_meta.configurato
-        ? "Credenziali Meta presenti sul server"
-        : "Serve META_APP_SECRET e META_VERIFY_TOKEN";
-    }
-  } catch {
-    if (status) { status.textContent = "Errore di connessione."; status.style.color = "var(--red)"; }
+    await Promise.allSettled([
+      caricaStatoWhatsApp(),
+      caricaStatoInstagram(),
+      caricaStatoCalendar()
+    ]);
+  } catch (err) {
+    if (status) { status.textContent = "Errore durante il caricamento integrazioni."; status.style.color = "var(--red)"; }
   }
-
-  // Google Calendar status (endpoint dedicato)
-  await caricaStatoCalendar();
 }
 
-document.getElementById("integrazioni-config")?.addEventListener("click", () => {
-  apriOnboarding();
+// WhatsApp Wizard Event Listeners
+document.getElementById("wa-wz-goto-step2")?.addEventListener("click", () => {
+  _setWaWizardStep(2);
+});
+
+document.getElementById("wa-wz-back-step1")?.addEventListener("click", () => {
+  _setWaWizardStep(1);
+});
+
+document.getElementById("wa-connect-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const phoneId = document.getElementById("wa-phone-number-id")?.value.trim();
+  const wabaId = document.getElementById("wa-waba-id")?.value.trim();
+  const token = document.getElementById("wa-access-token")?.value.trim();
+  const statusEl = document.getElementById("wa-connect-status");
+  const submitBtn = document.getElementById("wa-connect-submit");
+
+  if (!phoneId || !wabaId || !token) {
+    if (statusEl) {
+      statusEl.textContent = "Compila tutti i campi obbligatori.";
+      statusEl.className = "security-status err";
+    }
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Verifica con Meta in corso…";
+  }
+  if (statusEl) {
+    statusEl.textContent = "Verifica credenziali con Meta Cloud API…";
+    statusEl.className = "security-status";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/whatsapp/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone_number_id: phoneId, waba_id: wabaId, access_token: token }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (statusEl) statusEl.textContent = "";
+      toast(data.message || "WhatsApp collegato con successo!", "success");
+      _setWaWizardStep(3);
+    } else {
+      if (statusEl) {
+        statusEl.textContent = data.detail || "Errore durante la connessione con Meta.";
+        statusEl.className = "security-status err";
+      }
+      toast(data.detail || "Verifica non riuscita", "error");
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.textContent = "Errore di connessione con il server.";
+      statusEl.className = "security-status err";
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Verifica e Salva Collegamento";
+    }
+  }
+});
+
+document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async () => {
+  const testPhone = document.getElementById("wa-wz-test-phone")?.value.trim();
+  const statusEl = document.getElementById("wa-wz-test-status");
+  const btn = document.getElementById("wa-wz-send-test-btn");
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Invio in corso…";
+  }
+  if (statusEl) {
+    statusEl.textContent = "Invio del messaggio di prova a Meta…";
+    statusEl.className = "security-status";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/whatsapp/send-test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to_phone: testPhone || null }),
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      if (statusEl) {
+        statusEl.textContent = data.message || "Messaggio di test inviato con successo!";
+        statusEl.className = "security-status ok";
+      }
+      toast(data.message || "Messaggio inviato!", "success");
+    } else {
+      if (statusEl) {
+        statusEl.textContent = data.message || data.detail || "Errore durante l'invio del messaggio di test.";
+        statusEl.className = "security-status err";
+      }
+      toast(data.message || "Invio fallito", "error");
+    }
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Errore di comunicazione col server.";
+      statusEl.className = "security-status err";
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Invia messaggio di test";
+    }
+  }
+});
+
+document.getElementById("wa-wz-finish-btn")?.addEventListener("click", async () => {
+  await caricaStatoWhatsApp();
+  toast("WhatsApp configurato e operativo!", "success");
+});
+
+// WhatsApp Connected Card Handlers
+document.getElementById("integ-wa-open-test-btn")?.addEventListener("click", () => {
+  const box = document.getElementById("integ-wa-test-box");
+  if (box) box.hidden = !box.hidden;
+});
+
+document.getElementById("integ-wa-send-test-submit")?.addEventListener("click", async () => {
+  const phone = document.getElementById("integ-wa-test-phone-input")?.value.trim();
+  const feedback = document.getElementById("integ-wa-test-feedback");
+  const btn = document.getElementById("integ-wa-send-test-submit");
+
+  if (!phone) {
+    if (feedback) {
+      feedback.hidden = false;
+      feedback.className = "integ-test-feedback error";
+      feedback.textContent = "Inserisci un numero di cellulare per ricevere la prova.";
+    }
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Invio…";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/whatsapp/send-test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to_phone: phone }),
+    });
+    const d = await res.json();
+    if (feedback) {
+      feedback.hidden = false;
+      feedback.className = `integ-test-feedback ${d.success ? "success" : "error"}`;
+      feedback.textContent = d.message || (d.success ? "Messaggio inviato!" : "Errore durante l'invio.");
+    }
+    if (d.success) toast(d.message, "success");
+  } catch {
+    if (feedback) {
+      feedback.hidden = false;
+      feedback.className = "integ-test-feedback error";
+      feedback.textContent = "Errore di connessione.";
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Invia prova";
+    }
+  }
+});
+
+document.getElementById("integ-wa-reconfig-btn")?.addEventListener("click", () => {
+  const connectedCard = document.getElementById("integ-whatsapp-connected-card");
+  const wizardCard = document.getElementById("integ-whatsapp-wizard-card");
+  if (connectedCard) connectedCard.hidden = true;
+  if (wizardCard) wizardCard.hidden = false;
+  _setWaWizardStep(2);
+});
+
+document.getElementById("integ-wa-disconnect-btn")?.addEventListener("click", async () => {
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere WhatsApp Business?",
+    descrizione: "L'assistente AI smetterà di rispondere automaticamente ai messaggi in arrivo su questo numero WhatsApp.",
+    label: "Disconnetti WhatsApp",
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/whatsapp/disconnect`, { method: "POST" });
+    if (res.ok) {
+      toast("WhatsApp disconnesso con successo.");
+      await caricaStatoWhatsApp();
+    } else {
+      toast("Errore durante la disconnessione.", "error");
+    }
+  } catch {
+    toast("Errore di rete.", "error");
+  }
+});
+
+// Instagram Handlers
+document.getElementById("ig-connect-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const igUserId = document.getElementById("ig-user-id-input")?.value.trim();
+  const igToken = document.getElementById("ig-token-input")?.value.trim();
+  const statusEl = document.getElementById("ig-connect-status");
+  const submitBtn = document.getElementById("ig-connect-submit");
+
+  if (!igUserId || !igToken) {
+    if (statusEl) {
+      statusEl.textContent = "Compila tutti i campi obbligatori.";
+      statusEl.className = "security-status err";
+    }
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Collegamento in corso…";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/instagram/account`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ig_user_id: igUserId, access_token: igToken }),
+    });
+    if (res.ok) {
+      toast("Instagram Direct collegato con successo!", "success");
+      await caricaStatoInstagram();
+    } else {
+      const err = await res.json();
+      if (statusEl) {
+        statusEl.textContent = err.detail || "Errore durante il collegamento di Instagram.";
+        statusEl.className = "security-status err";
+      }
+    }
+  } catch {
+    if (statusEl) {
+      statusEl.textContent = "Errore di connessione.";
+      statusEl.className = "security-status err";
+    }
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Collega Instagram Direct";
+    }
+  }
+});
+
+document.getElementById("integ-instagram-disconnect")?.addEventListener("click", async () => {
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere Instagram Direct?",
+    descrizione: "L'assistente AI non risponderà più ai messaggi diretti su questo account Instagram.",
+    label: "Disconnetti Instagram",
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/instagram/account`, { method: "DELETE" });
+    if (res.ok) {
+      toast("Instagram Direct disconnesso con successo.");
+      await caricaStatoInstagram();
+    } else {
+      toast("Errore durante la disconnessione.", "error");
+    }
+  } catch {
+    toast("Errore di rete.", "error");
+  }
+});
+
+document.querySelectorAll(".btn-test-conn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const canale = btn.dataset.canale;
+    const feedbackEl = document.getElementById(`integ-${canale}-feedback`);
+    eseguiTestIntegrazione(canale, btn, feedbackEl);
+  });
 });
 
 /* ============================================================
@@ -4132,7 +5529,10 @@ async function caricaStatoCalendar() {
   const stato = document.getElementById("integ-calendar-stato");
   const sub = document.getElementById("integ-calendar-sub");
   const help = document.getElementById("integ-calendar-help");
+  const calIdMeta = document.getElementById("integ-calendar-id");
+  const syncModeMeta = document.getElementById("integ-calendar-sync-mode");
   const btnConnect = document.getElementById("integ-calendar-connect");
+  const btnTest = document.getElementById("integ-calendar-test");
   const btnDisconnect = document.getElementById("integ-calendar-disconnect");
 
   if (!stato || !sub) return;
@@ -4140,33 +5540,35 @@ async function caricaStatoCalendar() {
   try {
     const res = await apiFetch(`${API_BASE}/api/calendar/status`);
     if (!res.ok) {
-      stato.textContent = "Errore";
-      stato.className = "integrazione-stato off";
+      _aggiornaBadgeStato(stato, "error", "Errore");
       sub.textContent = "Impossibile verificare lo stato";
       return;
     }
     const d = await res.json();
     if (d.connected) {
-      stato.textContent = "Connesso";
-      stato.className = "integrazione-stato on";
-      const calId = d.calendar_id || "Calendario predefinito";
-      const sync = d.sync_enabled ? "Sincronizzazione attiva" : "Sincronizzazione disattivata";
-      sub.textContent = `${calId} — ${sync}`;
+      _aggiornaBadgeStato(stato, "connected", "Connesso");
+      const calId = d.calendar_id || "Primary (Predefinito)";
+      const sync = d.sync_enabled ? "Sincronizzazione attiva" : "Sincronizzazione in pausa";
+      sub.textContent = `${calId} · ${sync}`;
+      if (calIdMeta) calIdMeta.textContent = calId;
+      if (syncModeMeta) syncModeMeta.textContent = d.sync_enabled ? "Bidirezionale automatica" : "In pausa";
       if (help) help.textContent = d.last_sync_at
-        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString()}`
-        : "Sincronizza le prenotazioni con Google Calendar.";
+        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+        : "Sincronizzazione attiva: le prenotazioni confermate vengono sincronizzate con Google Calendar.";
       if (btnConnect) btnConnect.hidden = true;
+      if (btnTest) btnTest.hidden = false;
       if (btnDisconnect) btnDisconnect.hidden = false;
     } else {
-      stato.textContent = "Non connesso";
-      stato.className = "integrazione-stato off";
+      _aggiornaBadgeStato(stato, "disconnected", "Non connesso");
       sub.textContent = "Nessun account Google collegato";
+      if (calIdMeta) calIdMeta.textContent = "Nessun calendario";
+      if (syncModeMeta) syncModeMeta.textContent = "Disattivata";
       if (btnConnect) btnConnect.hidden = false;
+      if (btnTest) btnTest.hidden = true;
       if (btnDisconnect) btnDisconnect.hidden = true;
     }
   } catch {
-    stato.textContent = "Errore";
-    stato.className = "integrazione-stato off";
+    _aggiornaBadgeStato(stato, "error", "Errore");
     sub.textContent = "Errore di connessione";
   }
 }
@@ -4176,11 +5578,16 @@ document.getElementById("integ-calendar-connect")?.addEventListener("click", () 
 });
 
 document.getElementById("integ-calendar-disconnect")?.addEventListener("click", async () => {
-  if (!confirm("Disconnettere Google Calendar? Le prenotazioni esistenti restano, ma non verranno più sincronizzate.")) return;
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere Google Calendar?",
+    descrizione: "Le prenotazioni esistenti restano memorizzate in Melpis, ma non verranno più sincronizzate con Google Calendar.",
+    label: "Disconnetti",
+  });
+  if (!ok) return;
   try {
     const res = await apiFetch(`${API_BASE}/api/calendar/disconnect`, { method: "DELETE" });
     if (res.ok) {
-      toast("Google Calendar disconnesso.");
+      toast("Google Calendar disconnesso con successo.");
       await caricaStatoCalendar();
     } else {
       toast("Errore durante la disconnessione.", "error");

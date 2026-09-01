@@ -1,3 +1,4 @@
+import contextlib
 import uuid
 from unittest.mock import AsyncMock, patch
 from src.whatsapp.inbound_processor import InboundProcessor
@@ -15,6 +16,9 @@ class TestP0Blockers:
         # il processor prende il ramo "booking exists" e non arriva mai a
         # create_booking.
         mock_repo.check_booking_exists = AsyncMock(return_value=False)
+        # slot_lock su un AsyncMock restituirebbe una coroutine (non un
+        # context manager): replica il comportamento del repo reale.
+        mock_repo.slot_lock = lambda *a, **k: contextlib.nullcontext()
 
         booking_service = BookingService(repo=mock_repo)
         

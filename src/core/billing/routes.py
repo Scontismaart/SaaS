@@ -76,7 +76,11 @@ async def create_checkout_session(
             detail=f"Stripe price ID ({req.interval}) non configurato per: {req.plan}",
         )
 
-    trial_days = request.app.state.billing_config.stripe_trial_days
+    # Un solo trial: il checkout eredita i giorni rimanenti del trial del
+    # signup invece di regalarne un secondo periodo (audit billing #3).
+    from src.core.billing.suspension import giorni_trial_rimanenti
+    trial_rimanenti = giorni_trial_rimanenti(org.get("trial_end"))
+    subscription_data = {"trial_period_days": trial_rimanenti} if trial_rimanenti > 0 else None
     session = await _stripe_call(
         st.checkout.Session.create,
         customer=customer_id,
@@ -85,7 +89,8 @@ async def create_checkout_session(
         success_url=req.success_url,
         cancel_url=req.cancel_url,
         client_reference_id=str(org_id),
-        subscription_data={"trial_period_days": trial_days},
+        metadata={"trial_days_remaining": str(trial_rimanenti)},
+        subscription_data=subscription_data,
         payment_method_collection="required",
     )
 

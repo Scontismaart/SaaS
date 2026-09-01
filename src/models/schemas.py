@@ -98,6 +98,9 @@ class ProfiloAttivita(BaseModel):
     tipo_attivita: str
     tono: str
     orari: str
+    # Descrizione breve libera dell'attivita' (migration 044): contesto
+    # narrativo per il prompt, oltre a orari/servizi strutturati.
+    descrizione: str = ""
     servizi_principali: list[str] = Field(default_factory=list)
     note_speciali: list[str] = Field(default_factory=list)
     # Multilingua (task 14): lingue supportate dall'attivita' e lingua di
@@ -123,6 +126,7 @@ class OnboardingProfileInput(BaseModel):
     verticale: VerticaleOnboarding
     nome_attivita: str = Field(min_length=2, max_length=120)
     orari: str = Field(min_length=2, max_length=1000)
+    descrizione: str = Field(default="", max_length=1000)
     tono: str = Field(default="", max_length=400)
     servizi: list[str] = Field(default_factory=list)
     regole_escalation: list[str] = Field(default_factory=list)
@@ -170,6 +174,7 @@ class WhatsAppBusinessProfile(BaseModel):
     tipo_attivita: str | None = None
     tono: str | None = None
     orari: str | None = None
+    descrizione: str | None = None
     servizi_principali: list[str] | None = None
     note_speciali: list[str] | None = None
     # Multilingua (task 14): stessi campi di ProfiloAttivita, opzionali per

@@ -2,6 +2,7 @@ import asyncio
 import os
 import logging
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from cryptography.fernet import Fernet
 from google.oauth2.credentials import Credentials
@@ -250,6 +251,49 @@ class GoogleCalendarService:
                 org_id,
             )
         return event_id
+
+    async def get_busy_intervals(self, org_id, data):
+        """Intervalli occupati del calendario Google per la data (YYYY-MM-DD)
+        come lista di (start, end) NAIVE nel fuso dell'organizzazione: le
+        prenotazioni (data/ora) sono espresse in fuso org, quindi il
+        confronto di overlap resta naive-vs-naive.
+
+        Fail-open per design (audit 2026-09-01): credenziali assenti, API in
+        errore o fuso invalido -> lista vuota; il check e' best-effort e la
+        capacita' DB resta la fonte autorevole. Il fail-open copre TUTTO il
+        percorso, incluso _build_service (credenziali non decifrabili)."""
+        try:
+            service = await self._build_service(org_id)
+            if not service:
+                return []
+            calendar_id = await self._get_calendar_id(org_id)
+            tz_name = await self._get_org_timezone(org_id)
+            tz = ZoneInfo(tz_name)
+            giorno = datetime.fromisoformat(f"{data}T00:00:00").replace(tzinfo=tz)
+            body = {
+                "timeMin": giorno.isoformat(),
+                "timeMax": (giorno + timedelta(days=1)).isoformat(),
+                "items": [{"id": calendar_id}],
+            }
+            resp = await asyncio.to_thread(
+                service.freebusy().query(body=body).execute
+            )
+        except Exception:
+            logger.exception("calendar=freebusy_fail org_id=%s data=%s", org_id, data)
+            return []
+        intervals = []
+        for cal in (resp.get("calendars") or {}).values():
+            for b in cal.get("busy") or []:
+                try:
+                    bs = datetime.fromisoformat(b["start"].replace("Z", "+00:00"))
+                    be = datetime.fromisoformat(b["end"].replace("Z", "+00:00"))
+                except (KeyError, AttributeError, ValueError):
+                    continue
+                intervals.append((
+                    bs.astimezone(tz).replace(tzinfo=None),
+                    be.astimezone(tz).replace(tzinfo=None),
+                ))
+        return intervals
 
     async def sync_booking_state(self, booking, org_id):
         stato = booking.get("stato", "")

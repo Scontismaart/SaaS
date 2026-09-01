@@ -9,7 +9,7 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
 const PROFILO_ID = "trattoria_da_mario";
 
 /* ============================================================
-   AUTENTICAZIONE â€” BFF (task18)
+   AUTENTICAZIONE — BFF (task18)
    ============================================================
    Il frontend NON gestisce token: invia email+password a
    /api/auth/login, il backend (BFF) scambia le credenziali con
@@ -39,7 +39,7 @@ function _sanitize(v) {
 }
 
 /* ============================================================
-   TOAST â€” notifiche non bloccanti al posto di alert()
+   TOAST — notifiche non bloccanti al posto di alert()
    ============================================================ */
 
 function toast(messaggio, tipo = "info", durata = 4200) {
@@ -63,7 +63,7 @@ function toast(messaggio, tipo = "info", durata = 4200) {
 }
 
 /* ============================================================
-   CONFERMA AZIONI DISTRUTTIVE â€” modal riusabile al posto di confirm()
+   CONFERMA AZIONI DISTRUTTIVE — modal riusabile al posto di confirm()
    ============================================================ */
 
 function confermaDestructiva({ titolo = "Conferma azione", descrizione = "", label = "Conferma" } = {}) {
@@ -120,7 +120,7 @@ function csrfToken() {
 }
 
 /* ============================================================
-   STATO RETE â€” banner "connessione persa / ripristinata"
+   STATO RETE — banner "connessione persa / ripristinata"
    ============================================================ */
 
 let reteInErrore = false;
@@ -146,9 +146,9 @@ function mostraBannerRete(testo, online = false, autoHideMs = 0) {
 function segnalaErroreRete() {
   reteInErrore = true;
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    mostraBannerRete("Connessione persa â€” i dati non si aggiornano. Controlla la rete.");
+    mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
   } else {
-    mostraBannerRete("Server irraggiungibile â€” riprova tra poco.");
+    mostraBannerRete("Server irraggiungibile — riprova tra poco.");
   }
 }
 
@@ -159,7 +159,7 @@ function segnaReteOk() {
 }
 
 window.addEventListener("offline", () => {
-  mostraBannerRete("Connessione persa â€” i dati non si aggiornano. Controlla la rete.");
+  mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
 });
 
 window.addEventListener("online", () => {
@@ -319,7 +319,7 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
 });
 
 /* ============================================================
-   ACCOUNT â€” Piano e abbonamento (vista dedicata, ex CTA topbar)
+   ACCOUNT — Piano e abbonamento (vista dedicata, ex CTA topbar)
    ============================================================ */
 
 const ACCOUNT_PLANS = [
@@ -417,7 +417,7 @@ async function cambiaPiano(slug) {
   } catch (e) {
     console.error("Errore cambio piano:", e);
     status.hidden = false;
-    status.textContent = "Impossibile avviare il cambio piano. Riprova piÃ¹ tardi.";
+    status.textContent = "Impossibile avviare il cambio piano. Riprova più tardi.";
     status.style.color = "var(--red)";
   }
 }
@@ -432,7 +432,7 @@ async function apriPortaleBilling() {
   } catch (e) {
     console.error("Errore apertura portale billing:", e);
     status.hidden = false;
-    status.textContent = "Impossibile aprire il portale Stripe. Riprova piÃ¹ tardi.";
+    status.textContent = "Impossibile aprire il portale Stripe. Riprova più tardi.";
     status.style.color = "var(--red)";
   }
 }
@@ -524,10 +524,10 @@ function segnaNotificheViste(viewName) {
   aggiornaCampana();
 }
 
-/* Destinazioni di fallback per chiavi di viste non piÃ¹ presenti nella nav
+/* Destinazioni di fallback per chiavi di viste non più presenti nella nav
    (notifiche salvate prima della riorganizzazione, link memorizzati):
    apre la vista contenitore e, se prevista, il tab giusto dentro
-   Impostazioni â€” mai un no-op silenzioso. */
+   Impostazioni — mai un no-op silenzioso. */
 const VIEW_FALLBACK = {
   audit: { view: "impostazioni", tab: "audit" },
   integrazioni: { view: "impostazioni", tab: "whatsapp" },
@@ -756,7 +756,7 @@ navItems.forEach((btn) => {
       if (sessione?.ruolo === "staff") document.getElementById("onboarding-banner")?.remove();
     }
     if (viewName === "recensioni") {
-      aggiornaTrends();
+      aggiornaRecensioni();
     }
     if (viewName === "prenotazioni") {
       await aggiornaImpostazioniPrenotazioni();
@@ -1616,7 +1616,7 @@ document.getElementById("booking-reject-btn")?.addEventListener("click", () => {
   eseguiAzionePrenotazione("reject", {
     chiediConferma: true,
     titolo: "Rifiutare la prenotazione?",
-    descrizione: `La richiesta di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrÃ  contrassegnata come rifiutata e il cliente non avrÃ  il tavolo riservato.`,
+    descrizione: `La richiesta di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà contrassegnata come rifiutata e il cliente non avrà il tavolo riservato.`,
     label: "Rifiuta",
   });
 });
@@ -1625,7 +1625,7 @@ document.getElementById("booking-cancel-btn")?.addEventListener("click", () => {
   eseguiAzionePrenotazione("cancel", {
     chiediConferma: true,
     titolo: "Annullare la prenotazione?",
-    descrizione: `La prenotazione di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrÃ  annullata e i posti torneranno disponibili.`,
+    descrizione: `La prenotazione di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà annullata e i posti torneranno disponibili.`,
     label: "Annulla prenotazione",
   });
 });
@@ -2177,60 +2177,220 @@ const reviewSource = document.getElementById("review-source");
 const reviewAnalyze = document.getElementById("review-analyze");
 const reviewDraft = document.getElementById("review-draft");
 const reviewDraftText = document.getElementById("review-draft-text");
+const reviewOriginalBox = document.getElementById("review-original-box");
+const reviewOriginalText = document.getElementById("review-original-text");
 const reviewDraftSentiment = document.getElementById("review-draft-sentiment");
 const reviewDraftCat = document.getElementById("review-draft-cat");
+const draftPanelTitle = document.getElementById("draft-panel-title");
+const draftStatusBadge = document.getElementById("draft-status-badge");
+const draftMetaInfo = document.getElementById("draft-meta-info");
+const draftFeedbackText = document.getElementById("draft-feedback-text");
+const btnCloseDraft = document.getElementById("btn-close-draft");
 const reviewCopy = document.getElementById("review-copy");
 const reviewApprove = document.getElementById("review-approve");
 
+const reviewHistoryCard = document.getElementById("review-history-card");
+const reviewHistoryList = document.getElementById("review-history-list");
+const reviewFilterTabs = document.getElementById("review-filter-tabs");
+const reviewSearchInput = document.getElementById("review-search-input");
+const reviewFilterSource = document.getElementById("review-filter-source");
+const btnRefreshReviews = document.getElementById("btn-refresh-reviews");
+
+const countAll = document.getElementById("count-all");
+const countPending = document.getElementById("count-pending");
+const countApproved = document.getElementById("count-approved");
+const countUrgent = document.getElementById("count-urgent");
+
+const reviewStatCount = document.getElementById("review-stat-count");
+const reviewStatRating = document.getElementById("review-stat-rating");
+const sidebarRatingNum = document.getElementById("sidebar-rating-num");
+const sidebarRatingStars = document.getElementById("sidebar-rating-stars");
+const sidebarRatingTotal = document.getElementById("sidebar-rating-total");
+const pctPosVal = document.getElementById("pct-pos-val");
+const pctNeutVal = document.getElementById("pct-neut-val");
+const pctNegVal = document.getElementById("pct-neg-val");
+const barPosFill = document.getElementById("bar-pos-fill");
+const barNeutFill = document.getElementById("bar-neut-fill");
+const barNegFill = document.getElementById("bar-neg-fill");
+
+const trendList = document.getElementById("trend-list");
+
 let reviewAttualeId = null;
+let reviewAttualeData = null;
+let recensioniPrimoCaricamento = true;
+let recensioniFiltroCorrente = "tutte";
+let recensioniListaDati = [];
+
+function _formatDataRecensione(iso) {
+  if (!iso) return "Data recente";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Data non valida";
+  const oggi = new Date();
+  const isOggi = d.toDateString() === oggi.toDateString();
+  const timeStr = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  if (isOggi) return `Oggi alle ${timeStr}`;
+  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" }) + `, ${timeStr}`;
+}
+
+function _fonteLabel(fonte) {
+  const f = (fonte || "").toLowerCase();
+  if (f === "google") return { label: "Google Business", icon: "🌐", classe: "channel-google" };
+  if (f === "tripadvisor") return { label: "TripAdvisor", icon: "🦉", classe: "channel-tripadvisor" };
+  return { label: "Manuale", icon: "✍️", classe: "channel-manuale" };
+}
+
+function _stelleVisual(n) {
+  const num = Math.max(0, Math.min(5, Number(n) || 0));
+  return "★".repeat(num) + "☆".repeat(5 - num);
+}
+
+function apriDettaglioRecensione(recId) {
+  const item = recensioniListaDati.find((r) => String(r.id) === String(recId));
+  if (!item) return;
+
+  reviewAttualeId = String(item.id);
+  reviewAttualeData = item;
+
+  if (reviewOriginalText) reviewOriginalText.textContent = item.testo || "";
+  if (reviewDraftText) reviewDraftText.value = item.bozza_risposta || "";
+  
+  const isApprovata = item.stato === "approvata" || item.stato === "pubblicata";
+  const isUrgente = item.richiede_revisione_urgente || item.sentiment === "negativa" || (item.valutazione_stelle && item.valutazione_stelle <= 2);
+
+  if (draftPanelTitle) {
+    draftPanelTitle.textContent = isApprovata ? "Risposta approvata" : "Bozza di risposta generata";
+  }
+
+  if (draftStatusBadge) {
+    if (isApprovata) {
+      draftStatusBadge.textContent = "Approvata";
+      draftStatusBadge.className = "review-status-badge status-approvata";
+    } else if (isUrgente) {
+      draftStatusBadge.textContent = "Richiede attenzione";
+      draftStatusBadge.className = "review-status-badge status-urgente";
+    } else {
+      draftStatusBadge.textContent = "Bozza pronta";
+      draftStatusBadge.className = "review-status-badge";
+    }
+  }
+
+  const fonteInfo = _fonteLabel(item.fonte);
+  if (draftMetaInfo) {
+    const autoreStr = item.autore ? `Autore: ${item.autore}` : "Autore non specificato";
+    const stelleStr = item.valutazione_stelle ? ` • ★ ${item.valutazione_stelle}/5` : "";
+    const dataStr = item.created_at ? ` • ${_formatDataRecensione(item.created_at)}` : "";
+    draftMetaInfo.textContent = `${autoreStr} • Canale: ${fonteInfo.label}${stelleStr}${dataStr}`;
+  }
+
+  if (reviewDraftSentiment) {
+    const s = (item.sentiment || "neutro").toLowerCase();
+    reviewDraftSentiment.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+    reviewDraftSentiment.className = `review-sentiment-badge sentiment-${s}`;
+  }
+
+  if (reviewDraftCat) {
+    const cat = item.categoria || "generico";
+    reviewDraftCat.textContent = cat.replace(/_/g, " ");
+    reviewDraftCat.hidden = false;
+  }
+
+  if (draftFeedbackText) draftFeedbackText.textContent = "";
+
+  if (reviewApprove) {
+    reviewApprove.disabled = isApprovata;
+    reviewApprove.innerHTML = isApprovata
+      ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approvata'
+      : '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approva risposta';
+  }
+
+  if (reviewDraft) {
+    reviewDraft.hidden = false;
+    reviewDraft.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function chiudiDettaglioRecensione() {
+  if (reviewDraft) reviewDraft.hidden = true;
+  reviewAttualeId = null;
+  reviewAttualeData = null;
+}
 
 async function inviaRecensione() {
-  const testo = reviewText.value.trim();
-  if (!testo) return;
+  const testo = reviewText ? reviewText.value.trim() : "";
+  if (!testo) {
+    toast("Inserisci il testo della recensione da analizzare.", "warning");
+    reviewText?.focus();
+    return;
+  }
+
   reviewAnalyze.disabled = true;
-  reviewAnalyze.textContent = "Analisi in corso\u2026";
+  reviewAnalyze.innerHTML = `
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+    Analisi in corso…
+  `;
+
   try {
     const res = await apiFetch(`${API_BASE}/api/recensione`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         testo,
-        valutazione_stelle: reviewStars.value ? parseInt(reviewStars.value) : null,
-        autore: reviewAuthor.value.trim(),
-        fonte: reviewSource.value || "manuale",
+        valutazione_stelle: reviewStars?.value ? parseInt(reviewStars.value) : null,
+        autore: reviewAuthor?.value ? reviewAuthor.value.trim() : "",
+        fonte: reviewSource?.value || "manuale",
       }),
     });
+
     if (!res.ok) {
       const errBody = await res.json().catch(() => null);
       throw new Error(errBody?.detail || `Errore HTTP ${res.status}`);
     }
+
     const data = await res.json();
     reviewAttualeId = data.id;
-    reviewApprove.disabled = false;
-    reviewDraft.hidden = false;
-    reviewDraftText.textContent = data.bozza_risposta;
-    reviewDraftSentiment.textContent = data.sentiment;
-    reviewDraftCat.textContent = data.categoria;
-    reviewDraftSentiment.className = "review-draft-sentiment";
-    reviewDraftSentiment.classList.add(`sentiment-${data.sentiment}`);
-    await aggiornaRiepilogo();
-    await aggiornaPrioritari();
-    await aggiornaTrends();
+
+    // Crea record locale e apri bozza
+    const nuovoRecord = {
+      id: data.id,
+      testo,
+      valutazione_stelle: reviewStars?.value ? parseInt(reviewStars.value) : null,
+      autore: reviewAuthor?.value ? reviewAuthor.value.trim() : "",
+      fonte: reviewSource?.value || "manuale",
+      bozza_risposta: data.bozza_risposta,
+      sentiment: data.sentiment,
+      categoria: data.categoria,
+      richiede_revisione_urgente: data.richiede_revisione_urgente,
+      stato: data.stato || "bozza_generata",
+      created_at: new Date().toISOString(),
+    };
+
+    // Aggiungi in testa alla lista locale
+    recensioniListaDati = [nuovoRecord, ...recensioniListaDati.filter(r => String(r.id) !== String(data.id))];
+
+    apriDettaglioRecensione(data.id);
+    toast("Analisi completata: bozza di risposta generata!", "info");
+
+    await aggiornaRecensioni(true);
+    await aggiornaRiepilogo(true);
+    await aggiornaPrioritari(true);
     await aggiornaNotifiche();
   } catch (err) {
     toast("Errore: " + err.message, "error");
   } finally {
-    reviewAnalyze.disabled = false;
-    reviewAnalyze.textContent = "Analizza e genera bozza";
+    if (reviewAnalyze) {
+      reviewAnalyze.disabled = false;
+      reviewAnalyze.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        Analizza e genera bozza
+      `;
+    }
   }
 }
 
-async function approvaRecensione() {
-  if (!reviewAttualeId) return;
-  reviewApprove.disabled = true;
-  reviewApprove.textContent = "Approvazione\u2026";
+async function approvaRecensioneDaId(recId) {
+  if (!recId) return;
   try {
-    const res = await apiFetch(`${API_BASE}/api/recensioni/${reviewAttualeId}/approva`, {
+    const res = await apiFetch(`${API_BASE}/api/recensioni/${recId}/approva`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -2239,115 +2399,369 @@ async function approvaRecensione() {
       throw new Error(errBody?.detail || `Errore HTTP ${res.status}`);
     }
     const data = await res.json();
-    reviewApprove.textContent = "Approvata";
-    reviewDraftSentiment.textContent = data.stato;
-    reviewDraftSentiment.className = "review-draft-sentiment sentiment-approvata";
-    await aggiornaRiepilogo();
-    await aggiornaPrioritari();
+    
+    // Aggiorna stato locale
+    recensioniListaDati = recensioniListaDati.map((r) => {
+      if (String(r.id) === String(recId)) {
+        return { ...r, stato: data.stato || "approvata" };
+      }
+      return r;
+    });
+
+    if (String(reviewAttualeId) === String(recId)) {
+      if (draftStatusBadge) {
+        draftStatusBadge.textContent = "Approvata";
+        draftStatusBadge.className = "review-status-badge status-approvata";
+      }
+      if (reviewApprove) {
+        reviewApprove.disabled = true;
+        reviewApprove.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approvata';
+      }
+      if (draftFeedbackText) {
+        draftFeedbackText.textContent = "Risposta approvata con successo!";
+      }
+    }
+
+    toast("Risposta approvata con successo!", "info");
+    renderStoricoRecensioni();
+    aggiornaConteggiRecensioni();
+    aggiornaRiepilogo(true);
+    aggiornaPrioritari(true);
   } catch (err) {
-    toast("Errore: " + err.message, "error");
-    reviewApprove.disabled = false;
-    reviewApprove.textContent = "Approva risposta";
+    toast("Errore durante l'approvazione: " + err.message, "error");
   }
 }
 
-const trendList = document.getElementById("trend-list");
-let trendPrimoCaricamento = true;
+async function approvaRecensione() {
+  if (!reviewAttualeId) return;
+  if (reviewApprove) {
+    reviewApprove.disabled = true;
+    reviewApprove.textContent = "Approvazione…";
+  }
+  await approvaRecensioneDaId(reviewAttualeId);
+}
+
+function renderStoricoRecensioni() {
+  if (!reviewHistoryList) return;
+
+  const searchQuery = (reviewSearchInput?.value || "").toLowerCase().trim();
+  const fonteFilter = (reviewFilterSource?.value || "").toLowerCase();
+
+  let filtrate = recensioniListaDati.filter((r) => {
+    // Filtro Tab
+    if (recensioniFiltroCorrente === "bozza" && !(r.stato === "bozza_generata" || r.stato === "nuova")) {
+      return false;
+    }
+    if (recensioniFiltroCorrente === "approvata" && !(r.stato === "approvata" || r.stato === "pubblicata")) {
+      return false;
+    }
+    if (recensioniFiltroCorrente === "negativa") {
+      const isNeg = r.sentiment === "negativa" || r.richiede_revisione_urgente || (r.valutazione_stelle && r.valutazione_stelle <= 2);
+      if (!isNeg) return false;
+    }
+
+    // Filtro Canale
+    if (fonteFilter && (r.fonte || "manuale").toLowerCase() !== fonteFilter) {
+      return false;
+    }
+
+    // Ricerca testo/autore
+    if (searchQuery) {
+      const autore = (r.autore || "").toLowerCase();
+      const testo = (r.testo || "").toLowerCase();
+      const bozza = (r.bozza_risposta || "").toLowerCase();
+      if (!autore.includes(searchQuery) && !testo.includes(searchQuery) && !bozza.includes(searchQuery)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  reviewHistoryList.innerHTML = "";
+
+  if (filtrate.length === 0) {
+    if (recensioniListaDati.length === 0) {
+      reviewHistoryList.appendChild(_emptyState(
+        ICONS.chat,
+        "Nessuna recensione registrata",
+        "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale.",
+        "✍️ Incolla una recensione",
+        () => {
+          reviewText?.focus();
+          reviewText?.scrollIntoView({ behavior: "smooth" });
+        }
+      ));
+    } else {
+      reviewHistoryList.appendChild(_emptyState(
+        ICONS.alert,
+        "Nessun risultato con i filtri attuali",
+        "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati.",
+        "Reimposta filtri",
+        () => {
+          recensioniFiltroCorrente = "tutte";
+          if (reviewFilterTabs) {
+            reviewFilterTabs.querySelectorAll(".review-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "tutte"));
+          }
+          if (reviewSearchInput) reviewSearchInput.value = "";
+          if (reviewFilterSource) reviewFilterSource.value = "";
+          renderStoricoRecensioni();
+        }
+      ));
+    }
+    return;
+  }
+
+  filtrate.forEach((r) => {
+    const item = document.createElement("div");
+    const isApprovata = r.stato === "approvata" || r.stato === "pubblicata";
+    const isUrgente = r.richiede_revisione_urgente || r.sentiment === "negativa" || (r.valutazione_stelle && r.valutazione_stelle <= 2);
+
+    item.className = "review-history-item" + (isUrgente ? " item-urgente" : "") + (isApprovata ? " item-approvata" : "");
+
+    const fonteInfo = _fonteLabel(r.fonte);
+    const autoreDisplay = r.autore ? _sanitize(r.autore) : "Cliente";
+    const stelleHtml = _stelleVisual(r.valutazione_stelle);
+    const dataDisplay = _formatDataRecensione(r.created_at || r.published_at);
+    const sentimentStr = (r.sentiment || "neutro").toLowerCase();
+
+    let statusPill = "";
+    if (isApprovata) {
+      statusPill = '<span class="review-status-badge status-approvata">Approvata</span>';
+    } else if (isUrgente) {
+      statusPill = '<span class="review-status-badge status-urgente">Richiede attenzione</span>';
+    } else {
+      statusPill = '<span class="review-status-badge">Bozza pronta</span>';
+    }
+
+    const sentimentBadge = `<span class="review-sentiment-badge sentiment-${sentimentStr}">${sentimentStr.charAt(0).toUpperCase() + sentimentStr.slice(1)}</span>`;
+    const catBadge = r.categoria ? `<span class="review-cat-badge">${_sanitize(r.categoria.replace(/_/g, " "))}</span>` : "";
+
+    let aiBox = "";
+    if (r.bozza_risposta) {
+      aiBox = `
+        <div class="history-ai-reply-box">
+          <span class="ai-reply-label">Bozza di risposta suggerita:</span>
+          <p class="ai-reply-text">${_sanitize(r.bozza_risposta)}</p>
+        </div>
+      `;
+    }
+
+    item.innerHTML = `
+      <div class="history-item-top">
+        <div class="history-item-meta">
+          <span class="channel-pill ${fonteInfo.classe}">${fonteInfo.icon} ${fonteInfo.label}</span>
+          <span class="history-stars" title="${r.valutazione_stelle || 0} su 5 stelle">${stelleHtml}</span>
+          <span class="history-author">${autoreDisplay}</span>
+          <span class="history-date">${dataDisplay}</span>
+        </div>
+        <div>
+          ${statusPill}
+        </div>
+      </div>
+      <div class="history-item-body">
+        <p class="history-review-text">"${_sanitize(r.testo || "")}"</p>
+        ${aiBox}
+      </div>
+      <div class="history-item-footer">
+        <div class="history-tags">
+          ${sentimentBadge}
+          ${catBadge}
+        </div>
+        <div class="history-actions">
+          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">✓ Approva</button>` : ""}
+          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">🔍 Rivedi bozza</button>
+          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">📋 Copia testo</button>` : ""}
+        </div>
+      </div>
+    `;
+
+    item.querySelector('[data-action="open"]')?.addEventListener("click", () => apriDettaglioRecensione(r.id));
+    item.querySelector('[data-action="approve"]')?.addEventListener("click", () => approvaRecensioneDaId(r.id));
+    item.querySelector('[data-action="copy"]')?.addEventListener("click", () => {
+      if (r.bozza_risposta) {
+        navigator.clipboard.writeText(r.bozza_risposta).catch(() => {});
+        toast("Testo della bozza copiato negli appunti!", "info");
+      }
+    });
+
+    reviewHistoryList.appendChild(item);
+  });
+}
+
+function aggiornaConteggiRecensioni() {
+  const totale = recensioniListaDati.length;
+  const pending = recensioniListaDati.filter(r => r.stato === "bozza_generata" || r.stato === "nuova").length;
+  const approved = recensioniListaDati.filter(r => r.stato === "approvata" || r.stato === "pubblicata").length;
+  const urgent = recensioniListaDati.filter(r => r.richiede_revisione_urgente || r.sentiment === "negativa" || (r.valutazione_stelle && r.valutazione_stelle <= 2)).length;
+
+  if (countAll) countAll.textContent = totale;
+  if (countPending) countPending.textContent = pending;
+  if (countApproved) countApproved.textContent = approved;
+  if (countUrgent) countUrgent.textContent = urgent;
+
+  // Calcolo media stelle
+  const conStelle = recensioniListaDati.filter(r => r.valutazione_stelle != null && r.valutazione_stelle > 0);
+  const mediaStelle = conStelle.length > 0
+    ? (conStelle.reduce((acc, r) => acc + Number(r.valutazione_stelle), 0) / conStelle.length)
+    : 0;
+
+  if (reviewStatCount) reviewStatCount.textContent = `${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
+  if (reviewStatRating) reviewStatRating.textContent = `★ ${mediaStelle ? mediaStelle.toFixed(1) : "0.0"}`;
+
+  // Sidebar rating & sentiment
+  if (sidebarRatingNum) sidebarRatingNum.textContent = mediaStelle ? mediaStelle.toFixed(1) : "--";
+  if (sidebarRatingStars) sidebarRatingStars.textContent = _stelleVisual(Math.round(mediaStelle));
+  if (sidebarRatingTotal) sidebarRatingTotal.textContent = `Basato su ${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
+
+  // Distribuzione sentiment
+  const pos = recensioniListaDati.filter(r => r.sentiment === "positiva" || r.sentiment === "positivo" || (r.valutazione_stelle && r.valutazione_stelle >= 4)).length;
+  const neg = recensioniListaDati.filter(r => r.sentiment === "negativa" || r.sentiment === "negativo" || (r.valutazione_stelle && r.valutazione_stelle <= 2)).length;
+  const neut = totale - pos - neg;
+
+  const pctPos = totale > 0 ? Math.round((pos / totale) * 100) : 0;
+  const pctNeg = totale > 0 ? Math.round((neg / totale) * 100) : 0;
+  const pctNeut = totale > 0 ? Math.max(0, 100 - pctPos - pctNeg) : 0;
+
+  if (pctPosVal) pctPosVal.textContent = `${pctPos}%`;
+  if (pctNeutVal) pctNeutVal.textContent = `${pctNeut}%`;
+  if (pctNegVal) pctNegVal.textContent = `${pctNeg}%`;
+
+  if (barPosFill) barPosFill.style.width = `${pctPos}%`;
+  if (barNeutFill) barNeutFill.style.width = `${pctNeut}%`;
+  if (barNegFill) barNegFill.style.width = `${pctNeg}%`;
+}
 
 function _paroleChiave(testi, max = 3) {
-  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "Ã¨", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "piÃ¹", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
-  const words = testi.join(" ").toLowerCase().replace(/[^a-zÃ Ã¨Ã©Ã¬Ã²Ã¹\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
+  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "è", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "più", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
+  const words = testi.join(" ").toLowerCase().replace(/[^a-zàèéìòù\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
   const freq = {};
   words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
   return Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, max).map(e => e[0]);
 }
 
-async function aggiornaTrends() {
-  try {
-    if (trendPrimoCaricamento && trendList) {
-      trendList.innerHTML = _skeletonList(3);
-      trendPrimoCaricamento = false;
-    }
-    const res = await apiFetch(`${API_BASE}/api/dashboard`);
-    if (!res.ok) {
-      trendList.innerHTML = "";
-      trendList.appendChild(_errorState("Impossibile caricare le statistiche.", aggiornaTrends));
-      return;
-    }
-    const raw = await res.json().catch(() => []);
-    const eventi = Array.isArray(raw) ? raw : [];
-    const recensioni = eventi.filter(e => e.tipo_evento === "recensione");
-    const totale = recensioni.length;
+async function aggiornaRecensioni(silent = false) {
+  if (!silent && recensioniPrimoCaricamento && reviewHistoryList) {
+    reviewHistoryList.innerHTML = _skeletonList(3);
+    recensioniPrimoCaricamento = false;
+  }
 
+  try {
+    // 1. Chiamata ad endpoint dedicato /api/recensioni
+    const res = await apiFetch(`${API_BASE}/api/recensioni?limit=50`);
+    if (res.ok) {
+      const data = await res.json().catch(() => ({ recensioni: [] }));
+      recensioniListaDati = Array.isArray(data.recensioni) ? data.recensioni : [];
+    } else {
+      // Fallback a /api/dashboard se /api/recensioni non è raggiungibile
+      const dashRes = await apiFetch(`${API_BASE}/api/dashboard`);
+      if (dashRes.ok) {
+        const eventi = await dashRes.json().catch(() => []);
+        recensioniListaDati = (Array.isArray(eventi) ? eventi : [])
+          .filter(e => e.tipo_evento === "recensione")
+          .map(e => ({
+            id: e.id,
+            testo: e.testo_originale,
+            valutazione_stelle: e.dettagli?.stelle || e.dettagli?.valutazione_stelle || null,
+            fonte: e.dettagli?.fonte || "manuale",
+            autore: e.dettagli?.autore || "",
+            bozza_risposta: e.risposta_ai || "",
+            sentiment: e.dettagli?.sentiment || (e.priorita === "alta" ? "negativa" : "positiva"),
+            categoria: e.dettagli?.categoria || "generico",
+            richiede_revisione_urgente: Boolean(e.dettagli?.richiede_revisione_urgente || e.priorita === "alta"),
+            stato: e.gestito_da_ai ? "approvata" : "bozza_generata",
+            created_at: e.timestamp,
+          }));
+      }
+    }
+
+    aggiornaConteggiRecensioni();
+    renderStoricoRecensioni();
+    aggiornaTrends(recensioniListaDati);
+  } catch (err) {
+    console.error("Impossibile aggiornare le recensioni:", err);
+    if (!silent && reviewHistoryList) {
+      reviewHistoryList.innerHTML = "";
+      reviewHistoryList.appendChild(_errorState("Impossibile caricare lo storico delle recensioni.", () => aggiornaRecensioni()));
+    }
+  }
+}
+
+async function aggiornaTrends(datiParam) {
+  if (!trendList) return;
+  try {
+    let recensioni = datiParam;
+    if (!Array.isArray(recensioni)) {
+      const res = await apiFetch(`${API_BASE}/api/dashboard`);
+      const eventi = res.ok ? await res.json().catch(() => []) : [];
+      recensioni = (Array.isArray(eventi) ? eventi : []).filter(e => e.tipo_evento === "recensione");
+    }
+
+    const totale = recensioni.length;
     if (totale === 0) {
       trendList.innerHTML = "";
       const li = document.createElement("li");
       li.appendChild(_emptyState(
         ICONS.trend,
-        "Nessuna recensione ancora",
-        "Incolla una recensione qui a fianco: l'assistente valuta il tono e individua i temi ricorrenti.",
-        "Analizza una recensione",
-        () => document.getElementById("review-text")?.focus()
+        "Nessun trend rilevato",
+        "I temi ricorrenti e i trend di gradimento appariranno automaticamente analizzando le recensioni.",
+        null
       ));
       trendList.appendChild(li);
       return;
     }
 
-    const pos = recensioni.filter(e => e.dettagli.sentiment === "positiva").length;
-    const neg = recensioni.filter(e => e.dettagli.sentiment === "negativa").length;
-    const neut = recensioni.filter(e => e.dettagli.sentiment === "neutra").length;
-    const pctPos = Math.round(pos / totale * 100);
-    const pctNeg = Math.round(neg / totale * 100);
-    const pctNeut = Math.round(neut / totale * 100);
+    const pos = recensioni.filter(e => (e.sentiment === "positiva" || e.sentiment === "positivo" || e.dettagli?.sentiment === "positiva" || (e.valutazione_stelle && e.valutazione_stelle >= 4))).length;
+    const neg = recensioni.filter(e => (e.sentiment === "negativa" || e.sentiment === "negativo" || e.dettagli?.sentiment === "negativa" || (e.valutazione_stelle && e.valutazione_stelle <= 2))).length;
+    const pctPos = Math.round((pos / totale) * 100);
+    const pctNeg = Math.round((neg / totale) * 100);
 
     const catCount = {};
     recensioni.forEach(e => {
-      const c = e.dettagli.categoria || "generico";
+      const c = e.categoria || e.dettagli?.categoria || "generico";
       catCount[c] = (catCount[c] || 0) + 1;
     });
     const topCat = Object.entries(catCount).sort((a, b) => b[1] - a[1]).slice(0, 2);
 
-    const testi = recensioni.map(e => e.testo_originale);
+    const testi = recensioni.map(e => e.testo || e.testo_originale || "");
     const keywords = _paroleChiave(testi, 2);
 
     const items = [];
 
-    if (pos > 0) items.push(`
-      <li class="trend-item">
-        <span class="trend-icon trend-pos">â–²</span>
-        <div class="trend-body">
-          <span class="trend-label">Positivo (${pctPos}%)</span>
-          <div class="trend-bar-track"><div class="trend-bar-fill fill-pos" style="width:${pctPos}%"></div></div>
-        </div>
-      </li>`);
+    if (pos > 0) {
+      items.push(`
+        <li class="trend-item">
+          <span class="trend-icon trend-pos">▲</span>
+          <div class="trend-body">
+            <span class="trend-label">Gradimento positivo (${pctPos}%)</span>
+            <div class="trend-bar-track"><div class="trend-bar-fill fill-pos" style="width:${pctPos}%"></div></div>
+          </div>
+        </li>`);
+    }
 
-    if (neg > 0) items.push(`
-      <li class="trend-item">
-        <span class="trend-icon trend-neg">â–¼</span>
-        <div class="trend-body">
-          <span class="trend-label">Negativo (${pctNeg}%)</span>
-          <div class="trend-bar-track"><div class="trend-bar-fill fill-neg" style="width:${pctNeg}%"></div></div>
-        </div>
-      </li>`);
-
-    if (neut > 0) items.push(`
-      <li class="trend-item">
-        <span class="trend-icon trend-neutral">â€”</span>
-        <div class="trend-body"><span class="trend-label">Neutro (${pctNeut}%)</span></div>
-      </li>`);
+    if (neg > 0) {
+      items.push(`
+        <li class="trend-item">
+          <span class="trend-icon trend-neg">▼</span>
+          <div class="trend-body">
+            <span class="trend-label">Criticità segnalate (${pctNeg}%)</span>
+            <div class="trend-bar-track"><div class="trend-bar-fill fill-neg" style="width:${pctNeg}%"></div></div>
+          </div>
+        </li>`);
+    }
 
     topCat.forEach(([cat]) => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-topic">â†—</span>
-          <div class="trend-body"><span class="trend-label">Argomento ricorrente: ${_sanitize(cat.replace(/_/g, " "))}</span></div>
+          <span class="trend-icon trend-topic">↗</span>
+          <div class="trend-body"><span class="trend-label">Tema ricorrente: ${_sanitize(cat.replace(/_/g, " "))}</span></div>
         </li>`);
     });
 
     keywords.forEach(kw => {
       items.push(`
         <li class="trend-item">
-          <span class="trend-icon trend-new">âœ¦</span>
+          <span class="trend-icon trend-new">✦</span>
           <div class="trend-body"><span class="trend-label">Parola chiave: "${_sanitize(kw)}"</span></div>
         </li>`);
     });
@@ -2355,18 +2769,37 @@ async function aggiornaTrends() {
     trendList.innerHTML = items.join("");
   } catch (err) {
     console.error("Impossibile aggiornare i trend:", err);
-    if (trendList) {
-      trendList.innerHTML = "";
-      trendList.appendChild(_errorState("Impossibile caricare le statistiche.", aggiornaTrends));
-    }
   }
 }
 
-reviewCopy.addEventListener("click", () => {
-  navigator.clipboard.writeText(reviewDraftText.textContent).catch(() => {});
+// Event Listeners Recensioni
+reviewCopy?.addEventListener("click", () => {
+  const testoBozza = reviewDraftText ? reviewDraftText.value : "";
+  if (!testoBozza) return;
+  navigator.clipboard.writeText(testoBozza).catch(() => {});
+  if (draftFeedbackText) draftFeedbackText.textContent = "Testo copiato negli appunti!";
+  toast("Bozza di risposta copiata negli appunti!", "info");
 });
-reviewApprove.addEventListener("click", approvaRecensione);
-reviewAnalyze.addEventListener("click", inviaRecensione);
+
+reviewApprove?.addEventListener("click", approvaRecensione);
+reviewAnalyze?.addEventListener("click", inviaRecensione);
+btnCloseDraft?.addEventListener("click", chiudiDettaglioRecensione);
+btnRefreshReviews?.addEventListener("click", () => {
+  btnRefreshReviews.classList.add("spin");
+  aggiornaRecensioni().finally(() => setTimeout(() => btnRefreshReviews.classList.remove("spin"), 500));
+});
+
+reviewFilterTabs?.querySelectorAll(".review-tab").forEach((tabBtn) => {
+  tabBtn.addEventListener("click", () => {
+    reviewFilterTabs.querySelectorAll(".review-tab").forEach(t => t.classList.remove("active"));
+    tabBtn.classList.add("active");
+    recensioniFiltroCorrente = tabBtn.dataset.tab || "tutte";
+    renderStoricoRecensioni();
+  });
+});
+
+reviewSearchInput?.addEventListener("input", () => renderStoricoRecensioni());
+reviewFilterSource?.addEventListener("change", () => renderStoricoRecensioni());
 
 /* ============================================================
    REPORT
@@ -2424,7 +2857,7 @@ document.getElementById("booking-export-csv")?.addEventListener("click", () => {
   const da = document.getElementById("booking-export-da")?.value || "";
   const a = document.getElementById("booking-export-a")?.value || "";
   if (da && a && da > a) {
-    toast("La data inizio Ã¨ dopo la data fine.", "error");
+    toast("La data inizio è dopo la data fine.", "error");
     return;
   }
   scaricaCsvPrenotazioni(da, a);
@@ -2467,7 +2900,7 @@ async function aggiornaReport(forza = false) {
 reportRefresh.addEventListener("click", () => aggiornaReport(true));
 
 /* ============================================================
-   PANORAMICA â€” KPI + prioritÃ  + attivitÃ 
+   PANORAMICA — KPI + priorità + attività
    ============================================================ */
 
 const prioritySection = document.getElementById("priority-section");
@@ -2513,7 +2946,7 @@ function _emptyState(icon, titolo, sottotitolo, ctaLabel, ctaAction) {
 }
 
 /* Stato errore con retry: usato al posto del skeleton infinito quando una
-   chiamata API fallisce (l'utente deve capire che puÃ² riprovare, non che
+   chiamata API fallisce (l'utente deve capire che può riprovare, non che
    la sezione sia vuota). */
 function _errorState(messaggio, retryFn) {
   const wrap = document.createElement("div");
@@ -2521,7 +2954,7 @@ function _errorState(messaggio, retryFn) {
   wrap.setAttribute("role", "alert");
   wrap.innerHTML =
     '<div class="empty-state-icon error" aria-hidden="true">' + ICONS.alert + "</div>" +
-    '<span class="empty-state-title">Qualcosa Ã¨ andato storto</span>' +
+    '<span class="empty-state-title">Qualcosa è andato storto</span>' +
     '<span class="empty-state-sub">' + _sanitize(messaggio) + "</span>";
   const btn = document.createElement("button");
   btn.type = "button";
@@ -2669,6 +3102,20 @@ async function aggiornaPrioritari(silent = false) {
       li.appendChild(badge);
       li.appendChild(msg);
       li.appendChild(cat);
+
+      if (e.tipo_evento === "recensione") {
+        li.style.cursor = "pointer";
+        li.title = "Clicca per aprire e gestire questa recensione";
+        li.addEventListener("click", () => {
+          apriView("recensioni");
+          setTimeout(() => {
+            if (e.id && typeof apriDettaglioRecensione === "function") {
+              apriDettaglioRecensione(e.id);
+            }
+          }, 80);
+        });
+      }
+
       priorityList.appendChild(li);
     });
   } catch (err) {
@@ -2971,13 +3418,18 @@ async function aggiornaRiepilogo(silent = false) {
         tags.appendChild(stelleTag);
       }
       if (e.tipo_evento === "recensione") {
-        const copyBtn = document.createElement("button");
-        copyBtn.classList.add("ticket-copy-btn");
-        copyBtn.textContent = "Copia bozza";
-        copyBtn.addEventListener("click", () => {
-          navigator.clipboard.writeText(e.risposta_ai).catch(() => {});
+        const viewBtn = document.createElement("button");
+        viewBtn.classList.add("ticket-copy-btn");
+        viewBtn.textContent = "Visualizza";
+        viewBtn.addEventListener("click", () => {
+          apriView("recensioni");
+          setTimeout(() => {
+            if (e.id && typeof apriDettaglioRecensione === "function") {
+              apriDettaglioRecensione(e.id);
+            }
+          }, 80);
         });
-        tags.appendChild(copyBtn);
+        tags.appendChild(viewBtn);
       } else {
         const statusTag = document.createElement("span");
         statusTag.classList.add("ticket-tag");
@@ -3074,7 +3526,7 @@ async function aggiornaDocumenti() {
       remove.addEventListener("click", async () => {
         const ok = await confermaDestructiva({
           titolo: "Rimuovere il documento?",
-          descrizione: `${documento.nome} verrÃ  eliminato dalla knowledge base e l'assistente non potrÃ  piÃ¹ usarlo per rispondere.`,
+          descrizione: `${documento.nome} verrà eliminato dalla knowledge base e l'assistente non potrà più usarlo per rispondere.`,
           label: "Rimuovi",
         });
         if (!ok) return;
@@ -4306,7 +4758,7 @@ function fermaInboxPolling() {
 }
 
 /* ============================================================
-   MENU MOBILE â€” sidebar off-canvas sotto 1100px
+   MENU MOBILE — sidebar off-canvas sotto 1100px
    ============================================================ */
 
 const navToggle = document.getElementById("nav-toggle");
@@ -4388,8 +4840,8 @@ document.addEventListener("keydown", (event) => {
 });
 
 /* ============================================================
-   CENTRO NOTIFICHE â€” campana in topbar
-   Aggrega i conteggi giÃ  calcolati in notificationItems
+   CENTRO NOTIFICHE — campana in topbar
+   Aggrega i conteggi già calcolati in notificationItems
    (aggiornati ogni 30s da aggiornaNotifiche).
    ============================================================ */
 
@@ -4432,7 +4884,7 @@ function renderPannelloNotifiche() {
   if (!righe.some((riga) => riga.nonViste > 0)) {
     const p = document.createElement("p");
     p.className = "notif-empty";
-    p.textContent = "Tutto aggiornato: nessuna novitÃ .";
+    p.textContent = "Tutto aggiornato: nessuna novità.";
     notifList.appendChild(p);
     return;
   }
@@ -4503,7 +4955,7 @@ notifBell?.addEventListener("click", () => {
   aggiornaCampana();
   setInterval(aggiornaNotifiche, 30000);
   if (typeof navigator !== "undefined" && !navigator.onLine) {
-    mostraBannerRete("Connessione persa â€” i dati non si aggiornano. Controlla la rete.");
+    mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
   }
   if (document.getElementById("booking-date")) {
     document.getElementById("booking-date").value = oggiIso();
@@ -4542,7 +4994,7 @@ notifBell?.addEventListener("click", () => {
 
   /* Navigazione statica "Vai a": la ricerca non indicizza solo dati, deve
      risolvere anche le destinazioni del menu (es. "audit" â†’ Impostazioni â€º
-     Audit). DEBITO TECNICO NOTO: la lista Ã¨ statica â€” se aggiungi un tab o
+     Audit). DEBITO TECNICO NOTO: la lista è statica — se aggiungi un tab o
      una vista, aggiorna questa mappa (nessun modo automatico per rilevarlo). */
   const VAI_A = [
     { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni â€º Audit", view: "impostazioni", tab: "audit" },
@@ -4719,7 +5171,7 @@ let caricaTimezone;
         opt.selected = true;
         select.appendChild(opt);
       }
-    } catch { /* silenzioso: la vista riproverÃ  al prossimo switch */ }
+    } catch { /* silenzioso: la vista riproverà al prossimo switch */ }
   }
 
   saveBtn.addEventListener("click", async () => {
@@ -4773,6 +5225,10 @@ let caricaProfiloImpostazioni;
   const addRuleBtn = document.getElementById("settings-add-rule-btn");
 
   let settingsCurrentRules = [];
+
+  // Deve rispecchiare VerticaleOnboarding (src/models/schemas.py): valori
+  // fuori da questa lista farebbero rifiutare il salvataggio dal backend.
+  const VERTICALI_VALIDI = ["ristorante", "parrucchiere", "hotel_bnb", "centro_estetico", "studio_medico_dentista"];
 
   const REGOLE_DEFAULT_BASE = [
     "Allergie gravi, intolleranze alimentari o requisiti medici specifici",
@@ -4876,7 +5332,7 @@ let caricaProfiloImpostazioni;
 
       // Profilo
       if (nomeInput && prof.nome_attivita) nomeInput.value = prof.nome_attivita;
-      if (vertSelect && prof.verticale) vertSelect.value = prof.verticale;
+      if (vertSelect && VERTICALI_VALIDI.includes(prof.verticale)) vertSelect.value = prof.verticale;
       if (descTextarea && prof.descrizione) descTextarea.value = prof.descrizione;
       if (orariTextarea && prof.orari) orariTextarea.value = prof.orari;
       if (serviziTextarea && prof.servizi) {
@@ -4916,7 +5372,10 @@ let caricaProfiloImpostazioni;
 
   function raccogliPayloadProfilo() {
     const nome = (nomeInput?.value || "").trim() || dbProfileRecord?.nome_attivita || "La tua attività";
-    const verticale = vertSelect?.value || dbProfileRecord?.verticale || "ristorazione";
+    const verticaleSelezionato = VERTICALI_VALIDI.includes(vertSelect?.value)
+      ? vertSelect.value
+      : (VERTICALI_VALIDI.includes(dbProfileRecord?.verticale) ? dbProfileRecord.verticale : "ristorante");
+    const verticale = verticaleSelezionato;
     const descrizione = (descTextarea?.value || "").trim();
     const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "Martedì - Domenica: 12:00-15:00 / 19:30-23:30";
 
@@ -4946,6 +5405,7 @@ let caricaProfiloImpostazioni;
       verticale,
       nome_attivita: nome,
       orari,
+      descrizione,
       tono,
       servizi: servizi.length ? servizi : ["Servizio al tavolo", "Menu alla carta"],
       regole_escalation: regoleSelezionate.length ? regoleSelezionate : settingsCurrentRules,
@@ -5011,7 +5471,7 @@ let caricaProfiloImpostazioni;
 })();
 
 /* ============================================================
-   AUDIT â€” registro attivitÃ 
+   AUDIT — registro attività
    ============================================================ */
 
 const AUDIT_ACTION_LABEL = {
@@ -5096,7 +5556,7 @@ async function caricaAudit({ append = false } = {}) {
 }
 
 /* ============================================================
-   INTEGRAZIONI â€” stato canali e webhook
+   INTEGRAZIONI — stato canali e webhook
    ============================================================ */
 
 /* ============================================================

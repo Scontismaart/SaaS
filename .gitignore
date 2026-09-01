@@ -30,3 +30,6 @@ src/logs/
 .claude/
 .zcode/
 graphify-out/
+
+# dipendenze frontend
+node_modules/

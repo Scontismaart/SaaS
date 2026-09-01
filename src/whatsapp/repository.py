@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -94,6 +95,13 @@ class Repository(TenantScopedRepository):
             raise RuntimeError("ENCRYPTION_KEY not set")
         return Fernet(key.encode()).encrypt(plaintext.encode()).decode()
 
+    @staticmethod
+    def decrypt_token(ciphertext: str) -> str:
+        key = os.environ.get("ENCRYPTION_KEY")
+        if not key:
+            raise RuntimeError("ENCRYPTION_KEY not set")
+        return Fernet(key.encode()).decrypt(ciphertext.encode()).decode()
+
     async def save_tenant_config(self, org_id, phone_number_id: str, waba_id: str, access_token: str):
         encrypted = self.encrypt_token(access_token)
         async with self.pool.acquire() as conn:
@@ -114,6 +122,13 @@ class Repository(TenantScopedRepository):
                     RETURNING *
                 """, uuid.uuid4(), org_id, phone_number_id, waba_id, encrypted)
             return dict(row)
+
+    async def delete_tenant_config(self, org_id) -> bool:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM whatsapp_accounts WHERE organization_id = $1", org_id
+            )
+            return result.endswith("1")
 
     async def get_org_business_profile(self, org_id):
         """Profilo business a livello organizzazione (canale-agnostico):
@@ -968,7 +983,11 @@ class Repository(TenantScopedRepository):
                 if row["quota_exceeded_at"] is not None:
                     return {"status": "quota_exceeded"}
 
-                if row["processing_at"] is not None and row["ai_reply_cache"] is None:
+                if (
+                    row["processing_at"] is not None
+                    and row["ai_reply_cache"] is None
+                    and (datetime.now(timezone.utc) - row["processing_at"]).total_seconds() < 30
+                ):
                     return {"status": "currently_processing"}
 
                 if row["billed_at"] is None:

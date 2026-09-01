@@ -1,5 +1,6 @@
 import json
 import uuid
+from contextlib import asynccontextmanager
 from datetime import date, datetime, time
 
 import asyncpg
@@ -12,6 +13,26 @@ class CoreRepository(TenantScopedRepository):
         self.pool = pool
 
     # ── Bookings ──────────────────────────────────────────────
+
+    @asynccontextmanager
+    async def slot_lock(self, organization_id, data, ora):
+        """Lock consultivo transazionale su una fascia oraria (anti double-booking).
+
+        Serializza check-then-insert su uno slot: due richieste concorrenti
+        per la stessa (org, data, fascia) non possono entrambe superare la
+        verifica di capienza. Rilasciato al commit della transazione portante.
+
+        Nota operativa: mentre il lock è tenuto la sezione critica acquisisce
+        altre connessioni dallo stesso pool (list_bookings/create_booking);
+        il pool deve quindi avere margine sopra la concorrenza massima
+        attesa di prenotazioni simultanee. Usa hashtext (int4): collisioni
+        tra chiavi diverse causano solo serializzazione extra, mai errori."""
+        fascia = int(ora[:2]) if isinstance(ora, str) else ora.hour
+        chiave = f"{organization_id}|{data}|{fascia}"
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.fetchval("SELECT pg_advisory_xact_lock(hashtext($1))", chiave)
+                yield
 
     async def create_booking(self, organization_id, nome_cliente, data, ora, coperti,
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
@@ -539,7 +560,8 @@ class CoreRepository(TenantScopedRepository):
     async def save_onboarding_profile(self, organization_id, verticale, nome_attivita,
                                       orari, tono, servizi, regole_escalation,
                                       whatsapp_collegato, documenti_importati, profilo,
-                                      lingue_supportate=None, lingua_default=None):
+                                      lingue_supportate=None, lingua_default=None,
+                                      descrizione=""):
         """Upsert del profilo onboarding dell'org + sync atomico su
         organizations.business_profile in una sola transazione.
 
@@ -556,17 +578,19 @@ class CoreRepository(TenantScopedRepository):
                 row = await conn.fetchrow("""
                     INSERT INTO onboarding_profiles (organization_id, verticale,
                                                      nome_attivita, orari, tono,
+                                                     descrizione,
                                                      servizi, regole_escalation,
                                                      whatsapp_collegato,
                                                      documenti_importati, profilo,
                                                      lingue_supportate, lingua_default)
-                    VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8, $9,
-                            $10::jsonb, $11::jsonb, $12)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10,
+                            $11::jsonb, $12::jsonb, $13)
                     ON CONFLICT (organization_id) DO UPDATE SET
                         verticale = EXCLUDED.verticale,
                         nome_attivita = EXCLUDED.nome_attivita,
                         orari = EXCLUDED.orari,
                         tono = EXCLUDED.tono,
+                        descrizione = EXCLUDED.descrizione,
                         servizi = EXCLUDED.servizi,
                         regole_escalation = EXCLUDED.regole_escalation,
                         whatsapp_collegato = EXCLUDED.whatsapp_collegato,
@@ -577,6 +601,7 @@ class CoreRepository(TenantScopedRepository):
                         updated_at = NOW()
                     RETURNING *
                 """, organization_id, verticale, nome_attivita, orari, tono,
+                descrizione,
                 json.dumps(servizi), json.dumps(regole_escalation),
                 whatsapp_collegato, documenti_importati, json.dumps(profilo),
                 json.dumps(lingue_supportate), lingua_default)
@@ -678,6 +703,19 @@ class CoreRepository(TenantScopedRepository):
             return [dict(r) for r in rows]
 
     # ── Billing ──────────────────────────────────────────────────
+
+    async def get_organization(self, organization_id: uuid.UUID | str) -> dict | None:
+        """Riga minima dell'organizzazione (nome + business_profile per il
+        responder/simulatore). None se l'org non esiste."""
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT id, name, business_profile
+                   FROM organizations WHERE id = $1""",
+                organization_id,
+            )
+            return dict(row) if row else None
 
     async def get_organization_billing(self, organization_id: uuid.UUID | str) -> dict:
         if isinstance(organization_id, str):

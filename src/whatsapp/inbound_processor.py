@@ -17,7 +17,8 @@ from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.core.guardrails import faq_cache
 from src.core.guardrails.feedback import rileva_feedback_emoji
-from src.core.guardrails.intent_classifier import classifica_intent
+from src.core.guardrails.intent_classifier import classifica_intent, modello_intent
+from src.core.llm_routing import stima_costo_eur
 from src.core.guardrails.validator import applica_guardrail, valida_risposta
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
 from src.core.notifications.email_service import enqueue_escalation
@@ -48,8 +49,15 @@ DISCLOSURE_TEXT = (
 HUMAN_WAIT_REPLY = "Ti passo una persona dello staff, un attimo!"
 
 
-def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
+def _profile_from_dict(raw: dict | str | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
     raw = raw or {}
+    if not isinstance(raw, dict):
+        raw = {}
     try:
         validated = WhatsAppBusinessProfile.model_validate(raw)
     except ValidationError as e:
@@ -63,6 +71,7 @@ def _profile_from_dict(raw: dict | None, fallback_name: str = "Attivita") -> Pro
         tipo_attivita=validated.tipo_attivita or "attivita commerciale",
         tono=validated.tono or "cordiale e professionale",
         orari=validated.orari or "",
+        descrizione=validated.descrizione or "",
         servizi_principali=validated.servizi_principali or [],
         note_speciali=validated.note_speciali or [],
         lingue_supportate=validated.lingue_supportate or [LINGUA_DEFAULT],
@@ -79,6 +88,12 @@ async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, re
     if not sent:
         return testo
     return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
+
+
+def _extract_from(content: dict) -> str:
+    if not isinstance(content, dict):
+        return ""
+    return str(content.get("from") or content.get("from_") or "").strip()
 
 
 class InboundProcessor:
@@ -109,6 +124,13 @@ class InboundProcessor:
         org_id = msg["organization_id"]
         text = msg.get("content_text", "")
         content = msg.get("content", {})
+        if isinstance(content, str):
+            try:
+                content = json.loads(content)
+            except Exception:
+                content = {}
+        if not isinstance(content, dict):
+            content = {}
         canale = msg.get("canale") or "whatsapp"
         
         claim_result = await self.repo.claim_message_and_check_quota(msg["id"], org_id)
@@ -144,7 +166,7 @@ class InboundProcessor:
 
         opt_out = await self.service.check_opt_out(text)
         if opt_out["is_opt_out"]:
-            from_number = content.get("from", "")
+            from_number = _extract_from(content)
             contact = await self.repo.get_or_create_contact(org_id, from_number)
             await self.repo.record_consent_event(
                 contact_id=contact["id"],
@@ -163,7 +185,7 @@ class InboundProcessor:
 
         wants_human = await self.service.check_human_request(text)
         if wants_human:
-            from_number = content.get("from", "")
+            from_number = _extract_from(content)
             tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
             try:
                 res = await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY, handling_type="automation")
@@ -188,7 +210,7 @@ class InboundProcessor:
 
         if self.booking_service:
             booking_reply = await self.booking_service.handle_reminder_reply(
-                org_id, content.get("from", ""), text
+                org_id, _extract_from(content), text
             )
             if booking_reply:
                 # Booking reminder reply invia la risposta internamente via booking_service._send_whatsapp;
@@ -226,10 +248,17 @@ class InboundProcessor:
             business_profile_raw = getattr(tenant_config, "business_profile", None) or {}
         else:
             business_profile_raw = await self.repo.get_org_business_profile(org_id) or {}
+        if isinstance(business_profile_raw, str):
+            try:
+                business_profile_raw = json.loads(business_profile_raw)
+            except Exception:
+                business_profile_raw = {}
+        if not isinstance(business_profile_raw, dict):
+            business_profile_raw = {}
 
         fast_reply = await self.service.fast_path_match(text, business_profile_raw)
         if fast_reply:
-            from_number = content.get("from", "")
+            from_number = _extract_from(content)
             nome = (business_profile_raw or {}).get("nome") or "Attivita"
             decorated = await decorate_with_disclosure(org_id, from_number, fast_reply, self.repo, nome_attivita=nome)
             try:
@@ -245,7 +274,7 @@ class InboundProcessor:
         # Outbox Pattern (P0-2) legacy handled by sent_at in claim_message_and_check_quota
         dedup = await self.repo.get_outbound_dedup(msg["organization_id"], msg["id"])
         if dedup:
-            from_number = content.get("from", "")
+            from_number = _extract_from(content)
             try:
                 res = await self._send_ai_reply(org_id, msg, content, tenant_config, dedup["response_text"])
                 meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
@@ -258,7 +287,7 @@ class InboundProcessor:
             testo=text,
             canale=CanaleMessaggio(canale),
             id_conversazione=str(msg.get("conversation_id", "")),
-            telefono_mittente=str(content.get("from", "")),
+            telefono_mittente=_extract_from(content),
         )
 
         intent_result = await classifica_intent(text)
@@ -271,6 +300,7 @@ class InboundProcessor:
                         "intent": intent_result.intent,
                         "confidence": intent_result.confidence,
                         "message_id": str(msg["id"]),
+                        "model": modello_intent(),
                     },
                 )
             except Exception as e:
@@ -285,7 +315,7 @@ class InboundProcessor:
                 logger.warning("FAQ cache lookup failed for org %s msg %s: %s", org_id, msg["id"], e)
                 cached_answer = None
             if cached_answer:
-                from_number = content.get("from", "")
+                from_number = _extract_from(content)
                 decorated = await decorate_with_disclosure(org_id, from_number, cached_answer, self.repo, profilo.nome)
                 try:
                     res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
@@ -340,15 +370,49 @@ class InboundProcessor:
             else:
                 heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"], org_id))
                 try:
+                    usage: dict = {}
                     contesto = await recupera_contesto_documenti(str(org_id), text, self.repo, q_emb=q_emb)
 
-                    # Pre-fetch semaforo: estrae date dal testo e fornisce
-                    # la disponibilità reale al prompt LLM. Best-effort:
-                    # se fallisce, il LLM opera senza dati di disponibilità.
+                    # Recupera cronologia recente per mantenere il contesto multi-turn
+                    cronologia: list[tuple[str, str]] = []
+                    conversation_id_str = str(msg.get("conversation_id", "") or "")
+                    testi_cronologia: list[str] = []
+                    if conversation_id_str:
+                        try:
+                            prior_msgs = await self.repo.list_conversation_messages(str(org_id), conversation_id_str, limit=20)
+                            prior_msgs = [m for m in prior_msgs if str(m.get("id")) != str(msg["id"])]
+                            ultimo_in = None
+                            for pm in prior_msgs:
+                                p_text = (pm.get("content_text") or "").strip()
+                                if not p_text:
+                                    continue
+                                testi_cronologia.append(p_text)
+                                if pm.get("direction") == "inbound":
+                                    if ultimo_in is not None:
+                                        cronologia.append((ultimo_in, ""))
+                                    ultimo_in = p_text
+                                elif pm.get("direction") == "outbound":
+                                    if ultimo_in is not None:
+                                        cronologia.append((ultimo_in, p_text))
+                                        ultimo_in = None
+                                    else:
+                                        cronologia.append(("", p_text))
+                            if ultimo_in is not None:
+                                cronologia.append((ultimo_in, ""))
+                        except Exception as e:
+                            logger.warning("Recupero cronologia fallito per conv %s: %s", conversation_id_str, e)
+
+                    # Pre-fetch semaforo: estrae date dal testo e dalla cronologia recente
                     contesto_disp = ""
-                    if self.booking_service and intent_result.intent in ("prenotazione", "booking", "disponibilita", "faq"):
+                    if self.booking_service:
                         try:
                             date_candidate = estrai_date_da_testo(text)
+                            if not date_candidate and testi_cronologia:
+                                for prev_t in reversed(testi_cronologia[-4:]):
+                                    cand = estrai_date_da_testo(prev_t)
+                                    if cand:
+                                        date_candidate = cand
+                                        break
                             if date_candidate:
                                 all_slots = []
                                 for d in date_candidate[:3]:  # max 3 date
@@ -360,9 +424,14 @@ class InboundProcessor:
                             logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id, e)
 
                     risposta = await genera_risposta_async(
-                        messaggio, profilo, billing=state, contesto_documenti=contesto.testo,
-                        intent=intent_result.intent, variante=variante_prompt,
+                        messaggio, profilo,
+                        cronologia=cronologia,
+                        billing=state,
+                        contesto_documenti=contesto.testo,
+                        intent=intent_result.intent,
+                        variante=variante_prompt,
                         contesto_disponibilita=contesto_disp,
+                        usage_sink=usage,
                     )
                 finally:
                     heartbeat_task.cancel()
@@ -395,11 +464,25 @@ class InboundProcessor:
                             "channel": canale, "model": route.model, "tier": route.tier, "reason": route.reason,
                             "intent": intent_result.intent, "intent_source": intent_result.source, "prompt_variant": variante_prompt,
                             "conversation_id": str(msg.get("conversation_id", "")), "message_id": str(msg["id"]),
+                            # Metriche reali della chiamata (invariante 8):
+                            **{
+                                k: usage[k] for k in
+                                ("model_effettivo", "fallback_usato", "latenza_ms",
+                                 "prompt_tokens", "completion_tokens", "total_tokens")
+                                if k in usage
+                            },
+                            "stima_costo_eur": stima_costo_eur(
+                                usage.get("model_effettivo") or route.model,
+                                usage.get("prompt_tokens"), usage.get("completion_tokens"),
+                            ),
                         }
                     )
                 except Exception as e:
                     logger.warning("AI usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
 
+                from src.core.verticals import get_vertical_strategy
+                strategy = get_vertical_strategy(profilo.verticale, organization_id=str(org_id))
+                risposta.prenotazione = strategy.valida_e_arricchisci_prenotazione(risposta.prenotazione, text)
                 pren = risposta.prenotazione
                 if pren and pren.data and pren.ora and pren.coperti:
                     if self.booking_service:
@@ -446,7 +529,7 @@ class InboundProcessor:
             try:
                 meta_id = None
                 if risposta_text:
-                    from_number = content.get("from", "")
+                    from_number = _extract_from(content)
                     decorated = await decorate_with_disclosure(org_id, from_number, risposta_text, self.repo, profilo.nome)
                     res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
                     meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
@@ -454,14 +537,14 @@ class InboundProcessor:
                 if conv:
                     enqueue_escalation(
                         org_id=str(org_id), conversation_id=str(msg["conversation_id"]),
-                        contact_name=content.get("from", "cliente"), pool=self.repo.pool,
+                        contact_name=_extract_from(content) or "cliente", pool=self.repo.pool,
                     )
                 await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id, organization_id=org_id)
             except Exception as e:
                 logger.error("Human escalation reply send failed for %s: %s", msg["id"], e)
             return
 
-        from_number = content.get("from", "")
+        from_number = _extract_from(content)
         decorated = await decorate_with_disclosure(org_id, from_number, risposta_text, self.repo, profilo.nome)
         
         await self.repo.save_outbound_dedup(msg["id"], org_id, decorated)
@@ -530,7 +613,7 @@ class InboundProcessor:
         canale = msg.get("canale") or "whatsapp"
         if canale == "instagram":
             return await self._send_instagram_reply(org_id, msg, content, testo_risposta, handling_type=handling_type)
-        to_number = content.get("from", "")
+        to_number = _extract_from(content)
         if not to_number or not tenant_config:
             logger.warning("Impossibile inviare risposta AI per messaggio %s: numero o tenant_config mancante", msg["id"])
             return {}

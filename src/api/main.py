@@ -1,3 +1,4 @@
+import asyncio
 import os
 import json
 import threading
@@ -24,6 +25,7 @@ from fastapi.responses import JSONResponse
 from src.core.notifications.email_service import start_worker, stop_worker as stop_email_worker
 from src.core.crew_runner import genera_risposta
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
+from src.core.llm_routing import stima_costo_eur
 from src.core.priorita import calcola_priorita, calcola_priorita_recensione
 from src.core.conversation_store import store as conv_store
 
@@ -89,6 +91,7 @@ from src.core.reviews.routes import router as reviews_router
 from src.core.reviews.google_routes import router as reviews_google_router
 from src.whatsapp.repository import Repository as WhatsAppRepository
 from src.whatsapp.router import create_router as create_whatsapp_router
+from src.whatsapp.routes import router as whatsapp_account_router
 from src.whatsapp.config import AppConfig as WhatsAppAppConfig
 from src.instagram.routes import router as instagram_account_router
 from src.instagram.router import create_router as create_instagram_router
@@ -167,6 +170,43 @@ async def lifespan(app: FastAPI):
                 app_config=whatsapp_app_config,
                 calendar_service=calendar_service,
             )
+
+            from src.whatsapp.inbound_processor import InboundProcessor
+            from src.whatsapp.retry_worker import RetryWorker
+            inbound_processor = InboundProcessor(
+                app_config=whatsapp_app_config,
+                repo=wrepo,
+                service=wservice,
+                booking_service=app.state.booking_service,
+            )
+            retry_worker = RetryWorker(
+                app_config=whatsapp_app_config,
+                repo=wrepo,
+                service=wservice,
+            )
+
+            async def _inbound_loop():
+                while True:
+                    try:
+                        await inbound_processor.process_next_batch()
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as e:
+                        logger.error("Inbound worker loop error: %s", e)
+                    await asyncio.sleep(1.0)
+
+            async def _retry_loop():
+                while True:
+                    try:
+                        await retry_worker.process_next_batch()
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as e:
+                        logger.error("Retry worker loop error: %s", e)
+                    await asyncio.sleep(5.0)
+
+            app.state.inbound_task = asyncio.create_task(_inbound_loop())
+            app.state.retry_task = asyncio.create_task(_retry_loop())
         except Exception as e:
             logger.warning("[startup] Database connection failed: %s. Running without pool.", e)
             app.state.repo = None
@@ -199,6 +239,10 @@ async def lifespan(app: FastAPI):
     yield
     ferma_scheduler()
     stop_email_worker()
+    if hasattr(app.state, "inbound_task") and app.state.inbound_task:
+        app.state.inbound_task.cancel()
+    if hasattr(app.state, "retry_task") and app.state.retry_task:
+        app.state.retry_task.cancel()
     if app.state.pool:
         await app.state.pool.close()
     await close_http_client()
@@ -238,7 +282,9 @@ app.include_router(bookings_router)
 app.include_router(calendar_router)
 app.include_router(reviews_router)
 app.include_router(reviews_google_router)
+app.include_router(whatsapp_account_router)
 app.include_router(instagram_account_router)
+app.include_router(create_whatsapp_router())
 app.include_router(auth_router)
 app.include_router(register_router)
 
@@ -309,7 +355,7 @@ async def rate_limit_middleware(request: Request, call_next):
         return await call_next(request)
 
     # Limite per tenant (o IP se non autenticato)
-    tenant = request.headers.get("X-Organization-Id") or request.client.host
+    tenant = request.headers.get("X-Organization-Id") or (request.client.host if request.client else "127.0.0.1")
     if await _rate_limit_check(f"tenant:{tenant}"):
         return JSONResponse(
             status_code=429,
@@ -423,6 +469,31 @@ async def _record_ai_usage(repo, organization_id: str | None, task_type: str,
         logger.warning("[llm_routing] usage logging fallito org=%s: %s", organization_id, e)
 
 
+async def _piano_blocca_feature(repo, org_id, feature: str) -> str | None:
+    """Messaggio di blocco se il piano dell'org non include la feature.
+
+    Org in trial senza piano (plan IS NULL) = accesso completo: la prova e'
+    del piano massimo; i limiti si applicano da invoice.paid in poi
+    (audit billing #1). Fail-open se il billing non e' leggibile."""
+    if not repo or not org_id:
+        return None
+    billing = await _get_billing_snapshot(repo, org_id)
+    if not billing:
+        return None
+    plan_slug = billing.get("plan")
+    if not plan_slug:
+        return None
+    from src.core.billing.plans import PLANS
+    plan = PLANS.get(plan_slug)
+    if not plan:
+        return None
+    if feature == "rag" and not plan.has_rag:
+        return f"Il piano {plan.name} non include la Knowledge Base AI. Effettua l'upgrade al piano Scala per caricare documenti."
+    if feature == "recensioni" and not plan.has_reviews:
+        return f"Il piano {plan.name} non include la gestione delle recensioni. Effettua l'upgrade per abilitarla."
+    return None
+
+
 @app.post("/api/messaggio", response_model=RispostaOutput)
 async def ricevi_messaggio(
     request: Request,
@@ -434,12 +505,12 @@ async def ricevi_messaggio(
     # Altrimenti fallback al profilo demo statico (PROFILI_DEMO).
     org_id = None
     profilo = None
+    repo = getattr(request.app.state, "repo", None)
     try:
         from src.core.auth.dependencies import get_organization_context
         user = await get_organization_context(request)
         if user and user.get("source") != "anonymous" and user.get("organization_id"):
             org_id = user["organization_id"]
-            repo = getattr(request.app.state, "repo", None)
             if repo:
                 org_data = await repo.get_organization(org_id)
                 if org_data and org_data.get("business_profile"):
@@ -449,14 +520,30 @@ async def ricevi_messaggio(
                         fallback_name=org_data.get("name", "Attività"),
                     )
     except Exception as e:
-        logger.debug("Fallback to static demo profile: %s", e)
+        logger.warning("Profilo organizzazione non caricato per il simulatore (fallback demo): %s", e)
 
     if profilo is None:
         profilo = PROFILI_DEMO.get(profilo_id)
         if profilo is None:
             raise HTTPException(status_code=404, detail=f"Profilo '{profilo_id}' non trovato")
 
-    cronologia = conv_store.recupera_cronologia(messaggio.id_conversazione)
+    # Cronologia del simulatore: la chiave e' client-controlled, quindi per
+    # le org autenticate va namespaced per evitare incroci tra tenant.
+    chiave_conv = f"{org_id}:{messaggio.id_conversazione}" if org_id else messaggio.id_conversazione
+    cronologia = conv_store.recupera_cronologia(chiave_conv)
+
+    # RAG: stesso percorso del flusso WhatsApp reale (inbound_processor),
+    # così il simulatore risponde anche in base ai documenti caricati.
+    from src.core.documenti.rag_context import ContestoDocumenti, recupera_contesto_documenti
+    repo_for_rag = getattr(request.app.state, "repo", None)
+    if org_id and repo_for_rag:
+        try:
+            contesto = await recupera_contesto_documenti(str(org_id), messaggio.testo, repo_for_rag)
+        except Exception as e:
+            logger.warning("RAG pre-fetch failed in ricevi_messaggio org=%s: %s", org_id, e)
+            contesto = ContestoDocumenti()
+    else:
+        contesto = ContestoDocumenti()
 
     # Pre-fetch disponibilità da semaforo (DB reale se org autenticata, demo altrimenti)
     from src.agents.prompts import estrai_date_da_testo, formatta_disponibilita
@@ -478,43 +565,79 @@ async def ricevi_messaggio(
     except Exception as e:
         logger.warning("Semaforo pre-fetch failed in ricevi_messaggio: %s", e)
 
-    tentativi = conv_store.tentativi_prenotazione(messaggio.id_conversazione)
+    tentativi = conv_store.tentativi_prenotazione(chiave_conv)
+
+    # Billing snapshot per il routing budget-aware (invariante 8): per le org
+    # autenticate la chiamata del simulatore consuma token reali.
+    billing = await _get_billing_snapshot(repo, org_id)
 
     from src.core.crew_runner import genera_risposta_async
+    usage: dict = {}
     try:
         risposta = await genera_risposta_async(
             messaggio, profilo,
             cronologia=cronologia,
+            billing=billing,
+            contesto_documenti=contesto.testo,
             contesto_disponibilita=contesto_disp,
             tentativi_falliti=tentativi,
+            usage_sink=usage,
         )
     except Exception as e:
         logger.error("Error generating AI response in ricevi_messaggio: %s", e)
         raise HTTPException(status_code=502, detail="Impossibile generare la risposta al momento. Riprova più tardi.")
 
-    conv_store.aggiungi(messaggio.id_conversazione, messaggio.testo, risposta.risposta)
+    await _record_ai_usage(
+        repo, org_id, "simulatore",
+        messaggio.testo, billing,
+        {
+            "conversation_id": messaggio.id_conversazione,
+            # Metriche reali della chiamata (invariante 8):
+            **{
+                k: usage[k] for k in
+                ("model_effettivo", "fallback_usato", "latenza_ms",
+                 "prompt_tokens", "completion_tokens", "total_tokens")
+                if k in usage
+            },
+            "stima_costo_eur": stima_costo_eur(
+                usage.get("model_effettivo"),
+                usage.get("prompt_tokens"), usage.get("completion_tokens"),
+            ),
+        },
+    )
+
+    # Guardrail: stesso path del flusso reale, così il simulatore non mostra
+    # risposte che in produzione verrebbero bloccate o riscritte.
+    guardrail_azione = "none"
+    from src.core.guardrails.validator import applica_guardrail, valida_risposta
+    try:
+        esito = valida_risposta(risposta, contesto.chunks, profilo)
+        guardrail_azione = esito.azione
+        if esito.azione != "none":
+            risposta = applica_guardrail(risposta, esito)
+    except Exception as e:
+        logger.warning("Guardrail failed in ricevi_messaggio: %s", e)
+
+    conv_store.aggiungi(chiave_conv, messaggio.testo, risposta.risposta)
 
     prenotazione_id = None
+    disponibilita_prenotazione = None
+    from src.core.verticals import get_vertical_strategy
+    strategy = get_vertical_strategy(profilo.verticale if profilo else None, organization_id=str(org_id) if org_id else None)
+    risposta.prenotazione = strategy.valida_e_arricchisci_prenotazione(risposta.prenotazione, messaggio.testo)
     pren = risposta.prenotazione
     if pren and pren.data and pren.ora and pren.coperti:
         booking_svc = getattr(request.app.state, "booking_service", None)
         if org_id and booking_svc:
+            # Il simulatore NON crea prenotazioni reali: verifica solo la
+            # disponibilità in lettura (stesso check di create_booking).
             try:
-                created = await booking_svc.create_booking(
-                    org_id=org_id,
-                    nome_cliente=pren.nome_cliente or "Cliente Dashboard",
-                    telefono=pren.telefono or "",
-                    data=pren.data,
-                    ora=pren.ora,
-                    coperti=pren.coperti,
-                    note=pren.note,
-                    origine="Dashboard",
-                    richiede_intervento=risposta.richiede_umano,
-                    id_conversazione=messaggio.id_conversazione,
+                slot = await booking_svc.verifica_disponibilita(
+                    org_id, pren.data, pren.ora, coperti=pren.coperti,
                 )
-                prenotazione_id = created.get("id") if isinstance(created, dict) else getattr(created, "id", None)
+                disponibilita_prenotazione = slot.model_dump()
             except Exception as e:
-                logger.warning("[dashboard] Real booking save failed: %s", e)
+                logger.warning("[dashboard] Availability check failed: %s", e)
         else:
             from src.core.prenotazioni import crea_prenotazione_dashboard
             from src.models.schemas import PrenotazioneManualeInput
@@ -534,23 +657,28 @@ async def ricevi_messaggio(
             except Exception as e:
                 logger.warning("[demo] Booking save failed: %s", e)
 
-    _storico_eventi.append(
-        EventoDashboard(
-            id=_prossimo_id("msg"),
-            tipo_evento="messaggio",
-            timestamp=messaggio.timestamp,
-            priorita=calcola_priorita(risposta),
-            testo_originale=messaggio.testo,
-            risposta_ai=risposta.risposta,
-            gestito_da_ai=not risposta.richiede_umano,
-            dettagli={
-                "categoria": risposta.categoria,
-                "richiede_umano": risposta.richiede_umano,
-                "motivo": risposta.motivo,
-                "prenotazione_id": prenotazione_id,
-            },
+    # Solo il percorso demo anonimo alimenta lo storico demo condiviso:
+    # le org autenticate hanno i propri dati su DB.
+    if not org_id:
+        _storico_eventi.append(
+            EventoDashboard(
+                id=_prossimo_id("msg"),
+                tipo_evento="messaggio",
+                timestamp=messaggio.timestamp,
+                priorita=calcola_priorita(risposta),
+                testo_originale=messaggio.testo,
+                risposta_ai=risposta.risposta,
+                gestito_da_ai=not risposta.richiede_umano,
+                dettagli={
+                    "categoria": risposta.categoria,
+                    "richiede_umano": risposta.richiede_umano,
+                    "motivo": risposta.motivo,
+                    "prenotazione_id": prenotazione_id,
+                    "prenotazione_simulata": disponibilita_prenotazione,
+                    "guardrail": guardrail_azione,
+                },
+            )
         )
-    )
     return risposta
 
 
@@ -728,6 +856,221 @@ async def stato_integrazioni(
     }
 
 
+@app.post("/api/integrazioni/test/{canale}")
+async def test_integrazione(
+    canale: str,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+
+    repo = get_repo(request)
+    encryption_key = os.getenv("ENCRYPTION_KEY", "")
+
+    if canale == "whatsapp":
+        async with repo.pool.acquire() as conn:
+            wa = await conn.fetchrow(
+                "SELECT phone_number_id, waba_id, access_token FROM whatsapp_accounts WHERE organization_id = $1::uuid",
+                org_id,
+            )
+        if not wa:
+            return {
+                "canale": "whatsapp",
+                "status": "disconnected",
+                "success": False,
+                "message": "Nessun account WhatsApp collegato.",
+            }
+
+        token = wa["access_token"]
+        if encryption_key:
+            try:
+                from cryptography.fernet import Fernet
+                cipher = Fernet(encryption_key.encode())
+                token = cipher.decrypt(token.encode()).decode()
+            except Exception:
+                pass
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                res = await client.get(
+                    f"https://graph.facebook.com/v21.0/{wa['phone_number_id']}",
+                    params={"fields": "display_phone_number,verified_name", "access_token": token},
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    name = data.get("verified_name") or data.get("display_phone_number") or wa["phone_number_id"]
+                    return {
+                        "canale": "whatsapp",
+                        "status": "connected",
+                        "success": True,
+                        "message": f"WhatsApp Business verificato ({name})",
+                        "details": data,
+                    }
+                elif res.status_code in (400, 401, 403):
+                    return {
+                        "canale": "whatsapp",
+                        "status": "expired_token",
+                        "success": False,
+                        "message": "Token Meta scaduto o non valido. Aggiorna il token.",
+                    }
+                else:
+                    return {
+                        "canale": "whatsapp",
+                        "status": "error",
+                        "success": False,
+                        "message": f"Errore Meta Graph API (HTTP {res.status_code}).",
+                    }
+        except (httpx.TimeoutException, httpx.ConnectError):
+            return {
+                "canale": "whatsapp",
+                "status": "error",
+                "success": False,
+                "message": "Timeout durante la verifica Meta Graph API.",
+            }
+
+    elif canale == "instagram":
+        async with repo.pool.acquire() as conn:
+            ig = await conn.fetchrow(
+                "SELECT ig_user_id, access_token FROM instagram_accounts WHERE organization_id = $1::uuid",
+                org_id,
+            )
+        if not ig:
+            return {
+                "canale": "instagram",
+                "status": "disconnected",
+                "success": False,
+                "message": "Nessun account Instagram collegato.",
+            }
+
+        token = ig["access_token"]
+        if encryption_key:
+            try:
+                from cryptography.fernet import Fernet
+                cipher = Fernet(encryption_key.encode())
+                token = cipher.decrypt(token.encode()).decode()
+            except Exception:
+                pass
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                res = await client.get(
+                    f"https://graph.facebook.com/v21.0/{ig['ig_user_id']}",
+                    params={"fields": "id,username,name", "access_token": token},
+                )
+                if res.status_code == 200:
+                    data = res.json()
+                    username = data.get("username") or ig["ig_user_id"]
+                    return {
+                        "canale": "instagram",
+                        "status": "connected",
+                        "success": True,
+                        "message": f"Instagram Direct verificato (@{username})",
+                        "details": data,
+                    }
+                elif res.status_code in (400, 401, 403):
+                    return {
+                        "canale": "instagram",
+                        "status": "expired_token",
+                        "success": False,
+                        "message": "Token Instagram scaduto o non valido.",
+                    }
+                else:
+                    return {
+                        "canale": "instagram",
+                        "status": "error",
+                        "success": False,
+                        "message": f"Errore Instagram API (HTTP {res.status_code}).",
+                    }
+        except (httpx.TimeoutException, httpx.ConnectError):
+            return {
+                "canale": "instagram",
+                "status": "error",
+                "success": False,
+                "message": "Timeout durante la verifica Instagram API.",
+            }
+
+    elif canale == "calendar":
+        async with repo.pool.acquire() as conn:
+            cal = await conn.fetchrow(
+                "SELECT * FROM google_calendar_credentials WHERE organization_id = $1::uuid",
+                org_id,
+            )
+        if not cal:
+            return {
+                "canale": "calendar",
+                "status": "disconnected",
+                "success": False,
+                "message": "Nessun account Google Calendar collegato.",
+            }
+
+        token = cal["access_token"]
+        if encryption_key:
+            try:
+                from cryptography.fernet import Fernet
+                cipher = Fernet(encryption_key.encode())
+                token = cipher.decrypt(token.encode()).decode()
+            except Exception:
+                pass
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                res = await client.get(
+                    "https://www.googleapis.com/calendar/v3/users/me/calendarList",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                if res.status_code == 200:
+                    return {
+                        "canale": "calendar",
+                        "status": "connected",
+                        "success": True,
+                        "message": "Sincronizzazione Google Calendar verificata e attiva.",
+                        "details": {"calendar_id": cal["calendar_id"], "sync_enabled": cal["sync_enabled"]},
+                    }
+                elif res.status_code in (401, 403):
+                    return {
+                        "canale": "calendar",
+                        "status": "expired_token",
+                        "success": False,
+                        "message": "Token Google scaduto o revocato. Riconnetti l'agenda Google.",
+                    }
+                else:
+                    return {
+                        "canale": "calendar",
+                        "status": "error",
+                        "success": False,
+                        "message": f"Risposta Google Calendar: HTTP {res.status_code}",
+                    }
+        except (httpx.TimeoutException, httpx.ConnectError):
+            return {
+                "canale": "calendar",
+                "status": "error",
+                "success": False,
+                "message": "Timeout durante la verifica di Google Calendar.",
+            }
+
+    elif canale == "webhook":
+        secret_ok = bool(os.getenv("META_APP_SECRET"))
+        verify_ok = bool(os.getenv("META_VERIFY_TOKEN"))
+        if secret_ok and verify_ok:
+            return {
+                "canale": "webhook",
+                "status": "connected",
+                "success": True,
+                "message": "Endpoint webhook attivo con validazione HMAC-SHA256.",
+            }
+        else:
+            return {
+                "canale": "webhook",
+                "status": "pending_verification",
+                "success": False,
+                "message": "Credenziali Webhook mancanti sul server.",
+            }
+
+    raise HTTPException(400, f"Canale non supportato: {canale}")
+
+
 @app.post("/api/onboarding/preview", response_model=RispostaOutput)
 async def onboarding_preview(
     richiesta: PreviewInput,
@@ -759,6 +1102,9 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
     import asyncio
     repo = get_repo(request)
     org_id = user.get("organization_id")
+    blocco = await _piano_blocca_feature(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     billing = await _get_billing_snapshot(repo, org_id)
     # Lingue dell'org dal profilo onboarding: se non esiste ancora (onboarding
     # non completato) si usano i default ["it"]/"it", nessun errore.
@@ -860,32 +1206,240 @@ async def ricevi_recensione(recensione: RecensioneInput, request: Request, user:
     )
 
 
+# Finestra e tetto del result set della Panoramica: senza, l'endpoint
+# scaricherebbe l'intera storia dell'org a ogni poll di 5 secondi
+# (client: web/app.js avviaPanoramicaPolling). La UI usa una sparkline
+# di 7 giorni, quindi 30 giorni coprono con margine.
+DASHBOARD_EVENTI_WINDOW_DAYS = 30
+DASHBOARD_EVENTI_MAX = 500
+
+
+# CTE condiviso Panoramica: eventi unificati event_log + messages + reviews,
+# con finestra temporale $2 (giorni). Parametri: $1 = organization_id, $2 = giorni.
+_DASHBOARD_EVENTI_CTE = """\nWITH raw_events AS (
+        -- 1. Eventi già registrati in event_log (con arricchimento risposta outbound se vuota)
+        SELECT
+            e.id::text AS id,
+            e.tipo_evento,
+            e.created_at AS timestamp,
+            e.priorita,
+            e.testo_originale,
+            COALESCE(
+                NULLIF(e.risposta_ai, ''),
+                (SELECT out_m.content_text 
+                 FROM messages out_m 
+                 WHERE e.dettagli->>'conversation_id' IS NOT NULL
+                   AND out_m.conversation_id = (e.dettagli->>'conversation_id')::uuid 
+                   AND out_m.direction = 'outbound' 
+                   AND out_m.created_at >= e.created_at 
+                 ORDER BY out_m.created_at ASC LIMIT 1),
+                ''
+            ) AS risposta_ai,
+            e.gestito_da_ai,
+            e.dettagli
+        FROM event_log e
+        WHERE e.organization_id = $1
+          AND e.created_at >= NOW() - make_interval(days => $2)
+          AND e.tipo_evento IN ('messaggio', 'recensione')
+        
+        UNION ALL
+        
+        -- 2. Messaggi Inbound da WhatsApp / Instagram / Canali
+        SELECT
+            m.id::text AS id,
+            'messaggio' AS tipo_evento,
+            m.created_at AS timestamp,
+            CASE 
+                WHEN m.handling_type = 'escalated' THEN 'alta'
+                ELSE 'media'
+            END AS priorita,
+            m.content_text AS testo_originale,
+            COALESCE(
+                (SELECT out_m.content_text 
+                 FROM messages out_m 
+                 WHERE out_m.conversation_id = m.conversation_id 
+                   AND out_m.direction = 'outbound' 
+                   AND out_m.created_at >= m.created_at 
+                 ORDER BY out_m.created_at ASC LIMIT 1),
+                (m.ai_reply_cache->>'text'),
+                ''
+            ) AS risposta_ai,
+            CASE 
+                WHEN m.handling_type = 'escalated' THEN false
+                ELSE true
+            END AS gestito_da_ai,
+            jsonb_build_object('conversation_id', m.conversation_id::text, 'status', m.status) AS dettagli
+        FROM messages m
+        WHERE m.organization_id = $1
+          AND m.direction = 'inbound'
+          AND m.deleted_at IS NULL
+          AND m.created_at >= NOW() - make_interval(days => $2)
+          AND NOT EXISTS (
+              SELECT 1 FROM event_log e 
+              WHERE e.organization_id = m.organization_id 
+                AND e.source_id = m.id
+          )
+        
+        UNION ALL
+        
+        -- 3. Recensioni non ancora in event_log
+        SELECT
+            r.id::text AS id,
+            'recensione' AS tipo_evento,
+            r.created_at AS timestamp,
+            CASE 
+                WHEN r.valutazione_stelle <= 2 THEN 'alta'
+                WHEN r.valutazione_stelle = 3 THEN 'media'
+                ELSE 'bassa'
+            END AS priorita,
+            r.testo AS testo_originale,
+            '' AS risposta_ai,
+            false AS gestito_da_ai,
+            jsonb_build_object('stelle', r.valutazione_stelle, 'autore', r.autore, 'fonte', r.fonte) AS dettagli
+        FROM reviews r
+        WHERE r.organization_id = $1
+          AND r.created_at >= NOW() - make_interval(days => $2)
+          AND NOT EXISTS (
+              SELECT 1 FROM event_log e 
+              WHERE e.organization_id = r.organization_id 
+                AND e.source_id = r.id
+          )
+    )
+"""
+
+
+async def recupera_eventi_dashboard(pool, org_id: str | None) -> list[EventoDashboard]:
+    """Recupera la lista unificata degli eventi per la dashboard del tenant (event_log + messages + reviews)."""
+    if not pool or not org_id:
+        return _storico_eventi
+
+    try:
+        org_uuid = uuid.UUID(str(org_id))
+    except (ValueError, TypeError):
+        return _storico_eventi
+
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                _DASHBOARD_EVENTI_CTE + """
+                SELECT * FROM (
+                    SELECT DISTINCT ON (id) *
+                    FROM raw_events
+                    ORDER BY id, timestamp DESC
+                ) dedup
+                ORDER BY timestamp DESC
+                LIMIT $3
+            """, org_uuid, DASHBOARD_EVENTI_WINDOW_DAYS, DASHBOARD_EVENTI_MAX)
+
+        eventi: list[EventoDashboard] = []
+        for r in rows:
+            dettagli = json.loads(r["dettagli"]) if isinstance(r["dettagli"], str) else (r["dettagli"] or {})
+            eventi.append(EventoDashboard(
+                id=str(r["id"]),
+                tipo_evento=r["tipo_evento"] if r["tipo_evento"] in ("messaggio", "recensione") else "messaggio",
+                timestamp=r["timestamp"],
+                priorita=r["priorita"] if r["priorita"] in ("alta", "media", "bassa") else "media",
+                testo_originale=r["testo_originale"] or "",
+                risposta_ai=r["risposta_ai"] or "",
+                gestito_da_ai=bool(r["gestito_da_ai"]),
+                dettagli=dettagli,
+            ))
+        eventi.sort(key=lambda e: e.timestamp, reverse=True)
+        return eventi
+    except Exception as e:
+        logger.error("Errore recupero eventi dashboard per org %s: %s", org_id, e)
+        return _storico_eventi
+
+
 @app.get("/api/dashboard", response_model=list[EventoDashboard])
-def ottieni_dashboard(user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    return _storico_eventi
+async def ottieni_dashboard(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    pool = getattr(request.app.state, "pool", None)
+    org_id = user.get("organization_id")
+    return await recupera_eventi_dashboard(pool, org_id)
+
+
+async def recupera_eventi_prioritari(pool, org_id: str | None, limite: int) -> list[EventoDashboard]:
+    """Eventi priorita' alta/media per la colonna Prioritari della
+    Panoramica: filtro, ordinamento (alta prima, poi timestamp crescente)
+    e LIMIT eseguiti dal database, senza rieseguire la query completa."""
+    if not pool or not org_id:
+        return []
+    try:
+        org_uuid = uuid.UUID(str(org_id))
+    except (ValueError, TypeError):
+        return []
+    limite = max(1, min(int(limite or 5), 50))
+    try:
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                _DASHBOARD_EVENTI_CTE + """
+                SELECT * FROM (
+                    SELECT DISTINCT ON (id) *
+                    FROM raw_events
+                    WHERE priorita <> 'bassa'
+                    ORDER BY id, timestamp DESC
+                ) dedup
+                ORDER BY CASE WHEN priorita = 'alta' THEN 0 ELSE 1 END,
+                         timestamp ASC
+                LIMIT $3
+                """,
+                org_uuid, DASHBOARD_EVENTI_WINDOW_DAYS, limite)
+        return [
+            EventoDashboard(
+                id=str(r["id"]),
+                tipo_evento=r["tipo_evento"] if r["tipo_evento"] in ("messaggio", "recensione") else "messaggio",
+                timestamp=r["timestamp"],
+                priorita=r["priorita"] if r["priorita"] in ("alta", "media", "bassa") else "media",
+                testo_originale=r["testo_originale"] or "",
+                risposta_ai=r["risposta_ai"] or "",
+                gestito_da_ai=bool(r["gestito_da_ai"]),
+                dettagli=json.loads(r["dettagli"]) if isinstance(r["dettagli"], str) else (r["dettagli"] or {}),
+            )
+            for r in rows
+        ]
+    except Exception as e:
+        logger.error("Errore recupero prioritari per org %s: %s", org_id, e)
+        return []
 
 
 @app.get("/api/dashboard/prioritari", response_model=list[EventoDashboard])
-def ottieni_eventi_prioritari(limite: int = 5, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
-    prioritari = [e for e in _storico_eventi if e.priorita != "bassa"]
-    prioritari.sort(
-        key=lambda e: (0 if e.priorita == "alta" else 1, e.timestamp),
-        reverse=False,
-    )
-    return prioritari[:limite]
+async def ottieni_eventi_prioritari(
+    request: Request,
+    limite: int = 5,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    pool = getattr(request.app.state, "pool", None)
+    org_id = user.get("organization_id")
+    return await recupera_eventi_prioritari(pool, org_id, limite)
 
 
 @app.get("/api/report", response_model=ReportOutput)
-def ottieni_report(forza: bool = False, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+async def ottieni_report(
+    # Nota: usa la stessa query della Panoramica, quindi vale la stessa
+    # finestra (30 giorni) e lo stesso tetto (500 eventi più recenti).
+    # Per un report giornaliero il tetto non è raggiungibile in pratica;
+    # se in futuro il report dovesse aggregare oltre la finestra, servirà
+    # una variante della query senza LIMIT.
+    request: Request,
+    forza: bool = False,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    pool = getattr(request.app.state, "pool", None)
+    org_id = user.get("organization_id")
+    eventi = await recupera_eventi_dashboard(pool, org_id)
     oggi = datetime.now().strftime("%Y-%m-%d")
 
+    cache_key = f"{org_id}:{oggi}" if org_id else oggi
     if not forza:
-        cached = get_report_cache(oggi)
+        cached = get_report_cache(cache_key)
         if cached:
             return cached
 
     try:
-        report = genera_report_completo(_storico_eventi)
+        report = genera_report_completo(eventi)
     except Exception as e:
         logger.error("Error generating daily report: %s", e)
         raise HTTPException(
@@ -893,7 +1447,7 @@ def ottieni_report(forza: bool = False, user: dict = Depends(require_ruolo("owne
             detail="Impossibile generare il report. Riprova più tardi.",
         )
 
-    set_report_cache(oggi, report)
+    set_report_cache(cache_key, report)
     return report
 
 
@@ -978,6 +1532,9 @@ async def export_csv_prenotazioni(
 @app.post("/api/documenti/chiedi", response_model=RispostaDocumento)
 async def chiedi_documenti(domanda: DomandaInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     repo = get_repo(request)
+    blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     billing = await _get_billing_snapshot(repo, user.get("organization_id"))
     output = await rispondi(user["organization_id"], domanda.domanda, repo, k=domanda.k, billing=billing)
     await _record_ai_usage(
@@ -1021,6 +1578,9 @@ async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: di
         raise HTTPException(status_code=400, detail="Testo vuoto.")
 
     repo = get_repo(request)
+    blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     chunks = chunk_testo(doc.testo)
     if not chunks:
         raise HTTPException(status_code=400, detail="Testo senza contenuto indicizzabile.")
@@ -1044,6 +1604,12 @@ async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: di
 @app.post("/api/documenti/carica-file")
 async def carica_file_documento(request: Request, file: UploadFile = File(...), user: dict = Depends(require_ruolo("owner", "manager"))):
     nome = file.filename or "documento"
+    # Check piano PRIMA di leggere/estrarre il file: bloccare dopo il
+    # parsing lascerebbe al tenant il costo di memoria/CPU dell'upload.
+    repo = get_repo(request)
+    blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     contenuto = await file.read()
     if not contenuto:
         raise HTTPException(status_code=400, detail="Il file è vuoto.")
@@ -1054,7 +1620,6 @@ async def carica_file_documento(request: Request, file: UploadFile = File(...), 
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    repo = get_repo(request)
     chunks = chunk_testo(testo)
     if not chunks:
         raise HTTPException(status_code=400, detail="Nessun testo indicizzabile estratto dal file.")
@@ -1120,3 +1685,80 @@ async def health_check(request: Request):
     if not healthy:
         return JSONResponse(status_code=503, content=payload)
     return payload
+
+
+# ── Frontend pages & Static files ───────────────────────────────────────
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, RedirectResponse
+
+_web_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "web"))
+_landing_dir = os.path.join(_web_dir, "landing")
+
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    if os.path.exists(os.path.join(_landing_dir, "index.html")):
+        return FileResponse(os.path.join(_landing_dir, "index.html"))
+    return FileResponse(os.path.join(_web_dir, "index.html"))
+
+@app.get("/accedi", include_in_schema=False)
+@app.get("/accedi/", include_in_schema=False)
+async def serve_accedi():
+    return FileResponse(os.path.join(_web_dir, "login.html"))
+
+@app.get("/registrati", include_in_schema=False)
+@app.get("/registrati/", include_in_schema=False)
+async def serve_registrati():
+    return FileResponse(os.path.join(_web_dir, "register.html"))
+
+@app.get("/privacy", include_in_schema=False)
+@app.get("/privacy/", include_in_schema=False)
+async def serve_privacy():
+    p = os.path.join(_landing_dir, "privacy.html")
+    if os.path.exists(p):
+        return FileResponse(p)
+    return FileResponse(os.path.join(_web_dir, "login.html"))
+
+@app.get("/termini", include_in_schema=False)
+@app.get("/termini/", include_in_schema=False)
+async def serve_termini():
+    p = os.path.join(_landing_dir, "termini.html")
+    if os.path.exists(p):
+        return FileResponse(p)
+    return FileResponse(os.path.join(_web_dir, "login.html"))
+
+@app.get("/cookie", include_in_schema=False)
+@app.get("/cookie/", include_in_schema=False)
+async def serve_cookie():
+    p = os.path.join(_landing_dir, "cookie.html")
+    if os.path.exists(p):
+        return FileResponse(p)
+    return FileResponse(os.path.join(_web_dir, "login.html"))
+
+@app.get("/app", include_in_schema=False)
+async def serve_app_redirect():
+    return RedirectResponse(url="/app/")
+
+@app.get("/app/", include_in_schema=False)
+async def serve_app_index():
+    return FileResponse(os.path.join(_web_dir, "index.html"))
+
+@app.get("/login.html", include_in_schema=False)
+async def serve_login_html():
+    return FileResponse(os.path.join(_web_dir, "login.html"))
+
+@app.get("/register.html", include_in_schema=False)
+async def serve_register_html():
+    return FileResponse(os.path.join(_web_dir, "register.html"))
+
+if os.path.exists(_landing_dir):
+    app.mount("/landing", StaticFiles(directory=_landing_dir), name="landing_static")
+if os.path.exists(_web_dir):
+    app.mount("/app", StaticFiles(directory=_web_dir), name="app_static")
+
+# Root static files: serve landing assets with html=True
+if os.path.exists(_landing_dir):
+    app.mount("/", StaticFiles(directory=_landing_dir, html=True), name="root_static")
+elif os.path.exists(_web_dir):
+    app.mount("/", StaticFiles(directory=_web_dir, html=True), name="root_static")
+
+

@@ -110,6 +110,9 @@ def _modello_intent() -> str:
     )
 
 
+# Alias pubblico: i chiamanti loggano il modello usato nell'usage event.
+modello_intent = _modello_intent
+
 async def classifica_intent(testo: str) -> IntentResult:
     """Classifica l'intento del messaggio. Non solleva mai: il peggio che
     possa accadere e' l'esito euristico (source="heuristic")."""

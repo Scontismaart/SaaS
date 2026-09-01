@@ -31,3 +31,27 @@ def is_org_suspended(subscription_status: str | None, trial_end=None) -> bool:
     if isinstance(trial_end, datetime) and trial_end.tzinfo is None:
         trial_end = trial_end.replace(tzinfo=timezone.utc)
     return trial_end <= datetime.now(timezone.utc)
+
+
+def giorni_trial_rimanenti(trial_end, now=None) -> int:
+    """Giorni interi di trial ancora davanti (floor), 0 se scaduto/assente.
+
+    Serve al checkout per ereditare il trial del signup invece di regalarne
+    un secondo: 7 giorni al signup + 7 al checkout = fino a 14 gratis.
+    Floor, non ceil: il periodo gratuito non si estende mai oltre la
+    trial_end originale del signup."""
+    if trial_end is None:
+        return 0
+    if not isinstance(trial_end, datetime):
+        return 0
+    now = now or datetime.now(timezone.utc)
+    if not isinstance(now, datetime):
+        return 0
+    if isinstance(trial_end, datetime) and trial_end.tzinfo is None:
+        trial_end = trial_end.replace(tzinfo=timezone.utc)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    residuo = (trial_end - now).total_seconds()
+    if residuo <= 0:
+        return 0
+    return int(residuo // 86400)

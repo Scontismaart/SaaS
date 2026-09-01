@@ -151,6 +151,10 @@ async def pg_pool(postgres_container):
         await conn.execute(_WEEKLY_REPORT_LOG_STATUS_SQL)
         with open("src/core/db/migrations/039_rls_public_exposed_tables.sql", encoding="utf-8") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/044_descrizione_profilo.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
+        with open("src/core/db/migrations/045_hardening_privilegi.sql", encoding="utf-8") as f:
+            await conn.execute(f.read())
     yield pool
     await pool.close()
 

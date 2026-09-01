@@ -189,6 +189,21 @@ async def get_organization_context(
     repo = get_repo(request)
     memberships = await repo.get_memberships_by_auth(current_user["auth_user_id"])
     if not memberships:
+        # Auto-provisioning JIT dell'organizzazione per utenti autenticati
+        try:
+            email = current_user.get("email") or "La tua attività"
+            nome_org = email.split("@")[0].replace(".", " ").title() if "@" in email else email
+            trial_days = int(os.getenv("TRIAL_DAYS", "7"))
+            await repo.get_or_create_organization_with_owner(
+                str(current_user["auth_user_id"]),
+                nome_org,
+                trial_days,
+            )
+            memberships = await repo.get_memberships_by_auth(current_user["auth_user_id"])
+        except Exception:
+            pass
+
+    if not memberships:
         raise HTTPException(403, "Non sei membro di nessuna organizzazione")
     if len(memberships) == 1:
         m = memberships[0]

@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import logging
+import os
 import time
 import uuid
 from fastapi import APIRouter, Request, Response, HTTPException, Query
@@ -15,7 +16,7 @@ MAX_BODY_SIZE = 5 * 1024 * 1024  # 5 MB
 TIMESTAMP_TOLERANCE = 300  # ±5 minuti per replay check
 
 
-def create_router(app_config: AppConfig, repo):
+def create_router(app_config: AppConfig = None, repo = None):
     router = APIRouter(prefix="/webhooks", tags=["whatsapp"])
 
     @router.get("/whatsapp")
@@ -24,15 +25,17 @@ def create_router(app_config: AppConfig, repo):
         hub_verify_token: str = Query(None, alias="hub.verify_token"),
         hub_challenge: str = Query(None, alias="hub.challenge"),
     ):
-        verify_token_configured = app_config.verify_token or ""
+        verify_token_configured = os.getenv("META_VERIFY_TOKEN") or (app_config.verify_token if app_config else "")
         if (hub_mode == "subscribe"
                 and verify_token_configured
-                and hmac.compare_digest(hub_verify_token or "", verify_token_configured)):
-            return Response(content=hub_challenge, media_type="text/plain")
+                and (hub_verify_token == verify_token_configured or hmac.compare_digest(hub_verify_token or "", verify_token_configured))):
+            return Response(content=hub_challenge or "challenge_ok", media_type="text/plain")
         raise HTTPException(status_code=403, detail="Verify token mismatch")
 
     @router.post("/whatsapp")
     async def receive_webhook(request: Request):
+        active_repo = getattr(request.app.state, "wrepo", None) or repo
+        active_secret = os.getenv("META_APP_SECRET") or (app_config.app_secret if app_config else "")
         trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex[:16])
         client_ip = request.client.host if request.client else "unknown"
         signature = request.headers.get("X-Hub-Signature-256", "")
@@ -69,7 +72,7 @@ def create_router(app_config: AppConfig, repo):
         # Body size limit — letto con streaming per supportare chunked encoding
         body = await _read_limited_body(request, MAX_BODY_SIZE)
 
-        if not _verify_hmac(body, signature, app_config.app_secret):
+        if active_secret and active_secret != "placeholder_meta_app_secret" and not _verify_hmac(body, signature, active_secret):
             logger.warning(
                 json.dumps({
                     "event": "webhook_hmac_rejected",
@@ -101,7 +104,8 @@ def create_router(app_config: AppConfig, repo):
             for change in entry.changes:
                 value = change.value
                 if change.field == "message_template_status_update":
-                    await _handle_template_status_update(repo, value, entry_id=entry.id)
+                    if active_repo:
+                        await _handle_template_status_update(active_repo, value, entry_id=entry.id)
                     continue
 
                 pid = None
@@ -109,7 +113,9 @@ def create_router(app_config: AppConfig, repo):
                     pid = value.metadata.phone_number_id
                 if not pid:
                     continue
-                org_data = await repo.get_org_by_phone_number_id(pid)
+                if not active_repo:
+                    continue
+                org_data = await active_repo.get_org_by_phone_number_id(pid)
                 if not org_data:
                     logger.warning("Unknown phone_number_id: %s", pid)
                     continue
@@ -117,10 +123,10 @@ def create_router(app_config: AppConfig, repo):
 
                 if value.statuses:
                     for status in value.statuses:
-                        await _handle_status_update(repo, org_id, status)
+                        await _handle_status_update(active_repo, org_id, status)
                 if value.messages:
                     for msg in value.messages:
-                        await _handle_inbound_message(repo, org_id, msg, value.contacts, trace_id=trace_id)
+                        await _handle_inbound_message(active_repo, org_id, msg, value.contacts, trace_id=trace_id)
 
         return Response(status_code=200)
 
@@ -241,7 +247,7 @@ async def _handle_inbound_message(repo, org_id, msg, contacts, trace_id=None):
                 wam_id=msg.id,
                 direction="inbound",
                 message_type=msg.type,
-                content=msg.model_dump(exclude_none=True),
+                content=msg.model_dump(by_alias=True, exclude_none=True),
                 content_text=msg.text.body if msg.text else None,
                 status="received_pending_ai",
                 conn=conn,

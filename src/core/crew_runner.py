@@ -8,6 +8,8 @@ di cambiare tutto il resto (UI, canale, provider LLM) senza toccare i
 moduli a monte.
 """
 
+import time
+
 from src.agents.responder_agent import crea_crew
 from src.core.llm_config import (
     LLM_CONCURRENCY_SEM,
@@ -16,6 +18,24 @@ from src.core.llm_config import (
     route_llm,
 )
 from src.models.schemas import MessaggioInput, ProfiloAttivita, RispostaOutput
+
+
+def _riempi_sink(sink: dict | None, model: str, fallback_usato: bool, inizio: float, crew) -> None:
+    """Invariante 8: metriche reali della chiamata LLM (modello effettivo,
+    token, latenza). Fail-soft: qualunque problema nelle metriche non deve
+    mai rompere la generazione risposta."""
+    if sink is None:
+        return
+    try:
+        sink["model_effettivo"] = model
+        sink["fallback_usato"] = fallback_usato
+        sink["latenza_ms"] = int((time.monotonic() - inizio) * 1000)
+        metrics = getattr(crew, "usage_metrics", None)
+        sink["prompt_tokens"] = getattr(metrics, "prompt_tokens", None)
+        sink["completion_tokens"] = getattr(metrics, "completion_tokens", None)
+        sink["total_tokens"] = getattr(metrics, "total_tokens", None)
+    except Exception:
+        pass
 
 
 def _route_request_for_message(
@@ -49,9 +69,13 @@ def genera_risposta(
     variante: str = "control",
     contesto_disponibilita: str = "",
     tentativi_falliti: int = 0,
+    usage_sink: dict | None = None,
 ) -> RispostaOutput:
     """Esegue la crew su un singolo messaggio e restituisce l'output
     strutturato e validato.
+
+    Se `usage_sink` (dict) è fornito, viene riempito con le metriche reali
+    della chiamata: model_effettivo, fallback_usato, latenza_ms, token.
 
     Solleva eccezione se, dopo i retry interni di CrewAI/LiteLLM, il
     modello non restituisce un output conforme allo schema: meglio
@@ -61,13 +85,16 @@ def genera_risposta(
     route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)
     errors: list[str] = []
-    for model in [route.model, *route.fallback_models]:
+    inizio = time.monotonic()
+    for idx, model in enumerate([route.model, *route.fallback_models]):
         try:
             crew = crea_crew(profilo, messaggio, cronologia, route_request=route_request,
                              model=model, variante=variante,
                              contesto_disponibilita=contesto_disponibilita,
                              tentativi_falliti=tentativi_falliti)
-            return _validate_output(crew.kickoff())
+            out = _validate_output(crew.kickoff())
+            _riempi_sink(usage_sink, model, idx > 0, inizio, crew)
+            return out
         except Exception as exc:
             errors.append(f"{model}: {exc}")
     raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors))
@@ -83,9 +110,13 @@ async def genera_risposta_async(
     variante: str = "control",
     contesto_disponibilita: str = "",
     tentativi_falliti: int = 0,
+    usage_sink: dict | None = None,
 ) -> RispostaOutput:
     """Versione asincrona di genera_risposta per essere usata da route
     FastAPI che girano in un event loop già attivo.
+
+    Se `usage_sink` (dict) è fornito, viene riempito con le metriche reali
+    della chiamata: model_effettivo, fallback_usato, latenza_ms, token.
 
     Audit 3.3: limitata dal semaforo globale LLM_CONCURRENCY_SEM per non
     saturare il rate-limit/budget condiviso su OpenRouter quando piu'
@@ -93,15 +124,18 @@ async def genera_risposta_async(
     route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)
     errors: list[str] = []
+    inizio = time.monotonic()
     async with LLM_CONCURRENCY_SEM:
-        for model in [route.model, *route.fallback_models]:
+        for idx, model in enumerate([route.model, *route.fallback_models]):
             try:
                 crew = crea_crew(profilo, messaggio, cronologia=cronologia,
                                  route_request=route_request, model=model,
                                  contesto_documenti=contesto_documenti, variante=variante,
                                  contesto_disponibilita=contesto_disponibilita,
                                  tentativi_falliti=tentativi_falliti)
-                return _validate_output(await crew.kickoff_async())
+                out = _validate_output(await crew.kickoff_async())
+                _riempi_sink(usage_sink, model, idx > 0, inizio, crew)
+                return out
             except Exception as exc:
                 errors.append(f"{model}: {exc}")
     raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors))

@@ -153,14 +153,18 @@ class WhatsAppService:
 
     async def fast_path_match(self, text: str, business_profile: dict) -> Optional[str]:
         normalized = _normalize_text(text)
-        name = business_profile.get("name", "")
+        words = normalized.split()
+        if len(words) > 2:
+            # Messaggi articolati o con richieste/prenotazioni vanno sempre all'agente LLM
+            return None
+
+        name = (business_profile or {}).get("nome") or (business_profile or {}).get("name") or ""
         for g in _FAST_PATH_GREETINGS:
-            if g == normalized or normalized.startswith(g + " "):
-                return f"Ciao! Benvenuto in {name}. Come possiamo aiutarti?"
+            if normalized == g:
+                if name:
+                    return f"Ciao! Benvenuto da {name}. Come possiamo aiutarti?"
+                return "Ciao! Come possiamo aiutarti?"
         for t in _FAST_PATH_THANKS:
-            if t == normalized or normalized.startswith(t):
-                return "Prego! A nostra disposizione. Buona giornata!"
-        orari = business_profile.get("orari", "")
-        if orari and ("orari" in normalized or "aperto" in normalized or "chiuso" in normalized):
-            return f"I nostri orari: {orari}"
+            if normalized == t:
+                return "Prego! Restiamo a tua disposizione. Buona giornata!"
         return None

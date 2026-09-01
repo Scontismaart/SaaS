@@ -151,9 +151,11 @@ class TestMe:
         assert data["ruolo"] == "owner"
         assert data["email"] == "owner@test.com"
 
-    async def test_me_no_membership_rejected(
+    async def test_me_no_membership_jit_provisions_org(
         self, async_client, pg_pool, monkeypatch
     ):
+        """JIT (Task18): un utente autenticato senza membership riceve
+        auto-provisioning di organizzazione + ruolo owner al primo /me."""
         auth_user_id = os.urandom(16).hex()
         async with pg_pool.acquire() as conn:
             await conn.execute(
@@ -170,7 +172,11 @@ class TestMe:
         resp = await async_client.get(
             "/api/auth/me", headers={"Authorization": "Bearer at.fake"}
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["organization_id"]
+        assert data["ruolo"] == "owner"
+        assert data["email"] == "none@test.com"
 
 
 class TestRefresh:

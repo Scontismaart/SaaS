@@ -1,4 +1,5 @@
-from datetime import datetime, date, time, timezone
+from contextlib import nullcontext
+from datetime import datetime, date, time, timedelta, timezone
 import logging
 
 from src.models.schemas import DisponibilitaSlot
@@ -8,6 +9,8 @@ logger = logging.getLogger(__name__)
 STATI_OCCUPATI = {"in_attesa", "confermata", "da_verificare", "completata"}
 STATI_LIBERI = {"cancellata", "cancellato", "rifiutata", "no_show"}
 SLOT_ORE = [f"{h:02d}:00" for h in range(24)]
+# Stessa durata evento usata dal push Google (calendar/service.py).
+DEFAULT_SLOT_MINUTES = 60
 
 
 class SlotPienoError(ValueError):
@@ -26,6 +29,41 @@ class BookingService:
         self.whatsapp = whatsapp_service
         self.app_config = app_config
         self.calendar_service = calendar_service
+
+    def _slot_lock(self, org_id, data, ora):
+        """Lock consultivo per fascia oraria se il repo lo supporta
+        (CoreRepository); fallback no-op per repo demo/fake nei test."""
+        if hasattr(self.repo, "slot_lock"):
+            return self.repo.slot_lock(org_id, data, ora)
+        return nullcontext()
+
+    async def _google_slot_occupato(self, org_id, data, ora) -> bool:
+        """True se un evento Google Calendar copre lo slot [ora, ora+60min).
+        Best-effort e fail-open: senza calendar service, su errore o con
+        metodo assente (repo fake nei test) la risposta è False — la
+        capacità DB resta la fonte autorevole della disponibilità."""
+        if not self.calendar_service:
+            return False
+        if not hasattr(self.calendar_service, "get_busy_intervals"):
+            return False
+        try:
+            busy = await self.calendar_service.get_busy_intervals(org_id, data)
+        except Exception:
+            logger.warning("calendar=freebusy_check_fail org_id=%s data=%s", org_id, data)
+            return False
+        ora_str = ora if isinstance(ora, str) else ora.strftime("%H:%M")
+        slot_start = datetime.fromisoformat(f"{data}T{ora_str}:00")
+        slot_end = slot_start + timedelta(minutes=DEFAULT_SLOT_MINUTES)
+        try:
+            for bs, be in busy:
+                if slot_start < be and bs < slot_end:
+                    return True
+        except TypeError:
+            # Intervallo con tzinfo inatteso da un'implementazione del
+            # servizio calendar: fail-open, non bloccare la prenotazione.
+            logger.warning("calendar=freebusy_interval_type org_id=%s", org_id)
+            return False
+        return False
 
     # ── Disponibilità ──────────────────────────────────────────
 
@@ -136,24 +174,37 @@ class BookingService:
         ora = values["ora"]
         coperti = values["coperti"]
         note = values["note"]
-        disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
-        if coperti > disp.coperti_liberi:
+        # Eventi esterni su Google Calendar (creati fuori dal sistema) bloccano
+        # lo slot come quelli interni. Check pre-lock: chiamata di rete fuori
+        # dalla sezione critica. Fail-open documentato in _google_slot_occupato.
+        if await self._google_slot_occupato(org_id, data, ora):
+            disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
             raise SlotPienoError(
-                f"slot pieno per {coperti} coperti alle {ora}",
+                f"slot occupato su Google Calendar alle {ora}",
                 alternative=disp.alternative,
             )
-        richiede_dep = await self._valuta_richiede_deposito(
-            org_id, coperti=coperti, tipo_evento=tipo_evento, ora=ora, data=data
-        )
-        booking = await self.repo.create_booking(
-            organization_id=org_id, nome_cliente=nome_cliente,
-            telefono=telefono, data=data, ora=ora, coperti=coperti,
-            note=note, tipo_evento=tipo_evento, stato="in_attesa", origine=origine,
-            richiede_deposito=richiede_dep,
-            richiede_intervento=richiede_intervento,
-            id_conversazione=id_conversazione or None,
-            source_message_id=source_message_id,
-        )
+        # Check-then-insert sotto lock di fascia: senza serializzazione due
+        # richieste concorrenti possono superare entrambe la verifica di
+        # capienza e overbookare lo slot.
+        async with self._slot_lock(org_id, data, ora):
+            disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
+            if coperti > disp.coperti_liberi:
+                raise SlotPienoError(
+                    f"slot pieno per {coperti} coperti alle {ora}",
+                    alternative=disp.alternative,
+                )
+            richiede_dep = await self._valuta_richiede_deposito(
+                org_id, coperti=coperti, tipo_evento=tipo_evento, ora=ora, data=data
+            )
+            booking = await self.repo.create_booking(
+                organization_id=org_id, nome_cliente=nome_cliente,
+                telefono=telefono, data=data, ora=ora, coperti=coperti,
+                note=note, tipo_evento=tipo_evento, stato="in_attesa", origine=origine,
+                richiede_deposito=richiede_dep,
+                richiede_intervento=richiede_intervento,
+                id_conversazione=id_conversazione or None,
+                source_message_id=source_message_id,
+            )
         if self.calendar_service:
             try:
                 await self.calendar_service.sync_booking_state(booking, org_id)
@@ -210,20 +261,33 @@ class BookingService:
             values[key] != self._format_booking_value(key, current.get(key))
             for key in ("data", "ora", "coperti")
         )
-        if schedule_changed:
-            disp = await self.verifica_disponibilita(
-                org_id, values["data"], values["ora"], values["coperti"],
-                exclude_booking_id=booking_id,
-            )
-            if values["coperti"] > disp.coperti_liberi:
-                raise SlotPienoError(
-                    f"slot pieno per {values['coperti']} coperti alle {values['ora']}",
-                    alternative=disp.alternative,
-                )
         new_status = "in_attesa" if schedule_changed else current["stato"]
-        updated = await self.repo.update_booking_details(
-            org_id, booking_id, stato=new_status, **values
-        )
+        # Check Google PRIMA del lock: chiamata di rete fuori dalla sezione
+        # critica (come in create_booking). Piccola finestra TOCTOU con
+        # eventi Google aggiunti nel frattempo: stesso livello best-effort.
+        if schedule_changed and await self._google_slot_occupato(
+            org_id, values["data"], values["ora"]
+        ):
+            raise SlotPienoError(
+                f"slot occupato su Google Calendar alle {values['ora']}",
+            )
+        # Stessa serializzazione di create_booking: la verifica di capienza e
+        # l'UPDATE devono restare atomiche rispetto ad altre prenotazioni
+        # concorrenti sulla fascia di destinazione.
+        async with self._slot_lock(org_id, values["data"], values["ora"]):
+            if schedule_changed:
+                disp = await self.verifica_disponibilita(
+                    org_id, values["data"], values["ora"], values["coperti"],
+                    exclude_booking_id=booking_id,
+                )
+                if values["coperti"] > disp.coperti_liberi:
+                    raise SlotPienoError(
+                        f"slot pieno per {values['coperti']} coperti alle {values['ora']}",
+                        alternative=disp.alternative,
+                    )
+            updated = await self.repo.update_booking_details(
+                org_id, booking_id, stato=new_status, **values
+            )
         if not updated:
             raise ValueError(f"booking {booking_id} non trovato")
         if schedule_changed and self.whatsapp:

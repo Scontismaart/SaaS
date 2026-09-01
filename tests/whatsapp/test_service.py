@@ -125,9 +125,10 @@ class TestWhatsAppService:
     async def test_fast_path_hours(self, app_config, mock_repo):
         service = WhatsAppService(app_config, mock_repo)
         bp = {"orari": "Lun-Sab 12:00-22:30"}
+        # Da redesign fast path: copre solo saluti/ringraziamenti (<= 2 parole).
+        # Le domande sugli orari vanno al flusso LLM completo (risposte migliori).
         result = await service.fast_path_match("Che orari fate?", bp)
-        assert result is not None
-        assert "Lun-Sab" in result
+        assert result is None
 
     async def test_fast_path_no_match(self, app_config, mock_repo):
         service = WhatsAppService(app_config, mock_repo)

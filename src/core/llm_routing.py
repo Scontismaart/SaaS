@@ -15,22 +15,12 @@ LLMTaskType = Literal[
 
 LLMTier = Literal["cheap", "premium"]
 
-_DEFAULT_CHEAP_MODEL = "openai/gpt-4o-mini"
-_DEFAULT_PREMIUM_MODEL = "openai/gpt-4.1"
-# Chain di fallback multi-provider (task 13). Gli id prefissati oltre a
-# OpenRouter ("groq/", "cerebras/") attraversano provider che NON addestrano
-# sui dati: requisito per tenere la promessa privacy della chain (vedi
-# crea_llm in llm_config.py). Non aggiungere provider da cui i dati dei
-# clienti potrebbero essere usati per training.
-# Gli id sono quelli REALE dei cataloghi (verificato live 2026-08-17):
-# su Groq "openai/gpt-oss-20b" e' gratuito; Cerebras e' supportato da
-# crea_llm ma resta FUORI dalla chain di default perche' l'account corrente
-# non ha credito (tutti i modelli rispondono 402 payment_required).
+_DEFAULT_CHEAP_MODEL = "mistral/mistral-small-latest"
+_DEFAULT_PREMIUM_MODEL = "mistral/mistral-medium-2508"
 _DEFAULT_FALLBACK_MODELS = (
-    "openai/gpt-4o-mini,"
-    "anthropic/claude-3-haiku,"
-    "google/gemini-2.0-flash-001,"
-    "groq/llama-3.3-70b-versatile"
+    "mistral/mistral-medium-2508,"
+    "mistral/mistral-small-latest,"
+    "groq/openai/gpt-oss-120b"
 )
 
 _FAQ_KEYWORDS = {
@@ -156,3 +146,30 @@ def budget_ratio_from_billing(billing: dict | None) -> float | None:
         return None
     remaining = max(int(limit) - int(used), 0)
     return remaining / int(limit)
+
+
+# Prezzi INDICATIVI per 1M token (prompt, completion) in EUR, per la stima
+# di costo dell'invariante 8. Non sono fatture: sono stime lato app.
+# Chiavi: nome modello senza prefisso provider, incluse le varianti dei
+# default di routing (mistral-small-latest, mistral-medium-2508).
+_TOKEN_PRICES_EUR_PER_1M: dict[str, tuple[float, float]] = {
+    "mistral-small": (0.2, 0.6),
+    "mistral-small-latest": (0.2, 0.6),
+    "mistral-medium": (2.7, 8.1),
+    "mistral-medium-2508": (2.7, 8.1),
+    "gpt-oss-120b": (0.1, 0.5),
+    "gpt-4o-mini": (0.15, 0.6),
+}
+
+
+def stima_costo_eur(model, prompt_tokens, completion_tokens):
+    """Stima indicativa di costo EUR per una chiamata, None se il modello
+    non e' in tabella o i token mancano."""
+    if prompt_tokens is None or completion_tokens is None:
+        return None
+    nome = (model or "").split("/")[-1].strip().lower()
+    prezzi = _TOKEN_PRICES_EUR_PER_1M.get(nome)
+    if not prezzi:
+        return None
+    p, c = prezzi
+    return round(prompt_tokens / 1e6 * p + completion_tokens / 1e6 * c, 6)

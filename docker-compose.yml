@@ -31,6 +31,17 @@ services:
     ports:
       - "8080:80"
     volumes:
+      - ./web/landing/index.html:/usr/share/nginx/html/index.html:ro
+      - ./web/landing/style.css:/usr/share/nginx/html/style.css:ro
+      - ./web/landing/app.js:/usr/share/nginx/html/app.js:ro
+      - ./web/landing/panoramica.webp:/usr/share/nginx/html/panoramica.webp:ro
+      - ./web/landing/conoscenza.webp:/usr/share/nginx/html/conoscenza.webp:ro
+      - ./web/landing/prenotazioni.webp:/usr/share/nginx/html/prenotazioni.webp:ro
+      - ./web/landing/inbox.webp:/usr/share/nginx/html/inbox.webp:ro
+      - ./web/landing/logo.webp:/usr/share/nginx/html/logo.webp:ro
+      - ./web/landing/privacy.html:/usr/share/nginx/html/privacy.html:ro
+      - ./web/landing/termini.html:/usr/share/nginx/html/termini.html:ro
+      - ./web/landing/cookie.html:/usr/share/nginx/html/cookie.html:ro
       - ./web/index.html:/usr/share/nginx/html/app/index.html:ro
       - ./web/style.css:/usr/share/nginx/html/app/style.css:ro
       - ./web/app.js:/usr/share/nginx/html/app/app.js:ro
@@ -89,6 +100,7 @@ services:
     env_file: .env
     command: ["python", "run_inbound_processor.py"]
     volumes:
+      - ./src:/app/src
       - chroma_data:/app/data/chroma
     networks:
       - app_internal
@@ -107,6 +119,7 @@ services:
     env_file: .env
     command: ["python", "run_retry_worker.py"]
     volumes:
+      - ./src:/app/src
       - chroma_data:/app/data/chroma
     networks:
       - app_internal
@@ -129,6 +142,8 @@ services:
     image: whatsapp-ai-responder:latest
     env_file: .env
     command: ["python", "run_supervisor.py"]
+    volumes:
+      - ./src:/app/src
     networks:
       - app_internal
     restart: unless-stopped

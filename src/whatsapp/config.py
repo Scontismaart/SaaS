@@ -34,11 +34,20 @@ async def load_tenant_config(org_id: UUID, app_config: AppConfig, repo) -> Tenan
     except InvalidToken:
         logger.error("INVALID_TOKEN: encryption_key may have been rotated. org_id=%s", org_id)
         raise
+    bp = row.get("business_profile") or {}
+    if isinstance(bp, str):
+        try:
+            import json
+            bp = json.loads(bp)
+        except Exception:
+            bp = {}
+    if not isinstance(bp, dict):
+        bp = {}
     return TenantConfig(
         organization_id=org_id,
         phone_number_id=row["phone_number_id"],
         waba_id=row["waba_id"],
         access_token=decrypted,
         timezone=row.get("timezone", "Europe/Rome"),
-        business_profile=row.get("business_profile", {}),
+        business_profile=bp,
     )

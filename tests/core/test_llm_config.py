@@ -26,7 +26,8 @@ def test_crea_llm_usa_modello_da_route_request(monkeypatch):
 
 
 def test_crea_llm_senza_route_usa_default_non_free(monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    # Il default di routing ora e' mistral (paid): serve la chiave del provider.
+    monkeypatch.setenv("MISTRAL_API_KEY", "sk-test")
 
     llm = crea_llm()
 
@@ -36,8 +37,9 @@ def test_crea_llm_senza_route_usa_default_non_free(monkeypatch):
 
 def test_modello_default_e_un_modello_paid():
     """Il 'vero ultimo fallback' non deve essere un endpoint free che
-    addestra sui dati dei clienti."""
-    assert MODELLO_DEFAULT == "openai/gpt-4o-mini"
+    addestra sui dati dei clienti. Il default di routing e' mistral paid."""
+    assert MODELLO_DEFAULT == "mistral/mistral-small-latest"
+    assert not MODELLO_DEFAULT.endswith(":free")
 
 
 def test_crea_llm_groq_pass_through_senza_deny(monkeypatch):

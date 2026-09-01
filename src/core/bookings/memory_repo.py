@@ -10,6 +10,7 @@ e non sono coperti qui — non fanno parte del percorso frontend demo.
 """
 
 import uuid
+from contextlib import nullcontext
 from datetime import date, time
 from copy import deepcopy
 
@@ -24,6 +25,12 @@ class InMemoryBookingRepo:
         self.pool = None
 
     # ── Bookings ──────────────────────────────────────────────
+
+    def slot_lock(self, organization_id, data, ora):
+        """No-op: lo store demo e' in-process e monoprocesso, niente race
+        reale da serializzare. Stessa firma di CoreRepository.slot_lock."""
+        return nullcontext()
+
 
     async def create_booking(self, organization_id, nome_cliente, data, ora, coperti,
                              telefono="", note="", stato="in_attesa", origine="Dashboard",

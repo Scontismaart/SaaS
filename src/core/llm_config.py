@@ -16,6 +16,8 @@ sui dati senza prima verificare la policy.
 
 import asyncio
 import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 from crewai import LLM
 from src.core.llm_routing import (
     LLMRoute,
@@ -31,7 +33,7 @@ from src.core.llm_routing import (
 # inviate nei prompt). Il default e' un modello paid economico.
 MODELLO_DEFAULT = os.getenv(
     "OPENROUTER_MODEL",
-    "openai/gpt-4o-mini"
+    "mistral/mistral-small-latest"
 )
 
 # Numero di tentativi in caso di errore/rate limit del modello free.
@@ -47,12 +49,13 @@ LLM_CONCURRENCY_SEM = asyncio.Semaphore(int(os.getenv("LLM_MAX_CONCURRENT", "3")
 
 # Prefissi provider riconosciuti nei model id. I provider sono whitelistati:
 # solo quelli che NON addestrano sui dati possono stare nella chain.
-_PROVIDER_PREFIXES = ("openrouter/", "groq/", "cerebras/")
+_PROVIDER_PREFIXES = ("openrouter/", "groq/", "cerebras/", "mistral/")
 
 _KEY_ENV_BY_PROVIDER = {
     "openrouter": "OPENROUTER_API_KEY",
     "groq": "GROQ_API_KEY",
     "cerebras": "CEREBRAS_API_KEY",
+    "mistral": "MISTRAL_API_KEY",
 }
 
 

@@ -125,6 +125,7 @@ def build_business_profile(payload: OnboardingProfileInput) -> ProfiloAttivita:
         tipo_attivita=template["label"],
         tono=tono,
         orari=payload.orari,
+        descrizione=payload.descrizione,
         servizi_principali=servizi,
         note_speciali=escalation,
         lingue_supportate=payload.lingue_supportate,
@@ -160,6 +161,7 @@ async def save_profile(
         profile.model_dump(),
         payload.lingue_supportate,
         payload.lingua_default,
+        descrizione=payload.descrizione,
     )
 
 

@@ -157,3 +157,83 @@ async def test_update_booking_schedule_returns_to_pending(booking_service, sampl
 
     assert updated["stato"] == "in_attesa"
     assert updated["data"].isoformat() == "2026-08-02"
+
+
+# ── Check disponibilità Google Calendar (freebusy) ──────────────────────
+
+from datetime import timedelta as _timedelta
+
+from src.core.bookings.memory_repo import InMemoryBookingRepo
+from src.core.bookings.service import BookingService, SlotPienoError
+
+
+class FakeCalendarGoogle:
+    """Fake del solo metodo usato dal check disponibilità; sync_booking_state
+    no-op perché create_booking la invoca dopo l'INSERT."""
+
+    def __init__(self, busy=None, error=False):
+        self.busy = busy or []
+        self.error = error
+        self.synced = []
+
+    async def get_busy_intervals(self, org_id, data):
+        if self.error:
+            raise RuntimeError("google down")
+        return self.busy
+
+    async def sync_booking_state(self, booking, org_id):
+        self.synced.append(booking)
+
+
+def _domani_iso():
+    return (date.today() + _timedelta(days=1)).isoformat()
+
+
+async def test_create_booking_blocca_su_evento_google():
+    repo = InMemoryBookingRepo()
+    data = _domani_iso()
+    # Intervallo a cavallo di quasi tutta la giornata, naive nel fuso org
+    # (contratto di get_busy_intervals): l'overlap con lo slot 20:00-21:00
+    # locale deve essere rilevato.
+    busy = [
+        (
+            datetime.fromisoformat(f"{data}T00:00:00"),
+            datetime.fromisoformat(f"{data}T23:59:00"),
+        )
+    ]
+    svc = BookingService(repo, None, None, calendar_service=FakeCalendarGoogle(busy=busy))
+    with pytest.raises(SlotPienoError):
+        await svc.create_booking(
+            org_id="org-1", nome_cliente="Mario", telefono="+393331112223",
+            data=data, ora="20:00", coperti=2,
+        )
+
+
+async def test_create_booking_failopen_su_errore_google():
+    repo = InMemoryBookingRepo()
+    data = _domani_iso()
+    svc = BookingService(repo, None, None, calendar_service=FakeCalendarGoogle(error=True))
+    booking = await svc.create_booking(
+        org_id="org-1", nome_cliente="Mario", telefono="+393331112223",
+        data=data, ora="20:00", coperti=2,
+    )
+    assert booking is not None  # errore Google non blocca la prenotazione
+
+
+async def test_update_booking_blocca_su_evento_google():
+    repo = InMemoryBookingRepo()
+    svc = BookingService(repo, None, None, calendar_service=FakeCalendarGoogle(busy=[]))
+    data_libera = _domani_iso()
+    booking = await svc.create_booking(
+        org_id="org-1", nome_cliente="Mario", telefono="+393331112223",
+        data=data_libera, ora="12:00", coperti=2,
+    )
+    # Spostamento su una fascia coperta da un evento Google
+    svc.calendar_service.busy = [
+        (
+            datetime.fromisoformat(f"{data_libera}T00:00:00"),
+            datetime.fromisoformat(f"{data_libera}T23:59:00"),
+        )
+    ]
+    with pytest.raises(SlotPienoError):
+        await svc.update_booking("org-1", booking["id"], ora="20:00")

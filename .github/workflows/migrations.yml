@@ -8,6 +8,12 @@ on:
       - "src/core/db/schema.sql"
       - "src/core/db/triggers.sql"
       - "src/whatsapp/schema.sql"
+  pull_request:
+    paths:
+      - "src/core/db/migrations/*.sql"
+      - "src/core/db/schema.sql"
+      - "src/core/db/triggers.sql"
+      - "src/whatsapp/schema.sql"
 
 jobs:
   validate:
@@ -52,19 +58,19 @@ jobs:
           EOSQL
 
       - name: Apply whatsapp schema
-        run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/whatsapp/schema.sql
+        run: PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d test -f src/whatsapp/schema.sql
 
       - name: Apply core schema
-        run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/core/db/schema.sql
+        run: PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d test -f src/core/db/schema.sql
 
       - name: Apply triggers
-        run: PGPASSWORD=test psql -h localhost -U postgres -d test -f src/core/db/triggers.sql
+        run: PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d test -f src/core/db/triggers.sql
 
       - name: Apply all migrations in order
         run: |
           for f in $(ls src/core/db/migrations/0*.sql | sort); do
             echo "--- Applying $f ---"
-            PGPASSWORD=test psql -h localhost -U postgres -d test -f "$f"
+            PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d test -f "$f"
           done
 
       - uses: actions/setup-python@v5

@@ -81,7 +81,7 @@ class TestPromptResponder:
             _profilo(lingue_supportate=["it", "en", "de"], lingua_default="de")
         )
         assert "it, en, de" in prompt
-        assert "Lingua di default: de" in prompt
+        assert "Lingua di default dell'attività: de" in prompt
 
     def test_ab_variante_in_coda_al_blocco_lingue(self):
         base = costruisci_system_prompt(_profilo())

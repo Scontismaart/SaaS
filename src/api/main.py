@@ -42,6 +42,8 @@ from src.core.documenti.embeddings import vettorizza
 from src.core.documenti.extractor import estrai_testo
 from src.core.documenti.qa_agent import rispondi
 from src.core.documenti.chunking import chunk_testo
+from src.core.documenti.web_extractor import estrai_da_url
+from src.core.documenti.priorita import rileva_conflitti_prezzo
 from src.core.onboarding import (
     generate_preview,
     get_profile,
@@ -51,6 +53,10 @@ from src.core.onboarding import (
 from src.models.business_profile import PROFILI_DEMO
 from src.models.schemas import (
     CaricaDocumentoInput,
+    FAQInput,
+    WebImportInput,
+    ServizioStrutturato,
+    DatiStrutturaInput,
     DomandaInput,
     RispostaDocumento,
     LINGUE_DISPONIBILI,
@@ -716,6 +722,14 @@ async def onboarding_salva_profilo(
         )
     repo = get_repo(request)
     profilo_salvato = await save_profile(org_id, profilo, repo)
+
+    if profilo.orari:
+        try:
+            from src.core.documenti.dati_struttura import indicizza_dati_struttura
+            await indicizza_dati_struttura(repo, org_id, profilo.orari)
+        except Exception as exc:
+            logger.warning("indicizza_dati_struttura in onboarding_salva_profilo failed: %s", exc)
+
     await _audit(request, user, "profilo.aggiornato",
                  target_table="onboarding_profiles",
                  details={"nome_attivita": profilo.nome_attivita, "tono": profilo.tono})
@@ -1555,9 +1569,22 @@ async def conteggio_documenti(request: Request, user: dict = Depends(require_ruo
 
 
 @app.get("/api/documenti/elenco")
-async def elenco_documenti(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+async def elenco_documenti(request: Request, tipo: str | None = None, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
     repo = get_repo(request)
-    return {"documenti": await repo.list_sources(user["organization_id"])}
+    return {"documenti": await repo.list_sources(user["organization_id"], tipo=tipo)}
+
+
+@app.patch("/api/documenti/{documento_id}/toggle")
+async def toggle_documento_api(documento_id: str, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
+    repo = get_repo(request)
+    doc = await repo.toggle_document_active(user["organization_id"], documento_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Fonte non trovata.")
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
+    return {"detail": "Stato fonte aggiornato.", "documento": doc}
 
 
 @app.get("/api/ui/summary")
@@ -1572,6 +1599,267 @@ async def ui_summary(request: Request, user: dict = Depends(require_ruolo("owner
     return await repo.get_ui_summary(user["organization_id"])
 
 
+# ── Conoscenza: FAQ ──────────────────────────────────────────
+
+@app.post("/api/conoscenza/faq")
+async def crea_faq(faq: FAQInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
+    repo = get_repo(request)
+    blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
+
+    chunk_testo_singolo = f"Domanda: {faq.domanda}\nRisposta: {faq.risposta}"
+    record = await repo.create_document(
+        user["organization_id"],
+        nome=faq.domanda,
+        tipo="faq",
+        fonte="faq",
+        is_active=True,
+        stato="indicizzata",
+        metadata={"domanda": faq.domanda, "risposta": faq.risposta},
+    )
+
+    embeds = vettorizza([chunk_testo_singolo], tipo="passage")
+    await repo.add_chunk(
+        user["organization_id"],
+        record["id"],
+        0,
+        chunk_testo_singolo,
+        embeds[0],
+        {"domanda": faq.domanda, "risposta": faq.risposta, "tipo": "faq", "document_id": str(record["id"])},
+    )
+
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
+
+    return {"detail": "FAQ aggiunta alla knowledge base.", "id": str(record["id"])}
+
+
+@app.put("/api/conoscenza/faq/{faq_id}")
+async def aggiorna_faq(faq_id: str, faq: FAQInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
+    repo = get_repo(request)
+    esistente = await repo.get_document(user["organization_id"], faq_id)
+    if not esistente or esistente.get("tipo") != "faq":
+        raise HTTPException(status_code=404, detail="FAQ non trovata.")
+
+    chunk_testo_singolo = f"Domanda: {faq.domanda}\nRisposta: {faq.risposta}"
+    await repo.update_document(
+        user["organization_id"],
+        faq_id,
+        nome=faq.domanda,
+        metadata={"domanda": faq.domanda, "risposta": faq.risposta},
+        stato="indicizzata",
+        errore="",
+    )
+
+    await repo.delete_document_chunks(user["organization_id"], faq_id)
+    embeds = vettorizza([chunk_testo_singolo], tipo="passage")
+    await repo.add_chunk(
+        user["organization_id"],
+        faq_id,
+        0,
+        chunk_testo_singolo,
+        embeds[0],
+        {"domanda": faq.domanda, "risposta": faq.risposta, "tipo": "faq", "document_id": faq_id},
+    )
+
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
+
+    return {"detail": "FAQ aggiornata con successo.", "id": faq_id}
+
+
+@app.delete("/api/conoscenza/faq/{faq_id}")
+async def elimina_faq(faq_id: str, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
+    repo = get_repo(request)
+    eliminati = await repo.delete_document(user["organization_id"], faq_id)
+    if not eliminati:
+        raise HTTPException(status_code=404, detail="FAQ non trovata.")
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
+    return {"detail": "FAQ rimossa dalla knowledge base."}
+
+
+# ── Conoscenza: Pagine Web ───────────────────────────────────
+
+@app.post("/api/conoscenza/web")
+async def importa_pagina_web(web: WebImportInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
+    repo = get_repo(request)
+    blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
+
+    try:
+        dati_web = await estrai_da_url(web.url)
+    except ValueError as exc:
+        # Registra la fonte in stato di errore per visibilità in UI
+        try:
+            await repo.create_document(
+                user["organization_id"],
+                nome=web.url,
+                tipo="web",
+                fonte=web.url,
+                is_active=False,
+                stato="errore",
+                errore=str(exc),
+            )
+        except Exception as db_err:
+            logger.warning("Errore salvataggio stato fallimento web: %s", db_err)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    chunks = chunk_testo(dati_web["testo"])
+    if not chunks:
+        raise HTTPException(status_code=400, detail="Nessun testo indicizzabile estratto dalla pagina web.")
+
+    titolo = dati_web["titolo"] or web.url
+    record = await repo.create_document(
+        user["organization_id"],
+        nome=titolo,
+        tipo="web",
+        fonte=web.url,
+        is_active=True,
+        stato="indicizzata",
+        metadata={"url": web.url, "titolo": titolo},
+    )
+
+    embeds = vettorizza(chunks, tipo="passage")
+    for i, (chunk, emb) in enumerate(zip(chunks, embeds)):
+        await repo.add_chunk(
+            user["organization_id"],
+            record["id"],
+            i,
+            chunk,
+            emb,
+            {"fonte": web.url, "tipo": "web", "document_id": str(record["id"])},
+        )
+
+    try:
+        await repo.faq_cache_invalidate(user["organization_id"])
+    except Exception as exc:
+        logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
+
+    return {
+        "detail": f"Indicizzati {len(chunks)} chunk dalla pagina '{titolo}'.",
+        "indicizzati": len(chunks),
+        "nome": titolo,
+        "id": str(record["id"]),
+    }
+
+
+# ── Conoscenza: Dati Struttura ───────────────────────────────
+
+@app.get("/api/conoscenza/dati-struttura")
+async def get_dati_struttura(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    repo = get_repo(request)
+    bp = await repo.get_org_business_profile(user["organization_id"]) or {}
+    servizi_raw = bp.get("servizi_strutturati") or []
+
+    # Fallback da servizi_principali non tipizzati se vuoto
+    if not servizi_raw and bp.get("servizi_principali"):
+        servizi_raw = [
+            {"id": str(uuid.uuid4()), "nome": str(s), "prezzo": 0.0, "durata_minuti": 30, "operatore": ""}
+            for s in bp.get("servizi_principali", [])
+        ]
+
+    docs = await repo.list_sources(user["organization_id"], tipo="dati_struttura")
+    doc_info = docs[0] if docs else None
+
+    return {
+        "servizi": servizi_raw,
+        "orari": bp.get("orari", ""),
+        "stato": doc_info.get("stato", "indicizzata") if doc_info else "indicizzata",
+        "is_active": doc_info.get("is_active", True) if doc_info else True,
+        "updated_at": doc_info.get("updated_at") if doc_info else None,
+    }
+
+
+@app.put("/api/conoscenza/dati-struttura")
+async def salva_dati_struttura(data: DatiStrutturaInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
+    repo = get_repo(request)
+    blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
+
+    servizi_dicts = []
+    for s in data.servizi:
+        s_dict = s.model_dump()
+        if not s_dict.get("id"):
+            s_dict["id"] = str(uuid.uuid4())
+        servizi_dicts.append(s_dict)
+
+    from src.core.documenti.dati_struttura import indicizza_dati_struttura
+    res = await indicizza_dati_struttura(
+        repo,
+        user["organization_id"],
+        orari=data.orari,
+        servizi_dicts=servizi_dicts,
+    )
+
+    return {
+        "detail": "Dati struttura e listino servizi aggiornati e indicizzati.",
+        "servizi": servizi_dicts,
+        "orari": data.orari,
+        "id": res["doc_id"],
+    }
+
+
+# ── Conoscenza: Rilevamento Conflitti e Riepilogo ─────────────
+
+@app.get("/api/conoscenza/conflitti")
+async def verifica_conflitti_api(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    repo = get_repo(request)
+    bp = await repo.get_org_business_profile(user["organization_id"]) or {}
+    servizi_strutturati = bp.get("servizi_strutturati") or []
+    all_chunks = await repo.list_all_active_chunks(user["organization_id"])
+    conflitti = rileva_conflitti_prezzo(servizi_strutturati, all_chunks)
+    return {"conflitti": conflitti, "totale": len(conflitti)}
+
+
+@app.get("/api/conoscenza/summary")
+async def knowledge_summary(request: Request, user: dict = Depends(require_ruolo("owner", "manager", "staff"))):
+    repo = get_repo(request)
+    org_id = user["organization_id"]
+    tutti = await repo.list_sources(org_id)
+
+    def _stats_tipo(tipo_val: str):
+        items = [d for d in tutti if d.get("tipo") == tipo_val or (tipo_val == "documento" and d.get("tipo") == "upload")]
+        totale = len(items)
+        attive = sum(1 for d in items if d.get("is_active", True))
+        indicizzate = sum(1 for d in items if d.get("stato") == "indicizzata" and d.get("is_active", True))
+        errori = sum(1 for d in items if d.get("stato") == "errore")
+        ultimi = [d.get("updated_at") or d.get("caricato_il") for d in items if d.get("updated_at") or d.get("caricato_il")]
+        ultimo_aggiornamento = max(ultimi).isoformat() if ultimi else None
+        return {
+            "totale": totale,
+            "attive": attive,
+            "indicizzate": indicizzate,
+            "errori": errori,
+            "ultimo_aggiornamento": ultimo_aggiornamento,
+        }
+
+    bp = await repo.get_org_business_profile(org_id) or {}
+    servizi_strutturati = bp.get("servizi_strutturati") or []
+    all_chunks = await repo.list_all_active_chunks(org_id)
+    conflitti = rileva_conflitti_prezzo(servizi_strutturati, all_chunks)
+
+    return {
+        "faq": _stats_tipo("faq"),
+        "documenti": _stats_tipo("documento"),
+        "web": _stats_tipo("web"),
+        "dati_struttura": _stats_tipo("dati_struttura"),
+        "conflitti_totali": len(conflitti),
+        "chunk_indicizzati": await repo.count_chunks(org_id),
+    }
+
+
+# ── Endpoint Documenti Legacy & Upload File ───────────────────
+
 @app.post("/api/documenti/carica")
 async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: dict = Depends(require_ruolo("owner", "manager"))):
     if not doc.testo.strip():
@@ -1585,18 +1873,16 @@ async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: di
     if not chunks:
         raise HTTPException(status_code=400, detail="Testo senza contenuto indicizzabile.")
 
-    record = await repo.create_document(user["organization_id"], doc.nome, tipo="upload", fonte="dashboard")
+    record = await repo.create_document(user["organization_id"], doc.nome, tipo="upload", fonte="dashboard", is_active=True, stato="indicizzata")
     embeds = vettorizza(chunks, tipo="passage")
     for i, (chunk, emb) in enumerate(zip(chunks, embeds)):
         await repo.add_chunk(
             user["organization_id"], record["id"], i, chunk, emb,
             {"fonte": doc.nome, "tipo": "upload", "document_id": str(record["id"])},
         )
-    # Nuova knowledge base -> le risposte FAQ in cache potrebbero essere
-    # superate (prezzi/orari cambiati): invalidazione (task 12).
     try:
         await repo.faq_cache_invalidate(user["organization_id"])
-    except Exception as exc:  # pragma: no cover - la cache non deve rompere l'upload
+    except Exception as exc:
         logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
     return {"detail": f"Indicizzati {len(chunks)} chunk da '{doc.nome}'.", "indicizzati": len(chunks), "id": str(record["id"])}
 
@@ -1604,8 +1890,6 @@ async def carica_documento(doc: CaricaDocumentoInput, request: Request, user: di
 @app.post("/api/documenti/carica-file")
 async def carica_file_documento(request: Request, file: UploadFile = File(...), user: dict = Depends(require_ruolo("owner", "manager"))):
     nome = file.filename or "documento"
-    # Check piano PRIMA di leggere/estrarre il file: bloccare dopo il
-    # parsing lascerebbe al tenant il costo di memoria/CPU dell'upload.
     repo = get_repo(request)
     blocco = await _piano_blocca_feature(repo, user.get("organization_id"), "rag")
     if blocco:
@@ -1617,14 +1901,21 @@ async def carica_file_documento(request: Request, file: UploadFile = File(...), 
         raise HTTPException(status_code=413, detail="Il file supera il limite di 20 MB.")
     try:
         testo = estrai_testo(contenuto, nome, file.content_type or "")
+        chunks = chunk_testo(testo)
+        if not chunks:
+            raise ValueError("Nessun testo indicizzabile estratto dal file.")
     except ValueError as exc:
+        # Salva record in stato errore per visibilità immediata in UI
+        try:
+            await repo.create_document(
+                user["organization_id"], nome, tipo="documento", fonte=nome,
+                is_active=False, stato="errore", errore=str(exc)
+            )
+        except Exception as db_err:
+            logger.warning("Errore salvataggio fallimento file: %s", db_err)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    chunks = chunk_testo(testo)
-    if not chunks:
-        raise HTTPException(status_code=400, detail="Nessun testo indicizzabile estratto dal file.")
-
-    record = await repo.create_document(user["organization_id"], nome, tipo="documento", fonte=nome)
+    record = await repo.create_document(user["organization_id"], nome, tipo="documento", fonte=nome, is_active=True, stato="indicizzata")
     embeds = vettorizza(chunks, tipo="passage")
     for i, (chunk, emb) in enumerate(zip(chunks, embeds)):
         await repo.add_chunk(
@@ -1633,7 +1924,7 @@ async def carica_file_documento(request: Request, file: UploadFile = File(...), 
         )
     try:
         await repo.faq_cache_invalidate(user["organization_id"])
-    except Exception as exc:  # pragma: no cover - la cache non deve rompere l'upload
+    except Exception as exc:
         logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
     return {"detail": f"Indicizzati {len(chunks)} chunk da '{nome}'.", "indicizzati": len(chunks), "nome": nome, "id": str(record["id"])}
 
@@ -1647,7 +1938,7 @@ async def elimina_documento_api(documento_id: str, request: Request, user: dict 
     await _audit(request, user, "documento_eliminato", target_table="documents", details={"documento_id": documento_id, "chunk_eliminati": eliminati})
     try:
         await repo.faq_cache_invalidate(user["organization_id"])
-    except Exception as exc:  # pragma: no cover - la cache non deve rompere l'eliminazione
+    except Exception as exc:
         logger.warning("faq_cache invalidation failed org=%s: %s", user["organization_id"], exc)
     return {"detail": "Documento rimosso dalla knowledge base.", "chunk_eliminati": eliminati}
 

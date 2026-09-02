@@ -135,9 +135,28 @@ def build_business_profile(payload: OnboardingProfileInput) -> ProfiloAttivita:
 
 
 async def get_profile(organization_id: str, repo) -> dict | None:
-    """Profilo onboarding dell'org, oppure None se mai salvato.
+    """Profilo onboarding dell'org, oppure fallback su business_profile se mai salvato.
     Org-scoped: il chiamante passa SEMPRE l'organization_id dell'utente."""
-    return await repo.get_onboarding_profile(organization_id)
+    prof = await repo.get_onboarding_profile(organization_id)
+    bp = await repo.get_org_business_profile(organization_id) or {}
+    if not prof:
+        if bp:
+            return {
+                "organization_id": str(organization_id),
+                "verticale": bp.get("verticale") or "ristorante",
+                "nome_attivita": bp.get("nome") or bp.get("nome_attivita") or "",
+                "orari": bp.get("orari") or "",
+                "tono": bp.get("tono") or "professionale_caloroso",
+                "descrizione": bp.get("descrizione") or "",
+                "servizi": bp.get("servizi_principali") or [],
+                "regole_escalation": bp.get("note_speciali") or [],
+                "lingue_supportate": bp.get("lingue_supportate") or ["it"],
+                "lingua_default": bp.get("lingua_default") or "it",
+            }
+        return None
+    if bp.get("orari"):
+        prof["orari"] = bp["orari"]
+    return prof
 
 
 async def save_profile(

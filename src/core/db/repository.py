@@ -407,24 +407,96 @@ class CoreRepository(TenantScopedRepository):
                 result["capienze_orarie"] = json.loads(result["capienze_orarie"])
             return result
 
-    # ── Documents ────────────────────────────────────────────
+    # ── Documents & Knowledge Base ───────────────────────────
 
     async def create_document(self, organization_id, nome, tipo="upload",
-                               fonte="", caricato_il=None):
+                               fonte="", caricato_il=None, is_active=True,
+                               stato="indicizzata", errore="", metadata=None):
         async with self.pool.acquire() as conn:
-            if caricato_il is None:
-                row = await conn.fetchrow("""
-                    INSERT INTO documents (id, organization_id, nome, tipo, fonte)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING *
-                """, uuid.uuid4(), organization_id, nome, tipo, fonte)
-            else:
-                row = await conn.fetchrow("""
-                    INSERT INTO documents (id, organization_id, nome, tipo, fonte, caricato_il)
-                    VALUES ($1, $2, $3, $4, $5, $6)
-                    RETURNING *
-                """, uuid.uuid4(), organization_id, nome, tipo, fonte, caricato_il)
-            return dict(row)
+            row = await conn.fetchrow("""
+                INSERT INTO documents (
+                    id, organization_id, nome, tipo, fonte,
+                    is_active, stato, errore, metadata,
+                    caricato_il, updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, COALESCE($10, NOW()), NOW())
+                RETURNING *
+            """, uuid.uuid4(), organization_id, nome, tipo, fonte,
+            is_active, stato, errore, json.dumps(metadata or {}), caricato_il)
+            result = dict(row)
+            if isinstance(result.get("metadata"), str):
+                result["metadata"] = json.loads(result["metadata"])
+            return result
+
+    async def get_document(self, organization_id, document_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                SELECT * FROM documents
+                WHERE id = $1 AND organization_id = $2
+            """, document_id, organization_id)
+            if not row:
+                return None
+            res = dict(row)
+            if isinstance(res.get("metadata"), str):
+                res["metadata"] = json.loads(res["metadata"])
+            return res
+
+    async def update_document(self, organization_id, document_id, **fields):
+        if not fields:
+            return await self.get_document(organization_id, document_id)
+
+        set_clauses = ["updated_at = NOW()"]
+        vals = [document_id, organization_id]
+        idx = 3
+
+        for col in ("nome", "tipo", "fonte", "is_active", "stato", "errore"):
+            if col in fields:
+                set_clauses.append(f"{col} = ${idx}")
+                vals.append(fields[col])
+                idx += 1
+
+        if "metadata" in fields:
+            set_clauses.append(f"metadata = ${idx}::jsonb")
+            vals.append(json.dumps(fields["metadata"]))
+            idx += 1
+
+        sql = f"""
+            UPDATE documents
+            SET {', '.join(set_clauses)}
+            WHERE id = $1 AND organization_id = $2
+            RETURNING *
+        """
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(sql, *vals)
+            if not row:
+                return None
+            res = dict(row)
+            if isinstance(res.get("metadata"), str):
+                res["metadata"] = json.loads(res["metadata"])
+            return res
+
+    async def toggle_document_active(self, organization_id, document_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE documents
+                SET is_active = NOT is_active, updated_at = NOW()
+                WHERE id = $1 AND organization_id = $2
+                RETURNING *
+            """, document_id, organization_id)
+            if not row:
+                return None
+            res = dict(row)
+            if isinstance(res.get("metadata"), str):
+                res["metadata"] = json.loads(res["metadata"])
+            return res
+
+    async def delete_document_chunks(self, organization_id, document_id):
+        async with self.pool.acquire() as conn:
+            res = await conn.execute("""
+                DELETE FROM document_chunks
+                WHERE document_id = $1 AND organization_id = $2
+            """, document_id, organization_id)
+            return int(res.split()[-1]) if res else 0
 
     async def add_chunk(self, organization_id, document_id, chunk_index,
                          content, embedding, metadata=None):
@@ -443,19 +515,21 @@ class CoreRepository(TenantScopedRepository):
                 result["metadata"] = json.loads(result["metadata"])
             return result
 
-    async def search_similar(self, organization_id, embedding, k=5):
+    async def search_similar(self, organization_id, embedding, k=5, only_active=True):
         async with self.pool.acquire() as conn:
             vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
-            rows = await conn.fetch("""
+            active_filter = "AND d.is_active = TRUE AND d.stato = 'indicizzata'" if only_active else ""
+            sql = f"""
                 SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
-                       dc.document_id, d.nome as document_name,
+                       dc.document_id, d.nome as document_name, d.tipo, d.stato, d.is_active,
                        dc.embedding <=> $2::vector AS distance
                 FROM document_chunks dc
                 JOIN documents d ON d.id = dc.document_id
-                WHERE dc.organization_id = $1
+                WHERE dc.organization_id = $1 {active_filter}
                 ORDER BY dc.embedding <=> $2::vector
                 LIMIT $3
-            """, organization_id, vec_str, k)
+            """
+            rows = await conn.fetch(sql, organization_id, vec_str, k)
             results = [dict(r) for r in rows]
             for r in results:
                 if isinstance(r.get("metadata"), str):
@@ -507,18 +581,51 @@ class CoreRepository(TenantScopedRepository):
             )
             return row["n"]
 
-    async def list_sources(self, organization_id):
+    async def list_sources(self, organization_id, tipo=None):
+        async with self.pool.acquire() as conn:
+            if tipo:
+                rows = await conn.fetch("""
+                    SELECT d.id, d.nome, d.tipo, d.fonte, d.is_active, d.stato, d.errore,
+                           d.metadata, d.caricato_il, d.updated_at,
+                           COUNT(dc.id) AS chunk
+                    FROM documents d
+                    LEFT JOIN document_chunks dc ON dc.document_id = d.id
+                    WHERE d.organization_id = $1 AND d.tipo = $2
+                    GROUP BY d.id
+                    ORDER BY d.caricato_il DESC, d.nome
+                """, organization_id, tipo)
+            else:
+                rows = await conn.fetch("""
+                    SELECT d.id, d.nome, d.tipo, d.fonte, d.is_active, d.stato, d.errore,
+                           d.metadata, d.caricato_il, d.updated_at,
+                           COUNT(dc.id) AS chunk
+                    FROM documents d
+                    LEFT JOIN document_chunks dc ON dc.document_id = d.id
+                    WHERE d.organization_id = $1
+                    GROUP BY d.id
+                    ORDER BY d.caricato_il DESC, d.nome
+                """, organization_id)
+            results = [dict(r) for r in rows]
+            for r in results:
+                if isinstance(r.get("metadata"), str):
+                    r["metadata"] = json.loads(r["metadata"])
+            return results
+
+    async def list_all_active_chunks(self, organization_id):
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT d.id, d.nome, d.tipo, d.fonte, d.caricato_il,
-                       COUNT(dc.id) AS chunk
-                FROM documents d
-                LEFT JOIN document_chunks dc ON dc.document_id = d.id
-                WHERE d.organization_id = $1
-                GROUP BY d.id
-                ORDER BY d.caricato_il DESC, d.nome
+                SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
+                       dc.document_id, d.nome as document_name, d.tipo, d.stato, d.is_active
+                FROM document_chunks dc
+                JOIN documents d ON d.id = dc.document_id
+                WHERE dc.organization_id = $1 AND d.is_active = TRUE
+                ORDER BY d.caricato_il DESC
             """, organization_id)
-            return [dict(r) for r in rows]
+            results = [dict(r) for r in rows]
+            for r in results:
+                if isinstance(r.get("metadata"), str):
+                    r["metadata"] = json.loads(r["metadata"])
+            return results
 
     async def delete_document(self, organization_id, document_id):
         async with self.pool.acquire() as conn:
@@ -611,6 +718,27 @@ class CoreRepository(TenantScopedRepository):
                     json.dumps(profilo),
                 )
             return self._json_fields_onboarding(dict(row))
+
+    async def get_org_business_profile(self, organization_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT business_profile FROM organizations WHERE id = $1", organization_id)
+            if not row or not row["business_profile"]:
+                return {}
+            bp = row["business_profile"]
+            if isinstance(bp, str):
+                try:
+                    bp = json.loads(bp)
+                except Exception:
+                    bp = {}
+            return bp
+
+    async def update_org_business_profile(self, organization_id, business_profile: dict):
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE organizations SET business_profile = $2::jsonb WHERE id = $1",
+                organization_id,
+                json.dumps(business_profile),
+            )
 
     # ── Email configs ─────────────────────────────────────────
 

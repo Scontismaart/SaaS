@@ -237,6 +237,16 @@ class TestAuditExtended:
             return {"id": str(auth_user_id), "email": email}
 
         monkeypatch.setattr(routes, "_supabase_update_user", _fake_update_user)
+
+        async def _fake_get_user(token):
+            return {"id": str(auth_user_id), "email": email}
+
+        async def _fake_login(user_email, password):
+            return {"access_token": "ok"}
+
+        monkeypatch.setattr(routes, "_supabase_get_user", _fake_get_user)
+        monkeypatch.setattr(routes.bff, "login", _fake_login)
+
         headers = {
             "Cookie": "wa_at=test-session-jwt; wa_csrf=csrf-test-token",
             "X-CSRF-Token": "csrf-test-token",
@@ -246,7 +256,7 @@ class TestAuditExtended:
         # 1. Cambio password
         res_pwd = await client.post(
             "/api/auth/password",
-            json={"password": "SuperNuovaPass123!"},
+            json={"password": "SuperNuovaPass123!", "current_password": "CurrentPass123!"},
             headers=headers,
         )
         assert res_pwd.status_code == 200

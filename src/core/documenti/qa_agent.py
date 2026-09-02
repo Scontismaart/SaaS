@@ -1,6 +1,9 @@
+import json
 import logging
 from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, crea_llm, route_llm
 from src.core.documenti.embeddings import vettorizza
+from src.core.documenti.priorita import GERARCHIA_REGOLA_PROMPT, formatta_chunk_con_priorita, get_priorita_num
+from src.core.verticals import get_vertical_strategy
 
 logger = logging.getLogger(__name__)
 
@@ -13,37 +16,71 @@ async def rispondi(
     billing: dict | None = None,
 ) -> dict:
     q_emb = vettorizza([domanda], tipo="query")[0]
-    risultati = await repo.search_similar(organization_id, q_emb, k)
+    risultati = await repo.search_similar(organization_id, q_emb, k, only_active=True)
 
     if not risultati:
         return {
-            "risposta": "Non ho trovato documenti rilevanti per rispondere alla domanda.",
+            "risposta": "Non ho trovato documenti o fonti rilevanti nella knowledge base per rispondere alla domanda.",
             "fonti": [],
         }
 
-    contesto = "\n\n".join(f"-- Documento --\n{r['content']}" for r in risultati)
+    # Ordina per priorità di fonte poi per distanza semantica
+    def _sort_key(r):
+        meta = r.get("metadata") or {}
+        tipo = meta.get("tipo") or r.get("tipo") or "documento"
+        return (get_priorita_num(tipo), r.get("distance", 0.0))
+
+    risultati_ordinati = sorted(risultati, key=_sort_key)
+    contesto = "\n\n".join(formatta_chunk_con_priorita(r) for r in risultati_ordinati)
 
     fonti_dict = {}
-    for r in risultati:
-        nome = (r.get("document_name") or (r.get("metadata") or {}).get("fonte") or "documento").strip()
+    for r in risultati_ordinati:
+        meta = r.get("metadata") or {}
+        tipo = meta.get("tipo") or r.get("tipo") or "documento"
+        nome = (r.get("document_name") or meta.get("fonte") or "documento").strip()
         if not nome:
             nome = "documento"
-        if nome not in fonti_dict or r["distance"] < fonti_dict[nome]["score"]:
-            fonti_dict[nome] = {"documento": nome, "score": round(r["distance"], 4)}
-    fonti = sorted(fonti_dict.values(), key=lambda f: f["score"])
+        score = round(r["distance"], 4)
+        stato = r.get("stato") or meta.get("stato") or "indicizzata"
+        is_active = r.get("is_active", True)
+        if nome not in fonti_dict or score < fonti_dict[nome]["score"]:
+            fonti_dict[nome] = {
+                "documento": nome,
+                "score": score,
+                "tipo": tipo,
+                "stato": stato,
+                "is_active": is_active,
+                "priorita": get_priorita_num(tipo),
+            }
+    fonti = sorted(fonti_dict.values(), key=lambda f: (f["priorita"], f["score"]))
+
+    # Recupera il profilo e il verticale reale dell'organizzazione per il tono corretto
+    verticale = None
+    nome_attivita = "l'attività"
+    try:
+        raw_bp = await repo.get_org_business_profile(organization_id)
+        if isinstance(raw_bp, str):
+            raw_bp = json.loads(raw_bp)
+        if isinstance(raw_bp, dict):
+            verticale = raw_bp.get("verticale")
+            nome_attivita = raw_bp.get("nome") or nome_attivita
+    except Exception as e:
+        logger.warning("[qa_agent] Recupero business profile fallito per org %s: %s", organization_id, e)
+
+    strategy = get_vertical_strategy(verticale, organization_id=str(organization_id))
 
     prompt = (
-        "Sei l'assistente knowledge base di un ristorante. Il tuo compito e' estrarre "
-        "informazioni operative da menu, lista allergeni, carta vini e documenti simili, "
-        "basandoti esclusivamente sui documenti forniti qui sotto.\n\n"
+        f"Sei l'assistente virtuale e knowledge base di \"{nome_attivita}\", {strategy.label}.\n"
+        "Il tuo compito è rispondere con precisione alle domande basandoti esclusivamente "
+        "sulla conoscenza fornita di seguito (Dati struttura, FAQ, Documenti e Pagine web).\n\n"
+        f"{GERARCHIA_REGOLA_PROMPT}\n\n"
         "Linee guida:\n"
         "- Rispondi nella stessa lingua della domanda\n"
-        "- Basati SOLO sui documenti forniti di seguito\n"
-        "- Se i documenti non contengono la risposta, dillo chiaramente\n"
-        "- Per allergie o intolleranze, fornisci solo informazioni presenti nei documenti e invita sempre a confermare con lo staff\n"
-        "- Organizza la risposta in modo chiaro e leggibile\n"
-        "- Alla fine, elenca le fonti che hai usato\n\n"
-        f"Documenti disponibili:\n{contesto}\n\n"
+        "- Basati RIGOROSAMENTE sulle fonti fornite qui sotto\n"
+        "- Se le fonti non contengono l'informazione richiesta, dillo chiaramente e con gentilezza senza inventare nulla\n"
+        "- Se riscontri informazioni o prezzi in contrasto, applica sempre la fonte a priorità più alta (Dati struttura > FAQ > Documenti > Pagine web)\n"
+        "- Organizza la risposta in modo chiaro, sintetico ed elegante\n\n"
+        f"Conoscenza disponibile:\n{contesto}\n\n"
         f"Domanda: {domanda}"
     )
 

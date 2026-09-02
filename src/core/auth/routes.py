@@ -288,6 +288,7 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 class PasswordChange(BaseModel):
     password: str
+    current_password: str
 
 
 class EmailChange(BaseModel):
@@ -312,6 +313,27 @@ def _require_access_token(request: Request) -> str:
     if not token:
         raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
     return token
+
+
+async def _supabase_get_user(token: str) -> dict:
+    import httpx
+
+    client = await bff._client()
+    try:
+        resp = await client.get(
+            f"{bff._supabase_url()}/auth/v1/user",
+            headers={
+                "apikey": bff._anon_key(),
+                "Authorization": f"Bearer {token}",
+            },
+        )
+    except httpx.HTTPError:
+        raise HTTPException(502, "Servizio autenticazione non raggiungibile")
+    if resp.status_code == 401:
+        raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
+    if resp.status_code >= 400:
+        raise HTTPException(502, "Impossibile recuperare i dati dell'account")
+    return resp.json()
 
 
 async def _supabase_update_user(token: str, payload: dict) -> dict:
@@ -356,7 +378,20 @@ async def change_password(body: PasswordChange, request: Request):
             f"La password deve avere almeno {_PASSWORD_MIN} caratteri "
             "e includere almeno un carattere speciale (es. ! @ # $ %)",
         )
+    if not body.current_password or not body.current_password.strip():
+        raise HTTPException(400, "Inserisci la password attuale per confermare la modifica")
+
     token = _require_access_token(request)
+
+    # Re-autenticazione: verifichiamo crittograficamente la password attuale su Supabase
+    user_info = await _supabase_get_user(token)
+    user_email = user_info.get("email") if isinstance(user_info, dict) else None
+    if user_email:
+        try:
+            await bff.login(user_email, body.current_password)
+        except Exception:
+            raise HTTPException(403, "La password attuale non è corretta")
+
     res_user = await _supabase_update_user(token, {"password": pwd})
     repo = getattr(request.app.state, "repo", None)
     auth_user_id = res_user.get("id") if isinstance(res_user, dict) else None
@@ -379,6 +414,48 @@ async def change_password(body: PasswordChange, request: Request):
         except Exception:
             pass
     return {"ok": True, "message": "Password aggiornata"}
+
+
+@router.post("/send-password-reset")
+async def send_password_reset(request: Request):
+    ip = _client_ip(request)
+    await _check_account_throttle(ip)
+    await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
+
+    token = _require_access_token(request)
+    user = await _supabase_get_user(token)
+    email = user.get("email") if isinstance(user, dict) else None
+    if not email:
+        raise HTTPException(400, "Email dell'account non trovata")
+
+    import httpx
+    client = await bff._client()
+    try:
+        resp = await client.post(
+            f"{bff._supabase_url()}/auth/v1/recover",
+            json={"email": email},
+            headers={"apikey": bff._anon_key(), "Content-Type": "application/json"},
+        )
+    except httpx.HTTPError:
+        raise HTTPException(502, "Servizio autenticazione non raggiungibile")
+    if resp.status_code == 429:
+        raise HTTPException(429, "Troppe richieste di reset. Riprova tra qualche minuto")
+    if resp.status_code >= 400:
+        raise HTTPException(502, "Impossibile inviare il link di reset, riprova più tardi")
+
+    parts = email.split("@")
+    if len(parts) == 2:
+        uname = parts[0]
+        masked_user = uname[:2] + "•••" if len(uname) > 2 else uname + "•••"
+        email_masked = f"{masked_user}@{parts[1]}"
+    else:
+        email_masked = email
+
+    return {
+        "ok": True,
+        "email_masked": email_masked,
+        "message": f"Link di reset inviato a {email_masked}",
+    }
 
 
 @router.post("/email")

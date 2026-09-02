@@ -67,12 +67,24 @@ async def recupera_contesto_documenti(
     if not risultati:
         return ContestoDocumenti()
 
+    from src.core.documenti.priorita import get_priorita_num
+
+    def _priorita_sort_key(item):
+        meta = item.get("metadata") or {}
+        tipo = meta.get("tipo") or item.get("tipo") or ""
+        # 1: dati_struttura, 2: faq, 3: documento/upload, 4: web
+        p_num = get_priorita_num(tipo)
+        dist = item.get("distance", 0.0)
+        return (p_num, dist)
+
+    risultati_ordinati = sorted(risultati, key=_priorita_sort_key)
+
     blocchi = []
-    for r in risultati:
+    for r in risultati_ordinati:
         nome = (
             r.get("document_name")
             or (r.get("metadata") or {}).get("fonte")
             or "documento"
         )
         blocchi.append(f"-- {nome} --\n{r['content']}")
-    return ContestoDocumenti(testo="\n\n".join(blocchi), chunks=risultati)
+    return ContestoDocumenti(testo="\n\n".join(blocchi), chunks=risultati_ordinati)

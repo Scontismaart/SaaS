@@ -323,13 +323,54 @@ document.getElementById("accesso-btn")?.addEventListener("click", () => {
    ============================================================ */
 
 const ACCOUNT_PLANS = [
-  { slug: "starter", nome: "Essenziale", prezzo: "€29/mese", limite: "300 conversazioni/mese" },
-  { slug: "pro", nome: "Crescita", prezzo: "€69/mese", limite: "1.200 conversazioni/mese" },
-  { slug: "business", nome: "Scala", prezzo: "€149/mese", limite: "5.000 conversazioni/mese" },
+  {
+    slug: "starter",
+    nome: "Essenziale",
+    prezzo: "€29",
+    cadenza: "/mese",
+    limite: "300 conversazioni / mese",
+    features: [
+      "1 numero WhatsApp Business",
+      "Knowledge Base fino a 20 parti",
+      "Gestione orari e listino servizi",
+      "Supporto standard"
+    ],
+    popolare: false,
+  },
+  {
+    slug: "pro",
+    nome: "Crescita",
+    prezzo: "€69",
+    cadenza: "/mese",
+    limite: "1.200 conversazioni / mese",
+    features: [
+      "WhatsApp + Instagram Direct",
+      "Knowledge Base illimitata (RAG Priorità 1)",
+      "Sincronizzazione Google Calendar",
+      "Escalation a operatore umano",
+      "Supporto prioritario"
+    ],
+    popolare: true,
+  },
+  {
+    slug: "business",
+    nome: "Scala",
+    prezzo: "€149",
+    cadenza: "/mese",
+    limite: "5.000 conversazioni / mese",
+    features: [
+      "Tutti i canali inclusi senza limiti",
+      "Multi-operatore dedicato",
+      "Onboarding personalizzato e SLA 99.9%",
+      "Webhook e integrazioni API custom"
+    ],
+    popolare: false,
+  },
 ];
 
 function accountStatoPill(stato) {
   const pill = document.getElementById("account-stato");
+  if (!pill) return;
   if (stato === "active") { pill.textContent = "Attivo"; pill.className = "account-stato-pill"; }
   else if (stato === "trialing") { pill.textContent = "Prova gratuita"; pill.className = "account-stato-pill stato-trial"; }
   else if (stato === "canceled" || stato === "past_due") { pill.textContent = "In pausa"; pill.className = "account-stato-pill stato-pausa"; }
@@ -346,8 +387,8 @@ async function caricaAccount() {
     accountStatoPill(stato);
 
     const corrente = ACCOUNT_PLANS.find((p) => p.slug === sub.plan);
-    const planName = corrente ? corrente.nome : "—";
-    const planPrice = corrente ? corrente.prezzo : "";
+    const planName = corrente ? corrente.nome : "Nessun piano";
+    const planPrice = corrente ? `${corrente.prezzo}${corrente.cadenza || "/mese"}` : "";
 
     const nameEl = document.getElementById("account-plan-nome");
     const priceEl = document.getElementById("account-plan-prezzo");
@@ -359,37 +400,63 @@ async function caricaAccount() {
 
     const rinnovo = document.getElementById("account-rinnovo");
     const dataIt = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("it-IT"); };
-    if (sub.trial_end) rinnovo.textContent = `Prova gratuita fino al ${dataIt(sub.trial_end)}.`;
-    else if (stato === "canceled") rinnovo.textContent = "Abbonamento cancellato: il servizio resta attivo fino a fine periodo.";
-    else if (sub.current_period_end) rinnovo.textContent = `Prossimo rinnovo: ${dataIt(sub.current_period_end)}.`;
-    else rinnovo.textContent = "Nessun rinnovo programmato.";
+    if (rinnovo) {
+      if (sub.trial_end) rinnovo.textContent = `Prova gratuita attiva fino al ${dataIt(sub.trial_end)}.`;
+      else if (stato === "canceled") rinnovo.textContent = "Abbonamento disattivato: il servizio resta attivo fino al termine del periodo pagato.";
+      else if (sub.current_period_end) rinnovo.textContent = `Prossimo rinnovo programmato: ${dataIt(sub.current_period_end)}.`;
+      else rinnovo.textContent = "Nessun rinnovo programmato.";
+    }
 
     // Card cambio piano: quella attiva è evidenziata e non cliccabile.
     const wrap = document.getElementById("account-plans");
-    wrap.innerHTML = "";
-    ACCOUNT_PLANS.forEach((p) => {
-      const attuale = p.slug === sub.plan;
-      const card = document.createElement("div");
-      card.className = "dash-card account-plan-card" + (attuale ? " account-plan-attuale" : "");
-      card.innerHTML =
-        '<div class="dash-card-header"><span class="dash-card-title">' + p.nome + "</span>" +
-        (attuale ? '<span class="account-stato-pill">Attivo</span>' : "") +
-        "</div>" +
-        '<span class="account-plan-prezzo">' + p.prezzo + "</span>" +
-        '<p class="settings-help">' + p.limite + "</p>";
-      const actions = document.createElement("div");
-      actions.className = "settings-actions";
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = attuale ? "report-refresh" : "review-analyze";
-      btn.textContent = attuale ? "Piano attivo" : (stato === "canceled" ? "Riattiva " + p.nome : "Passa a " + p.nome);
-      if (!attuale) btn.addEventListener("click", () => cambiaPiano(p.slug));
-      else btn.disabled = true;
-      actions.appendChild(btn);
-      card.appendChild(actions);
-      wrap.appendChild(card);
-    });
-    status.hidden = true;
+    if (wrap) {
+      wrap.innerHTML = "";
+      ACCOUNT_PLANS.forEach((p) => {
+        const attuale = p.slug === sub.plan;
+        const card = document.createElement("div");
+        card.className = "account-plan-card" + (attuale ? " account-plan-attuale" : "") + (p.popolare ? " popolare" : "");
+
+        const popBadge = p.popolare ? '<span class="account-badge-popolare">Consigliato</span>' : "";
+        const statusBadge = attuale ? '<span class="account-stato-pill">Piano Attivo</span>' : "";
+
+        const featHtml = p.features.map(f => `
+          <li class="account-plan-feat-item">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="account-feat-check"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>${_sanitize(f)}</span>
+          </li>
+        `).join("");
+
+        card.innerHTML = `
+          ${popBadge}
+          <div class="dash-card-header" style="margin-bottom: 0;">
+            <span class="dash-card-title">${_sanitize(p.nome)}</span>
+            ${statusBadge}
+          </div>
+          <div class="account-plan-price-row">
+            <span class="account-plan-price-amount">${_sanitize(p.prezzo)}</span>
+            <span class="account-plan-price-period">${_sanitize(p.cadenza || "/mese")}</span>
+          </div>
+          <p class="account-plan-limit">${_sanitize(p.limite)}</p>
+          <ul class="account-plan-feat-list">${featHtml}</ul>
+        `;
+
+        const actions = document.createElement("div");
+        actions.className = "settings-actions";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = attuale ? "report-refresh" : (p.popolare ? "review-analyze" : "report-refresh");
+        btn.textContent = attuale ? "Piano in uso" : (stato === "canceled" ? "Riattiva " + p.nome : "Passa a " + p.nome);
+        if (!attuale) {
+          btn.addEventListener("click", () => cambiaPiano(p.slug));
+        } else {
+          btn.disabled = true;
+        }
+        actions.appendChild(btn);
+        card.appendChild(actions);
+        wrap.appendChild(card);
+      });
+    }
+    if (status) status.hidden = true;
   } catch (err) {
     console.error("Impossibile caricare l'abbonamento:", err);
     status.hidden = false;
@@ -617,8 +684,6 @@ function attivaCategoriaImpostazioni(cat) {
   // Carica i dati specifici della categoria attiva
   if (targetCat === "generale") {
     if (typeof caricaTimezone === "function") caricaTimezone();
-  } else if (targetCat === "profilo" || targetCat === "assistente-regole") {
-    if (typeof caricaProfiloImpostazioni === "function") caricaProfiloImpostazioni();
   } else if (["whatsapp", "instagram", "calendar", "webhook"].includes(targetCat)) {
     if (typeof caricaIntegrazioni === "function") caricaIntegrazioni();
   } else if (targetCat === "piano" || targetCat === "fatturazione") {
@@ -770,8 +835,10 @@ navItems.forEach((btn) => {
       renderTabellaPrenotazioniGiorno();
     }
     if (viewName === "documenti" || viewName === "conoscenza") {
-      aggiornaConteggio();
-      aggiornaDocumenti();
+      aggiornaConoscenzaCompleta();
+    }
+    if (viewName === "configurazione-ai") {
+      if (typeof caricaConfigurazioneAI === "function") caricaConfigurazioneAI();
     }
     if (viewName === "inbox") {
       avviaInboxPolling();
@@ -1205,10 +1272,15 @@ function securityStatus(el, testo, errore = false) {
 
 document.getElementById("security-password-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
+  const currentPwd = document.getElementById("security-password-current")?.value || "";
   const pwd = document.getElementById("security-password")?.value || "";
   const conferma = document.getElementById("security-password-confirm")?.value || "";
   const status = document.getElementById("security-password-status");
   const submit = e.target.querySelector(".security-submit");
+  if (!currentPwd) {
+    securityStatus(status, "Inserisci la password attuale", true);
+    return;
+  }
   if (pwd.length < SECURITY_PASSWORD_MIN || !/[^A-Za-z0-9]/.test(pwd)) {
     securityStatus(status, `Min ${SECURITY_PASSWORD_MIN} caratteri e almeno un simbolo (es. ! @ #)`, true);
     return;
@@ -1218,12 +1290,12 @@ document.getElementById("security-password-form")?.addEventListener("submit", as
     return;
   }
   submit.disabled = true;
-  securityStatus(status, "Aggiornoâ€¦");
+  securityStatus(status, "Aggiorno…");
   try {
     const res = await apiFetch(`${API_BASE}/api/auth/password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pwd }),
+      body: JSON.stringify({ password: pwd, current_password: currentPwd }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -1231,12 +1303,38 @@ document.getElementById("security-password-form")?.addEventListener("submit", as
       return;
     }
     securityStatus(status, data.message || "Password aggiornata");
+    const currentInput = document.getElementById("security-password-current");
+    if (currentInput) currentInput.value = "";
     document.getElementById("security-password").value = "";
     document.getElementById("security-password-confirm").value = "";
   } catch {
     securityStatus(status, "Errore di connessione", true);
   } finally {
     submit.disabled = false;
+  }
+});
+
+document.getElementById("security-send-reset-btn")?.addEventListener("click", async () => {
+  const resetBtn = document.getElementById("security-send-reset-btn");
+  const resetStatus = document.getElementById("security-reset-email-status");
+  if (!resetStatus || !resetBtn) return;
+  resetBtn.disabled = true;
+  securityStatus(resetStatus, "Invio link sicuro in corso…");
+  try {
+    const res = await apiFetch(`${API_BASE}/api/auth/send-password-reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      securityStatus(resetStatus, data.detail || "Impossibile inviare il link di reset", true);
+      return;
+    }
+    securityStatus(resetStatus, data.message || "Link inviato con successo.");
+  } catch {
+    securityStatus(resetStatus, "Errore di connessione", true);
+  } finally {
+    resetBtn.disabled = false;
   }
 });
 
@@ -1250,7 +1348,7 @@ document.getElementById("security-email-form")?.addEventListener("submit", async
     return;
   }
   submit.disabled = true;
-  securityStatus(status, "Aggiornoâ€¦");
+  securityStatus(status, "Aggiorno…");
   try {
     const res = await apiFetch(`${API_BASE}/api/auth/email`, {
       method: "POST",
@@ -2234,9 +2332,9 @@ function _formatDataRecensione(iso) {
 
 function _fonteLabel(fonte) {
   const f = (fonte || "").toLowerCase();
-  if (f === "google") return { label: "Google Business", icon: "🌐", classe: "channel-google" };
-  if (f === "tripadvisor") return { label: "TripAdvisor", icon: "🦉", classe: "channel-tripadvisor" };
-  return { label: "Manuale", icon: "✍️", classe: "channel-manuale" };
+  if (f === "google") return { label: "Google Business", icon: "G", classe: "channel-google" };
+  if (f === "tripadvisor") return { label: "TripAdvisor", icon: "TA", classe: "channel-tripadvisor" };
+  return { label: "Manuale", icon: "M", classe: "channel-manuale" };
 }
 
 function _stelleVisual(n) {
@@ -2486,7 +2584,7 @@ function renderStoricoRecensioni() {
         ICONS.chat,
         "Nessuna recensione registrata",
         "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale.",
-        "✍️ Incolla una recensione",
+        "Incolla una recensione",
         () => {
           reviewText?.focus();
           reviewText?.scrollIntoView({ behavior: "smooth" });
@@ -2569,9 +2667,9 @@ function renderStoricoRecensioni() {
           ${catBadge}
         </div>
         <div class="history-actions">
-          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">✓ Approva</button>` : ""}
-          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">🔍 Rivedi bozza</button>
-          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">📋 Copia testo</button>` : ""}
+          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">Approva</button>` : ""}
+          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">Rivedi bozza</button>
+          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">Copia testo</button>` : ""}
         </div>
       </div>
     `;
@@ -2607,7 +2705,9 @@ function aggiornaConteggiRecensioni() {
     : 0;
 
   if (reviewStatCount) reviewStatCount.textContent = `${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
-  if (reviewStatRating) reviewStatRating.textContent = `★ ${mediaStelle ? mediaStelle.toFixed(1) : "0.0"}`;
+  if (reviewStatRating) {
+    reviewStatRating.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> <span>${mediaStelle ? mediaStelle.toFixed(1) : "0.0"}</span>`;
+  }
 
   // Sidebar rating & sentiment
   if (sidebarRatingNum) sidebarRatingNum.textContent = mediaStelle ? mediaStelle.toFixed(1) : "--";
@@ -3451,230 +3551,920 @@ async function aggiornaRiepilogo(silent = false) {
 }
 
 /* ============================================================
-   DOCUMENTI
+   KNOWLEDGE BASE RISTRUTTURATA (4 CATEGORIE)
    ============================================================ */
 
-const docConteggio = document.getElementById("doc-conteggio");
+let kbActiveTab = "faq";
+
+// Navigazione Tab della Knowledge Base
+document.querySelectorAll(".kb-tab-btn[data-kb-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tabName = btn.dataset.kbTab;
+    impostaTabConoscenza(tabName);
+  });
+});
+
+function impostaTabConoscenza(tabName) {
+  kbActiveTab = tabName;
+  document.querySelectorAll(".kb-tab-btn[data-kb-tab]").forEach((b) => {
+    const active = b.dataset.kbTab === tabName;
+    b.classList.toggle("active", active);
+    b.setAttribute("aria-selected", String(active));
+  });
+
+  const panels = {
+    faq: document.getElementById("kb-panel-faq"),
+    documenti: document.getElementById("kb-panel-documenti"),
+    web: document.getElementById("kb-panel-web"),
+    "dati-struttura": document.getElementById("kb-panel-dati-struttura"),
+  };
+
+  Object.entries(panels).forEach(([key, panel]) => {
+    if (panel) panel.hidden = key !== tabName;
+  });
+
+  // Carica i dati specifici del tab
+  if (tabName === "faq") caricaFAQ();
+  else if (tabName === "documenti") caricaDocumenti();
+  else if (tabName === "web") caricaPagineWeb();
+  else if (tabName === "dati-struttura") caricaDatiStruttura();
+}
+
+function _formatDataOra(isoStr) {
+  if (!isoStr) return "N/D";
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return isoStr;
+  }
+}
+
+// ── Summary & Conflitti Aggregati ────────────────────────────
+
+async function caricaKBSummary() {
+  try {
+    const res = await apiFetch(`${API_BASE}/api/conoscenza/summary`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // Aggiorna contatori tab
+    const badgeFAQ = document.getElementById("kb-badge-faq");
+    const badgeDoc = document.getElementById("kb-badge-documenti");
+    const badgeWeb = document.getElementById("kb-badge-web");
+    const badgeDati = document.getElementById("kb-badge-dati-struttura");
+    if (badgeFAQ) badgeFAQ.textContent = data.faq?.totale || 0;
+    if (badgeDoc) badgeDoc.textContent = data.documenti?.totale || 0;
+    if (badgeWeb) badgeWeb.textContent = data.web?.totale || 0;
+    if (badgeDati) badgeDati.textContent = data.dati_struttura?.totale || 0;
+
+    // Aggiorna card statistiche
+    const statFAQ = document.getElementById("kb-stat-faq");
+    const statFAQMeta = document.getElementById("kb-stat-faq-meta");
+    if (statFAQ) statFAQ.textContent = `${data.faq?.attive || 0}/${data.faq?.totale || 0}`;
+    if (statFAQMeta) {
+      statFAQMeta.textContent = data.faq?.errori ? `${data.faq.errori} con errore` : "Tutte indicizzate";
+    }
+
+    const statDoc = document.getElementById("kb-stat-doc");
+    const statDocMeta = document.getElementById("kb-stat-doc-meta");
+    if (statDoc) statDoc.textContent = `${data.documenti?.attive || 0}/${data.documenti?.totale || 0}`;
+    if (statDocMeta) {
+      statDocMeta.textContent = data.documenti?.errori ? `${data.documenti.errori} con errore` : "Tutti indicizzati";
+    }
+
+    const statWeb = document.getElementById("kb-stat-web");
+    const statWebMeta = document.getElementById("kb-stat-web-meta");
+    if (statWeb) statWeb.textContent = `${data.web?.attive || 0}/${data.web?.totale || 0}`;
+    if (statWebMeta) {
+      statWebMeta.textContent = data.web?.errori ? `${data.web.errori} non raggiungibili` : "Tutte indicizzate";
+    }
+
+    const statDati = document.getElementById("kb-stat-dati");
+    if (statDati) statDati.textContent = `${data.dati_struttura?.totale || 0} configurati`;
+
+    // Verifica e visualizzazione banner conflitti
+    const bannerConflitti = document.getElementById("kb-conflitti-banner");
+    const dettagliConflitti = document.getElementById("kb-conflitti-dettagli");
+    if (data.conflitti_totali > 0) {
+      const confRes = await apiFetch(`${API_BASE}/api/conoscenza/conflitti`);
+      if (confRes.ok) {
+        const confData = await confRes.json();
+        if (confData.conflitti?.length && bannerConflitti && dettagliConflitti) {
+          dettagliConflitti.innerHTML = "";
+          confData.conflitti.forEach((c) => {
+            const item = document.createElement("div");
+            item.className = "kb-conflict-item";
+            item.textContent = `Servizio "${c.servizio}": prezzo ufficiale ${c.prezzo_ufficiale.toFixed(2)}€ vs ${c.prezzo_conflitto.toFixed(2)}€ menzionato in "${c.fonte_conflitto}"`;
+            dettagliConflitti.appendChild(item);
+          });
+          bannerConflitti.hidden = false;
+        }
+      }
+    } else if (bannerConflitti) {
+      bannerConflitti.hidden = true;
+    }
+  } catch (err) {
+    console.error("Errore recupero summary knowledge base:", err);
+  }
+}
+
+// ── Tab 1: FAQ Manager ───────────────────────────────────────
+
+const kbFAQList = document.getElementById("kb-faq-list");
+const kbFAQFormCard = document.getElementById("kb-faq-form-card");
+const kbFAQOpenFormBtn = document.getElementById("kb-faq-open-form-btn");
+const kbFAQCancelBtn = document.getElementById("kb-faq-cancel-btn");
+const kbFAQSaveBtn = document.getElementById("kb-faq-save-btn");
+const kbFAQDomanda = document.getElementById("kb-faq-domanda");
+const kbFAQRisposta = document.getElementById("kb-faq-risposta");
+const kbFAQEditId = document.getElementById("kb-faq-edit-id");
+const kbFAQFormStatus = document.getElementById("kb-faq-form-status");
+
+kbFAQOpenFormBtn?.addEventListener("click", () => {
+  if (!kbFAQFormCard) return;
+  kbFAQEditId.value = "";
+  kbFAQDomanda.value = "";
+  kbFAQRisposta.value = "";
+  kbFAQFormStatus.textContent = "";
+  kbFAQFormCard.style.display = "block";
+  kbFAQDomanda.focus();
+});
+
+kbFAQCancelBtn?.addEventListener("click", () => {
+  if (kbFAQFormCard) kbFAQFormCard.style.display = "none";
+});
+
+kbFAQSaveBtn?.addEventListener("click", async () => {
+  const domanda = kbFAQDomanda.value.trim();
+  const risposta = kbFAQRisposta.value.trim();
+  const editId = kbFAQEditId.value.trim();
+
+  if (!domanda || !risposta) {
+    kbFAQFormStatus.textContent = "Inserisci sia la domanda che la risposta.";
+    kbFAQFormStatus.style.color = "var(--red)";
+    return;
+  }
+
+  kbFAQSaveBtn.disabled = true;
+  kbFAQSaveBtn.textContent = "Salvataggio…";
+  kbFAQFormStatus.textContent = "";
+
+  try {
+    const url = editId ? `${API_BASE}/api/conoscenza/faq/${encodeURIComponent(editId)}` : `${API_BASE}/api/conoscenza/faq`;
+    const method = editId ? "PUT" : "POST";
+    const res = await apiFetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ domanda, risposta }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Errore durante il salvataggio della FAQ");
+    }
+
+    kbFAQFormCard.style.display = "none";
+    kbFAQDomanda.value = "";
+    kbFAQRisposta.value = "";
+    kbFAQEditId.value = "";
+    await caricaFAQ();
+    await caricaKBSummary();
+  } catch (err) {
+    kbFAQFormStatus.textContent = err.message || "Errore di connessione.";
+    kbFAQFormStatus.style.color = "var(--red)";
+  } finally {
+    kbFAQSaveBtn.disabled = false;
+    kbFAQSaveBtn.textContent = "Salva FAQ";
+  }
+});
+
+async function caricaFAQ() {
+  if (!kbFAQList) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/documenti/elenco?tipo=faq`);
+    if (!res.ok) throw new Error("Errore nel caricamento delle FAQ");
+    const data = await res.json();
+    const items = data.documenti || [];
+
+    // Aggiorna status bar tab
+    const statusBarText = document.getElementById("kb-faq-status-text");
+    const statusUpdatedText = document.getElementById("kb-faq-updated-text");
+    const attive = items.filter((d) => d.is_active).length;
+    if (statusBarText) {
+      statusBarText.textContent = `${attive} FAQ attive su ${items.length} totali (tutte indicizzate)`;
+    }
+    if (statusUpdatedText && items.length > 0) {
+      const lastUpdate = items[0].updated_at || items[0].caricato_il;
+      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(lastUpdate)}`;
+    }
+
+    kbFAQList.innerHTML = "";
+    if (items.length === 0) {
+      kbFAQList.innerHTML = '<p class="doc-library-empty">Nessuna FAQ configurata. Clicca su "+ Nuova FAQ" per aggiungerne una.</p>';
+      return;
+    }
+
+    items.forEach((faq) => {
+      const meta = faq.metadata || {};
+      const domanda = meta.domanda || faq.nome;
+      const risposta = meta.risposta || "";
+      const isActive = faq.is_active !== false;
+
+      const card = document.createElement("div");
+      card.className = `kb-item-card ${isActive ? "" : "is-inactive"}`;
+
+      // Contenuto principale
+      const main = document.createElement("div");
+      main.className = "kb-item-main";
+
+      const title = document.createElement("div");
+      title.className = "kb-item-title";
+      title.textContent = domanda;
+
+      const sub = document.createElement("div");
+      sub.className = "kb-item-subtitle";
+      sub.textContent = risposta;
+
+      const metaRow = document.createElement("div");
+      metaRow.className = "kb-item-meta";
+
+      const badgeStato = document.createElement("span");
+      if (faq.stato === "errore") {
+        badgeStato.className = "kb-badge kb-badge-danger";
+        badgeStato.textContent = "Errore";
+      } else if (isActive) {
+        badgeStato.className = "kb-badge kb-badge-success";
+        badgeStato.textContent = "Indicizzata";
+      } else {
+        badgeStato.className = "kb-badge kb-badge-neutral";
+        badgeStato.textContent = "Disattivata";
+      }
+
+      const dateMeta = document.createElement("span");
+      dateMeta.textContent = `Aggiornata: ${_formatDataOra(faq.updated_at || faq.caricato_il)}`;
+
+      metaRow.append(badgeStato, dateMeta);
+      main.append(title, sub, metaRow);
+
+      // Azioni: switch toggle, edit, delete
+      const actions = document.createElement("div");
+      actions.className = "kb-item-actions";
+
+      // Toggle switch attivo/disattivo
+      const switchLabel = document.createElement("label");
+      switchLabel.className = "kb-switch";
+      switchLabel.title = isActive ? "Disattiva fonte" : "Attiva fonte";
+
+      const switchInput = document.createElement("input");
+      switchInput.type = "checkbox";
+      switchInput.checked = isActive;
+      switchInput.addEventListener("change", async () => {
+        try {
+          const togRes = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(faq.id)}/toggle`, { method: "PATCH" });
+          if (!togRes.ok) throw new Error("Errore durante l'aggiornamento dello stato");
+          await caricaFAQ();
+          await caricaKBSummary();
+        } catch (err) {
+          switchInput.checked = !switchInput.checked;
+          alert(err.message || "Impossibile aggiornare lo stato.");
+        }
+      });
+
+      const switchSlider = document.createElement("span");
+      switchSlider.className = "kb-switch-slider";
+      switchLabel.append(switchInput, switchSlider);
+
+      // Edit button
+      const editBtn = document.createElement("button");
+      editBtn.type = "button";
+      editBtn.className = "inbox-quick-action";
+      editBtn.style.padding = "4px 8px";
+      editBtn.textContent = "Modifica";
+      editBtn.addEventListener("click", () => {
+        kbFAQEditId.value = faq.id;
+        kbFAQDomanda.value = domanda;
+        kbFAQRisposta.value = risposta;
+        kbFAQFormCard.style.display = "block";
+        kbFAQDomanda.focus();
+      });
+
+      // Delete button
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "kb-btn-delete";
+      delBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        <span>Elimina</span>
+      `;
+      delBtn.addEventListener("click", async () => {
+        const ok = await confermaDestructiva({
+          titolo: "Eliminare questa FAQ?",
+          descrizione: `L'assistente non potrà più usare la risposta a: "${domanda}"`,
+          label: "Elimina FAQ",
+        });
+        if (!ok) return;
+        try {
+          const delRes = await apiFetch(`${API_BASE}/api/conoscenza/faq/${encodeURIComponent(faq.id)}`, { method: "DELETE" });
+          if (!delRes.ok) throw new Error("Errore durante l'eliminazione");
+          await caricaFAQ();
+          await caricaKBSummary();
+        } catch (err) {
+          alert(err.message || "Impossibile eliminare la FAQ.");
+        }
+      });
+
+      actions.append(switchLabel, editBtn, delBtn);
+      card.append(main, actions);
+      kbFAQList.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Errore caricaFAQ:", err);
+    kbFAQList.innerHTML = '<p class="doc-library-empty" style="color:var(--red);">Errore nel caricamento delle FAQ.</p>';
+  }
+}
+
+// ── Tab 2: Documenti Manager & Drag-and-Drop ─────────────────
+
 const docLibrary = document.getElementById("doc-library");
+const docFile = document.getElementById("doc-file");
+const kbDocDropzone = document.getElementById("kb-doc-dropzone");
+const docCaricaTesto = document.getElementById("doc-carica-testo");
+const docCaricaNome = document.getElementById("doc-carica-nome");
+const docCaricaBtn = document.getElementById("doc-carica-btn");
+const docCaricaStatus = document.getElementById("doc-carica-status");
+
+// Setup drag and drop
+if (kbDocDropzone && docFile) {
+  kbDocDropzone.addEventListener("click", () => docFile.click());
+  kbDocDropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    kbDocDropzone.classList.add("dragover");
+  });
+  kbDocDropzone.addEventListener("dragleave", () => {
+    kbDocDropzone.classList.remove("dragover");
+  });
+  kbDocDropzone.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    kbDocDropzone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) await eseguiUploadFile(file);
+  });
+  docFile.addEventListener("change", async () => {
+    const file = docFile.files?.[0];
+    if (file) await eseguiUploadFile(file);
+  });
+}
+
+async function eseguiUploadFile(file) {
+  if (!docCaricaStatus) return;
+  docCaricaStatus.textContent = `Caricamento e indicizzazione di "${file.name}"…`;
+  docCaricaStatus.style.color = "var(--ink)";
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await apiFetch(`${API_BASE}/api/documenti/carica-file`, { method: "POST", body: form });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Errore durante il caricamento del file");
+    }
+    const data = await res.json();
+    docCaricaStatus.textContent = data.detail || `File "${file.name}" indicizzato con successo!`;
+    docCaricaStatus.style.color = "var(--green)";
+    if (docFile) docFile.value = "";
+    await caricaDocumenti();
+    await caricaKBSummary();
+  } catch (err) {
+    docCaricaStatus.textContent = err.message || "Errore durante l'estrazione del file.";
+    docCaricaStatus.style.color = "var(--red)";
+    await caricaDocumenti();
+    await caricaKBSummary();
+  }
+}
+
+// Upload testo libero
+docCaricaBtn?.addEventListener("click", async () => {
+  const testo = docCaricaTesto.value.trim();
+  const nome = docCaricaNome.value.trim() || "documento.txt";
+  if (!testo) {
+    docCaricaStatus.textContent = "Incolla il testo del documento prima di salvare.";
+    docCaricaStatus.style.color = "var(--red)";
+    return;
+  }
+  docCaricaBtn.disabled = true;
+  docCaricaBtn.textContent = "Indicizzazione…";
+  try {
+    const res = await apiFetch(`${API_BASE}/api/documenti/carica`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ testo, nome }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Errore durante l'indicizzazione");
+    }
+    docCaricaStatus.textContent = `Testo "${nome}" indicizzato con successo.`;
+    docCaricaStatus.style.color = "var(--green)";
+    docCaricaTesto.value = "";
+    docCaricaNome.value = "";
+    await caricaDocumenti();
+    await caricaKBSummary();
+  } catch (err) {
+    docCaricaStatus.textContent = err.message || "Errore durante il salvataggio.";
+    docCaricaStatus.style.color = "var(--red)";
+  } finally {
+    docCaricaBtn.disabled = false;
+    docCaricaBtn.textContent = "Salva testo";
+  }
+});
+
+async function caricaDocumenti() {
+  if (!docLibrary) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/documenti/elenco`);
+    if (!res.ok) throw new Error("Errore nel recupero documenti");
+    const data = await res.json();
+    const items = (data.documenti || []).filter((d) => d.tipo === "documento" || d.tipo === "upload");
+
+    const statusBarText = document.getElementById("kb-doc-status-text");
+    const statusUpdatedText = document.getElementById("kb-doc-updated-text");
+    const attivi = items.filter((d) => d.is_active && d.stato !== "errore").length;
+    if (statusBarText) {
+      statusBarText.textContent = `${attivi} documenti attivi su ${items.length} totali`;
+    }
+    if (statusUpdatedText && items.length > 0) {
+      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(items[0].updated_at || items[0].caricato_il)}`;
+    }
+
+    docLibrary.innerHTML = "";
+    if (items.length === 0) {
+      docLibrary.innerHTML = '<p class="doc-library-empty">Nessun file caricato. Usa l\'area tratteggiata sopra per caricare PDF, DOCX o immagini.</p>';
+      return;
+    }
+
+    items.forEach((doc) => {
+      const isActive = doc.is_active !== false && doc.stato !== "errore";
+      const card = document.createElement("div");
+      card.className = `kb-item-card ${isActive ? "" : "is-inactive"}`;
+
+      const main = document.createElement("div");
+      main.className = "kb-item-main";
+
+      const title = document.createElement("div");
+      title.className = "kb-item-title";
+      title.textContent = doc.nome;
+
+      const metaRow = document.createElement("div");
+      metaRow.className = "kb-item-meta";
+
+      const badgeStato = document.createElement("span");
+      if (doc.stato === "errore") {
+        badgeStato.className = "kb-badge kb-badge-danger";
+        badgeStato.textContent = "Errore estrazione";
+        badgeStato.title = doc.errore || "File illeggibile o corrotto";
+      } else if (isActive) {
+        badgeStato.className = "kb-badge kb-badge-success";
+        badgeStato.textContent = "Indicizzato";
+      } else {
+        badgeStato.className = "kb-badge kb-badge-neutral";
+        badgeStato.textContent = "Disattivato";
+      }
+
+      const chunkMeta = document.createElement("span");
+      chunkMeta.textContent = `${doc.chunk || 0} chunk`;
+
+      const dateMeta = document.createElement("span");
+      dateMeta.textContent = `Caricato: ${_formatDataOra(doc.caricato_il)}`;
+
+      metaRow.append(badgeStato, chunkMeta, dateMeta);
+      main.append(title, metaRow);
+
+      const actions = document.createElement("div");
+      actions.className = "kb-item-actions";
+
+      // Toggle switch
+      if (doc.stato !== "errore") {
+        const switchLabel = document.createElement("label");
+        switchLabel.className = "kb-switch";
+        switchLabel.title = isActive ? "Disattiva documento" : "Attiva documento";
+
+        const switchInput = document.createElement("input");
+        switchInput.type = "checkbox";
+        switchInput.checked = isActive;
+        switchInput.addEventListener("change", async () => {
+          try {
+            const togRes = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(doc.id)}/toggle`, { method: "PATCH" });
+            if (!togRes.ok) throw new Error("Errore switch");
+            await caricaDocumenti();
+            await caricaKBSummary();
+          } catch (err) {
+            switchInput.checked = !switchInput.checked;
+            alert(err.message || "Impossibile aggiornare lo stato.");
+          }
+        });
+
+        const switchSlider = document.createElement("span");
+        switchSlider.className = "kb-switch-slider";
+        switchLabel.append(switchInput, switchSlider);
+        actions.appendChild(switchLabel);
+      }
+
+      // Delete button
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "kb-btn-delete";
+      delBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        <span>Elimina</span>
+      `;
+      delBtn.addEventListener("click", async () => {
+        const ok = await confermaDestructiva({
+          titolo: "Rimuovere questo documento?",
+          descrizione: `"${doc.nome}" verrà eliminato definitivamente dalla knowledge base.`,
+          label: "Elimina documento",
+        });
+        if (!ok) return;
+        try {
+          const delRes = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(doc.id)}`, { method: "DELETE" });
+          if (!delRes.ok) throw new Error("Errore eliminazione");
+          await caricaDocumenti();
+          await caricaKBSummary();
+        } catch (err) {
+          alert(err.message || "Impossibile rimuovere il documento.");
+        }
+      });
+      actions.appendChild(delBtn);
+
+      card.append(main, actions);
+      docLibrary.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Errore caricaDocumenti:", err);
+  }
+}
+
+// ── Tab 3: Pagine Web Manager ────────────────────────────────
+
+const kbWebList = document.getElementById("kb-web-list");
+const kbWebUrlInput = document.getElementById("kb-web-url-input");
+const kbWebImportBtn = document.getElementById("kb-web-import-btn");
+const kbWebImportStatus = document.getElementById("kb-web-import-status");
+
+kbWebImportBtn?.addEventListener("click", async () => {
+  const url = (kbWebUrlInput?.value || "").trim();
+  if (!url || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    kbWebImportStatus.textContent = "Inserisci un URL valido che inizi con http:// o https://";
+    kbWebImportStatus.style.color = "var(--red)";
+    return;
+  }
+
+  kbWebImportBtn.disabled = true;
+  kbWebImportBtn.textContent = "Recupero in corso…";
+  kbWebImportStatus.textContent = `Scaricamento e indicizzazione dei contenuti da ${url}…`;
+  kbWebImportStatus.style.color = "var(--ink)";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/conoscenza/web`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Impossibile estrarre la pagina web");
+    }
+
+    const data = await res.json();
+    kbWebImportStatus.textContent = data.detail || "Pagina web importata con successo!";
+    kbWebImportStatus.style.color = "var(--green)";
+    kbWebUrlInput.value = "";
+    await caricaPagineWeb();
+    await caricaKBSummary();
+  } catch (err) {
+    kbWebImportStatus.textContent = err.message || "Errore durante l'importazione.";
+    kbWebImportStatus.style.color = "var(--red)";
+    await caricaPagineWeb();
+    await caricaKBSummary();
+  } finally {
+    kbWebImportBtn.disabled = false;
+    kbWebImportBtn.textContent = "Importa e indicizza";
+  }
+});
+
+async function caricaPagineWeb() {
+  if (!kbWebList) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/documenti/elenco?tipo=web`);
+    if (!res.ok) throw new Error("Errore recupero pagine web");
+    const data = await res.json();
+    const items = data.documenti || [];
+
+    const statusBarText = document.getElementById("kb-web-status-text");
+    const statusUpdatedText = document.getElementById("kb-web-updated-text");
+    const attive = items.filter((d) => d.is_active && d.stato !== "errore").length;
+    if (statusBarText) {
+      statusBarText.textContent = `${attive} pagine web attive su ${items.length} totali`;
+    }
+    if (statusUpdatedText && items.length > 0) {
+      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(items[0].updated_at || items[0].caricato_il)}`;
+    }
+
+    kbWebList.innerHTML = "";
+    if (items.length === 0) {
+      kbWebList.innerHTML = '<p class="doc-library-empty">Nessuna pagina web importata. Inserisci un link sopra per importare listino o info dal tuo sito.</p>';
+      return;
+    }
+
+    items.forEach((item) => {
+      const isActive = item.is_active !== false && item.stato !== "errore";
+      const card = document.createElement("div");
+      card.className = `kb-item-card ${isActive ? "" : "is-inactive"}`;
+
+      const main = document.createElement("div");
+      main.className = "kb-item-main";
+
+      const title = document.createElement("div");
+      title.className = "kb-item-title";
+      title.textContent = item.nome;
+
+      const sub = document.createElement("div");
+      sub.className = "kb-item-subtitle";
+      sub.innerHTML = `<a href="${_sanitize(item.fonte)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);">${_sanitize(item.fonte)}</a>`;
+
+      const metaRow = document.createElement("div");
+      metaRow.className = "kb-item-meta";
+
+      const badgeStato = document.createElement("span");
+      if (item.stato === "errore") {
+        badgeStato.className = "kb-badge kb-badge-danger";
+        badgeStato.textContent = "Errore import";
+        badgeStato.title = item.errore || "URL non raggiungibile";
+      } else if (isActive) {
+        badgeStato.className = "kb-badge kb-badge-success";
+        badgeStato.textContent = "Indicizzata";
+      } else {
+        badgeStato.className = "kb-badge kb-badge-neutral";
+        badgeStato.textContent = "Disattivata";
+      }
+
+      const chunkMeta = document.createElement("span");
+      chunkMeta.textContent = `${item.chunk || 0} chunk`;
+
+      const dateMeta = document.createElement("span");
+      dateMeta.textContent = `Importata: ${_formatDataOra(item.caricato_il)}`;
+
+      metaRow.append(badgeStato, chunkMeta, dateMeta);
+      main.append(title, sub, metaRow);
+
+      const actions = document.createElement("div");
+      actions.className = "kb-item-actions";
+
+      if (item.stato !== "errore") {
+        const switchLabel = document.createElement("label");
+        switchLabel.className = "kb-switch";
+        switchLabel.title = isActive ? "Disattiva pagina" : "Attiva pagina";
+
+        const switchInput = document.createElement("input");
+        switchInput.type = "checkbox";
+        switchInput.checked = isActive;
+        switchInput.addEventListener("change", async () => {
+          try {
+            const togRes = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(item.id)}/toggle`, { method: "PATCH" });
+            if (!togRes.ok) throw new Error("Errore switch");
+            await caricaPagineWeb();
+            await caricaKBSummary();
+          } catch (err) {
+            switchInput.checked = !switchInput.checked;
+            alert(err.message || "Impossibile aggiornare lo stato.");
+          }
+        });
+
+        const switchSlider = document.createElement("span");
+        switchSlider.className = "kb-switch-slider";
+        switchLabel.append(switchInput, switchSlider);
+        actions.appendChild(switchLabel);
+      }
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "kb-btn-delete";
+      delBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        <span>Elimina</span>
+      `;
+      delBtn.addEventListener("click", async () => {
+        const ok = await confermaDestructiva({
+          titolo: "Rimuovere questa pagina web?",
+          descrizione: `L'assistente non userà più i contenuti importati da "${item.fonte}".`,
+          label: "Elimina pagina",
+        });
+        if (!ok) return;
+        try {
+          const delRes = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(item.id)}`, { method: "DELETE" });
+          if (!delRes.ok) throw new Error("Errore eliminazione");
+          await caricaPagineWeb();
+          await caricaKBSummary();
+        } catch (err) {
+          alert(err.message || "Impossibile rimuovere la pagina.");
+        }
+      });
+      actions.appendChild(delBtn);
+
+      card.append(main, actions);
+      kbWebList.appendChild(card);
+    });
+  } catch (err) {
+    console.error("Errore caricaPagineWeb:", err);
+  }
+}
+
+// ── Tab 4: Dati Struttura Manager ────────────────────────────
+
+const kbServiziTbody = document.getElementById("kb-servizi-tbody");
+const kbAddServizioBtn = document.getElementById("kb-add-servizio-btn");
+const kbOrariInput = document.getElementById("kb-orari-input");
+const kbSalvaDatiBtn = document.getElementById("kb-salva-dati-btn");
+const kbDatiSaveStatus = document.getElementById("kb-dati-save-status");
+
+function _creaRigaServizio(s = {}) {
+  const tr = document.createElement("tr");
+  tr.dataset.servizioId = s.id || "";
+
+  // Nome
+  const tdNome = document.createElement("td");
+  const inNome = document.createElement("input");
+  inNome.type = "text";
+  inNome.className = "kb-table-input kb-servizio-nome";
+  inNome.placeholder = "Es. Taglio Uomo";
+  inNome.value = s.nome || "";
+  tdNome.appendChild(inNome);
+
+  // Prezzo
+  const tdPrezzo = document.createElement("td");
+  const inPrezzo = document.createElement("input");
+  inPrezzo.type = "number";
+  inPrezzo.className = "kb-table-input kb-servizio-prezzo";
+  inPrezzo.placeholder = "25.00";
+  inPrezzo.step = "0.5";
+  inPrezzo.min = "0";
+  inPrezzo.value = s.prezzo != null ? s.prezzo : "";
+  tdPrezzo.appendChild(inPrezzo);
+
+  // Durata
+  const tdDurata = document.createElement("td");
+  const inDurata = document.createElement("input");
+  inDurata.type = "number";
+  inDurata.className = "kb-table-input kb-servizio-durata";
+  inDurata.placeholder = "30";
+  inDurata.step = "5";
+  inDurata.min = "5";
+  inDurata.value = s.durata_minuti || 30;
+  tdDurata.appendChild(inDurata);
+
+  // Operatore
+  const tdOp = document.createElement("td");
+  const inOp = document.createElement("input");
+  inOp.type = "text";
+  inOp.className = "kb-table-input kb-servizio-operatore";
+  inOp.placeholder = "Es. Marco o Qualsiasi";
+  inOp.value = s.operatore || "";
+  tdOp.appendChild(inOp);
+
+  // Azioni (elimina riga)
+  const tdAzioni = document.createElement("td");
+  tdAzioni.style.textAlign = "center";
+  const removeBtn = document.createElement("button");
+  removeBtn.type = "button";
+  removeBtn.className = "kb-btn-delete";
+  removeBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+    <span>Elimina</span>
+  `;
+  removeBtn.title = "Elimina questo servizio";
+  removeBtn.addEventListener("click", () => tr.remove());
+  tdAzioni.appendChild(removeBtn);
+
+  tr.append(tdNome, tdPrezzo, tdDurata, tdOp, tdAzioni);
+  return tr;
+}
+
+kbAddServizioBtn?.addEventListener("click", () => {
+  if (!kbServiziTbody) return;
+  const newRow = _creaRigaServizio();
+  kbServiziTbody.appendChild(newRow);
+  newRow.querySelector(".kb-servizio-nome")?.focus();
+});
+
+kbSalvaDatiBtn?.addEventListener("click", async () => {
+  if (!kbServiziTbody) return;
+  const rows = kbServiziTbody.querySelectorAll("tr");
+  const servizi = [];
+
+  rows.forEach((tr) => {
+    const nome = tr.querySelector(".kb-servizio-nome")?.value.trim();
+    const prezzoRaw = tr.querySelector(".kb-servizio-prezzo")?.value.trim();
+    const durataRaw = tr.querySelector(".kb-servizio-durata")?.value.trim();
+    const operatore = tr.querySelector(".kb-servizio-operatore")?.value.trim() || "";
+
+    if (nome) {
+      servizi.push({
+        id: tr.dataset.servizioId || null,
+        nome,
+        prezzo: parseFloat(prezzoRaw) || 0.0,
+        durata_minuti: parseInt(durataRaw, 10) || 30,
+        operatore,
+      });
+    }
+  });
+
+  const orari = (kbOrariInput?.value || "").trim();
+
+  kbSalvaDatiBtn.disabled = true;
+  kbSalvaDatiBtn.textContent = "Salvataggio e indicizzazione…";
+  if (kbDatiSaveStatus) kbDatiSaveStatus.textContent = "";
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/conoscenza/dati-struttura`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ servizi, orari }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.detail || "Errore durante il salvataggio dei Dati struttura");
+    }
+
+    if (kbDatiSaveStatus) {
+      kbDatiSaveStatus.textContent = "Dati struttura e listino sincronizzati con successo (Priorità 1 applicata).";
+      kbDatiSaveStatus.style.color = "var(--green)";
+    }
+    const aiCfgOrari = document.getElementById("ai-cfg-orari");
+    if (aiCfgOrari && orari) {
+      aiCfgOrari.value = orari;
+    }
+    await caricaDatiStruttura();
+    await caricaKBSummary();
+  } catch (err) {
+    if (kbDatiSaveStatus) {
+      kbDatiSaveStatus.textContent = err.message || "Errore durante il salvataggio.";
+      kbDatiSaveStatus.style.color = "var(--red)";
+    }
+  } finally {
+    kbSalvaDatiBtn.disabled = false;
+    kbSalvaDatiBtn.textContent = "Salva Dati Struttura";
+  }
+});
+
+async function caricaDatiStruttura() {
+  if (!kbServiziTbody) return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/conoscenza/dati-struttura`);
+    if (!res.ok) throw new Error("Errore recupero dati struttura");
+    const data = await res.json();
+
+    const statusBarText = document.getElementById("kb-dati-status-text");
+    const statusUpdatedText = document.getElementById("kb-dati-updated-text");
+    if (statusBarText) {
+      statusBarText.textContent = `${(data.servizi || []).length} servizi configurati — Priorità 1 (Massima autorevolezza)`;
+    }
+    if (statusUpdatedText) {
+      statusUpdatedText.textContent = data.updated_at ? `Ultimo aggiornamento: ${_formatDataOra(data.updated_at)}` : "Pronto per la configurazione";
+    }
+
+    if (kbOrariInput) {
+      kbOrariInput.value = data.orari || "";
+    }
+
+    kbServiziTbody.innerHTML = "";
+    if (data.servizi && data.servizi.length > 0) {
+      data.servizi.forEach((s) => {
+        kbServiziTbody.appendChild(_creaRigaServizio(s));
+      });
+    } else {
+      // Inserisci riga iniziale vuota pronta all'uso
+      kbServiziTbody.appendChild(_creaRigaServizio());
+    }
+  } catch (err) {
+    console.error("Errore caricaDatiStruttura:", err);
+  }
+}
+
+// ── Tester "Chiedi alla Knowledge Base" ───────────────────────
+
 const docQuery = document.getElementById("doc-query");
 const docChiediBtn = document.getElementById("doc-chiedi-btn");
 const docRisposta = document.getElementById("doc-risposta");
 const docRispostaText = document.getElementById("doc-risposta-text");
 const docFonti = document.getElementById("doc-fonti");
 const docFontiList = document.getElementById("doc-fonti-list");
-let docPrimoCaricamento = true;
 
-async function aggiornaConteggio() {
-  try {
-    const res = await apiFetch(`${API_BASE}/api/documenti/conteggio`);
-    if (!res.ok) { docConteggio.textContent = "Non disponibile."; return; }
-    const data = await res.json();
-    docConteggio.textContent = `${data.chunk_indicizzati} parti indicizzate.`;
-  } catch {
-    docConteggio.textContent = "Errore di connessione.";
-  }
-}
-
-async function aggiornaDocumenti() {
-  if (!docLibrary) return;
-  try {
-    if (docPrimoCaricamento) {
-      docLibrary.innerHTML = _skeletonList(3);
-      docPrimoCaricamento = false;
-    }
-    const res = await apiFetch(`${API_BASE}/api/documenti/elenco`);
-    if (!res.ok) {
-      docLibrary.innerHTML = "";
-      docLibrary.appendChild(_errorState("Impossibile caricare i documenti.", aggiornaDocumenti));
-      return;
-    }
-    const data = await res.json();
-    docLibrary.innerHTML = "";
-    if (!data.documenti?.length) {
-      docLibrary.appendChild(_emptyState(
-        ICONS.doc,
-        "Nessun documento caricato",
-        "Carica il menu, il listino prezzi o la lista allergeni per istruire l'assistente a rispondere con precisione ai clienti.",
-        "📄 Carica il tuo primo PDF",
-        () => {
-          const fileInput = document.getElementById("doc-file");
-          if (fileInput) {
-            fileInput.click();
-          } else {
-            document.getElementById("doc-carica-testo")?.focus();
-          }
-        }
-      ));
-      return;
-    }
-    const DOC_PAGE = 15;
-    const docRenderItem = (documento) => {
-      const item = document.createElement("div");
-      item.className = "doc-library-item";
-      const name = document.createElement("span");
-      name.className = "doc-library-name";
-      name.title = documento.nome;
-      name.textContent = documento.nome;
-      const meta = document.createElement("span");
-      meta.className = "doc-library-count";
-      meta.textContent = `${documento.chunk} parti`;
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "doc-library-remove";
-      remove.textContent = "Rimuovi";
-      remove.title = `Rimuovi ${documento.nome}`;
-      remove.addEventListener("click", async () => {
-        const ok = await confermaDestructiva({
-          titolo: "Rimuovere il documento?",
-          descrizione: `${documento.nome} verrà eliminato dalla knowledge base e l'assistente non potrà più usarlo per rispondere.`,
-          label: "Rimuovi",
-        });
-        if (!ok) return;
-        remove.disabled = true;
-        try {
-          const response = await apiFetch(`${API_BASE}/api/documenti/${encodeURIComponent(documento.id)}`, { method: "DELETE" });
-          if (!response.ok) throw new Error("Impossibile rimuovere il documento.");
-          await aggiornaConteggio();
-          await aggiornaDocumenti();
-        } catch (err) {
-          remove.disabled = false;
-          docCaricaStatus.textContent = err.message;
-          docCaricaStatus.style.color = "var(--red)";
-        }
-      });
-      item.append(name, meta, remove);
-      docLibrary.appendChild(item);
-    };
-    // Paginazione client-side: i primi DOC_PAGE, il resto dietro "Mostra tutti"
-    data.documenti.slice(0, DOC_PAGE).forEach(docRenderItem);
-    if (data.documenti.length > DOC_PAGE) {
-      const more = document.createElement("button");
-      more.type = "button";
-      more.className = "inbox-load-more";
-      more.textContent = `Mostra tutti (${data.documenti.length})`;
-      more.addEventListener("click", () => {
-        more.remove();
-        data.documenti.slice(DOC_PAGE).forEach(docRenderItem);
-      }, { once: true });
-      docLibrary.appendChild(more);
-    }
-  } catch (err) {
-    console.error("Impossibile caricare l'elenco documenti:", err);
-    docLibrary.innerHTML = "";
-    docLibrary.appendChild(_errorState("Impossibile caricare i documenti.", aggiornaDocumenti));
-  }
-}
-
-const docReindicizzaBtn = document.getElementById("doc-reindicizza-btn");
-const docReindicizzaProgress = document.getElementById("doc-reindicizza-progress");
-const docReindicizzaBar = document.getElementById("doc-reindicizza-bar");
-const docReindicizzaStatus = document.getElementById("doc-reindicizza-status-text");
-
-docReindicizzaBtn?.addEventListener("click", async () => {
-  docReindicizzaBtn.disabled = true;
-  docReindicizzaBtn.textContent = "Avvio\u2026";
-  docReindicizzaProgress.hidden = false;
-  docReindicizzaBar.style.width = "0%";
-  docReindicizzaStatus.textContent = "Avvio re-indicizzazione...";
-  docReindicizzaStatus.style.color = "";
-
-  try {
-    const res = await apiFetch(`${API_BASE}/api/documenti/reindicizza`, { method: "POST" });
-    if (!res.ok) throw new Error("Errore avvio");
-    const { task_id } = await res.json();
-
-    const poll = setInterval(async () => {
-      try {
-        const res2 = await apiFetch(`${API_BASE}/api/documenti/reindicizza/stato/${task_id}`);
-        if (!res2.ok) { clearInterval(poll); throw new Error("Errore polling"); }
-        const stato = await res2.json();
-
-        docReindicizzaStatus.textContent = stato.progress || "";
-
-        if (stato.status === "processing") {
-          docReindicizzaBtn.textContent = "Re-indicizzazione\u2026";
-        } else if (stato.status === "done") {
-          clearInterval(poll);
-          docReindicizzaBar.style.width = "100%";
-          docReindicizzaStatus.textContent = stato.progress;
-          docReindicizzaStatus.style.color = "var(--sage)";
-          docReindicizzaBtn.textContent = "Re-indicizza tutte";
-          docReindicizzaBtn.disabled = false;
-          await aggiornaConteggio();
-        } else if (stato.status === "error") {
-          clearInterval(poll);
-          docReindicizzaStatus.textContent = "Errore: " + (stato.errore || "sconosciuto");
-          docReindicizzaStatus.style.color = "var(--red)";
-          docReindicizzaBtn.textContent = "Re-indicizza tutte";
-          docReindicizzaBtn.disabled = false;
-        }
-      } catch (e) {
-        clearInterval(poll);
-        docReindicizzaStatus.textContent = "Errore: " + e.message;
-        docReindicizzaStatus.style.color = "var(--red)";
-        docReindicizzaBtn.textContent = "Re-indicizza tutte";
-        docReindicizzaBtn.disabled = false;
-      }
-    }, 1500);
-  } catch (e) {
-    docReindicizzaStatus.textContent = "Errore: " + e.message;
-    docReindicizzaStatus.style.color = "var(--red)";
-    docReindicizzaBtn.textContent = "Re-indicizza tutte";
-    docReindicizzaBtn.disabled = false;
-  }
-});
-
-const docCaricaTesto = document.getElementById("doc-carica-testo");
-const docFile = document.getElementById("doc-file");
-const docCaricaNome = document.getElementById("doc-carica-nome");
-const docCaricaBtn = document.getElementById("doc-carica-btn");
-const docCaricaStatus = document.getElementById("doc-carica-status");
-docCaricaBtn.addEventListener("click", async () => {
-  const testo = docCaricaTesto.value.trim();
-  const file = docFile?.files?.[0];
-  const nome = docCaricaNome.value.trim() || "documento.txt";
-  if (!file && !testo) { docCaricaStatus.textContent = "Scegli un file oppure incolla il testo del documento."; return; }
-  docCaricaBtn.disabled = true;
-  docCaricaBtn.textContent = "Indicizzazione\u2026";
-  try {
-    let res;
-    if (file) {
-      const form = new FormData();
-      form.append("file", file);
-      res = await apiFetch(`${API_BASE}/api/documenti/carica-file`, { method: "POST", body: form });
-    } else {
-      res = await apiFetch(`${API_BASE}/api/documenti/carica`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testo, nome }),
-      });
-    }
-    if (!res.ok) {
-      const error = await res.json().catch(() => null);
-      throw new Error(error?.detail || "Errore durante l'indicizzazione");
-    }
-    const data = await res.json();
-    docCaricaStatus.textContent = data.detail;
-    docCaricaStatus.style.color = "var(--sage)";
-    docCaricaTesto.value = "";
-    if (docFile) docFile.value = "";
-    await aggiornaConteggio();
-    await aggiornaDocumenti();
-    await aggiornaNotifiche();
-  } catch (err) {
-    docCaricaStatus.textContent = err.message || "Errore durante il caricamento.";
-    docCaricaStatus.style.color = "var(--red)";
-  } finally {
-    docCaricaBtn.disabled = false;
-    docCaricaBtn.textContent = "Salva documento";
-  }
-});
-
-docChiediBtn.addEventListener("click", async () => {
-  const domanda = docQuery.value.trim();
+docChiediBtn?.addEventListener("click", async () => {
+  const domanda = (docQuery?.value || "").trim();
   if (!domanda) return;
   docChiediBtn.disabled = true;
-  docChiediBtn.textContent = "Cerco\u2026";
+  docChiediBtn.textContent = "Interrogazione AI in corso…";
   docRisposta.hidden = true;
   try {
     const res = await apiFetch(`${API_BASE}/api/documenti/chiedi`, {
@@ -3682,7 +4472,7 @@ docChiediBtn.addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ domanda, k: 5 }),
     });
-    if (!res.ok) throw new Error("Errore");
+    if (!res.ok) throw new Error("Errore durante l'elaborazione della domanda");
     const data = await res.json();
     docRispostaText.textContent = data.risposta;
     docRisposta.hidden = false;
@@ -3692,22 +4482,60 @@ docChiediBtn.addEventListener("click", async () => {
       docFontiList.innerHTML = "";
       data.fonti.forEach((f) => {
         const li = document.createElement("li");
-        li.classList.add("doc-fonti-item");
-        li.innerHTML = `<strong>${_sanitize(f.documento)}</strong> <span class="doc-fonti-score">(score: ${_sanitize(f.score)})</span><br><span class="doc-fonti-estratto">${_sanitize(f.estratto)}</span>`;
+        li.className = "doc-fonti-item";
+
+        // Label priorità
+        let priorityLabel = "";
+        let priorityClass = "kb-badge-neutral";
+        if (f.priorita === 1 || f.tipo === "dati_struttura") {
+          priorityLabel = "Priorità 1 (Dati struttura)";
+          priorityClass = "kb-badge-success";
+        } else if (f.priorita === 2 || f.tipo === "faq") {
+          priorityLabel = "Priorità 2 (FAQ)";
+          priorityClass = "kb-badge-priority";
+        } else if (f.priorita === 3 || f.tipo === "documento" || f.tipo === "upload") {
+          priorityLabel = "Priorità 3 (Documento)";
+          priorityClass = "kb-badge-warning";
+        } else if (f.priorita === 4 || f.tipo === "web") {
+          priorityLabel = "Priorità 4 (Web)";
+          priorityClass = "kb-badge-neutral";
+        }
+
+        const statoFonte = f.stato === "indicizzata" ? '<span class="kb-badge kb-badge-success">Indicizzata</span>' : '<span class="kb-badge kb-badge-warning">In elaborazione</span>';
+
+        li.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+            <strong>${_sanitize(f.documento)}</strong>
+            <div style="display:flex;gap:6px;">
+              <span class="kb-badge ${priorityClass}">${priorityLabel}</span>
+              ${statoFonte}
+            </div>
+          </div>
+          <div style="font-size:0.75rem;color:var(--ink-soft);">Score rilevanza semantica: <span class="doc-fonti-score">${_sanitize(f.score)}</span></div>
+        `;
         docFontiList.appendChild(li);
       });
     } else {
       docFonti.hidden = true;
     }
-  } catch {
-    docRispostaText.textContent = "Errore durante la ricerca.";
+  } catch (err) {
+    docRispostaText.textContent = err.message || "Errore durante la ricerca.";
     docRisposta.hidden = false;
     docFonti.hidden = true;
   } finally {
     docChiediBtn.disabled = false;
-    docChiediBtn.textContent = "Chiedi";
+    docChiediBtn.textContent = "Fai una domanda di test";
   }
 });
+
+// Funzione principale richiamata dal router della vista "conoscenza"
+async function aggiornaConoscenzaCompleta() {
+  await caricaKBSummary();
+  if (kbActiveTab === "faq") await caricaFAQ();
+  else if (kbActiveTab === "documenti") await caricaDocumenti();
+  else if (kbActiveTab === "web") await caricaPagineWeb();
+  else if (kbActiveTab === "dati-struttura") await caricaDatiStruttura();
+}
 
 /* ============================================================
    INBOX (HITL) — Layout a 3 colonne
@@ -4181,13 +5009,13 @@ function creaControlliFeedback(m) {
   const upBtn = document.createElement("button");
   upBtn.type = "button";
   upBtn.className = "thread-feedback-btn";
-  upBtn.innerHTML = `👍 ${m.feedback_staff_up || 0}`;
+  upBtn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg> <span>${m.feedback_staff_up || 0}</span>`;
   upBtn.title = "Risposta appropriata";
 
   const downBtn = document.createElement("button");
   downBtn.type = "button";
   downBtn.className = "thread-feedback-btn";
-  downBtn.innerHTML = `👎 ${m.feedback_staff_down || 0}`;
+  downBtn.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h3a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"/></svg> <span>${m.feedback_staff_down || 0}</span>`;
   downBtn.title = "Risposta da migliorare";
 
   upBtn.addEventListener("click", async (e) => {
@@ -5001,7 +5829,8 @@ notifBell?.addEventListener("click", () => {
     { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni â€º Integrazioni", view: "impostazioni", tab: "integrazioni" },
     { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione â€º Generale", view: "impostazioni", tab: "generale" },
     { q: ["fattur", "abbonament", "piano", "rinnovo", "pagament", "upgrade", "downgrade", "cancellazion", "prezz"], gruppo: "Account", titolo: "Piano e abbonamento", sub: "Account", view: "account" },
-    { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente â€º Conoscenza", view: "conoscenza" },
+    { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente › Conoscenza", view: "conoscenza" },
+    { q: ["configurazione", "personalità", "regole", "tono", "lingue", "istruzioni", "identità", "orari", "escalation"], gruppo: "Assistente", titolo: "Configurazione AI", sub: "Assistente › Configurazione AI", view: "configurazione-ai" },
   ];
 
   async function eseguiRicerca(q) {
@@ -5114,26 +5943,47 @@ notifBell?.addEventListener("click", () => {
 
 (function inizializzaTema() {
   const KEY = "melpis_theme";
-  const topbarLabel = document.getElementById("theme-toggle-label");
-  const sidebarLabel = document.getElementById("sidebar-theme-label");
+  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
-  function applica(tema) {
-    document.documentElement.dataset.theme = tema;
-    const txt = tema === "dark" ? "Tema chiaro" : "Tema scuro";
-    if (topbarLabel) topbarLabel.textContent = txt;
-    if (sidebarLabel) sidebarLabel.textContent = txt;
+  function risolviTema(preferenza) {
+    if (preferenza === "dark") return "dark";
+    if (preferenza === "light") return "light";
+    return mediaQuery.matches ? "dark" : "light";
   }
 
-  function toggle() {
-    const nuovo = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(KEY, nuovo);
-    applica(nuovo);
+  function applica(preferenza) {
+    const effettivo = risolviTema(preferenza);
+    document.documentElement.dataset.theme = effettivo;
+
+    const btns = document.querySelectorAll("#theme-segmented-control .theme-seg-btn");
+    btns.forEach((btn) => {
+      const val = btn.getAttribute("data-theme-val");
+      const isActive = val === preferenza;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-checked", isActive ? "true" : "false");
+    });
   }
 
-  applica(localStorage.getItem(KEY) || "light");
+  function impostaTema(nuovaPreferenza) {
+    localStorage.setItem(KEY, nuovaPreferenza);
+    applica(nuovaPreferenza);
+  }
 
-  document.getElementById("sidebar-theme-toggle")?.addEventListener("click", toggle);
-  document.getElementById("theme-toggle")?.addEventListener("click", toggle);
+  const salvato = localStorage.getItem(KEY) || "system";
+  applica(salvato);
+
+  mediaQuery.addEventListener("change", () => {
+    if ((localStorage.getItem(KEY) || "system") === "system") {
+      applica("system");
+    }
+  });
+
+  document.querySelectorAll("#theme-segmented-control .theme-seg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const val = btn.getAttribute("data-theme-val");
+      if (val) impostaTema(val);
+    });
+  });
 })();
 
 /* ============================================================
@@ -5200,34 +6050,30 @@ let caricaTimezone;
 })();
 
 /* ============================================================
-   IMPOSTAZIONI — Profilo attività (Nome, Settore, Tono, Descrizione)
+   CONFIGURAZIONE AI — Identità, Tono, Multilingua e Regole
    ============================================================ */
 
-let caricaProfiloImpostazioni;
+let caricaConfigurazioneAI;
 
-(function inizializzaProfiloImpostazioni() {
-  const profileForm = document.getElementById("settings-profile-form");
-  const profileSaveBtn = document.getElementById("settings-profile-save");
-  const profileStatus = document.getElementById("settings-profile-status");
-  const nomeInput = document.getElementById("settings-profile-nome");
-  const vertSelect = document.getElementById("settings-profile-verticale");
-  const descTextarea = document.getElementById("settings-profile-descrizione");
-  const orariTextarea = document.getElementById("settings-profile-orari");
-  const serviziTextarea = document.getElementById("settings-profile-servizi");
+(function inizializzaConfigurazioneAI() {
+  const form = document.getElementById("ai-config-form");
+  const saveBtn = document.getElementById("ai-cfg-save-btn");
+  const saveStatus = document.getElementById("ai-cfg-save-status");
 
-  const aiForm = document.getElementById("settings-ai-form");
-  const aiSaveBtn = document.getElementById("settings-ai-save");
-  const aiStatus = document.getElementById("settings-ai-status");
-  const tonoSelect = document.getElementById("settings-ai-tono-select");
-  const tonoCustom = document.getElementById("settings-ai-tono-custom");
-  const defaultLinguaSelect = document.getElementById("settings-ai-lingua-default");
-  const addRuleInput = document.getElementById("settings-new-rule-input");
-  const addRuleBtn = document.getElementById("settings-add-rule-btn");
+  const nomeInput = document.getElementById("ai-cfg-nome");
+  const vertSelect = document.getElementById("ai-cfg-verticale");
+  const descTextarea = document.getElementById("ai-cfg-descrizione");
+  const orariTextarea = document.getElementById("ai-cfg-orari");
 
-  let settingsCurrentRules = [];
+  const tonoSelect = document.getElementById("ai-cfg-tono-select");
+  const tonoCustom = document.getElementById("ai-cfg-tono-custom");
+  const defaultLinguaSelect = document.getElementById("ai-cfg-lingua-default");
+  const addRuleInput = document.getElementById("ai-cfg-new-rule-input");
+  const addRuleBtn = document.getElementById("ai-cfg-add-rule-btn");
+  const rulesContainer = document.getElementById("ai-cfg-rules-list");
 
-  // Deve rispecchiare VerticaleOnboarding (src/models/schemas.py): valori
-  // fuori da questa lista farebbero rifiutare il salvataggio dal backend.
+  let currentRules = [];
+
   const VERTICALI_VALIDI = ["ristorante", "parrucchiere", "hotel_bnb", "centro_estetico", "studio_medico_dentista"];
 
   const REGOLE_DEFAULT_BASE = [
@@ -5237,42 +6083,41 @@ let caricaProfiloImpostazioni;
     "Richieste di sconti personalizzati, convenzioni o accordi commerciali riservati",
   ];
 
-  function renderSettingsRules() {
-    const container = document.getElementById("settings-rules-list");
-    if (!container) return;
-    container.innerHTML = "";
-    if (!settingsCurrentRules.length) {
-      container.innerHTML = '<p class="settings-help-sm">Nessuna regola attiva. Aggiungine una con il campo sottostante.</p>';
+  function renderRules() {
+    if (!rulesContainer) return;
+    rulesContainer.innerHTML = "";
+    if (!currentRules.length) {
+      rulesContainer.innerHTML = '<p class="settings-help-sm">Nessuna regola attiva. Aggiungine una con il campo sottostante.</p>';
       return;
     }
-    settingsCurrentRules.forEach((rule, idx) => {
+    currentRules.forEach((rule, idx) => {
       const item = document.createElement("div");
       item.className = "settings-rule-item";
 
       const label = document.createElement("label");
       label.className = "settings-rule-label";
-      label.innerHTML = `<input type="checkbox" class="settings-rule-checkbox" data-rule-index="${idx}" checked> <span>${_sanitize(rule)}</span>`;
+      label.innerHTML = `<input type="checkbox" class="ai-cfg-rule-checkbox" data-rule-index="${idx}" checked> <span>${_sanitize(rule)}</span>`;
 
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "settings-rule-remove-btn";
       delBtn.title = "Rimuovi questa regola";
-      delBtn.innerHTML = "✕ Elimina";
+      delBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Elimina</span>';
       delBtn.addEventListener("click", () => {
-        settingsCurrentRules.splice(idx, 1);
-        renderSettingsRules();
+        currentRules.splice(idx, 1);
+        renderRules();
       });
 
       item.appendChild(label);
       item.appendChild(delBtn);
-      container.appendChild(item);
+      rulesContainer.appendChild(item);
     });
   }
 
   function aggiornaSelectLinguaDefault(linguaScelta = null) {
     if (!defaultLinguaSelect) return;
     const currentVal = linguaScelta || defaultLinguaSelect.value || "it";
-    const selezionate = ["it", ...Array.from(document.querySelectorAll(".settings-lang-opt:checked")).map((cb) => cb.value)];
+    const selezionate = ["it", ...Array.from(document.querySelectorAll(".ai-cfg-lang-opt:checked")).map((cb) => cb.value)];
 
     const LABELS = {
       it: "Italiano (it)",
@@ -5296,7 +6141,7 @@ let caricaProfiloImpostazioni;
     }
   }
 
-  document.querySelectorAll(".settings-lang-opt").forEach((cb) => {
+  document.querySelectorAll(".ai-cfg-lang-opt").forEach((cb) => {
     cb.addEventListener("change", () => aggiornaSelectLinguaDefault());
   });
 
@@ -5304,9 +6149,9 @@ let caricaProfiloImpostazioni;
     if (!addRuleInput) return;
     const text = addRuleInput.value.trim();
     if (!text) return;
-    settingsCurrentRules.push(text);
+    currentRules.push(text);
     addRuleInput.value = "";
-    renderSettingsRules();
+    renderRules();
   });
 
   addRuleInput?.addEventListener("keydown", (e) => {
@@ -5330,13 +6175,14 @@ let caricaProfiloImpostazioni;
       const cName = document.getElementById("chat-business-name");
       if (cName) cName.textContent = businessName;
 
-      // Profilo
+      // Identità
       if (nomeInput && prof.nome_attivita) nomeInput.value = prof.nome_attivita;
       if (vertSelect && VERTICALI_VALIDI.includes(prof.verticale)) vertSelect.value = prof.verticale;
       if (descTextarea && prof.descrizione) descTextarea.value = prof.descrizione;
-      if (orariTextarea && prof.orari) orariTextarea.value = prof.orari;
-      if (serviziTextarea && prof.servizi) {
-        serviziTextarea.value = Array.isArray(prof.servizi) ? prof.servizi.join("\n") : String(prof.servizi);
+      if (orariTextarea && prof.orari) {
+        orariTextarea.value = prof.orari;
+        const kbOrari = document.getElementById("kb-orari-input");
+        if (kbOrari && !kbOrari.value) kbOrari.value = prof.orari;
       }
 
       // Tono
@@ -5353,62 +6199,55 @@ let caricaProfiloImpostazioni;
 
       // Multilingua
       const supportate = prof.lingue_supportate || ["it"];
-      document.querySelectorAll(".settings-lang-opt").forEach((cb) => {
+      document.querySelectorAll(".ai-cfg-lang-opt").forEach((cb) => {
         cb.checked = supportate.includes(cb.value);
       });
       aggiornaSelectLinguaDefault(prof.lingua_default || "it");
 
       // Regole escalation
       if (Array.isArray(prof.regole_escalation) && prof.regole_escalation.length > 0) {
-        settingsCurrentRules = [...prof.regole_escalation];
+        currentRules = [...prof.regole_escalation];
       } else {
-        settingsCurrentRules = [...REGOLE_DEFAULT_BASE];
+        currentRules = [...REGOLE_DEFAULT_BASE];
       }
-      renderSettingsRules();
+      renderRules();
     } catch (err) {
-      console.error("Impossibile caricare il profilo attività:", err);
+      console.error("Impossibile caricare la configurazione AI:", err);
     }
   }
 
-  function raccogliPayloadProfilo() {
+  function raccogliPayload() {
     const nome = (nomeInput?.value || "").trim() || dbProfileRecord?.nome_attivita || "La tua attività";
     const verticaleSelezionato = VERTICALI_VALIDI.includes(vertSelect?.value)
       ? vertSelect.value
       : (VERTICALI_VALIDI.includes(dbProfileRecord?.verticale) ? dbProfileRecord.verticale : "ristorante");
-    const verticale = verticaleSelezionato;
     const descrizione = (descTextarea?.value || "").trim();
     const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "Martedì - Domenica: 12:00-15:00 / 19:30-23:30";
-
-    const serviziRaw = serviziTextarea?.value || "";
-    const servizi = righeDaTextarea(serviziRaw);
-    if (!servizi.length && Array.isArray(dbProfileRecord?.servizi) && dbProfileRecord.servizi.length) {
-      servizi.push(...dbProfileRecord.servizi);
-    }
 
     let tono = tonoSelect ? tonoSelect.value : (dbProfileRecord?.tono || "professionale_caloroso");
     if (tonoCustom && tonoCustom.value.trim()) {
       tono = tonoCustom.value.trim();
     }
 
-    const lingueSelezionate = ["it", ...Array.from(document.querySelectorAll(".settings-lang-opt:checked")).map((cb) => cb.value)];
+    const lingueSelezionate = ["it", ...Array.from(document.querySelectorAll(".ai-cfg-lang-opt:checked")).map((cb) => cb.value)];
     const linguaDefault = defaultLinguaSelect?.value || "it";
 
     const regoleSelezionate = [];
-    document.querySelectorAll(".settings-rule-checkbox").forEach((cb) => {
+    document.querySelectorAll(".ai-cfg-rule-checkbox").forEach((cb) => {
       if (cb.checked) {
         const idx = Number(cb.dataset.ruleIndex);
-        if (settingsCurrentRules[idx]) regoleSelezionate.push(settingsCurrentRules[idx]);
+        if (currentRules[idx]) regoleSelezionate.push(currentRules[idx]);
       }
     });
 
     return {
-      verticale,
+      verticale: verticaleSelezionato,
       nome_attivita: nome,
       orari,
       descrizione,
       tono,
-      servizi: servizi.length ? servizi : ["Servizio al tavolo", "Menu alla carta"],
-      regole_escalation: regoleSelezionate.length ? regoleSelezionate : settingsCurrentRules,
+      servizi: Array.isArray(dbProfileRecord?.servizi) && dbProfileRecord.servizi.length ? dbProfileRecord.servizi : ["Servizio al tavolo", "Menu alla carta"],
+      regole_escalation: regoleSelezionate.length ? regoleSelezionate : currentRules,
       whatsapp_collegato: Boolean(dbProfileRecord?.whatsapp_collegato),
       documenti_importati: Boolean(dbProfileRecord?.documenti_importati),
       lingue_supportate: lingueSelezionate,
@@ -5416,12 +6255,12 @@ let caricaProfiloImpostazioni;
     };
   }
 
-  async function eseguiSalvataggio(statusEl, btnEl, successMsg) {
-    if (btnEl) btnEl.disabled = true;
-    if (statusEl) { statusEl.textContent = "Salvo…"; statusEl.style.color = ""; }
+  async function eseguiSalvataggio() {
+    if (saveBtn) saveBtn.disabled = true;
+    if (saveStatus) { saveStatus.textContent = "Salvataggio in corso…"; saveStatus.style.color = ""; }
 
     try {
-      const payload = raccogliPayloadProfilo();
+      const payload = raccogliPayload();
       const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -5430,9 +6269,9 @@ let caricaProfiloImpostazioni;
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        if (statusEl) {
-          statusEl.textContent = err.detail || "Errore salvataggio profilo";
-          statusEl.style.color = "var(--red)";
+        if (saveStatus) {
+          saveStatus.textContent = err.detail || "Errore durante il salvataggio";
+          saveStatus.style.color = "var(--red)";
         }
         return;
       }
@@ -5445,29 +6284,31 @@ let caricaProfiloImpostazioni;
         const cName = document.getElementById("chat-business-name");
         if (cName) cName.textContent = payload.nome_attivita;
       }
-      if (statusEl) securityStatus(statusEl, successMsg);
-      toast(successMsg, "success");
+
+      // Sincronizza campo orari anche nella Knowledge Base (Dati Struttura)
+      const kbOrari = document.getElementById("kb-orari-input");
+      if (kbOrari && payload.orari) {
+        kbOrari.value = payload.orari;
+      }
+
+      if (saveStatus) securityStatus(saveStatus, "Configurazione AI salvata e sincronizzata!");
+      toast("Configurazione AI salvata e sincronizzata con successo", "success");
     } catch {
-      if (statusEl) {
-        statusEl.textContent = "Errore di connessione";
-        statusEl.style.color = "var(--red)";
+      if (saveStatus) {
+        saveStatus.textContent = "Errore di connessione con il server";
+        saveStatus.style.color = "var(--red)";
       }
     } finally {
-      if (btnEl) btnEl.disabled = false;
+      if (saveBtn) saveBtn.disabled = false;
     }
   }
 
-  profileForm?.addEventListener("submit", (e) => {
+  form?.addEventListener("submit", (e) => {
     e.preventDefault();
-    eseguiSalvataggio(profileStatus, profileSaveBtn, "Profilo attività salvato con successo");
+    eseguiSalvataggio();
   });
 
-  aiForm?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    eseguiSalvataggio(aiStatus, aiSaveBtn, "Impostazioni assistente salvate con successo");
-  });
-
-  caricaProfiloImpostazioni = carica;
+  caricaConfigurazioneAI = carica;
 })();
 
 /* ============================================================

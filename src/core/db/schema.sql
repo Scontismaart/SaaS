@@ -71,10 +71,17 @@ CREATE TABLE IF NOT EXISTS documents (
     nome                TEXT NOT NULL,
     tipo                TEXT NOT NULL DEFAULT 'upload',
     fonte               TEXT NOT NULL DEFAULT '',
+    is_active           BOOLEAN NOT NULL DEFAULT TRUE,
+    stato               TEXT NOT NULL DEFAULT 'indicizzata',
+    errore              TEXT NOT NULL DEFAULT '',
+    metadata            JSONB NOT NULL DEFAULT '{}',
     caricato_il         TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW(),
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_documents_org ON documents(organization_id);
+CREATE INDEX IF NOT EXISTS idx_documents_org_active_stato ON documents(organization_id, is_active, stato);
+CREATE INDEX IF NOT EXISTS idx_documents_org_tipo ON documents(organization_id, tipo);
 
 -- ============================================================
 -- 5. DOCUMENT_CHUNKS (pgvector, sostituisce ChromaDB)

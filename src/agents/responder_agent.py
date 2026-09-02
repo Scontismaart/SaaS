@@ -61,8 +61,9 @@ def crea_responder_task(agent: Agent, messaggio: MessaggioInput, cronologia: lis
     descrizione = f"{cronologia_testo}\n\n" if cronologia_testo else ""
     if contesto_documenti.strip():
         descrizione += (
-            "Contesto dai documenti dell'attivita' (usa queste informazioni "
-            "solo se rilevanti per la domanda del cliente, senza inventare nulla):\n"
+            "Contesto dai documenti e knowledge base dell'attivita' (usa queste informazioni "
+            "solo se rilevanti per la domanda del cliente, senza inventare nulla;\n"
+            "Gerarchia fonti in caso di conflitto: Dati struttura > FAQ > Documenti > Pagine web):\n"
             f"{contesto_documenti}\n\n"
         )
     descrizione += (

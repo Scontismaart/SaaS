@@ -220,6 +220,28 @@ class CaricaDocumentoInput(BaseModel):
     nome: str = "documento.txt"
 
 
+class FAQInput(BaseModel):
+    domanda: str = Field(min_length=3, max_length=500)
+    risposta: str = Field(min_length=2, max_length=3000)
+
+
+class WebImportInput(BaseModel):
+    url: str = Field(min_length=4, max_length=1000)
+
+
+class ServizioStrutturato(BaseModel):
+    id: str | None = None
+    nome: str = Field(min_length=2, max_length=120)
+    prezzo: float = Field(ge=0.0)
+    durata_minuti: int = Field(default=30, ge=5, le=480)
+    operatore: str = Field(default="", max_length=100)
+
+
+class DatiStrutturaInput(BaseModel):
+    servizi: list[ServizioStrutturato] = Field(default_factory=list)
+    orari: str = Field(default="", max_length=1000)
+
+
 class RispostaDocumento(BaseModel):
     risposta: str
     fonti: list[dict] = Field(default_factory=list)

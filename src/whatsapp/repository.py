@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-import hashlib
 import json
-import os
 import uuid
 from typing import Any
-
-from cryptography.fernet import Fernet
 
 from src.core.db.repositories.billing_repo import BillingRepository
 from src.core.db.repositories.booking_repo import BookingRepository
@@ -67,6 +62,32 @@ class Repository(TenantScopedRepository):
         self.doc_repo = self._doc_repo
         self.billing_repo = self._billing_repo
 
+    def __getattr__(self, name: str):
+        if name in (
+            "_org_repo", "_contact_repo", "_conv_repo", "_msg_repo",
+            "_booking_repo", "_doc_repo", "_billing_repo",
+            "org_repo", "contact_repo", "conv_repo", "msg_repo",
+            "booking_repo", "doc_repo", "billing_repo",
+        ):
+            pool = getattr(self, "pool", None)
+            if pool is not None:
+                self._org_repo = OrganizationRepository(pool)
+                self._contact_repo = ContactRepository(pool)
+                self._conv_repo = ConversationRepository(pool)
+                self._msg_repo = MessageRepository(pool)
+                self._booking_repo = BookingRepository(pool)
+                self._doc_repo = DocumentRepository(pool)
+                self._billing_repo = BillingRepository(pool)
+                self.org_repo = self._org_repo
+                self.contact_repo = self._contact_repo
+                self.conv_repo = self._conv_repo
+                self.msg_repo = self._msg_repo
+                self.booking_repo = self._booking_repo
+                self.doc_repo = self._doc_repo
+                self.billing_repo = self._billing_repo
+                return getattr(self, name)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     # ── Tenant Resolution & Config ────────────────────────────
 
     @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
@@ -88,152 +109,131 @@ class Repository(TenantScopedRepository):
     async def get_tenant_config(self, org_id):
         return await self._org_repo.get_tenant_config(org_id)
 
-    async def save_tenant_config(self, org_id, access_token, phone_number_id,
-                                 waba_id, verify_token=None):
-        return await self._org_repo.save_tenant_config(
-            org_id, access_token, phone_number_id, waba_id, verify_token=verify_token
-        )
+    @staticmethod
+    def encrypt_token(plaintext: str) -> str:
+        return OrganizationRepository.encrypt_token(plaintext)
 
-    async def delete_tenant_config(self, org_id):
+    @staticmethod
+    def decrypt_token(ciphertext: str) -> str:
+        return OrganizationRepository.decrypt_token(ciphertext)
+
+    async def save_tenant_config(self, org_id, phone_number_id: str, waba_id: str, access_token: str):
+        return await self._org_repo.save_tenant_config(org_id, phone_number_id, waba_id, access_token)
+
+    async def delete_tenant_config(self, org_id) -> bool:
         return await self._org_repo.delete_tenant_config(org_id)
-
-    def encrypt_token(self, token: str) -> str:
-        return self._org_repo.encrypt_token(token)
-
-    def decrypt_token(self, encrypted_token: str) -> str:
-        return self._org_repo.decrypt_token(encrypted_token)
 
     async def get_org_business_profile(self, org_id):
         return await self._org_repo.get_org_business_profile(org_id)
 
     # ── Contacts & Consent ────────────────────────────────────
 
-    async def get_or_create_contact(self, org_id, wa_id, profile_name=None):
-        return await self._contact_repo.get_or_create_contact(org_id, wa_id, profile_name=profile_name)
+    async def get_or_create_contact(self, org_id, phone):
+        return await self._contact_repo.get_or_create_contact(org_id, phone)
 
-    async def get_contact_consent(self, org_id, contact_id):
-        return await self._contact_repo.get_contact_consent(org_id, contact_id)
+    async def get_or_create_conversation(self, org_id, contact_id, canale: str = "whatsapp"):
+        return await self._conv_repo.get_or_create_conversation(org_id, contact_id, canale=canale)
 
-    async def get_contact_prefs(self, org_id, contact_id):
-        return await self._contact_repo.get_contact_prefs(org_id, contact_id)
+    async def get_contact_prefs(self, org_id, phone):
+        return await self._contact_repo.get_contact_prefs(org_id, phone)
 
-    async def record_consent_event(self, org_id, contact_id, channel, consent_type,
-                                   event_type, source, reason=None, metadata=None):
+    async def record_consent_event(self, contact_id, event_type, method,
+                                  triggering_message_id=None, matched_text=None, *,
+                                  organization_id):
         return await self._contact_repo.record_consent_event(
-            org_id, contact_id, channel, consent_type, event_type, source,
-            reason=reason, metadata=metadata,
+            contact_id, event_type, method,
+            triggering_message_id=triggering_message_id, matched_text=matched_text,
+            organization_id=organization_id,
         )
 
-    async def mark_ai_disclosure_sent(self, org_id, contact_id):
-        return await self._contact_repo.mark_ai_disclosure_sent(org_id, contact_id)
+    async def get_contact_consent(self, contact_id, organization_id) -> str | None:
+        return await self._contact_repo.get_contact_consent(contact_id, organization_id)
 
-    # ── Conversations ─────────────────────────────────────────
+    async def mark_ai_disclosure_sent(self, contact_id: uuid.UUID, organization_id) -> bool:
+        return await self._contact_repo.mark_ai_disclosure_sent(contact_id, organization_id)
 
-    async def get_or_create_conversation(self, org_id, contact_id):
-        return await self._conv_repo.get_or_create_conversation(org_id, contact_id)
+    # ── Messages & Delivery ───────────────────────────────────
 
-    async def get_conversation(self, org_id, conversation_id):
-        return await self._conv_repo.get_conversation(org_id, conversation_id)
+    async def upsert_message(self, id, organization_id, conversation_id, wam_id, direction,
+                             message_type, content, content_text, status, handling_type=None,
+                             idempotency_key=None, conn=None):
+        return await self._msg_repo.upsert_message(
+            id, organization_id, conversation_id, wam_id, direction,
+            message_type, content, content_text, status, handling_type=handling_type,
+            idempotency_key=idempotency_key, conn=conn,
+        )
 
-    async def set_conversation_ai_active(self, org_id, conv_id, is_active: bool):
-        return await self._conv_repo.set_conversation_ai_active(org_id, conv_id, is_active=is_active)
+    async def _upsert_message(self, conn, id, organization_id, conversation_id, wam_id, direction,
+                              message_type, content, content_text, status, handling_type=None,
+                              idempotency_key=None):
+        return await self._msg_repo._upsert_message(
+            conn, id, organization_id, conversation_id, wam_id, direction,
+            message_type, content, content_text, status, handling_type=handling_type,
+            idempotency_key=idempotency_key,
+        )
 
-    # ── Inbound / Outbound Messages & Idempotency ─────────────
+    async def update_message_status(self, message_id, new_status, wam_id=None, error_code=None,
+                                    error_title=None, error_details=None, biz_opaque_callback_data=None, *,
+                                    organization_id):
+        return await self._msg_repo.update_message_status(
+            message_id, new_status, wam_id=wam_id, error_code=error_code,
+            error_title=error_title, error_details=error_details,
+            biz_opaque_callback_data=biz_opaque_callback_data,
+            organization_id=organization_id,
+        )
 
-    async def check_idempotency(self, message_id, org_id=None):
-        return await self._msg_repo.check_idempotency(message_id, org_id=org_id)
+    async def update_message_status_by_wam_id(self, wam_id, new_status, error_code=None,
+                                              error_title=None, error_details=None, *,
+                                              organization_id):
+        return await self._msg_repo.update_message_status_by_wam_id(
+            wam_id, new_status, error_code=error_code,
+            error_title=error_title, error_details=error_details,
+            organization_id=organization_id,
+        )
 
-    async def claim_inbound_messages(self, limit: int = 10):
+    async def claim_inbound_messages(self, limit=10):
         return await self._msg_repo.claim_inbound_messages(limit=limit)
 
-    async def claim_message_and_check_quota(
-        self, message_id: uuid.UUID, org_id: uuid.UUID
-    ) -> tuple[dict | None, bool]:
-        return await self._msg_repo.claim_message_and_check_quota(message_id, org_id)
-
-    async def upsert_message(self, message_id, organization_id, conversation_id,
-                             direction, message_type, content, sender_id,
-                             status="queued", raw_payload=None, failure_reason=None,
-                             conn=None):
-        return await self._msg_repo.upsert_message(
-            message_id, organization_id, conversation_id, direction, message_type,
-            content, sender_id, status=status, raw_payload=raw_payload,
-            failure_reason=failure_reason, conn=conn,
+    async def try_mark_replied(self, message_id, handling_type: str | None = None, *,
+                               organization_id):
+        return await self._msg_repo.try_mark_replied(
+            message_id, handling_type=handling_type, organization_id=organization_id
         )
 
-    async def _upsert_message(self, conn, message_id, organization_id, conversation_id,
-                              direction, message_type, content, sender_id,
-                              status="queued", raw_payload=None, failure_reason=None):
-        return await self._msg_repo._upsert_message(
-            conn, message_id, organization_id, conversation_id, direction, message_type,
-            content, sender_id, status=status, raw_payload=raw_payload,
-            failure_reason=failure_reason,
+    async def update_heartbeat(self, message_id, organization_id):
+        return await self._msg_repo.update_heartbeat(message_id, organization_id)
+
+    async def claim_delivery_attempts(self, limit=10):
+        return await self._msg_repo.claim_delivery_attempts(limit=limit)
+
+    async def insert_delivery_attempt(self, message_id, next_retry_at):
+        return await self._msg_repo.insert_delivery_attempt(message_id, next_retry_at)
+
+    async def update_delivery_attempt(self, attempt_id, status, error_details=None):
+        return await self._msg_repo.update_delivery_attempt(attempt_id, status, error_details=error_details)
+
+    async def reconstruct_payload_for_retry(self, message_id):
+        return await self._msg_repo.reconstruct_payload_for_retry(message_id)
+
+    async def reap_stale_claims(self, timeout_minutes=15, dead_letter_threshold=3):
+        return await self._msg_repo.reap_stale_claims(
+            timeout_minutes=timeout_minutes, dead_letter_threshold=dead_letter_threshold
         )
 
-    async def get_message_org_scoped(self, message_id: uuid.UUID, org_id: uuid.UUID) -> dict | None:
-        return await self._msg_repo.get_message_org_scoped(message_id, org_id)
+    async def delete_expired_messages(self, retention_days: int = 60) -> int:
+        return await self._msg_repo.delete_expired_messages(retention_days=retention_days)
 
-    async def insert_delivery_attempt(self, message_id, attempt_number, status,
-                                      error_code=None, error_message=None,
-                                      latency_ms=None, raw_response=None,
-                                      failure_category=None):
-        return await self._msg_repo.insert_delivery_attempt(
-            message_id, attempt_number, status, error_code=error_code,
-            error_message=error_message, latency_ms=latency_ms,
-            raw_response=raw_response, failure_category=failure_category,
-        )
+    async def purge_soft_deleted_messages(self, grace_days: int = 30) -> int:
+        return await self._msg_repo.purge_soft_deleted_messages(grace_days=grace_days)
 
-    async def claim_delivery_attempts(self, limit: int = 10, batch_window_seconds: int = 60):
-        return await self._msg_repo.claim_delivery_attempts(
-            limit=limit, batch_window_seconds=batch_window_seconds
-        )
+    async def cleanup_empty_conversations(self) -> int:
+        return await self._conv_repo.cleanup_empty_conversations()
 
-    async def update_delivery_attempt(self, attempt_id: uuid.UUID, status: str,
-                                      error_code=None, error_message=None,
-                                      latency_ms=None, raw_response=None,
-                                      failure_category=None):
-        return await self._msg_repo.update_delivery_attempt(
-            attempt_id, status, error_code=error_code, error_message=error_message,
-            latency_ms=latency_ms, raw_response=raw_response,
-            failure_category=failure_category,
-        )
+    async def get_outbound_dedup(self, organization_id, message_id) -> dict | None:
+        return await self._msg_repo.get_outbound_dedup(organization_id, message_id)
 
-    async def update_message_status(self, message_id, status, failure_reason=None):
-        return await self._msg_repo.update_message_status(
-            message_id, status, failure_reason=failure_reason
-        )
-
-    async def update_message_status_by_wam_id(self, wam_id, status, error_code=None, error_message=None):
-        return await self._msg_repo.update_message_status_by_wam_id(
-            wam_id, status, error_code=error_code, error_message=error_message
-        )
-
-    async def list_conversation_messages(self, org_id, conversation_id, limit=20):
-        return await self._msg_repo.list_conversation_messages(org_id, conversation_id, limit=limit)
-
-    async def get_last_ai_outbound_message(self, org_id, conversation_id):
-        return await self._msg_repo.get_last_ai_outbound_message(org_id, conversation_id)
-
-    async def save_ai_reply(self, org_id, conv_id, text, model=None,
-                            tokens_in=None, tokens_out=None, reply_to_id=None):
-        return await self._msg_repo.save_ai_reply(
-            org_id, conv_id, text, model=model, tokens_in=tokens_in,
-            tokens_out=tokens_out, reply_to_id=reply_to_id,
-        )
-
-    async def mark_message_sent(self, message_id, org_id, wam_id, raw_response=None):
-        return await self._msg_repo.mark_message_sent(message_id, org_id, wam_id, raw_response=raw_response)
-
-    async def try_mark_replied(self, message_id: uuid.UUID, org_id: uuid.UUID) -> bool:
-        return await self._msg_repo.try_mark_replied(message_id, org_id)
-
-    async def get_outbound_dedup(self, message_id, org_id):
-        return await self._msg_repo.get_outbound_dedup(message_id, org_id)
-
-    async def save_outbound_dedup(self, message_id, org_id, response_text):
+    async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
         return await self._msg_repo.save_outbound_dedup(message_id, org_id, response_text)
-
-    # ── Message Usage & Quota ─────────────────────────────────
 
     async def check_message_usage(self, org_id: uuid.UUID) -> dict | None:
         return await self._billing_repo.check_message_usage(org_id)
@@ -244,121 +244,106 @@ class Repository(TenantScopedRepository):
     async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int | None:
         return await self._billing_repo._increment_message_usage(conn, org_id)
 
-    # ── WhatsApp Templates ────────────────────────────────────
-
     async def upsert_template(self, organization_id, name, language, category, status, components):
         return await self._org_repo.upsert_template(
             organization_id, name, language, category, status, components
         )
 
-    async def update_template_status(self, organization_id, name, language, status):
-        return await self._org_repo.update_template_status(organization_id, name, language, status)
-
-    # ── RAG & FAQ Cache ───────────────────────────────────────
-
-    async def search_similar(self, organization_id, query_embedding,
-                             top_k=3, similarity_threshold=0.3):
-        return await self._doc_repo.search_similar(
-            organization_id, query_embedding, top_k=top_k, similarity_threshold=similarity_threshold
+    async def update_template_status(self, organization_id, name, language, status,
+                                     rejected_reason=None):
+        return await self._org_repo.update_template_status(
+            organization_id, name, language, status, rejected_reason=rejected_reason
         )
 
-    def _vec_str(self, vec):
-        return self._doc_repo._vec_str(vec)
+    async def search_similar(self, organization_id: str, embedding: list, k: int = 3) -> list[dict]:
+        return await self._doc_repo.search_similar(organization_id, embedding, k=k)
 
-    async def faq_cache_lookup(self, organization_id: uuid.UUID, query_hash: str) -> dict | None:
-        return await self._doc_repo.faq_cache_lookup(organization_id, query_hash)
+    @staticmethod
+    def _vec_str(embedding: list) -> str:
+        return DocumentRepository._vec_str(embedding)
 
-    async def faq_cache_store(
-        self,
-        organization_id: uuid.UUID,
-        query_hash: str,
-        raw_query: str,
-        answer_text: str,
-        source_doc_ids: list,
-        ttl_hours: int = 24,
-    ) -> None:
+    async def faq_cache_lookup(self, organization_id: str, embedding: list,
+                               max_distance: float = 0.08) -> dict | None:
+        return await self._doc_repo.faq_cache_lookup(organization_id, embedding, max_distance=max_distance)
+
+    async def faq_cache_store(self, organization_id: str, question_text: str,
+                              answer_text: str, embedding: list,
+                              prompt_variant: str = "control",
+                              ttl_hours: int = 72) -> dict:
         return await self._doc_repo.faq_cache_store(
-            organization_id, query_hash, raw_query, answer_text,
-            source_doc_ids, ttl_hours=ttl_hours,
+            organization_id, question_text, answer_text, embedding,
+            prompt_variant=prompt_variant, ttl_hours=ttl_hours,
         )
 
-    async def faq_cache_invalidate(self, organization_id: uuid.UUID) -> None:
+    async def faq_cache_invalidate(self, organization_id: str) -> int:
         return await self._doc_repo.faq_cache_invalidate(organization_id)
 
-    # ── Outbox Reconstruct & Stale Claims ──────────────────────
+    async def get_last_ai_outbound_message(self, organization_id, conversation_id):
+        return await self._msg_repo.get_last_ai_outbound_message(organization_id, conversation_id)
 
-    async def reconstruct_payload_for_retry(self, message_id: uuid.UUID) -> dict | None:
-        return await self._msg_repo.reconstruct_payload_for_retry(message_id)
+    async def get_message_org_scoped(self, organization_id, message_id) -> dict | None:
+        return await self._msg_repo.get_message_org_scoped(organization_id, message_id)
 
-    async def reap_stale_claims(self, stale_seconds: int = 300) -> int:
-        return await self._msg_repo.reap_stale_claims(stale_seconds=stale_seconds)
-
-    # ── Human Escalation & Inbox Tickets ──────────────────────
-
-    async def escalate_to_human(self, org_id, conv_id, reason=None, priority="medium"):
-        return await self._conv_repo.escalate_to_human(
-            org_id, conv_id, reason=reason, priority=priority
+    async def registra_feedback(self, organization_id, message_id, conversation_id,
+                                source: str, value: str, created_by_user_id=None) -> dict:
+        return await self._msg_repo.registra_feedback(
+            organization_id, message_id, conversation_id,
+            source=source, value=value, created_by_user_id=created_by_user_id,
         )
 
-    async def assign_ticket(self, org_id, ticket_id, user_id):
-        return await self._conv_repo.assign_ticket(org_id, ticket_id, user_id)
+    # ── HITL Tickets & Inbox ──────────────────────────────────
 
-    async def claim_ticket(self, org_id, ticket_id, user_id):
-        return await self._conv_repo.claim_ticket(org_id, ticket_id, user_id)
+    async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None,
+                           limit: int | None = None, offset: int = 0) -> list[dict]:
+        return await self._conv_repo.list_tickets(org_id, status=status, priorita=priorita, limit=limit, offset=offset)
 
-    async def release_ticket(self, org_id, ticket_id, user_id):
-        return await self._conv_repo.release_ticket(org_id, ticket_id, user_id)
+    async def get_conversation(self, conversation_id: str, organization_id) -> dict | None:
+        return await self._conv_repo.get_conversation(conversation_id, organization_id)
 
-    async def update_heartbeat(self, org_id, ticket_id, user_id):
-        return await self._conv_repo.update_heartbeat(org_id, ticket_id, user_id)
+    async def list_conversation_messages(self, org_id: str, conversation_id: str,
+                                         limit: int = 50, offset: int = 0) -> list[dict]:
+        return await self._conv_repo.list_conversation_messages(org_id, conversation_id, limit=limit, offset=offset)
 
-    async def resolve_ticket(self, org_id, ticket_id, user_id, reactivate_ai=False):
-        return await self._conv_repo.resolve_ticket(
-            org_id, ticket_id, user_id, reactivate_ai=reactivate_ai
-        )
+    async def escalate_to_human(self, conversation_id: str, organization_id) -> dict | None:
+        return await self._conv_repo.escalate_to_human(conversation_id, organization_id)
 
-    async def list_tickets(self, org_id, status=None, priority=None, assigned_to=None,
-                           limit=50, offset=0):
-        return await self._conv_repo.list_tickets(
-            org_id, status=status, priority=priority, assigned_to=assigned_to,
-            limit=limit, offset=offset,
-        )
+    async def claim_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int,
+                           organization_id) -> dict | None:
+        return await self._conv_repo.claim_ticket(conversation_id, staff_user_id, expected_version, organization_id)
 
-    async def list_team_members(self, org_id):
+    async def release_ticket(self, conversation_id: str, staff_user_id: str,
+                             organization_id) -> dict | None:
+        return await self._conv_repo.release_ticket(conversation_id, staff_user_id, organization_id)
+
+    async def resolve_ticket(self, conversation_id: str, staff_user_id: str,
+                             organization_id) -> dict | None:
+        return await self._conv_repo.resolve_ticket(conversation_id, staff_user_id, organization_id)
+
+    async def list_team_members(self, org_id: str) -> list[dict]:
         return await self._org_repo.list_team_members(org_id)
 
-    # ── Bookings Check ────────────────────────────────────────
+    async def assign_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int,
+                            organization_id) -> dict | None:
+        return await self._conv_repo.assign_ticket(conversation_id, staff_user_id, expected_version, organization_id)
 
-    async def check_booking_exists(
-        self,
-        org_id: uuid.UUID,
-        phone: str,
-        target_date,
-        target_time=None,
-    ) -> bool:
-        return await self._booking_repo.check_booking_exists(
-            org_id, phone, target_date, target_time=target_time
+    async def set_conversation_ai_active(self, conversation_id: str, organization_id) -> dict | None:
+        return await self._conv_repo.set_conversation_ai_active(conversation_id, organization_id)
+
+    async def check_idempotency(self, org_id: str, idempotency_key: str) -> dict | None:
+        return await self._msg_repo.check_idempotency(org_id, idempotency_key)
+
+    async def claim_message_and_check_quota(self, msg_id: str, org_id: str) -> dict:
+        return await self._msg_repo.claim_message_and_check_quota(msg_id, org_id)
+
+    async def check_booking_exists(self, msg_id: str, org_id: str) -> bool:
+        return await self._msg_repo.check_booking_exists(msg_id, org_id)
+
+    async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False,
+                            motivo: str = "", *, organization_id) -> None:
+        return await self._msg_repo.save_ai_reply(
+            msg_id, reply, richiede_umano=richiede_umano, motivo=motivo,
+            organization_id=organization_id,
         )
 
-    # ── Feedback ──────────────────────────────────────────────
-
-    async def registra_feedback(self, organization_id, message_id, rating, comment=None,
-                                created_by=None):
-        return await self._msg_repo.registra_feedback(
-            organization_id, message_id, rating, comment=comment, created_by=created_by
-        )
-
-    # ── Data Retention & Cleanup ──────────────────────────────
-
-    async def delete_expired_messages(self, batch_size: int = 500) -> int:
-        return await self._msg_repo.delete_expired_messages(batch_size=batch_size)
-
-    async def purge_soft_deleted_messages(self, batch_size: int = 500) -> int:
-        return await self._msg_repo.purge_soft_deleted_messages(batch_size=batch_size)
-
-    async def cleanup_empty_conversations(self, batch_size: int = 500) -> int:
-        return await self._conv_repo.cleanup_empty_conversations(batch_size=batch_size)
-
-
-# Alias per retrocompatibilità esplicita
-WhatsAppRepository = Repository
+    async def mark_message_sent(self, msg_id: str, meta_message_id: str, organization_id) -> None:
+        return await self._msg_repo.mark_message_sent(msg_id, meta_message_id, organization_id)

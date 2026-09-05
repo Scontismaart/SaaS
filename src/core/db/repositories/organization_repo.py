@@ -376,25 +376,24 @@ class OrganizationRepository(TenantScopedRepository):
     async def add_email_config(self, organization_id, indirizzo, is_active=True):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                INSERT INTO email_configs (organization_id, indirizzo, is_active)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (organization_id, indirizzo) DO UPDATE SET is_active = $3
+                INSERT INTO email_configs (id, organization_id, indirizzo, is_active)
+                VALUES ($1, $2, $3, $4)
                 RETURNING *
-            """, organization_id, indirizzo, is_active)
+            """, uuid.uuid4(), organization_id, indirizzo, is_active)
             return dict(row)
 
     async def list_email_configs(self, organization_id):
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT id, organization_id, indirizzo, is_active, created_at
-                FROM email_configs
-                WHERE organization_id = $1
-            """, organization_id)
+            rows = await conn.fetch(
+                "SELECT * FROM email_configs WHERE organization_id = $1 ORDER BY created_at",
+                organization_id,
+            )
             return [dict(r) for r in rows]
 
     async def remove_email_config(self, organization_id, indirizzo):
         async with self.pool.acquire() as conn:
-            await conn.execute("""
+            result = await conn.execute("""
                 DELETE FROM email_configs
                 WHERE organization_id = $1 AND indirizzo = $2
             """, organization_id, indirizzo)
+            return result != "DELETE 0"

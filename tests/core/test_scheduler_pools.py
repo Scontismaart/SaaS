@@ -15,6 +15,27 @@ from src.core import scheduler
 pytestmark = pytest.mark.asyncio
 
 
+class FakeConn:
+    async def fetchval(self, query, *args):
+        if "pg_try_advisory_lock" in query:
+            return True
+        return None
+
+    async def execute(self, query, *args):
+        return "OK"
+
+
+class FakePoolAcquireCtx:
+    def __init__(self, pool):
+        self.pool = pool
+
+    async def __aenter__(self):
+        return FakeConn()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
 class FakePool:
     def __init__(self, registry):
         self.closed = False
@@ -29,8 +50,8 @@ class FakePool:
         self.queries.append(a[0] if a else "")
         return "OK"
 
-    async def acquire(self):
-        raise NotImplementedError
+    def acquire(self):
+        return FakePoolAcquireCtx(self)
 
     async def close(self):
         self.closed = True

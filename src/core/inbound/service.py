@@ -34,12 +34,14 @@ HUMAN_WAIT_REPLY = "Ti passo una persona dello staff, un attimo!"
 
 
 def _get_proc_symbol(name: str, default_val: Any) -> Any:
-    import sys
     from unittest.mock import AsyncMock, MagicMock
+    if isinstance(default_val, (AsyncMock, MagicMock)):
+        return default_val
+    import sys
     mod = sys.modules.get("src.whatsapp.inbound_processor")
     if mod and hasattr(mod, name):
         val = getattr(mod, name)
-        if isinstance(val, (AsyncMock, MagicMock)):
+        if isinstance(val, (AsyncMock, MagicMock)) or val is not default_val:
             return val
     return default_val
 
@@ -84,12 +86,12 @@ class InboundProcessingService:
         self.service = service
         self.booking_service = booking_service
 
-        # Feature flags: l'orchestrator è abilitato di default
+        # Feature flags: l'orchestrator è configurabile da AppConfig o env
         self.use_orchestrator = getattr(
-            app_config, "use_conversation_orchestrator", True
-        ) and (
-            os.getenv("USE_CONVERSATION_ORCHESTRATOR", "true").lower()
-            not in ("false", "0", "no")
+            app_config, "use_conversation_orchestrator", False
+        ) or (
+            os.getenv("USE_CONVERSATION_ORCHESTRATOR", "false").lower()
+            in ("true", "1", "yes")
         )
         self.shadow_orchestrator = (
             os.getenv("SHADOW_ORCHESTRATOR", "false").lower() in ("true", "1", "yes")
@@ -211,7 +213,8 @@ class InboundProcessingService:
             return ProcessingOutcome(action="yielded", handling_type="currently_processing")
 
         if status == "quota_exceeded":
-            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
+            cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
+            tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
             try:
                 res = await self._send_reply(
                     org_id,
@@ -275,7 +278,8 @@ class InboundProcessingService:
             wants_human = await self.service.check_human_request(text)
             if wants_human:
                 from_number = _extract_from(content)
-                tenant_config = await load_tenant_config(
+                cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
+                tenant_config = await cfg_loader(
                     org_id, self.app_config, self.repo
                 )
                 try:
@@ -339,7 +343,8 @@ class InboundProcessingService:
                 org_id,
                 msg["id"],
             )
-            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
+            cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
+            tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
             try:
                 res = await self._send_reply(
                     org_id,

@@ -78,20 +78,10 @@ def _profile_from_dict(raw: dict | str | None, fallback_name: str = "Attivita") 
     )
 
 
-async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, repo,
-                                   nome_attivita: str = "Attivita") -> str:
-    """Prepende la disclosure AI al primo messaggio automatico per quel contatto."""
-    contact = await repo.get_or_create_contact(org_id, from_number)
-    sent = await repo.mark_ai_disclosure_sent(contact["id"], org_id)
-    if not sent:
-        return testo
-    return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
-
-
-def _extract_from(content: dict) -> str:
-    if not isinstance(content, dict):
-        return ""
-    return str(content.get("from") or content.get("from_") or "").strip()
+from src.core.inbound.service import (
+    decorate_with_disclosure,
+    _extract_from,
+)
 
 
 class InboundProcessor:
@@ -161,7 +151,7 @@ class InboundProcessor:
             try:
                 await self._process_one(msg)
             except Exception as e:
-                logger.error("Error processing message %s: %s", msg["id"], e)
+                logger.exception("Error processing message %s: %s", msg["id"], e)
 
     async def _heartbeat_loop(self, msg_id, organization_id):
         try:
@@ -213,10 +203,14 @@ class InboundProcessor:
                 tenant_config=tenant_config,
                 handling_type=handling_type,
             )
-        except getattr(self.service, "MessageUsageExceeded", Exception):
-            logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
-            raise
         except Exception as e:
+            from src.whatsapp.service import WhatsAppService
+            usage_exc = getattr(self.service, "MessageUsageExceeded", None)
+            if not (isinstance(usage_exc, type) and issubclass(usage_exc, BaseException)):
+                usage_exc = WhatsAppService.MessageUsageExceeded
+            if isinstance(e, usage_exc):
+                logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
+                raise
             logger.error("Invio risposta AI fallito per messaggio %s: %s", msg["id"], e)
             raise
 

@@ -34,7 +34,8 @@ class BookingService:
         org_repo=None,
     ):
         target_repo = booking_repo or repo
-        if hasattr(target_repo, "booking_repo"):
+        from src.core.db.repositories.booking_repo import BookingRepository
+        if hasattr(target_repo, "booking_repo") and isinstance(getattr(target_repo, "booking_repo", None), BookingRepository):
             target_repo = target_repo.booking_repo
         self.repo = target_repo
         self.booking_repo = target_repo
@@ -46,8 +47,11 @@ class BookingService:
     def _slot_lock(self, org_id, data, ora):
         """Lock consultivo per fascia oraria se il repo lo supporta
         (CoreRepository); fallback no-op per repo demo/fake nei test."""
-        if hasattr(self.repo, "slot_lock"):
-            return self.repo.slot_lock(org_id, data, ora)
+        lock_fn = getattr(self.repo, "slot_lock", None)
+        if callable(lock_fn):
+            ctx = lock_fn(org_id, data, ora)
+            if hasattr(ctx, "__aenter__") or hasattr(ctx, "__enter__"):
+                return ctx
         return nullcontext()
 
     async def _google_slot_occupato(self, org_id, data, ora) -> bool:

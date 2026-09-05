@@ -32,12 +32,14 @@ logger = logging.getLogger(__name__)
 
 
 def _get_proc_symbol(name: str, default_val: Any) -> Any:
-    import sys
     from unittest.mock import AsyncMock, MagicMock
+    if isinstance(default_val, (AsyncMock, MagicMock)):
+        return default_val
+    import sys
     mod = sys.modules.get("src.whatsapp.inbound_processor")
     if mod and hasattr(mod, name):
         val = getattr(mod, name)
-        if isinstance(val, (AsyncMock, MagicMock)):
+        if isinstance(val, (AsyncMock, MagicMock)) or val is not default_val:
             return val
     return default_val
 

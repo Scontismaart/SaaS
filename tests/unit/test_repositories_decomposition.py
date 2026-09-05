@@ -122,7 +122,7 @@ async def test_whatsapp_repo_delegates_to_specialized():
     wa_repo._contact_repo.get_or_create_contact = AsyncMock(return_value={"id": 1, "wa_id": "39123"})
     wa_repo._conv_repo.get_or_create_conversation = AsyncMock(return_value={"id": 10})
     wa_repo._msg_repo.check_idempotency = AsyncMock(return_value=False)
-    wa_repo._booking_repo.check_booking_exists = AsyncMock(return_value=False)
+    wa_repo._msg_repo.check_booking_exists = AsyncMock(return_value=False)
     wa_repo._doc_repo.faq_cache_lookup = AsyncMock(return_value=None)
     wa_repo._billing_repo.check_message_usage = AsyncMock(return_value={"messages_used_this_period": 5})
 
@@ -133,23 +133,23 @@ async def test_whatsapp_repo_delegates_to_specialized():
 
     res_contact = await wa_repo.get_or_create_contact(org_id, "39123")
     assert res_contact["id"] == 1
-    wa_repo._contact_repo.get_or_create_contact.assert_awaited_once_with(org_id, "39123", profile_name=None)
+    wa_repo._contact_repo.get_or_create_contact.assert_awaited_once_with(org_id, "39123")
 
     res_conv = await wa_repo.get_or_create_conversation(org_id, 1)
     assert res_conv["id"] == 10
-    wa_repo._conv_repo.get_or_create_conversation.assert_awaited_once_with(org_id, 1)
+    wa_repo._conv_repo.get_or_create_conversation.assert_awaited_once_with(org_id, 1, canale="whatsapp")
 
-    res_idem = await wa_repo.check_idempotency(msg_id)
+    res_idem = await wa_repo.check_idempotency(org_id, "key123")
     assert res_idem is False
-    wa_repo._msg_repo.check_idempotency.assert_awaited_once_with(msg_id, org_id=None)
+    wa_repo._msg_repo.check_idempotency.assert_awaited_once_with(org_id, "key123")
 
-    res_book = await wa_repo.check_booking_exists(org_id, "+39123", "2026-09-05")
+    res_book = await wa_repo.check_booking_exists(str(msg_id), str(org_id))
     assert res_book is False
-    wa_repo._booking_repo.check_booking_exists.assert_awaited_once_with(org_id, "+39123", "2026-09-05", target_time=None)
+    wa_repo._msg_repo.check_booking_exists.assert_awaited_once_with(str(msg_id), str(org_id))
 
-    res_cache = await wa_repo.faq_cache_lookup(org_id, "hash123")
+    res_cache = await wa_repo.faq_cache_lookup(org_id, [0.1] * 384)
     assert res_cache is None
-    wa_repo._doc_repo.faq_cache_lookup.assert_awaited_once_with(org_id, "hash123")
+    wa_repo._doc_repo.faq_cache_lookup.assert_awaited_once_with(org_id, [0.1] * 384, max_distance=0.08)
 
     res_usage = await wa_repo.check_message_usage(org_id)
     assert res_usage["messages_used_this_period"] == 5

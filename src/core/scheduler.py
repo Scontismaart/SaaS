@@ -23,8 +23,8 @@ _scheduler: BackgroundScheduler | None = None
 # (RuntimeError _check_state) e le connessioni avvelenate tornano nel pool,
 # appiccicando le richieste web senza alcun errore visibile. Ogni job usa
 # quindi un proprio pool effimero, come i worker standalone.
-_JOB_POOL_MIN = 2
-_JOB_POOL_MAX = 5
+_JOB_POOL_MIN = 1
+_JOB_POOL_MAX = 2
 _JOB_COMMAND_TIMEOUT = 30  # secondi: niente piu' query appese all'infinito
 
 

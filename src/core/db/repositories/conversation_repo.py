@@ -26,12 +26,12 @@ class ConversationRepository(TenantScopedRepository):
     async def cleanup_empty_conversations(self) -> int:
         async with self.pool.acquire() as conn:
             result = await conn.execute("""
-                DELETE FROM conversations
-                WHERE id IN (
-                    SELECT c.id FROM conversations c
-                    LEFT JOIN messages m ON m.conversation_id = c.id
-                    WHERE m.id IS NULL
-                      AND c.created_at < NOW() - INTERVAL '7 days'
+                UPDATE conversations SET deleted_at = NOW()
+                WHERE deleted_at IS NULL
+                AND NOT EXISTS (
+                    SELECT 1 FROM messages
+                    WHERE messages.conversation_id = conversations.id
+                    AND messages.deleted_at IS NULL
                 )
             """)
             return int(result.split()[-1]) if result else 0

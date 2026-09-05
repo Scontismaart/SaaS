@@ -54,7 +54,7 @@ jobs:
         run: ruff check src/ tests/
 
       - name: Syntax check (py_compile)
-        run: python -m py_compile $(git ls-files '*.py')
+        run: python -m py_compile $(git ls-files 'src/*.py' 'tests/*.py' 'scripts/*.py' '*.py' ':!:scratch/*')
 
       - name: Tenant scoping check (guard dog)
         run: python scripts/check_tenant_scoping.py

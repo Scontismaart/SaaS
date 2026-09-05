@@ -1,11 +1,21 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 import hashlib
 import json
 import os
 import uuid
+from typing import Any
 
 from cryptography.fernet import Fernet
 
+from src.core.db.repositories.billing_repo import BillingRepository
+from src.core.db.repositories.booking_repo import BookingRepository
+from src.core.db.repositories.contact_repo import ContactRepository
+from src.core.db.repositories.conversation_repo import ConversationRepository
+from src.core.db.repositories.document_repo import DocumentRepository
+from src.core.db.repositories.message_repo import MessageRepository
+from src.core.db.repositories.organization_repo import OrganizationRepository
 from src.core.db.scoping import TenantScopedRepository, system_scope
 
 STATUS_RANK = {
@@ -26,1031 +36,329 @@ def apply_status_update(current_status: str, new_status: str) -> bool:
 
 
 class Repository(TenantScopedRepository):
+    """Facade di retrocompatibilità per WhatsApp Repository.
+
+    Delega tutte le operazioni ai repository specializzati per dominio:
+    - OrganizationRepository
+    - ContactRepository
+    - ConversationRepository
+    - MessageRepository
+    - BookingRepository
+    - DocumentRepository
+    - BillingRepository
+    """
+
     def __init__(self, pool):
         self.pool = pool
+        self._org_repo = OrganizationRepository(pool)
+        self._contact_repo = ContactRepository(pool)
+        self._conv_repo = ConversationRepository(pool)
+        self._msg_repo = MessageRepository(pool)
+        self._booking_repo = BookingRepository(pool)
+        self._doc_repo = DocumentRepository(pool)
+        self._billing_repo = BillingRepository(pool)
+
+        # Accesso diretto ai sotto-repository per migrazione progressiva
+        self.org_repo = self._org_repo
+        self.contact_repo = self._contact_repo
+        self.conv_repo = self._conv_repo
+        self.msg_repo = self._msg_repo
+        self.booking_repo = self._booking_repo
+        self.doc_repo = self._doc_repo
+        self.billing_repo = self._billing_repo
+
+    # ── Tenant Resolution & Config ────────────────────────────
 
     @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_phone_number_id(self, phone_number_id: str):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT o.id as organization_id, o.name, o.business_profile,
-                       wa.id as account_id, wa.phone_number_id, wa.waba_id,
-                       wa.access_token, wa.verify_token
-                FROM whatsapp_accounts wa
-                JOIN organizations o ON o.id = wa.organization_id
-                WHERE wa.phone_number_id = $1
-            """, phone_number_id)
-            return dict(row) if row else None
+        return await self._org_repo.get_org_by_phone_number_id(phone_number_id)
 
     @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_waba_id(self, waba_id: str):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT o.id as organization_id, o.name, o.business_profile,
-                       wa.id as account_id, wa.phone_number_id, wa.waba_id,
-                       wa.access_token, wa.verify_token
-                FROM whatsapp_accounts wa
-                JOIN organizations o ON o.id = wa.organization_id
-                WHERE wa.waba_id = $1
-            """, waba_id)
-            return dict(row) if row else None
+        return await self._org_repo.get_org_by_waba_id(waba_id)
 
     async def get_org_subscription_state(self, org_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT subscription_status, trial_end,
-                       messages_used_this_period, messages_limit
-                FROM organizations WHERE id = $1
-            """, org_id)
-            return dict(row) if row else None
+        return await self._billing_repo.get_org_subscription_state(org_id)
 
-    async def record_usage(self, organization_id, event_type, quantity=1,
-                            metadata=None):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO usage_events (id, organization_id, event_type,
-                                          quantity, metadata)
-                VALUES ($1, $2, $3, $4, $5::jsonb)
-                RETURNING *
-            """, uuid.uuid4(), organization_id, event_type, quantity,
-            json.dumps(metadata or {}))
-            return dict(row)
+    async def record_usage(self, organization_id, event_type, quantity=1, metadata=None):
+        return await self._billing_repo.record_usage(
+            organization_id, event_type, quantity=quantity, metadata=metadata
+        )
 
     async def get_tenant_config(self, org_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT wa.access_token, wa.phone_number_id, wa.waba_id,
-                       o.business_profile
-                FROM whatsapp_accounts wa
-                JOIN organizations o ON o.id = wa.organization_id
-                WHERE wa.organization_id = $1
-                LIMIT 1
-            """, org_id)
-            return dict(row) if row else None
+        return await self._org_repo.get_tenant_config(org_id)
 
-    @staticmethod
-    def encrypt_token(plaintext: str) -> str:
-        key = os.environ.get("ENCRYPTION_KEY")
-        if not key:
-            raise RuntimeError("ENCRYPTION_KEY not set")
-        return Fernet(key.encode()).encrypt(plaintext.encode()).decode()
+    async def save_tenant_config(self, org_id, access_token, phone_number_id,
+                                 waba_id, verify_token=None):
+        return await self._org_repo.save_tenant_config(
+            org_id, access_token, phone_number_id, waba_id, verify_token=verify_token
+        )
 
-    @staticmethod
-    def decrypt_token(ciphertext: str) -> str:
-        key = os.environ.get("ENCRYPTION_KEY")
-        if not key:
-            raise RuntimeError("ENCRYPTION_KEY not set")
-        return Fernet(key.encode()).decrypt(ciphertext.encode()).decode()
+    async def delete_tenant_config(self, org_id):
+        return await self._org_repo.delete_tenant_config(org_id)
 
-    async def save_tenant_config(self, org_id, phone_number_id: str, waba_id: str, access_token: str):
-        encrypted = self.encrypt_token(access_token)
-        async with self.pool.acquire() as conn:
-            existing = await conn.fetchrow(
-                "SELECT id FROM whatsapp_accounts WHERE organization_id = $1", org_id
-            )
-            if existing:
-                row = await conn.fetchrow("""
-                    UPDATE whatsapp_accounts
-                    SET phone_number_id = $2, waba_id = $3, access_token = $4, updated_at = NOW()
-                    WHERE organization_id = $1
-                    RETURNING *
-                """, org_id, phone_number_id, waba_id, encrypted)
-            else:
-                row = await conn.fetchrow("""
-                    INSERT INTO whatsapp_accounts (id, organization_id, phone_number_id, waba_id, access_token)
-                    VALUES ($1, $2, $3, $4, $5)
-                    RETURNING *
-                """, uuid.uuid4(), org_id, phone_number_id, waba_id, encrypted)
-            return dict(row)
+    def encrypt_token(self, token: str) -> str:
+        return self._org_repo.encrypt_token(token)
 
-    async def delete_tenant_config(self, org_id) -> bool:
-        async with self.pool.acquire() as conn:
-            result = await conn.execute(
-                "DELETE FROM whatsapp_accounts WHERE organization_id = $1", org_id
-            )
-            return result.endswith("1")
+    def decrypt_token(self, encrypted_token: str) -> str:
+        return self._org_repo.decrypt_token(encrypted_token)
 
     async def get_org_business_profile(self, org_id):
-        """Profilo business a livello organizzazione (canale-agnostico):
-        serve quando l'org non ha account WhatsApp (es. solo Instagram)."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT business_profile FROM organizations WHERE id = $1", org_id
-            )
-            return dict(row)["business_profile"] if row else None
+        return await self._org_repo.get_org_business_profile(org_id)
 
-    async def get_or_create_contact(self, org_id, phone):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO contacts (id, organization_id, phone_number)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (organization_id, phone_number) DO UPDATE
-                    SET updated_at = NOW()
-                RETURNING *
-            """, uuid.uuid4(), org_id, phone)
-            return dict(row)
+    # ── Contacts & Consent ────────────────────────────────────
 
-    async def get_or_create_conversation(self, org_id, contact_id, canale: str = "whatsapp"):
-        """canale: origine della conversazione. L'identita' del contatto
-        (contacts.phone_number) e' gia' channel-agnostic (numero WA o IG id),
-        quindi una conversazione nuova nasce col canale del primo messaggio."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO conversations (id, organization_id, contact_id, canale)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (organization_id, contact_id) DO UPDATE
-                    SET last_message_at = NOW()
-                RETURNING *
-            """, uuid.uuid4(), org_id, contact_id, canale)
-            return dict(row)
+    async def get_or_create_contact(self, org_id, wa_id, profile_name=None):
+        return await self._contact_repo.get_or_create_contact(org_id, wa_id, profile_name=profile_name)
 
-    async def get_contact_prefs(self, org_id, phone):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT * FROM contacts
-                WHERE organization_id = $1 AND phone_number = $2 AND deleted_at IS NULL
-            """, org_id, phone)
-            return dict(row) if row else None
+    async def get_contact_consent(self, org_id, contact_id):
+        return await self._contact_repo.get_contact_consent(org_id, contact_id)
 
-    async def upsert_message(self, id, organization_id, conversation_id, wam_id, direction,
-                              message_type, content, content_text, status, handling_type=None,
-                              idempotency_key=None, conn=None):
-        if conn is None:
-            async with self.scoped_conn(organization_id) as conn:
-                return await self._upsert_message(conn, id, organization_id, conversation_id,
-                    wam_id, direction, message_type, content, content_text, status,
-                    handling_type, idempotency_key)
-        return await self._upsert_message(conn, id, organization_id, conversation_id,
-            wam_id, direction, message_type, content, content_text, status,
-            handling_type, idempotency_key)
+    async def get_contact_prefs(self, org_id, contact_id):
+        return await self._contact_repo.get_contact_prefs(org_id, contact_id)
 
-    async def _upsert_message(self, conn, id, organization_id, conversation_id, wam_id, direction,
-                               message_type, content, content_text, status, handling_type=None,
-                               idempotency_key=None):
-        if idempotency_key:
-            row = await conn.fetchrow("""
-                INSERT INTO messages (id, organization_id, conversation_id, wam_id,
-                                      direction, message_type, content, content_text,
-                                      status, handling_type, idempotency_key)
-                VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
-                ON CONFLICT (organization_id, idempotency_key) WHERE idempotency_key IS NOT NULL
-                    DO NOTHING
-                RETURNING *
-            """, id, organization_id, conversation_id, wam_id, direction, message_type,
-                json.dumps(content), content_text, status, handling_type, idempotency_key)
-            if row:
-                return dict(row)
-            row = await conn.fetchrow(
-                "SELECT * FROM messages WHERE organization_id = $1 AND idempotency_key = $2",
-                organization_id, idempotency_key,
-            )
-            return dict(row)
-        row = await conn.fetchrow("""
-            INSERT INTO messages (id, organization_id, conversation_id, wam_id,
-                                  direction, message_type, content, content_text, status, handling_type)
-            VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10)
-            ON CONFLICT (wam_id) WHERE wam_id IS NOT NULL DO NOTHING
-            RETURNING *
-        """, id, organization_id, conversation_id, wam_id, direction, message_type,
-            json.dumps(content), content_text, status, handling_type)
-        if row:
-            return dict(row)
-        row = await conn.fetchrow(
-            "SELECT * FROM messages WHERE wam_id = $1 AND organization_id = $2",
-            wam_id, organization_id,
+    async def record_consent_event(self, org_id, contact_id, channel, consent_type,
+                                   event_type, source, reason=None, metadata=None):
+        return await self._contact_repo.record_consent_event(
+            org_id, contact_id, channel, consent_type, event_type, source,
+            reason=reason, metadata=metadata,
         )
-        return dict(row) if row else None
 
-    async def update_message_status(self, message_id, new_status, wam_id=None, error_code=None,
-                                      error_title=None, error_details=None, biz_opaque_callback_data=None,
-                                      *, organization_id):
-        async with self.scoped_conn(organization_id) as conn:
-            current = await conn.fetchrow(
-                "SELECT status FROM messages WHERE id = $1 AND organization_id = $2::uuid",
-                message_id, organization_id,
-            )
-            if not current:
-                return None
-            if not apply_status_update(current["status"], new_status):
-                return dict(current)
-            set_parts = ["status = $2"]
-            params = [message_id, new_status]
-            idx = 3
-            if wam_id:
-                set_parts.append(f"wam_id = ${idx}")
-                params.append(wam_id)
-                idx += 1
-            if error_code:
-                set_parts.append(f"error_code = ${idx}")
-                params.append(error_code)
-                idx += 1
-            if error_title:
-                set_parts.append(f"error_title = ${idx}")
-                params.append(error_title)
-                idx += 1
-            if error_details:
-                set_parts.append(f"error_details = ${idx}::jsonb")
-                params.append(json.dumps(error_details))
-                idx += 1
-            if new_status == "sent":
-                set_parts.append("sent_at = NOW()")
-            elif new_status == "delivered":
-                set_parts.append("delivered_at = NOW()")
-            elif new_status == "read":
-                set_parts.append("read_at = NOW()")
-            set_parts.append("updated_at = NOW()")
-            row = await conn.fetchrow(
-                f"UPDATE messages SET {', '.join(set_parts)} WHERE id = $1 AND organization_id = ${idx}::uuid RETURNING *",
-                *params, organization_id
-            )
-            return dict(row) if row else None
+    async def mark_ai_disclosure_sent(self, org_id, contact_id):
+        return await self._contact_repo.mark_ai_disclosure_sent(org_id, contact_id)
 
-    async def update_message_status_by_wam_id(self, wam_id, new_status, error_code=None,
-                                                error_title=None, error_details=None,
-                                                *, organization_id):
-        async with self.scoped_conn(organization_id) as conn:
-            current = await conn.fetchrow(
-                "SELECT id, status FROM messages WHERE wam_id = $1 AND organization_id = $2::uuid",
-                wam_id, organization_id,
-            )
-            if not current:
-                return None
-            return await self.update_message_status(
-                current["id"], new_status, wam_id=wam_id,
-                error_code=error_code, error_title=error_title, error_details=error_details,
-                organization_id=organization_id,
-            )
+    # ── Conversations ─────────────────────────────────────────
 
-    @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
-    async def claim_inbound_messages(self, limit=10):
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                rows = await conn.fetch("""
-                    UPDATE messages SET status = 'processing', claimed_at = NOW(),
-                        heartbeat_at = NOW()
-                    WHERE id IN (
-                        SELECT id FROM messages
-                        WHERE direction = 'inbound' AND status = 'received_pending_ai'
-                        AND deleted_at IS NULL AND replied_at IS NULL
-                        ORDER BY created_at
-                        LIMIT $1
-                        FOR UPDATE SKIP LOCKED
-                    )
-                    RETURNING *,
-                        (SELECT c.canale FROM conversations c
-                         WHERE c.id = messages.conversation_id) AS canale
-                """, limit)
-                return [dict(r) for r in rows]
+    async def get_or_create_conversation(self, org_id, contact_id):
+        return await self._conv_repo.get_or_create_conversation(org_id, contact_id)
 
-    async def try_mark_replied(self, message_id, handling_type: str | None = None, *,
-                               organization_id):
-        """Atomically marks a message as replied+handled. Returns the updated
-        row if this call won the race, or None if another worker already marked
-        it. Call BEFORE sending the WhatsApp reply so only one worker proceeds.
-        handling_type va al trigger event_log: 'ai_handled' (AI gestita),
-        'escalated' (staff), 'automation' (fast path/reminder), 'opt_out',
-        'suspended'."""
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow("""
-                UPDATE messages SET replied_at = NOW(), status = 'handled',
-                    handling_type = COALESCE($2, handling_type),
-                    updated_at = NOW()
-                WHERE id = $1 AND organization_id = $3::uuid AND replied_at IS NULL
-                RETURNING *
-            """, message_id, handling_type, organization_id)
-            return dict(row) if row else None
+    async def get_conversation(self, org_id, conversation_id):
+        return await self._conv_repo.get_conversation(org_id, conversation_id)
 
-    async def update_heartbeat(self, message_id, organization_id):
-        """Periodic heartbeat — tells the reaper this claim is still alive."""
-        async with self.scoped_conn(organization_id) as conn:
-            await conn.execute(
-                "UPDATE messages SET heartbeat_at = NOW() WHERE id = $1 AND organization_id = $2::uuid",
-                message_id, organization_id,
-            )
+    async def set_conversation_ai_active(self, org_id, conv_id, is_active: bool):
+        return await self._conv_repo.set_conversation_ai_active(org_id, conv_id, is_active=is_active)
 
-    @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
-    async def claim_delivery_attempts(self, limit=10):
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                rows = await conn.fetch("""
-                    SELECT * FROM message_delivery_attempts
-                    WHERE status = 'pending' AND next_retry_at <= NOW()
-                    ORDER BY next_retry_at
-                    LIMIT $1
-                    FOR UPDATE SKIP LOCKED
-                """, limit)
-                if rows:
-                    ids = [r["id"] for r in rows]
-                    await conn.execute(
-                        "UPDATE message_delivery_attempts SET status = 'processing', claimed_at = NOW() WHERE id = ANY($1)",
-                        ids,
-                    )
-                return [dict(r) for r in rows]
+    # ── Inbound / Outbound Messages & Idempotency ─────────────
 
-    async def record_consent_event(self, contact_id, event_type, method,
-                                     triggering_message_id=None, matched_text=None, *,
-                                     organization_id):
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO contact_consent_log (id, contact_id, event_type, method,
-                                                  triggering_message_id, matched_text)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING *
-            """, uuid.uuid4(), contact_id, event_type, method, triggering_message_id, matched_text)
-            new_status = "granted" if event_type == "opt_in" else "withdrawn"
-            await conn.execute("""
-                UPDATE contacts SET consent_status = $1, consent_updated_at = NOW()
-                WHERE id = $2 AND organization_id = $3::uuid
-            """, new_status, contact_id, organization_id)
-            return dict(row)
+    async def check_idempotency(self, message_id, org_id=None):
+        return await self._msg_repo.check_idempotency(message_id, org_id=org_id)
 
-    async def get_contact_consent(self, contact_id, organization_id) -> str | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                "SELECT consent_status FROM contacts WHERE id = $1 AND organization_id = $2::uuid AND deleted_at IS NULL",
-                contact_id, organization_id,
-            )
-            return row["consent_status"] if row else None
+    async def claim_inbound_messages(self, limit: int = 10):
+        return await self._msg_repo.claim_inbound_messages(limit=limit)
 
-    async def mark_ai_disclosure_sent(self, contact_id: uuid.UUID, organization_id) -> bool:
-        """Atomicamente segna il contatto come destinatario della disclosure AI.
-        Ritorna True solo per il chiamante che vince la race (primo UPDATE);
-        False se la disclosure era gia' stata segnata o il contatto non esiste."""
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE contacts SET ai_disclosure_sent_at = NOW()
-                   WHERE id = $1::uuid AND organization_id = $2::uuid AND ai_disclosure_sent_at IS NULL
-                   RETURNING id""",
-                contact_id, organization_id,
-            )
-            return row is not None
+    async def claim_message_and_check_quota(
+        self, message_id: uuid.UUID, org_id: uuid.UUID
+    ) -> tuple[dict | None, bool]:
+        return await self._msg_repo.claim_message_and_check_quota(message_id, org_id)
 
-    @system_scope("tabella indiretta (via messages), solo worker")
-    async def insert_delivery_attempt(self, message_id, next_retry_at):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO message_delivery_attempts (id, message_id, next_retry_at)
-                VALUES ($1, $2, $3)
-                RETURNING *
-            """, uuid.uuid4(), message_id, next_retry_at)
-            return dict(row)
+    async def upsert_message(self, message_id, organization_id, conversation_id,
+                             direction, message_type, content, sender_id,
+                             status="queued", raw_payload=None, failure_reason=None,
+                             conn=None):
+        return await self._msg_repo.upsert_message(
+            message_id, organization_id, conversation_id, direction, message_type,
+            content, sender_id, status=status, raw_payload=raw_payload,
+            failure_reason=failure_reason, conn=conn,
+        )
 
-    @system_scope("tabella indiretta (via messages), solo worker")
-    async def update_delivery_attempt(self, attempt_id, status, error_details=None):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE message_delivery_attempts
-                SET status = $2, error_details = $3::jsonb
-                WHERE id = $1
-                RETURNING *
-            """, attempt_id, status, json.dumps(error_details) if error_details else None)
-            return dict(row) if row else None
+    async def _upsert_message(self, conn, message_id, organization_id, conversation_id,
+                              direction, message_type, content, sender_id,
+                              status="queued", raw_payload=None, failure_reason=None):
+        return await self._msg_repo._upsert_message(
+            conn, message_id, organization_id, conversation_id, direction, message_type,
+            content, sender_id, status=status, raw_payload=raw_payload,
+            failure_reason=failure_reason,
+        )
 
-    @system_scope("retry worker: org letta dal payload e riusata a valle")
-    async def reconstruct_payload_for_retry(self, message_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM messages WHERE id = $1", message_id
-            )
-            if not row:
-                return None
-            result = dict(row)
-            if isinstance(result.get("content"), str):
-                result["content"] = json.loads(result["content"])
-            return result
+    async def get_message_org_scoped(self, message_id: uuid.UUID, org_id: uuid.UUID) -> dict | None:
+        return await self._msg_repo.get_message_org_scoped(message_id, org_id)
 
-    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
-    async def reap_stale_claims(self, timeout_minutes=15, dead_letter_threshold=3):
-        """Libera i claim rimasti bloccati oltre timeout_minutes.
+    async def insert_delivery_attempt(self, message_id, attempt_number, status,
+                                      error_code=None, error_message=None,
+                                      latency_ms=None, raw_response=None,
+                                      failure_category=None):
+        return await self._msg_repo.insert_delivery_attempt(
+            message_id, attempt_number, status, error_code=error_code,
+            error_message=error_message, latency_ms=latency_ms,
+            raw_response=raw_response, failure_category=failure_category,
+        )
 
-        Per i messaggi usa heartbeat_at invece di claimed_at: un worker che
-        sta ancora girando (aggiornamento heartbeat periodico) non viene
-        considerato stale anche se ha superato il timeout. Se heartbeat_at
-        e' NULL (record creato prima della migrazione 012) cade sul
-        claimed_at come backward compat.
+    async def claim_delivery_attempts(self, limit: int = 10, batch_window_seconds: int = 60):
+        return await self._msg_repo.claim_delivery_attempts(
+            limit=limit, batch_window_seconds=batch_window_seconds
+        )
 
-        Se un messaggio e' gia' stato reclamato dead_letter_threshold volte
-        consecutive, viene marcato 'dead' invece di essere rimesso in coda
-        all'infinito (audit 4.2)."""
-        async with self.pool.acquire() as conn:
-            dead = await conn.fetch("""
-                UPDATE messages SET status = 'dead', claimed_at = NULL
-                WHERE status = 'processing'
-                AND (
-                    (heartbeat_at IS NOT NULL AND heartbeat_at < NOW() - ($1 || ' minutes')::INTERVAL)
-                    OR
-                    (heartbeat_at IS NULL AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL)
-                )
-                AND dead_letter_count >= $2
-                RETURNING *
-            """, str(timeout_minutes), dead_letter_threshold)
-            msgs = await conn.fetch("""
-                UPDATE messages SET status = 'received_pending_ai', claimed_at = NULL,
-                    heartbeat_at = NULL, dead_letter_count = dead_letter_count + 1
-                WHERE status = 'processing'
-                AND (
-                    (heartbeat_at IS NOT NULL AND heartbeat_at < NOW() - ($1 || ' minutes')::INTERVAL)
-                    OR
-                    (heartbeat_at IS NULL AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL)
-                )
-                RETURNING *
-            """, str(timeout_minutes))
-            attempts = await conn.fetch("""
-                UPDATE message_delivery_attempts SET status = 'pending', claimed_at = NULL
-                WHERE status = 'processing' AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL
-                RETURNING *
-            """, str(timeout_minutes))
-            return [dict(r) for r in dead] + [dict(r) for r in msgs] + [dict(r) for r in attempts]
+    async def update_delivery_attempt(self, attempt_id: uuid.UUID, status: str,
+                                      error_code=None, error_message=None,
+                                      latency_ms=None, raw_response=None,
+                                      failure_category=None):
+        return await self._msg_repo.update_delivery_attempt(
+            attempt_id, status, error_code=error_code, error_message=error_message,
+            latency_ms=latency_ms, raw_response=raw_response,
+            failure_category=failure_category,
+        )
 
-    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
-    async def delete_expired_messages(self, retention_days: int = 60) -> int:
-        async with self.pool.acquire() as conn:
-            result = await conn.execute("""
-                UPDATE messages SET deleted_at = NOW()
-                WHERE deleted_at IS NULL
-                AND created_at < NOW() - ($1 || ' days')::INTERVAL
-            """, str(retention_days))
-            return int(result.split()[-1]) if result else 0
+    async def update_message_status(self, message_id, status, failure_reason=None):
+        return await self._msg_repo.update_message_status(
+            message_id, status, failure_reason=failure_reason
+        )
 
-    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
-    async def purge_soft_deleted_messages(self, grace_days: int = 30) -> int:
-        async with self.pool.acquire() as conn:
-            result = await conn.execute("""
-                DELETE FROM messages
-                WHERE deleted_at IS NOT NULL
-                AND deleted_at < NOW() - ($1 || ' days')::INTERVAL
-            """, str(grace_days))
-            return int(result.split()[-1]) if result else 0
+    async def update_message_status_by_wam_id(self, wam_id, status, error_code=None, error_message=None):
+        return await self._msg_repo.update_message_status_by_wam_id(
+            wam_id, status, error_code=error_code, error_message=error_message
+        )
 
-    @system_scope("retention/reaper globale: manutenzione cross-tenant programmata")
-    async def cleanup_empty_conversations(self) -> int:
-        async with self.pool.acquire() as conn:
-            result = await conn.execute("""
-                UPDATE conversations SET deleted_at = NOW()
-                WHERE deleted_at IS NULL
-                AND NOT EXISTS (
-                    SELECT 1 FROM messages
-                    WHERE messages.conversation_id = conversations.id
-                    AND messages.deleted_at IS NULL
-                )
-            """)
-            return int(result.split()[-1]) if result else 0
+    async def list_conversation_messages(self, org_id, conversation_id, limit=20):
+        return await self._msg_repo.list_conversation_messages(org_id, conversation_id, limit=limit)
 
-    async def get_outbound_dedup(self, organization_id, message_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow("""
-                SELECT response_text FROM outbound_dedup
-                WHERE message_id = $2 AND organization_id = $1
-            """, organization_id, message_id)
-            return dict(row) if row else None
+    async def get_last_ai_outbound_message(self, org_id, conversation_id):
+        return await self._msg_repo.get_last_ai_outbound_message(org_id, conversation_id)
 
-    async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
-        async with self.pool.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO outbound_dedup (message_id, organization_id, response_text)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (message_id) DO UPDATE SET response_text = EXCLUDED.response_text
-            """, message_id, org_id, response_text)
+    async def save_ai_reply(self, org_id, conv_id, text, model=None,
+                            tokens_in=None, tokens_out=None, reply_to_id=None):
+        return await self._msg_repo.save_ai_reply(
+            org_id, conv_id, text, model=model, tokens_in=tokens_in,
+            tokens_out=tokens_out, reply_to_id=reply_to_id,
+        )
+
+    async def mark_message_sent(self, message_id, org_id, wam_id, raw_response=None):
+        return await self._msg_repo.mark_message_sent(message_id, org_id, wam_id, raw_response=raw_response)
+
+    async def try_mark_replied(self, message_id: uuid.UUID, org_id: uuid.UUID) -> bool:
+        return await self._msg_repo.try_mark_replied(message_id, org_id)
+
+    async def get_outbound_dedup(self, message_id, org_id):
+        return await self._msg_repo.get_outbound_dedup(message_id, org_id)
+
+    async def save_outbound_dedup(self, message_id, org_id, response_text):
+        return await self._msg_repo.save_outbound_dedup(message_id, org_id, response_text)
+
+    # ── Message Usage & Quota ─────────────────────────────────
 
     async def check_message_usage(self, org_id: uuid.UUID) -> dict | None:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT messages_used_this_period, messages_limit
-                FROM organizations WHERE id = $1
-            """, org_id)
-            return dict(row) if row else None
+        return await self._billing_repo.check_message_usage(org_id)
 
     async def increment_message_usage(self, org_id: uuid.UUID, conn=None) -> int:
-        if conn is None:
-            async with self.pool.acquire() as conn:
-                return await self._increment_message_usage(conn, org_id)
-        return await self._increment_message_usage(conn, org_id)
+        return await self._billing_repo.increment_message_usage(org_id, conn=conn)
 
     async def _increment_message_usage(self, conn, org_id: uuid.UUID) -> int | None:
-        row = await conn.fetchrow("""
-            UPDATE organizations
-            SET messages_used_this_period = messages_used_this_period + 1
-            WHERE id = $1 AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
-            RETURNING messages_used_this_period
-        """, org_id)
-        return row["messages_used_this_period"] if row else None
+        return await self._billing_repo._increment_message_usage(conn, org_id)
+
+    # ── WhatsApp Templates ────────────────────────────────────
 
     async def upsert_template(self, organization_id, name, language, category, status, components):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO whatsapp_templates (id, organization_id, name, language, category, status, components)
-                VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
-                ON CONFLICT (organization_id, name, language) DO UPDATE
-                    SET status = $6, components = $7::jsonb, updated_at = NOW()
-                RETURNING *
-            """, uuid.uuid4(), organization_id, name, language, category, status,
-                json.dumps(components))
-            return dict(row)
+        return await self._org_repo.upsert_template(
+            organization_id, name, language, category, status, components
+        )
 
-    # ── RAG: Document Search ────────────────────────────────────
+    async def update_template_status(self, organization_id, name, language, status):
+        return await self._org_repo.update_template_status(organization_id, name, language, status)
 
-    async def search_similar(self, organization_id: str, embedding: list, k: int = 3) -> list[dict]:
-        """Chunk piu' simili tra i documenti dell'org (distanza cosine, `<=>`).
-        Lo scope `WHERE dc.organization_id = $1` e' la barriera di tensione
-        tra tenant: il risultato e' sempre limitato ai documenti dell'org
-        che richiede, indipendentemente da chi costruisce il prompt."""
-        async with self.pool.acquire() as conn:
-            vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
-            rows = await conn.fetch("""
-                SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
-                       dc.document_id, d.nome as document_name,
-                       dc.embedding <=> $2::vector AS distance
-                FROM document_chunks dc
-                JOIN documents d ON d.id = dc.document_id
-                WHERE dc.organization_id = $1::uuid
-                ORDER BY dc.embedding <=> $2::vector
-                LIMIT $3
-            """, organization_id, vec_str, k)
-            results = [dict(r) for r in rows]
-            for r in results:
-                if isinstance(r.get("metadata"), str):
-                    r["metadata"] = json.loads(r["metadata"])
-            return results
+    # ── RAG & FAQ Cache ───────────────────────────────────────
 
-    # ── Guardrails: cache FAQ semantica (task 12) ───────────────
+    async def search_similar(self, organization_id, query_embedding,
+                             top_k=3, similarity_threshold=0.3):
+        return await self._doc_repo.search_similar(
+            organization_id, query_embedding, top_k=top_k, similarity_threshold=similarity_threshold
+        )
 
-    @staticmethod
-    def _vec_str(embedding: list) -> str:
-        return "[" + ",".join(str(v) for v in embedding) + "]"
+    def _vec_str(self, vec):
+        return self._doc_repo._vec_str(vec)
 
-    async def faq_cache_lookup(self, organization_id: str, embedding: list,
-                               max_distance: float = 0.08) -> dict | None:
-        """Risposta in cache per la domanda piu' simile (distanza cosine
-        <= max_distance, non scaduta). Aggiorna hit_count/last_used_at
-        atomicamente sulla riga vincente. None se nessun match. Il filtro
-        organization_id nella query e' la barriera tra tenant, come per il
-        retrieval RAG."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE faq_cache SET hit_count = hit_count + 1, last_used_at = NOW()
-                WHERE id = (
-                    SELECT id FROM faq_cache
-                    WHERE organization_id = $1::uuid
-                      AND expires_at > NOW()
-                      AND (question_embedding <=> $2::vector) <= $3
-                    ORDER BY question_embedding <=> $2::vector
-                    LIMIT 1
-                )
-                RETURNING *
-            """, organization_id, self._vec_str(embedding), max_distance)
-            return dict(row) if row else None
+    async def faq_cache_lookup(self, organization_id: uuid.UUID, query_hash: str) -> dict | None:
+        return await self._doc_repo.faq_cache_lookup(organization_id, query_hash)
 
-    async def faq_cache_store(self, organization_id: str, question_text: str,
-                              answer_text: str, embedding: list,
-                              prompt_variant: str = "control",
-                              ttl_hours: int = 72) -> dict:
-        """Salva una coppia domanda/risposta con il suo embedding. La stessa
-        domanda (testo normalizzato) aggiorna risposta/embedding/scadenza."""
-        normalized = " ".join(question_text.lower().split())
-        question_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO faq_cache (id, organization_id, question_text, question_hash,
-                                       question_embedding, answer_text, prompt_variant, expires_at)
-                VALUES ($1, $2::uuid, $3, $4, $5::vector, $6, $7,
-                        NOW() + ($8 || ' hours')::interval)
-                ON CONFLICT (organization_id, question_hash)
-                    DO UPDATE SET
-                        answer_text = EXCLUDED.answer_text,
-                        question_embedding = EXCLUDED.question_embedding,
-                        prompt_variant = EXCLUDED.prompt_variant,
-                        expires_at = EXCLUDED.expires_at
-                RETURNING *
-            """, uuid.uuid4(), organization_id, question_text, question_hash,
-                self._vec_str(embedding), answer_text, prompt_variant, str(ttl_hours))
-            return dict(row)
+    async def faq_cache_store(
+        self,
+        organization_id: uuid.UUID,
+        query_hash: str,
+        raw_query: str,
+        answer_text: str,
+        source_doc_ids: list,
+        ttl_hours: int = 24,
+    ) -> None:
+        return await self._doc_repo.faq_cache_store(
+            organization_id, query_hash, raw_query, answer_text,
+            source_doc_ids, ttl_hours=ttl_hours,
+        )
 
-    async def faq_cache_invalidate(self, organization_id: str) -> int:
-        """Svuota la cache dell'org (es. nuovo menu caricato: i prezzi
-        potrebbero essere cambiati). Ritorna le righe eliminate."""
-        async with self.pool.acquire() as conn:
-            result = await conn.execute(
-                "DELETE FROM faq_cache WHERE organization_id = $1::uuid",
-                organization_id,
-            )
-            return int(result.split()[-1]) if result else 0
+    async def faq_cache_invalidate(self, organization_id: uuid.UUID) -> None:
+        return await self._doc_repo.faq_cache_invalidate(organization_id)
 
-    # ── Guardrails: feedback 👍/👎 sulle risposte (task 12) ──────
+    # ── Outbox Reconstruct & Stale Claims ──────────────────────
 
-    async def get_last_ai_outbound_message(self, organization_id,
-                                           conversation_id) -> dict | None:
-        """Ultima risposta AI (handling_type='ai_handled') inviata nella
-        conversazione: e' il target naturale del feedback emoji cliente."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT * FROM messages
-                WHERE organization_id = $1::uuid
-                  AND conversation_id = $2::uuid
-                  AND direction = 'outbound'
-                  AND handling_type = 'ai_handled'
-                  AND deleted_at IS NULL
-                ORDER BY created_at DESC
-                LIMIT 1
-            """, organization_id, conversation_id)
-            return dict(row) if row else None
+    async def reconstruct_payload_for_retry(self, message_id: uuid.UUID) -> dict | None:
+        return await self._msg_repo.reconstruct_payload_for_retry(message_id)
 
-    async def get_message_org_scoped(self, organization_id, message_id) -> dict | None:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT * FROM messages
-                WHERE id = $2::uuid AND organization_id = $1::uuid
-                  AND deleted_at IS NULL
-            """, organization_id, message_id)
-            return dict(row) if row else None
+    async def reap_stale_claims(self, stale_seconds: int = 300) -> int:
+        return await self._msg_repo.reap_stale_claims(stale_seconds=stale_seconds)
 
-    async def registra_feedback(self, organization_id, message_id, conversation_id,
-                                source: str, value: str,
-                                created_by_user_id=None) -> dict:
-        """Upsert del feedback su una risposta. Cliente: un solo feedback
-        per messaggio, l'ultima emoji vince. Staff: uno per operatore
-        (unique parziali della migration 031)."""
-        async with self.pool.acquire() as conn:
-            if source == "customer_emoji":
-                row = await conn.fetchrow("""
-                    INSERT INTO message_feedback
-                        (id, organization_id, message_id, conversation_id, source, value)
-                    VALUES ($1, $2::uuid, $3::uuid, $4::uuid, 'customer_emoji', $5)
-                    ON CONFLICT (message_id) WHERE source = 'customer_emoji'
-                        DO UPDATE SET value = EXCLUDED.value
-                    RETURNING *
-                """, uuid.uuid4(), organization_id, message_id, conversation_id, value)
-            else:
-                row = await conn.fetchrow("""
-                    INSERT INTO message_feedback
-                        (id, organization_id, message_id, conversation_id, source,
-                         value, created_by_user_id)
-                    VALUES ($1, $2::uuid, $3::uuid, $4::uuid, 'staff_ui', $5, $6::uuid)
-                    ON CONFLICT (message_id, created_by_user_id) WHERE source = 'staff_ui'
-                        DO UPDATE SET value = EXCLUDED.value
-                    RETURNING *
-                """, uuid.uuid4(), organization_id, message_id, conversation_id,
-                    value, created_by_user_id)
-            return dict(row)
+    # ── Human Escalation & Inbox Tickets ──────────────────────
 
-    # ── HITL: Ticket State Machine ──────────────────────────────
+    async def escalate_to_human(self, org_id, conv_id, reason=None, priority="medium"):
+        return await self._conv_repo.escalate_to_human(
+            org_id, conv_id, reason=reason, priority=priority
+        )
 
-    async def list_tickets(self, org_id: str, status: str | None = None, priorita: str | None = None, limit: int | None = None, offset: int = 0) -> list[dict]:
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                """WITH enriched AS (
-                       SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
-                              ct.phone_number AS phone_number,
-                              o.sla_minutes,
-                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) AS sla_due_at,
-                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) < NOW() AS is_overdue,
-                              COALESCE(el.priorita,
-                                       CASE WHEN c.ticket_status IN ('PENDING_STAFF', 'CLAIMED') THEN 'alta'
-                                            ELSE 'media' END) AS priorita,
-                              lm.content_text AS last_message_preview
-                       FROM conversations c
-                       LEFT JOIN user_profiles u ON u.id = c.assigned_to
-                       LEFT JOIN contacts ct ON ct.id = c.contact_id
-                       JOIN organizations o ON o.id = c.organization_id
-                       LEFT JOIN LATERAL (
-                           SELECT e.priorita
-                           FROM event_log e
-                           WHERE e.organization_id = c.organization_id
-                             AND e.dettagli->>'conversation_id' = c.id::text
-                           ORDER BY CASE e.priorita WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END,
-                                    e.created_at DESC
-                           LIMIT 1
-                       ) el ON TRUE
-                       LEFT JOIN LATERAL (
-                           SELECT m.content_text
-                           FROM messages m
-                           WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
-                           ORDER BY m.created_at DESC
-                           LIMIT 1
-                       ) lm ON TRUE
-                       WHERE c.organization_id = $1::uuid AND c.deleted_at IS NULL
-                   )
-                   SELECT * FROM enriched
-                   WHERE ($2::text IS NULL OR ticket_status = $2)
-                     AND ($3::text IS NULL OR priorita = $3)
-                   ORDER BY pending_staff_at ASC NULLS LAST,
-                            claimed_at ASC NULLS LAST,
-                            created_at ASC
-                   LIMIT $4::int OFFSET $5::int""",
-                org_id, status, priorita, limit, offset
-            )
-            return [dict(r) for r in rows]
+    async def assign_ticket(self, org_id, ticket_id, user_id):
+        return await self._conv_repo.assign_ticket(org_id, ticket_id, user_id)
 
-    async def get_conversation(self, conversation_id: str, organization_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """WITH enriched AS (
-                       SELECT c.*, u.nome AS assigned_nome, u.email AS assigned_email,
-                              ct.phone_number AS phone_number,
-                              o.sla_minutes,
-                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) AS sla_due_at,
-                              (c.pending_staff_at + (o.sla_minutes || ' minutes')::interval) < NOW() AS is_overdue,
-                              COALESCE(el.priorita,
-                                       CASE WHEN c.ticket_status IN ('PENDING_STAFF', 'CLAIMED') THEN 'alta'
-                                            ELSE 'media' END) AS priorita,
-                              lm.content_text AS last_message_preview
-                       FROM conversations c
-                       LEFT JOIN user_profiles u ON u.id = c.assigned_to
-                       LEFT JOIN contacts ct ON ct.id = c.contact_id
-                       JOIN organizations o ON o.id = c.organization_id
-                       LEFT JOIN LATERAL (
-                           SELECT e.priorita
-                           FROM event_log e
-                           WHERE e.organization_id = c.organization_id
-                             AND e.dettagli->>'conversation_id' = c.id::text
-                           ORDER BY CASE e.priorita WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END,
-                                    e.created_at DESC
-                           LIMIT 1
-                       ) el ON TRUE
-                       LEFT JOIN LATERAL (
-                           SELECT m.content_text
-                           FROM messages m
-                           WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
-                           ORDER BY m.created_at DESC
-                           LIMIT 1
-                       ) lm ON TRUE
-                       WHERE c.organization_id = $2::uuid AND c.id = $1::uuid AND c.deleted_at IS NULL
-                   )
-                   SELECT * FROM enriched""",
-                conversation_id, organization_id
-            )
-            return dict(row) if row else None
+    async def claim_ticket(self, org_id, ticket_id, user_id):
+        return await self._conv_repo.claim_ticket(org_id, ticket_id, user_id)
 
-    async def list_conversation_messages(
-        self, org_id: str, conversation_id: str, limit: int = 50, offset: int = 0
-    ) -> list[dict]:
-        """Storico messaggi di una conversazione per l'inbox HITL: ordine
-        cronologico ASC, soft-delete escluse (GDPR), feedback 👍/👎 per
-        messaggio (cliente + conteggi staff, task 12). total via window
-        function per la paginazione lato UI."""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                """SELECT m.id, m.direction, m.message_type, m.content_text, m.status,
-                          m.handling_type, m.created_at,
-                          fc.feedback_customer,
-                          COALESCE(fs.up, 0) AS feedback_staff_up,
-                          COALESCE(fs.down, 0) AS feedback_staff_down,
-                          COUNT(*) OVER() AS total
-                   FROM messages m
-                   LEFT JOIN LATERAL (
-                       SELECT value AS feedback_customer
-                       FROM message_feedback mf
-                       WHERE mf.message_id = m.id AND mf.source = 'customer_emoji'
-                       LIMIT 1
-                   ) fc ON TRUE
-                   LEFT JOIN LATERAL (
-                       SELECT COUNT(*) FILTER (WHERE value = 'up') AS up,
-                              COUNT(*) FILTER (WHERE value = 'down') AS down
-                       FROM message_feedback mf
-                       WHERE mf.message_id = m.id AND mf.source = 'staff_ui'
-                   ) fs ON TRUE
-                   WHERE m.conversation_id = $1::uuid
-                     AND m.organization_id = $2::uuid
-                     AND m.deleted_at IS NULL
-                   ORDER BY m.created_at ASC
-                   LIMIT $3 OFFSET $4""",
-                conversation_id, org_id, limit, offset
-            )
-            return [dict(r) for r in rows]
+    async def release_ticket(self, org_id, ticket_id, user_id):
+        return await self._conv_repo.release_ticket(org_id, ticket_id, user_id)
 
-    async def escalate_to_human(self, conversation_id: str, organization_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE conversations
-                   SET ticket_status = 'PENDING_STAFF',
-                       pending_staff_at = NOW(),
-                       updated_at = NOW(),
-                       version = version + 1
-                   WHERE id = $1::uuid
-                     AND organization_id = $2::uuid
-                     AND ticket_status NOT IN ('PENDING_STAFF', 'CLAIMED', 'RESOLVED')
-                     AND deleted_at IS NULL
-                   RETURNING *""",
-                conversation_id, organization_id
-            )
-            return dict(row) if row else None
+    async def update_heartbeat(self, org_id, ticket_id, user_id):
+        return await self._conv_repo.update_heartbeat(org_id, ticket_id, user_id)
 
-    async def claim_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int,
-                           organization_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE conversations
-                   SET ticket_status = 'CLAIMED',
-                       assigned_to = $2::uuid,
-                       claimed_at = NOW(),
-                       updated_at = NOW(),
-                       version = version + 1
-                   WHERE id = $1::uuid
-                     AND organization_id = $4::uuid
-                     AND version = $3
-                     AND ticket_status = 'PENDING_STAFF'
-                     AND deleted_at IS NULL
-                   RETURNING *""",
-                conversation_id, staff_user_id, expected_version, organization_id
-            )
-            return dict(row) if row else None
+    async def resolve_ticket(self, org_id, ticket_id, user_id, reactivate_ai=False):
+        return await self._conv_repo.resolve_ticket(
+            org_id, ticket_id, user_id, reactivate_ai=reactivate_ai
+        )
 
-    async def release_ticket(self, conversation_id: str, staff_user_id: str,
-                             organization_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE conversations
-                   SET ticket_status = 'PENDING_STAFF',
-                       assigned_to = NULL,
-                       claimed_at = NULL,
-                       updated_at = NOW(),
-                       version = version + 1
-                   WHERE id = $1::uuid
-                     AND organization_id = $3::uuid
-                     AND assigned_to = $2::uuid
-                     AND ticket_status = 'CLAIMED'
-                     AND deleted_at IS NULL
-                   RETURNING *""",
-                conversation_id, staff_user_id, organization_id
-            )
-            return dict(row) if row else None
+    async def list_tickets(self, org_id, status=None, priority=None, assigned_to=None,
+                           limit=50, offset=0):
+        return await self._conv_repo.list_tickets(
+            org_id, status=status, priority=priority, assigned_to=assigned_to,
+            limit=limit, offset=offset,
+        )
 
-    async def resolve_ticket(self, conversation_id: str, staff_user_id: str,
-                             organization_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE conversations
-                   SET ticket_status = 'RESOLVED',
-                       assigned_to = NULL,
-                       resolved_at = NOW(),
-                       updated_at = NOW(),
-                       version = version + 1
-                   WHERE id = $1::uuid
-                     AND organization_id = $3::uuid
-                     AND assigned_to = $2::uuid
-                     AND ticket_status = 'CLAIMED'
-                     AND deleted_at IS NULL
-                   RETURNING *""",
-                conversation_id, staff_user_id, organization_id
-            )
-            return dict(row) if row else None
+    async def list_team_members(self, org_id):
+        return await self._org_repo.list_team_members(org_id)
 
-    async def list_team_members(self, org_id: str) -> list[dict]:
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT up.id AS user_id, up.nome, up.email, om.ruolo
-                FROM organization_memberships om
-                JOIN user_profiles up ON up.id = om.user_id
-                WHERE om.organization_id = $1::uuid
-                  AND om.ruolo IN ('owner', 'manager', 'staff')
-                ORDER BY
-                  CASE om.ruolo WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END,
-                  up.nome
-            """, org_id)
-            return [dict(r) for r in rows]
+    # ── Bookings Check ────────────────────────────────────────
 
-    async def assign_ticket(self, conversation_id: str, staff_user_id: str, expected_version: int,
-                            organization_id) -> dict | None:
-        """Assegna (o riassegna) un ticket a un membro del team. Funziona sia
-        su PENDING_STAFF sia su CLAIMED (da qualcun altro): la riassegnazione
-        non richiede prima un release. Optimistic lock su version contro la
-        race con claim/release/resolve concorrenti."""
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE conversations
-                   SET ticket_status = 'CLAIMED',
-                       assigned_to = $2::uuid,
-                       claimed_at = NOW(),
-                       updated_at = NOW(),
-                       version = version + 1
-                   WHERE id = $1::uuid
-                     AND organization_id = $4::uuid
-                     AND version = $3
-                     AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')
-                     AND deleted_at IS NULL
-                   RETURNING *""",
-                conversation_id, staff_user_id, expected_version, organization_id
-            )
-            return dict(row) if row else None
+    async def check_booking_exists(
+        self,
+        org_id: uuid.UUID,
+        phone: str,
+        target_date,
+        target_time=None,
+    ) -> bool:
+        return await self._booking_repo.check_booking_exists(
+            org_id, phone, target_date, target_time=target_time
+        )
 
-    async def set_conversation_ai_active(self, conversation_id: str, organization_id) -> dict | None:
-        async with self.scoped_conn(organization_id) as conn:
-            row = await conn.fetchrow(
-                """UPDATE conversations
-                   SET ticket_status = 'AI_ACTIVE',
-                       assigned_to = NULL,
-                       updated_at = NOW(),
-                       version = version + 1
-                   WHERE id = $1::uuid AND organization_id = $2::uuid AND deleted_at IS NULL
-                   RETURNING *""",
-                conversation_id, organization_id
-            )
-            return dict(row) if row else None
+    # ── Feedback ──────────────────────────────────────────────
 
-    async def check_idempotency(self, org_id: str, idempotency_key: str) -> dict | None:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM messages WHERE organization_id = $1::uuid AND idempotency_key = $2",
-                org_id, idempotency_key
-            )
-            return dict(row) if row else None
+    async def registra_feedback(self, organization_id, message_id, rating, comment=None,
+                                created_by=None):
+        return await self._msg_repo.registra_feedback(
+            organization_id, message_id, rating, comment=comment, created_by=created_by
+        )
 
-    async def update_template_status(self, organization_id, name, language, status,
-                                      rejected_reason=None):
-        """Aggiorna lo stato del template SOLO entro l'organizzazione:
-        organization_id e' obbligatorio e va in WHERE (mai nel SET)."""
-        async with self.scoped_conn(organization_id) as conn:
-            await conn.execute("""
-                UPDATE whatsapp_templates
-                SET status = $3,
-                    rejected_reason = COALESCE($4, rejected_reason),
-                    updated_at = NOW()
-                WHERE organization_id = $1 AND name = $2 AND language = $5
-            """, organization_id, name, status, rejected_reason, language)
+    # ── Data Retention & Cleanup ──────────────────────────────
 
-    async def claim_message_and_check_quota(self, msg_id: str, org_id: str) -> dict:
-        async with self.scoped_conn(org_id) as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    "SELECT id, billed_at, ai_reply_cache, sent_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE",
-                    msg_id, org_id
-                )
-                if not row:
-                    return {"status": "not_found"}
+    async def delete_expired_messages(self, batch_size: int = 500) -> int:
+        return await self._msg_repo.delete_expired_messages(batch_size=batch_size)
 
-                if row["sent_at"] is not None:
-                    return {"status": "already_sent"}
+    async def purge_soft_deleted_messages(self, batch_size: int = 500) -> int:
+        return await self._msg_repo.purge_soft_deleted_messages(batch_size=batch_size)
 
-                if row["quota_exceeded_at"] is not None:
-                    return {"status": "quota_exceeded"}
+    async def cleanup_empty_conversations(self, batch_size: int = 500) -> int:
+        return await self._conv_repo.cleanup_empty_conversations(batch_size=batch_size)
 
-                if (
-                    row["processing_at"] is not None
-                    and row["ai_reply_cache"] is None
-                    and (datetime.now(timezone.utc) - row["processing_at"]).total_seconds() < 30
-                ):
-                    return {"status": "currently_processing"}
 
-                if row["billed_at"] is None:
-                    updated_org = await conn.fetchrow("""
-                        UPDATE organizations
-                        SET messages_used_this_period = messages_used_this_period + 1
-                        WHERE id = $1::uuid AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
-                        RETURNING messages_used_this_period
-                    """, org_id)
-
-                    if not updated_org:
-                        await conn.execute(
-                            "UPDATE messages SET quota_exceeded_at = now() WHERE id = $1::uuid AND organization_id = $2::uuid",
-                            msg_id, org_id
-                        )
-                        return {"status": "quota_exceeded"}
-
-                    await conn.execute(
-                        "UPDATE messages SET billed_at = now() WHERE id = $1::uuid AND organization_id = $2::uuid",
-                        msg_id, org_id
-                    )
-
-                cache_val = row["ai_reply_cache"]
-                if isinstance(cache_val, str):
-                    try:
-                        cache_val = json.loads(cache_val)
-                    except Exception:
-                        cache_val = {"text": cache_val, "richiede_umano": False}
-
-                if cache_val is None:
-                    await conn.execute(
-                        "UPDATE messages SET processing_at = now() WHERE id = $1::uuid AND organization_id = $2::uuid", msg_id, org_id
-                    )
-
-                return {"status": "claimed", "ai_reply_cache": cache_val}
-
-    async def check_booking_exists(self, msg_id: str, org_id: str) -> bool:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT id FROM bookings WHERE organization_id = $1::uuid AND source_message_id = $2",
-                org_id, str(msg_id)
-            )
-            return bool(row)
-
-    async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False,
-                            motivo: str = "", *, organization_id) -> None:
-        if isinstance(reply, dict):
-            payload = reply
-        else:
-            payload = {
-                "text": reply,
-                "richiede_umano": richiede_umano,
-                "motivo": motivo,
-            }
-        async with self.scoped_conn(organization_id) as conn:
-            await conn.execute(
-                "UPDATE messages SET ai_reply_cache = $2::jsonb, ai_reply_generated_at = now() WHERE id = $1::uuid AND organization_id = $3::uuid",
-                msg_id, json.dumps(payload), organization_id
-            )
-
-    async def mark_message_sent(self, msg_id: str, meta_message_id: str, organization_id) -> None:
-        async with self.scoped_conn(organization_id) as conn:
-            await conn.execute(
-                "UPDATE messages SET sent_at = now(), meta_message_id = $2 WHERE id = $1::uuid AND organization_id = $3::uuid",
-                msg_id, str(meta_message_id), organization_id
-            )
+# Alias per retrocompatibilità esplicita
+WhatsAppRepository = Repository

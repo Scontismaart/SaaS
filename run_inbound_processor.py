@@ -8,7 +8,8 @@ from src.whatsapp.repository import Repository
 from src.whatsapp.service import WhatsAppService
 from src.whatsapp.inbound_processor import InboundProcessor
 from src.core.bookings import BookingService
-from src.core.db.repository import CoreRepository
+from src.core.db.repositories.booking_repo import BookingRepository
+from src.core.db.repositories.organization_repo import OrganizationRepository
 from src.core.logging_filter import configure_logging
 
 configure_logging(level=logging.INFO)
@@ -24,12 +25,11 @@ async def main():
     pool = await asyncpg.create_pool(dsn=app_config.postgres_dsn, min_size=1, max_size=3)
     repo = Repository(pool)
     service = WhatsAppService(app_config, repo)
-    # Senza questo, self.booking_service resta None nel worker reale: ne'
-    # la creazione prenotazione da risposta AI ne' la gestione risposta ai
-    # reminder (conferma/cancella) scattano mai in produzione, pur essendo
-    # implementate correttamente in InboundProcessor.
+    # Iniezione dei repository specializzati disaccoppiati
     booking_service = BookingService(
-        repo=CoreRepository(pool=pool),
+        booking_repo=BookingRepository(pool=pool),
+        org_repo=OrganizationRepository(pool=pool),
+        repo=BookingRepository(pool=pool),
         whatsapp_service=service,
         app_config=app_config,
     )

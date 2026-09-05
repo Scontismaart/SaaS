@@ -11,9 +11,10 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture(autouse=True)
-def set_env():
-    os.environ["DATABASE_URL"] = ""
-    os.environ["API_KEY_SERVICE"] = API_KEY
+def set_env(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "")
+    monkeypatch.setenv("API_KEY_SERVICE", API_KEY)
+    monkeypatch.setenv("MISTRAL_API_KEY", "mock-mistral-ci-key")
 
 
 @pytest.fixture
@@ -75,7 +76,8 @@ async def test_configurazione_ai_salvataggio_completo_e_rag_sync(async_client, r
     bp = await repo.get_org_business_profile(sample_org["id"])
     from src.whatsapp.inbound_processor import _profile_from_dict
     profilo_obj = _profile_from_dict(bp)
-    agent = crea_responder_agent(profilo_obj)
+    with patch("src.agents.responder_agent.crea_llm", return_value="openai/mock-model"):
+        agent = crea_responder_agent(profilo_obj)
     backstory = agent.backstory
 
     assert "Oasi del Benessere SPA" in backstory

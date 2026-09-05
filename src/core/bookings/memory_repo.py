@@ -42,6 +42,11 @@ class InMemoryBookingRepo:
         if isinstance(ora, str):
             ore, minuti = ora.split(":")
             ora = time(int(ore), int(minuti))
+        if source_message_id is not None:
+            for b in self._bookings:
+                if b.get("organization_id") == organization_id and b.get("source_message_id") == source_message_id:
+                    return deepcopy(b)
+
         booking = {
             "id": uuid.uuid4(),
             "organization_id": organization_id,
@@ -59,6 +64,7 @@ class InMemoryBookingRepo:
             "richiede_deposito": richiede_deposito,
             "completata_at": completata_at,
             "tipo_evento": tipo_evento,
+            "source_message_id": source_message_id,
         }
         self._bookings.append(booking)
         return deepcopy(booking)

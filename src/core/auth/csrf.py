@@ -15,6 +15,8 @@ CSRF_EXEMPT_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
     "/api/health",
+    "/api/health/live",
+    "/api/health/ready",
     "/api/billing/webhook",
     "/webhooks/whatsapp",
     "/webhooks/instagram",

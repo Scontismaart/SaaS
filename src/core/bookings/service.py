@@ -24,8 +24,21 @@ class BookingNotFoundError(ValueError):
 
 
 class BookingService:
-    def __init__(self, repo, whatsapp_service=None, app_config=None, calendar_service=None):
-        self.repo = repo
+    def __init__(
+        self,
+        repo=None,
+        whatsapp_service=None,
+        app_config=None,
+        calendar_service=None,
+        booking_repo=None,
+        org_repo=None,
+    ):
+        target_repo = booking_repo or repo
+        if hasattr(target_repo, "booking_repo"):
+            target_repo = target_repo.booking_repo
+        self.repo = target_repo
+        self.booking_repo = target_repo
+        self.org_repo = org_repo or getattr(repo, "org_repo", None)
         self.whatsapp = whatsapp_service
         self.app_config = app_config
         self.calendar_service = calendar_service
@@ -162,9 +175,11 @@ class BookingService:
 
     # ── Creazione ──────────────────────────────────────────────
 
-    async def create_booking(self, org_id, nome_cliente, data, ora, coperti,
+    async def create_booking(self, org_id=None, nome_cliente="", data=None, ora=None, coperti=1,
                               telefono="", note="", tipo_evento="", origine="Dashboard",
-                              richiede_intervento=False, id_conversazione="", source_message_id=None):
+                              richiede_intervento=False, id_conversazione="", source_message_id=None,
+                              organization_id=None):
+        org_id = org_id or organization_id
         values = self._validated_booking_values(
             nome_cliente, telefono, data, ora, coperti, note
         )

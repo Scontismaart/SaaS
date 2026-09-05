@@ -53,6 +53,9 @@ jobs:
         continue-on-error: true  # TODO: 98 errori preesistenti in tutto il repo, fuori scope task9
         run: ruff check src/ tests/
 
+      - name: Syntax check (py_compile)
+        run: python -m py_compile $(git ls-files '*.py')
+
       - name: Tenant scoping check (guard dog)
         run: python scripts/check_tenant_scoping.py
 

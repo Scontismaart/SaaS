@@ -23,8 +23,8 @@ _scheduler: BackgroundScheduler | None = None
 # (RuntimeError _check_state) e le connessioni avvelenate tornano nel pool,
 # appiccicando le richieste web senza alcun errore visibile. Ogni job usa
 # quindi un proprio pool effimero, come i worker standalone.
-_JOB_POOL_MIN = 1
-_JOB_POOL_MAX = 2
+_JOB_POOL_MIN = 2
+_JOB_POOL_MAX = 5
 _JOB_COMMAND_TIMEOUT = 30  # secondi: niente piu' query appese all'infinito
 
 
@@ -35,11 +35,13 @@ def _dsn() -> str:
     return dsn
 
 
-async def _con_pool_esimero(job_coro):
+async def _con_pool_esimero(job_coro, lock_name: str | None = None):
     """Esegue la coroutine del job su un pool creato DENTRO il suo event
-    loop e lo chiude sempre. Log di durata per diagnostiche post-incidente."""
+    loop e lo chiude sempre. Log di durata per diagnostiche post-incidente.
+    Protegge l'esecuzione distribuita multi-istanza con PostgreSQL advisory lock."""
     inizio = time.monotonic()
     nome = getattr(job_coro, "__name__", "job")
+    effective_lock_name = lock_name or f"scheduler_{nome}"
     pool = await asyncpg.create_pool(
         dsn=_dsn(),
         min_size=_JOB_POOL_MIN,
@@ -47,10 +49,16 @@ async def _con_pool_esimero(job_coro):
         command_timeout=_JOB_COMMAND_TIMEOUT,
     )
     try:
-        await job_coro(pool)
-        logger.info(
-            "scheduler=job_ok job=%s durata=%.1fs", nome, time.monotonic() - inizio
-        )
+        from src.core.jobs.base import execute_with_advisory_lock
+        executed = await execute_with_advisory_lock(pool, effective_lock_name, job_coro)
+        if executed:
+            logger.info(
+                "scheduler=job_ok job=%s durata=%.1fs", nome, time.monotonic() - inizio
+            )
+        else:
+            logger.info(
+                "scheduler=job_skipped job=%s (advisory_lock_held)", nome
+            )
     except Exception:
         logger.exception(
             "scheduler=job_ko job=%s durata=%.1fs",
@@ -109,18 +117,25 @@ def _run_reminder_check():
 async def _reminder_check_job(pool):
     from src.core.bookings import BookingService
     from src.core.bookings.reminder_job import send_reminders_for_org
+    from src.core.db.repositories.booking_repo import BookingRepository
+    from src.core.db.repositories.organization_repo import OrganizationRepository
     from src.whatsapp.repository import Repository as WhatsAppRepository
     from src.whatsapp.service import WhatsAppService
-    from src.core.db.repository import CoreRepository
     orgs = await pool.fetch("""
         SELECT id, timezone FROM organizations
         WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
     """)
     for org in orgs:
         wrepo = WhatsAppRepository(pool)
-        core_repo = CoreRepository(pool)
+        booking_repo = BookingRepository(pool)
+        org_repo = OrganizationRepository(pool)
         whatsapp = WhatsAppService(None, wrepo)
-        service = BookingService(core_repo, whatsapp, None)
+        service = BookingService(
+            booking_repo=booking_repo,
+            org_repo=org_repo,
+            whatsapp_service=whatsapp,
+            app_config=None,
+        )
         await send_reminders_for_org(service, org["id"], org.get("timezone", "Europe/Rome"))
 
 
@@ -131,14 +146,17 @@ def _run_reminder_timeout():
 async def _reminder_timeout_job(pool):
     from src.core.bookings import BookingService
     from src.core.bookings.reminder_job import check_timeouts_for_org
-    from src.core.db.repository import CoreRepository
+    from src.core.db.repositories.booking_repo import BookingRepository
+    from src.core.db.repositories.organization_repo import OrganizationRepository
     orgs = await pool.fetch("""
         SELECT id, timezone FROM organizations
         WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
     """)
     for org in orgs:
-        core_repo = CoreRepository(pool)
-        service = BookingService(core_repo)
+        service = BookingService(
+            booking_repo=BookingRepository(pool),
+            org_repo=OrganizationRepository(pool),
+        )
         await check_timeouts_for_org(service, org["id"], org.get("timezone", "Europe/Rome"))
 
 
@@ -149,14 +167,17 @@ def _run_no_show_check():
 async def _no_show_check_job(pool):
     from src.core.bookings import BookingService
     from src.core.bookings.no_show_job import mark_da_verificare_for_org
-    from src.core.db.repository import CoreRepository
+    from src.core.db.repositories.booking_repo import BookingRepository
+    from src.core.db.repositories.organization_repo import OrganizationRepository
     orgs = await pool.fetch("""
         SELECT id, timezone FROM organizations
         WHERE subscription_status NOT IN ('canceled', 'incomplete', 'past_due')
     """)
     for org in orgs:
-        core_repo = CoreRepository(pool)
-        service = BookingService(core_repo)
+        service = BookingService(
+            booking_repo=BookingRepository(pool),
+            org_repo=OrganizationRepository(pool),
+        )
         await mark_da_verificare_for_org(service, org["id"], org.get("timezone", "Europe/Rome"))
 
 
@@ -171,9 +192,9 @@ async def _calendar_sync_job(pool):
         logger = __import__("logging").getLogger(__name__)
         logger.warning("calendar=sync_skipped reason=no_encryption_key")
         return
-    from src.core.db.repository import CoreRepository
+    from src.core.db.repositories.organization_repo import OrganizationRepository
     from src.core.calendar import GoogleCalendarService
-    repo = CoreRepository(pool)
+    repo = OrganizationRepository(pool)
     calendar_service = GoogleCalendarService(repo, encryption_key)
     orgs = await pool.fetch("""
         SELECT id FROM google_calendar_credentials

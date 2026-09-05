@@ -7,7 +7,7 @@ from email.message import EmailMessage
 
 from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 
-from src.core.db.repository import CoreRepository
+from src.core.db.repositories.organization_repo import OrganizationRepository
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _get_smtp_config() -> dict | None:
     reraise=True,
 )
 async def _send_with_retry(event: EmailEvent) -> None:
-    repo = CoreRepository(event.pool)
+    repo = OrganizationRepository(event.pool)
     owners = await repo.get_organization_owners(event.org_id)
     if not owners:
         return

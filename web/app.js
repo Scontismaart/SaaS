@@ -3492,6 +3492,10 @@ async function aggiornaRiepilogo(silent = false) {
     eventiDaMostrare.forEach((e) => {
       const li = document.createElement("li");
       li.classList.add("ticket-item", `prio-${e.priorita}`);
+      const isPositive = (e.gestito_da_ai === true) || (e.tipo_evento === "recensione" && Number(e.dettagli?.stelle) >= 4);
+      if (isPositive) {
+        li.classList.add("item-positive");
+      }
       const testoWrap = document.createElement("div");
       testoWrap.classList.add("ticket-item-text");
       const msg = document.createElement("p");
@@ -3514,6 +3518,9 @@ async function aggiornaRiepilogo(silent = false) {
       if (e.tipo_evento === "recensione" && e.dettagli?.stelle) {
         const stelleTag = document.createElement("span");
         stelleTag.classList.add("ticket-tag", "ticket-tag-stelle");
+        if (Number(e.dettagli.stelle) >= 4) {
+          stelleTag.classList.add("tag-positive");
+        }
         stelleTag.textContent = "\u2605".repeat(e.dettagli.stelle) + "\u2606".repeat(5 - e.dettagli.stelle);
         tags.appendChild(stelleTag);
       }
@@ -4950,7 +4957,7 @@ function renderInboxConversazioni() {
       statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>';
       if (t.assigned_nome) statusText = `Preso da ${t.assigned_nome}`;
     } else if (t.ticket_status === "RESOLVED") {
-      statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l5 5L20 7" stroke="#0e8a38" stroke-width="2.2" stroke-linecap="round"/></svg>';
+      statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg>';
     }
 
     statusPill.innerHTML = `${statusIcon} <span>${statusText}</span>`;
@@ -5290,7 +5297,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
       aiBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg><span>${assignedLabel}</span>`;
     } else {
       statusStrip.hidden = false;
-      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12l5 5L20 7" stroke="#0e8a38" stroke-width="2.2" stroke-linecap="round"/></svg><span>Conversazione risolta</span>';
+      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg><span>Conversazione risolta</span>';
     }
   }
 

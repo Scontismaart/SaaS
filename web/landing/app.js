@@ -15,10 +15,93 @@
 
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    /* ---------- Mobile Menu Overlay ---------- */
+    /* ---------- Unified Navbar Controller (Sticky, Dropdown & Mobile Accordion) ---------- */
+    var header = document.getElementById('mainHeader');
+    var dropdown = document.getElementById('navDropdownSettori');
+    var trigger = document.getElementById('settoriDropdownTrigger');
     var hamburger = document.getElementById('navHamburger');
     var overlay = document.getElementById('mobileOverlay');
+    var accordionBtn = document.getElementById('mobileSettoriBtn');
+    var accordionWrap = document.getElementById('mobileSettoriAccordion');
 
+    /* 1. Persistent Sticky Scroll Blur & Padding */
+    if (header) {
+        var lightSections = document.querySelectorAll('[data-navbar-theme="light"]');
+        var updateScrollState = function () {
+            var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+            header.classList.toggle('is-scrolled', scrollY > 15);
+
+            if (lightSections.length > 0) {
+                var headerRect = header.getBoundingClientRect();
+                var headerMidY = headerRect.top + (headerRect.height / 2);
+                var isOverLight = false;
+
+                if (document.elementsFromPoint) {
+                    var els = document.elementsFromPoint(window.innerWidth / 2, headerMidY);
+                    var topEl = null;
+                    for (var e = 0; e < els.length; e++) {
+                        var candidate = els[e];
+                        if (candidate !== header && !header.contains(candidate) && !candidate.classList.contains('mobile-overlay')) {
+                            topEl = candidate;
+                            break;
+                        }
+                    }
+                    if (topEl) {
+                        isOverLight = !!topEl.closest('[data-navbar-theme="light"]');
+                    }
+                } else {
+                    for (var i = 0; i < lightSections.length; i++) {
+                        var secRect = lightSections[i].getBoundingClientRect();
+                        if (secRect.top <= headerMidY && secRect.bottom >= headerMidY) {
+                            isOverLight = true;
+                            break;
+                        }
+                    }
+                }
+                header.classList.toggle('nav-theme-light', isOverLight);
+            }
+        };
+        window.addEventListener('scroll', updateScrollState, { passive: true });
+        window.addEventListener('resize', updateScrollState, { passive: true });
+        updateScrollState();
+    }
+
+    /* 2. Desktop Dropdown Accessibility & Click Fallback */
+    if (dropdown && trigger) {
+        var setDropdown = function (open) {
+            dropdown.classList.toggle('is-open', open);
+            trigger.setAttribute('aria-expanded', String(open));
+        };
+
+        trigger.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            setDropdown(!dropdown.classList.contains('is-open'));
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!dropdown.contains(e.target)) {
+                setDropdown(false);
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
+                setDropdown(false);
+                trigger.focus();
+            }
+        });
+
+        dropdown.addEventListener('focusout', function () {
+            setTimeout(function () {
+                if (!dropdown.contains(document.activeElement)) {
+                    setDropdown(false);
+                }
+            }, 10);
+        });
+    }
+
+    /* 3. Mobile Navigation Overlay */
     function setNav(open) {
         if (!overlay || !hamburger) return;
         overlay.classList.toggle('open', open);
@@ -28,18 +111,26 @@
     }
     function closeNav() { setNav(false); }
 
-    if (hamburger) {
-        hamburger.addEventListener('click', function () {
+    if (hamburger && overlay) {
+        hamburger.addEventListener('click', function (e) {
+            e.preventDefault();
             setNav(!overlay.classList.contains('open'));
         });
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') closeNav();
         });
-    }
-    // Chiusura menu da link e CTA nell'overlay (sostituisce i vecchi onclick inline)
-    if (overlay) {
-        overlay.querySelectorAll('.mobile-link, .btn-pill-cta').forEach(function (el) {
+        overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-pill-cta, .btn-cta-primary').forEach(function (el) {
             el.addEventListener('click', closeNav);
+        });
+    }
+
+    /* 4. Mobile Accordion for Settori */
+    if (accordionBtn && accordionWrap) {
+        accordionBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var isExpanded = accordionWrap.classList.toggle('is-expanded');
+            accordionBtn.setAttribute('aria-expanded', String(isExpanded));
         });
     }
 
@@ -166,15 +257,59 @@
                 if (win) win.classList.add('is-dissolving');
             }, 5800));
 
-            // Step 9: Loop back at 6700ms
-            timelineTimeouts.push(setTimeout(runCycle, 6700));
+            // Step 9: Loop back at 6700ms (solo se ancora visibile)
+            timelineTimeouts.push(setTimeout(function () {
+                if (shouldAnimate()) runCycle();
+            }, 6700));
         }
 
+        var isHeroVisible = true;
+        var isDocVisible = !document.hidden;
+
+        function shouldAnimate() {
+            return isHeroVisible && isDocVisible && !reduceMotion;
+        }
+
+        function safeRunCycle() {
+            if (!shouldAnimate()) {
+                clearTimeline();
+                return;
+            }
+            runCycle();
+        }
+
+        var heroStage = viewport || win;
+        if ('IntersectionObserver' in window && heroStage) {
+            var heroObs = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    var prev = isHeroVisible;
+                    isHeroVisible = entry.isIntersecting;
+                    if (isHeroVisible && !prev && isDocVisible) {
+                        safeRunCycle();
+                    } else if (!isHeroVisible) {
+                        clearTimeline();
+                        setFloatState(false);
+                    }
+                });
+            }, { threshold: 0.1 });
+            heroObs.observe(heroStage);
+        }
+
+        document.addEventListener('visibilitychange', function () {
+            isDocVisible = !document.hidden;
+            if (isDocVisible && isHeroVisible) {
+                safeRunCycle();
+            } else if (!isDocVisible) {
+                clearTimeline();
+                setFloatState(false);
+            }
+        });
+
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            setTimeout(runCycle, 150);
+            setTimeout(safeRunCycle, 150);
         } else {
             window.addEventListener('DOMContentLoaded', function () {
-                setTimeout(runCycle, 150);
+                setTimeout(safeRunCycle, 150);
             });
         }
     })();
@@ -298,21 +433,42 @@
             hitlTimeouts.push(setTimeout(runHitlLoop, 7800));
         }
 
+        var isHitlVisible = false;
+
+        function safeRunHitlLoop() {
+            if (!isHitlVisible || document.hidden || reduceMotion) {
+                clearHitlTimeline();
+                return;
+            }
+            runHitlLoop();
+        }
+
         // Trigger when section comes into view (IntersectionObserver)
         if ('IntersectionObserver' in window) {
             var hitlObserver = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
-                    if (entry.isIntersecting) {
-                        runHitlLoop();
-                    } else {
+                    var wasVisible = isHitlVisible;
+                    isHitlVisible = entry.isIntersecting;
+                    if (isHitlVisible && !wasVisible && !document.hidden) {
+                        safeRunHitlLoop();
+                    } else if (!isHitlVisible) {
                         clearHitlTimeline();
                     }
                 });
             }, { threshold: 0.15 });
             hitlObserver.observe(windowEl);
         } else {
-            setTimeout(runHitlLoop, 1000);
+            isHitlVisible = true;
+            setTimeout(safeRunHitlLoop, 1000);
         }
+
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden && isHitlVisible) {
+                safeRunHitlLoop();
+            } else if (document.hidden) {
+                clearHitlTimeline();
+            }
+        });
     })();
 
     /* ---------- Scroll Reveal (IntersectionObserver) ---------- */
@@ -345,11 +501,9 @@
        Nessuno scroll listener, solo resize/ResizeObserver. */
     (function initSlideOverSync() {
         var features = document.querySelector('.features-split-section');
-        var hitl = document.querySelector('.hitl-section');
-        var pricing = document.querySelector('.pricing-section');
         var faq = document.querySelector('.faq-section');
         var finalCta = document.querySelector('.final-cta-section');
-        if (!features || !hitl || !pricing || !faq || !finalCta || !('ResizeObserver' in window)) return;
+        if (!features || !faq || !finalCta || !('ResizeObserver' in window)) return;
 
         var desktop = window.matchMedia('(min-width: 961px)');
 
@@ -357,9 +511,7 @@
             if (!desktop.matches) return;
             var vh = window.innerHeight;
             document.documentElement.style.setProperty('--slide-pin-1', (vh - features.offsetHeight) + 'px');
-            document.documentElement.style.setProperty('--slide-pin-2', (vh - hitl.offsetHeight) + 'px');
             document.documentElement.style.setProperty('--slide-pin-3', (vh - faq.offsetHeight) + 'px');
-            document.documentElement.style.setProperty('--slide-hook-2', Math.min(vh + 120, pricing.offsetHeight) + 'px');
             // hook-3 non deve superare l'altezza della CTA: lo spacer resta tutto
             // coperto e il footer non viene mai sovrapposto
             document.documentElement.style.setProperty('--slide-hook-3', Math.min(vh + 120, finalCta.offsetHeight) + 'px');
@@ -367,8 +519,6 @@
 
         var ro = new ResizeObserver(function () { sync(); });
         ro.observe(features);
-        ro.observe(hitl);
-        ro.observe(pricing);
         ro.observe(faq);
         ro.observe(finalCta);
         window.addEventListener('resize', sync, { passive: true });
@@ -481,7 +631,7 @@
                 { label: 'Richiesta acconto per no-show', on: true }
             ],
             medici: [
-                { label: 'Fail-Closed clinico per urgenze', on: true },
+                { label: 'Passaggio operatore per urgenze', on: true },
                 { label: 'Triage prima visita / controllo', on: true },
                 { label: 'Orari reperibilità segreteria', on: true }
             ],
@@ -619,6 +769,7 @@
         }
 
         // 2. Knowledge Base Upload Loop
+        var kbBlock = document.querySelector('.kb-block-wrap');
         var kbProgressBar = document.getElementById('kbProgressBar');
         var kbFileName = document.getElementById('kbFileName');
         var kbFileBadge = document.getElementById('kbFileBadge');
@@ -631,9 +782,18 @@
             'Regolamento_Prenotazioni_e_Orari.pdf'
         ];
         var kbFileIndex = 0;
+        var kbTimeouts = [];
+        var isKbVisible = false;
+
+        function clearKbTimeouts() {
+            while (kbTimeouts.length > 0) {
+                clearTimeout(kbTimeouts.pop());
+            }
+        }
 
         function runKbUploadCycle() {
-            if (!kbProgressBar || reduceMotion) return;
+            if (!kbProgressBar || reduceMotion || !isKbVisible || document.hidden) return;
+            clearKbTimeouts();
             var currentFile = kbFiles[kbFileIndex % kbFiles.length];
             kbFileIndex++;
 
@@ -648,42 +808,57 @@
             kbProgressBar.style.width = '15%';
 
             // Step 1: Upload progress to 55%
-            setTimeout(function () {
-                if (!kbProgressBar) return;
+            kbTimeouts.push(setTimeout(function () {
+                if (!kbProgressBar || !isKbVisible || document.hidden) return;
                 kbProgressBar.style.width = '55%';
                 if (kbProgressPercent) kbProgressPercent.textContent = '55%';
-                if (kbProgressStatus) kbProgressStatus.textContent = 'Estrazione vettoriale RAG...';
-                if (kbFileBadge) kbFileBadge.textContent = 'indicizzazione';
-            }, 1200);
+                if (kbProgressStatus) kbProgressStatus.textContent = 'Lettura orari, servizi e listino...';
+                if (kbFileBadge) kbFileBadge.textContent = 'elaborazione';
+            }, 1200));
 
             // Step 2: Progress to 88%
-            setTimeout(function () {
-                if (!kbProgressBar) return;
+            kbTimeouts.push(setTimeout(function () {
+                if (!kbProgressBar || !isKbVisible || document.hidden) return;
                 kbProgressBar.style.width = '88%';
                 if (kbProgressPercent) kbProgressPercent.textContent = '88%';
-                if (kbProgressStatus) kbProgressStatus.textContent = 'Validazione guardrail e limiti...';
-                if (kbFileBadge) kbFileBadge.textContent = 'validazione';
-            }, 2400);
+                if (kbProgressStatus) kbProgressStatus.textContent = 'Applicazione regole dell\'attività...';
+                if (kbFileBadge) kbFileBadge.textContent = 'regole';
+            }, 2400));
 
             // Step 3: Complete 100%
-            setTimeout(function () {
-                if (!kbProgressBar) return;
+            kbTimeouts.push(setTimeout(function () {
+                if (!kbProgressBar || !isKbVisible || document.hidden) return;
                 kbProgressBar.style.width = '100%';
                 if (kbProgressPercent) kbProgressPercent.textContent = '100%';
-                if (kbProgressStatus) kbProgressStatus.textContent = 'Pronto & sincronizzato';
+                if (kbProgressStatus) kbProgressStatus.textContent = 'Pronto per rispondere ai clienti';
                 if (kbFileBadge) {
-                    kbFileBadge.textContent = 'sincronizzato';
+                    kbFileBadge.textContent = 'attivo';
                     kbFileBadge.style.background = 'transparent';
                     kbFileBadge.style.color = '#15803D';
                 }
-            }, 3600);
+            }, 3600));
 
             // Reset and loop next file
-            setTimeout(runKbUploadCycle, 7500);
+            kbTimeouts.push(setTimeout(function () {
+                if (isKbVisible && !document.hidden) runKbUploadCycle();
+            }, 7500));
         }
 
-        // Start upload loop
-        if (!reduceMotion) {
+        if ('IntersectionObserver' in window && kbBlock && !reduceMotion) {
+            var kbObs = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    var wasVisible = isKbVisible;
+                    isKbVisible = entry.isIntersecting;
+                    if (isKbVisible && !wasVisible && !document.hidden) {
+                        runKbUploadCycle();
+                    } else if (!isKbVisible) {
+                        clearKbTimeouts();
+                    }
+                });
+            }, { threshold: 0.15 });
+            kbObs.observe(kbBlock);
+        } else if (!reduceMotion) {
+            isKbVisible = true;
             setTimeout(runKbUploadCycle, 800);
         }
 
@@ -696,52 +871,68 @@
 
         var reviewReplyText = "Grazie Laura! Siamo felicissimi che abbiate trascorso una bellissima serata. Vi aspettiamo presto!";
         var typingTimer = null;
-        var hasStartedSync = false;
+        var syncTimeouts = [];
+        var isSyncVisible = false;
+
+        function clearSyncTimeouts() {
+            while (syncTimeouts.length > 0) {
+                clearTimeout(syncTimeouts.pop());
+            }
+            if (typingTimer) {
+                clearTimeout(typingTimer);
+                typingTimer = null;
+            }
+        }
 
         function typeWriter(text, i, callback) {
-            if (!typingParagraph) return;
+            if (!typingParagraph || !isSyncVisible || document.hidden) return;
             if (i < text.length) {
                 typingParagraph.textContent += text.charAt(i);
                 typingTimer = setTimeout(function () {
                     typeWriter(text, i + 1, callback);
                 }, 30 + Math.random() * 20);
             } else if (callback) {
-                setTimeout(callback, 3500);
+                syncTimeouts.push(setTimeout(callback, 3500));
             }
         }
 
         function runSyncSequence() {
-            if (!syncBlock || reduceMotion) return;
+            if (!syncBlock || reduceMotion || !isSyncVisible || document.hidden) return;
+            clearSyncTimeouts();
 
             // Step 1: Toast & Slot Animation
             if (toastBanner) {
                 toastBanner.style.opacity = '0';
                 toastBanner.style.transform = 'translateY(-6px)';
-                setTimeout(function () {
+                syncTimeouts.push(setTimeout(function () {
+                    if (!isSyncVisible || document.hidden) return;
                     toastBanner.style.opacity = '1';
                     toastBanner.style.transform = 'translateY(0)';
-                }, 400);
+                }, 400));
             }
 
             if (incomingSlot) {
                 incomingSlot.style.opacity = '0';
                 incomingSlot.style.transform = 'translateY(-8px)';
-                setTimeout(function () {
+                syncTimeouts.push(setTimeout(function () {
+                    if (!isSyncVisible || document.hidden) return;
                     incomingSlot.style.opacity = '1';
                     incomingSlot.style.transform = 'translateY(0)';
-                }, 900);
+                }, 900));
             }
 
             // Step 2: Review typing stream
             if (typingParagraph) {
                 typingParagraph.textContent = '';
                 if (typingCursor) typingCursor.style.display = 'inline-block';
-                setTimeout(function () {
+                syncTimeouts.push(setTimeout(function () {
+                    if (!isSyncVisible || document.hidden) return;
                     typeWriter(reviewReplyText, 0, function () {
-                        // After holding, restart sequence smoothly
-                        setTimeout(runSyncSequence, 4000);
+                        syncTimeouts.push(setTimeout(function () {
+                            if (isSyncVisible && !document.hidden) runSyncSequence();
+                        }, 4000));
                     });
-                }, 1400);
+                }, 1400));
             }
         }
 
@@ -749,16 +940,30 @@
         if ('IntersectionObserver' in window && syncBlock && !reduceMotion) {
             var syncObs = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
-                    if (entry.isIntersecting && !hasStartedSync) {
-                        hasStartedSync = true;
+                    var wasVisible = isSyncVisible;
+                    isSyncVisible = entry.isIntersecting;
+                    if (isSyncVisible && !wasVisible && !document.hidden) {
                         runSyncSequence();
+                    } else if (!isSyncVisible) {
+                        clearSyncTimeouts();
                     }
                 });
             }, { threshold: 0.15 });
             syncObs.observe(syncBlock);
         } else if (!reduceMotion) {
+            isSyncVisible = true;
             runSyncSequence();
         }
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                clearKbTimeouts();
+                clearSyncTimeouts();
+            } else {
+                if (isKbVisible) runKbUploadCycle();
+                if (isSyncVisible) runSyncSequence();
+            }
+        });
     })();
 
 })();

@@ -6,99 +6,367 @@
     <title>Privacy Policy — Melpis</title>
     <meta name="description" content="Informativa sul trattamento dei dati personali ai sensi del Regolamento UE 2016/679 (GDPR) per il servizio Melpis.">
     <meta name="robots" content="noindex, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/privacy/">
     <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
 </head>
 <body class="legal-body">
 
-<nav class="legal-nav">
-    <a href="/" class="brand" aria-label="Melpis — home">
-        <img src="/logo.webp" alt="Melpis Logo" class="brand-logo" width="30" height="30">
-        <span>Melpis</span>
-    </a>
-    <a href="/" class="btn-secondary btn-nav">Torna al sito</a>
-</nav>
+    <!-- ==================== UNIFIED STICKY HEADER ==================== -->
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <div class="nav-item-dropdown" id="navDropdownSettori">
+                    <button type="button" class="hero-nav-link dropdown-trigger-btn" id="settoriDropdownTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="settoriDropdownPanel">
+                        <span>Settori</span>
+                        <svg class="dropdown-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="dropdown-menu-panel" id="settoriDropdownPanel" role="region" aria-labelledby="settoriDropdownTrigger">
+                        <div class="dropdown-sectors-list">
+                            <a href="/settori/ristoranti/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                        <path d="M15 2v14a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2V2"/>
+                                        <path d="M6 2v20"/>
+                                        <path d="M9 2v4a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Ristoranti e Pizzerie</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Prenotazioni tavoli, gestione no-show, sincronizzazione calendario</p>
+                                </div>
+                            </a>
+
+                            <a href="/settori/saloni-bellezza/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Saloni &amp; Centri Estetici</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Appuntamenti per operatore, trattamenti combinati, promemoria</p>
+                                </div>
+                            </a>
+
+                            <a href="/settori/studi-medici/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
+                                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
+                                        <circle cx="20" cy="10" r="2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Studi Medici &amp; Dentistici</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Triage preliminare, privacy rigorosa, supporto segreteria 24/7</p>
+                                </div>
+                            </a>
+
+                            <a href="/settori/hotel/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 21h18"/>
+                                        <path d="M19 21v-4"/>
+                                        <path d="M19 17a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14z"/>
+                                        <path d="M7 10h4"/>
+                                        <path d="M7 14h2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Hotel &amp; Ricettivo</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Disponibilità camere, concierge WhatsApp multilingue, check-in rapido</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/documentazione/" class="hero-nav-link">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+                <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
+                    <span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+        <!-- ==================== MOBILE MENU OVERLAY ==================== -->
+    <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true">
+        <div class="mobile-menu-inner">
+            <a href="/" class="mobile-link">Home</a>
+            
+            <!-- Mobile Accordion for Settori -->
+            <div class="mobile-accordion" id="mobileSettoriAccordion">
+                <button type="button" class="mobile-accordion-btn" id="mobileSettoriBtn" aria-expanded="false" aria-controls="mobileSettoriList">
+                    <span>Settori</span>
+                    <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="mobile-accordion-content" id="mobileSettoriList" role="region" aria-labelledby="mobileSettoriBtn">
+                    <a href="/settori/ristoranti/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🍽️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Ristoranti e Pizzerie</span>
+                            <span class="mobile-sublink-desc">Tavoli, turni e no-show</span>
+                        </div>
+                    </a>
+                    <a href="/settori/saloni-bellezza/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">✨</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Saloni &amp; Bellezza</span>
+                            <span class="mobile-sublink-desc">Poltrona e promemoria</span>
+                        </div>
+                    </a>
+                    <a href="/settori/studi-medici/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🩺</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Studi Medici &amp; Dentisti</span>
+                            <span class="mobile-sublink-desc">Triage e segreteria 24/7</span>
+                        </div>
+                    </a>
+                    <a href="/settori/hotel/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🛎️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Hotel &amp; Ricettivo</span>
+                            <span class="mobile-sublink-desc">Camere e concierge</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <a href="/documentazione/" class="mobile-link">Documentazione</a>
+            <a href="/prezzi/" class="mobile-link">Prezzi</a>
+            <a href="/accedi/" class="mobile-link mobile-login">Accedi al pannello</a>
+        <a href="/registrati/" class="btn-cta-primary w-full" style="margin-top: 8px;">
+            <span>Inizia la prova di 7 giorni</span>
+        </a>
+        </div>
+    </div>
 
 <main class="legal-main container-narrow">
 
-<h1>Privacy Policy</h1>
-<p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
+    <h1>Privacy Policy</h1>
+    <p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
 
-<!-- NOTA PER IL TITOLARE: personalizzare i dati societari (ragione sociale,
-     sede legale, P.IVA, email del DPO/RP) prima della pubblicazione. -->
+    <!-- NOTA PER IL TITOLARE: personalizzare i dati societari (ragione sociale,
+         sede legale, P.IVA, email del DPO/RP) prima della pubblicazione. -->
 
-<section>
-<h2>1. Titolare del trattamento</h2>
-<p>Melpis AI — <em>[ragione sociale completa, sede legale, codice fiscale/P.IVA]</em>, email: <strong>privacy@melpis.it</strong>.</p>
-</section>
+    <section>
+        <h2>1. Titolare del trattamento</h2>
+        <p>Melpis AI — <em>[ragione sociale completa, sede legale, codice fiscale/P.IVA]</em>, email: <strong>privacy@melpis.it</strong>.</p>
+    </section>
 
-<section>
-<h2>2. Dati trattati</h2>
-<p>A seconda dell'uso del servizio, trattiamo le seguenti categorie di dati:</p>
-<ul>
-    <li><strong>Dati di registrazione</strong>: nome dell'attività, indirizzo email, password (conservata esclusivamente in forma crittografata dal provider di autenticazione Supabase Auth).</li>
-    <li><strong>Dati di fatturazione</strong>: gestiti da Stripe (società terza, titolare autonomo); Melpis non memorizza numeri di carta di credito.</li>
-    <li><strong>Dati dei tuoi clienti</strong>: messaggi WhatsApp ricevuti tramite il tuo numero WhatsApp Business, necessari al funzionamento dell'assistente AI. Il contenuto delle conversazioni è trattato per fornire il servizio ed è eliminato secondo le politiche di retention descritte nella sezione 5.</li>
-    <li><strong>Dati tecnici</strong>: log di sicurezza e di funzionamento (indirizzo IP, timestamp), trattati per finalità di sicurezza informatica.</li>
-</ul>
-</section>
+    <section>
+        <h2>2. Dati trattati</h2>
+        <p>A seconda dell'uso del servizio, trattiamo le seguenti categorie di dati:</p>
+        <ul>
+            <li><strong>Dati di registrazione</strong>: nome dell'attività, indirizzo email, password (conservata esclusivamente in forma crittografata dal provider di autenticazione Supabase Auth).</li>
+            <li><strong>Dati di fatturazione</strong>: gestiti da Stripe (società terza, titolare autonomo); Melpis non memorizza numeri di carta di credito.</li>
+            <li><strong>Dati dei tuoi clienti</strong>: messaggi WhatsApp ricevuti tramite il tuo numero WhatsApp Business, necessari al funzionamento dell'assistente AI. Il contenuto delle conversazioni è trattato per fornire il servizio ed è eliminato secondo le politiche di retention descritte nella sezione 5.</li>
+            <li><strong>Dati tecnici</strong>: log di sicurezza e di funzionamento (indirizzo IP, timestamp), trattati per finalità di sicurezza informatica.</li>
+        </ul>
+    </section>
 
-<section>
-<h2>3. Finalità e basi giuridiche</h2>
-<ul>
-    <li><strong>Erogazione del servizio contrattuale</strong> (risposte automatiche, prenotazioni, report): esecuzione del contratto, art. 6(1)(b) GDPR.</li>
-    <li><strong>Fatturazione e obblighi fiscali</strong>: obbligo legale, art. 6(1)(c) GDPR.</li>
-    <li><strong>Sicurezza informatica e prevenzione abusi</strong>: interesse legittimo, art. 6(1)(f) GDPR.</li>
-    <li><strong>Miglioramento del servizio con dati aggregati e anonimi</strong>: interesse legittimo; i dati anonimi non sono più riconducibili all'interessato.</li>
-</ul>
-<p>L'assistente AI non utilizza le conversazioni dei tuoi clienti per addestrare modelli generici.</p>
-</section>
+    <section>
+        <h2>3. Finalità e basi giuridiche</h2>
+        <ul>
+            <li><strong>Erogazione del servizio contrattuale</strong> (risposte automatiche, prenotazioni, report): esecuzione del contratto, art. 6(1)(b) GDPR.</li>
+            <li><strong>Fatturazione e obblighi fiscali</strong>: obbligo legale, art. 6(1)(c) GDPR.</li>
+            <li><strong>Sicurezza informatica e prevenzione abusi</strong>: interesse legittimo, art. 6(1)(f) GDPR.</li>
+            <li><strong>Miglioramento del servizio con dati aggregati e anonimi</strong>: interesse legittimo; i dati anonimi non sono più riconducibili all'interessato.</li>
+        </ul>
+        <p>L'assistente AI non utilizza le conversazioni dei tuoi clienti per addestrare modelli generici.</p>
+    </section>
 
-<section>
-<h2>4. Fornitori e trasferimenti extra-UE</h2>
-<p>Ci avvaliamo dei seguenti responsabili esterni, selezionati tra provider che offrono garanzie contrattuali conformi agli artt. 28 e 46 GDPR:</p>
-<ul>
-    <li><strong>Supabase</strong> — autenticazione e database (Unione Europea).</li>
-    <li><strong>Meta Platforms Ireland Ltd.</strong> — WhatsApp Business API.</li>
-    <li><strong>Stripe Payments Europe</strong> — pagamenti.</li>
-    <li><strong>OpenRouter</strong> — instradamento dei modelli AI; i provider sono configurati per non addestrare sui dati.</li>
-    <li><strong>Plausible Analytics</strong> — statistiche di traffico anonime e senza cookie (nessun dato personale trattato).</li>
-    <li><strong>[provider hosting]</strong> — hosting dell'applicazione web <em>[da completare con il provider effettivo prima della pubblicazione]</em>.</li>
-</ul>
-</section>
+    <section>
+        <h2>4. Fornitori e trasferimenti extra-UE</h2>
+        <p>Ci avvaliamo dei seguenti responsabili esterni, selezionati tra provider che offrono garanzie contrattuali conformi agli artt. 28 e 46 GDPR:</p>
+        <ul>
+            <li><strong>Supabase</strong> — autenticazione e database (Unione Europea).</li>
+            <li><strong>Meta Platforms Ireland Ltd.</strong> — WhatsApp Business API.</li>
+            <li><strong>Stripe Payments Europe</strong> — pagamenti.</li>
+            <li><strong>OpenRouter</strong> — instradamento dei modelli AI; i provider sono configurati per non addestrare sui dati.</li>
+            <li><strong>Plausible Analytics</strong> — statistiche di traffico anonime e senza cookie (nessun dato personale trattato).</li>
+            <li><strong>[provider hosting]</strong> — hosting dell'applicazione web <em>[da completare con il provider effettivo prima della pubblicazione]</em>.</li>
+        </ul>
+    </section>
 
-<section>
-<h2>5. Conservazione</h2>
-<p>I dati conversazionali sono conservati per il tempo necessario all'erogazione del servizio e, successivamente, secondo la finestra di retention operativa configurata nel sistema. Alla cancellazione dell'account, i dati dell'organizzazione sono eliminati in modo definitivo e a cascata entro 30 giorni, salvo obblighi di legge su dati fiscali.</p>
-</section>
+    <section>
+        <h2>5. Conservazione</h2>
+        <p>I dati conversazionali sono conservati per il tempo necessario all'erogazione del servizio e, successivamente, secondo la finestra di retention operativa configurata nel sistema. Alla cancellazione dell'account, i dati dell'organizzazione sono eliminati in modo definitivo e a cascata entro 30 giorni, salvo obblighi di legge su dati fiscali.</p>
+    </section>
 
-<section>
-<h2>6. Diritti degli interessati</h2>
-<p>Puoi esercitare in ogni momento i diritti di accesso, rettifica, cancellazione ("diritto all'oblio"), limitazione, portabilità e opposizione previsti dagli artt. 15–22 GDPR scrivendo a <strong>privacy@melpis.it</strong>. I titolari di account possono inoltre esportare ed eliminare autonomamente i dati dalla dashboard. Hai diritto a proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener noreferrer">garanteprivacy.it</a>).</p>
-</section>
+    <section>
+        <h2>6. Diritti degli interessati</h2>
+        <p>Puoi esercitare in ogni momento i diritti di accesso, rettifica, cancellazione ("diritto all'oblio"), limitazione, portabilità e opposizione previsti dagli artt. 15–22 GDPR scrivendo a <strong>privacy@melpis.it</strong>. I titolari di account possono inoltre esportare ed eliminare autonomamente i dati dalla dashboard. Hai diritto a proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener noreferrer" target="_blank">garanteprivacy.it</a>).</p>
+    </section>
 
-<section>
-<h2>7. Sicurezza</h2>
-<p>I dati sono cifrati in transito (TLS) e a riposo. L'autenticazione usa sessioni in cookie HttpOnly+Secure; l'accesso alle funzioni sensibili è protetto da controllo dei ruoli, audit logging e autenticazione a due fattori opzionale.</p>
-</section>
+    <section>
+        <h2>7. Sicurezza</h2>
+        <p>I dati sono cifrati in transito (TLS) e a riposo. L'autenticazione usa sessioni in cookie HttpOnly+Secure; l'accesso alle funzioni sensibili è protetto da controllo dei ruoli, audit logging e autenticazione a due fattori opzionale.</p>
+    </section>
 
-<section>
-<h2>8. Modifiche</h2>
-<p>La presente informativa può essere aggiornata. Le modifiche sostanziali verranno comunicate via email o dall'interno della dashboard con almeno 30 giorni di preavviso.</p>
-</section>
+    <section>
+        <h2>8. Modifiche</h2>
+        <p>La presente informativa può essere aggiornata. Le modifiche sostanziali verranno comunicate via email o dall'interno della dashboard con almeno 30 giorni di preavviso.</p>
+    </section>
 
 </main>
 
-<footer class="footer legal-footer">
-    <div class="container footer-bottom">
-        <p>&copy; 2026 Melpis AI. Tutti i diritti riservati.</p>
-        <div style="display:flex; gap:24px;">
-            <a href="/termini/">Termini di Servizio</a>
-            <a href="/cookie/">Cookie Policy</a>
-            <a href="/api/gdpr/dpa">DPA</a>
+<footer class="site-footer">
+    <div class="container">
+        <div class="footer-top-row">
+            <div class="footer-brand-col">
+                <a href="/" class="nav-brand">
+                    <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                    <span class="nav-brand-text">Melpis</span>
+                </a>
+                <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+            </div>
+            <div class="footer-links-grid">
+                <div class="footer-col">
+                    <h4>Prodotto</h4>
+                    <a href="/#panoramica">Panoramica</a>
+                    <a href="/#come-funziona">Come funziona</a>
+                    <a href="/#integrazioni">Integrazioni</a>
+                    <a href="/prezzi/">Prezzi</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Piattaforma</h4>
+                    <a href="/app/">Pannello di controllo</a>
+                    <a href="/accedi/">Accedi</a>
+                    <a href="/registrati/">Registrati</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legale</h4>
+                    <a href="/privacy/">Privacy Policy</a>
+                    <a href="/termini/">Termini di Servizio</a>
+                    <a href="/cookie/">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom-row">
+            <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
         </div>
     </div>
 </footer>
 
+<script>
+    (function() {
+        var header = document.getElementById('mainHeader');
+        var dropdown = document.getElementById('navDropdownSettori');
+        var trigger = document.getElementById('settoriDropdownTrigger');
+        var hamburger = document.getElementById('navHamburger');
+        var overlay = document.getElementById('mobileOverlay');
+        var accordionBtn = document.getElementById('mobileSettoriBtn');
+        var accordionWrap = document.getElementById('mobileSettoriAccordion');
+
+        if (header) {
+            var updateScrollState = function() {
+                var isScrolled = (window.pageYOffset || document.documentElement.scrollTop || 0) > 15;
+                header.classList.toggle('is-scrolled', isScrolled);
+            };
+            window.addEventListener('scroll', updateScrollState, { passive: true });
+            updateScrollState();
+        }
+
+        if (dropdown && trigger) {
+            var setDropdown = function(open) {
+                dropdown.classList.toggle('is-open', open);
+                trigger.setAttribute('aria-expanded', String(open));
+            };
+
+            trigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                setDropdown(!dropdown.classList.contains('is-open'));
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!dropdown.contains(e.target)) {
+                    setDropdown(false);
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
+                    setDropdown(false);
+                    trigger.focus();
+                }
+            });
+
+            dropdown.addEventListener('focusout', function() {
+                setTimeout(function() {
+                    if (!dropdown.contains(document.activeElement)) {
+                        setDropdown(false);
+                    }
+                }, 10);
+            });
+        }
+
+        if (hamburger && overlay) {
+            var setNav = function(open) {
+                overlay.classList.toggle('open', open);
+                overlay.setAttribute('aria-hidden', String(!open));
+                hamburger.setAttribute('aria-expanded', String(open));
+                document.body.style.overflow = open ? 'hidden' : '';
+            };
+
+            hamburger.addEventListener('click', function(e) {
+                e.preventDefault();
+                setNav(!overlay.classList.contains('open'));
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && overlay.classList.contains('open')) {
+                    setNav(false);
+                }
+            });
+
+            overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-cta-primary, .btn-pill-cta').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    setNav(false);
+                });
+            });
+        }
+
+        if (accordionBtn && accordionWrap) {
+            accordionBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var isExpanded = accordionWrap.classList.toggle('is-expanded');
+                accordionBtn.setAttribute('aria-expanded', String(isExpanded));
+            });
+        }
+    })();
+</script>
+
+    <script src="/app.js" defer></script>
 </body>
 </html>

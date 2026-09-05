@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Melpis — Pannello di controllo</title>
-<link rel="preload" href="fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="logo.webp" type="image/webp">
 <link rel="stylesheet" href="style.css?v=integ-v3">
 </head>
@@ -1403,7 +1403,7 @@
               </button>
               <button type="button" class="inbox-nav-filter" data-inbox-main-filter="status_resolved">
                 <span class="inbox-nav-icon text-green" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="#0e8a38" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="var(--green-deep)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
                 <span class="inbox-nav-text">Risolte</span>
               </button>
@@ -1812,7 +1812,7 @@
               </div>
 
               <!-- Box di test rapido -->
-              <div class="integ-test-box" id="integ-wa-test-box" hidden style="margin-top: 16px; padding: 16px; background: rgba(238,244,234,0.5); border-radius: var(--radius-sm); border: 1px solid var(--line);">
+              <div class="integ-test-box" id="integ-wa-test-box" hidden style="margin-top: 16px; padding: 16px; background: var(--bg-elev); border-radius: var(--radius-sm); border: 1px solid var(--line);">
                 <h4 class="integ-test-title" style="margin-bottom: 4px; font-size: 0.94rem;">Fai una prova reale sul tuo smartphone</h4>
                 <p class="settings-help-sm" style="margin-bottom: 10px;">Inserisci il tuo numero per ricevere subito un messaggio di verifica dal tuo assistente.</p>
                 <div class="wizard-inline">
@@ -1909,7 +1909,7 @@
                   <p class="settings-help">Il canale è configurato. Invia un messaggio di prova per verificare che arrivi correttamente sul tuo smartphone.</p>
                 </div>
 
-                <div class="wizard-test-form-box" style="padding: 16px; background: rgba(238,244,234,0.5); border-radius: var(--radius-sm); border: 1px solid var(--line); margin-bottom: 18px;">
+                <div class="wizard-test-form-box" style="padding: 16px; background: var(--bg-elev); border-radius: var(--radius-sm); border: 1px solid var(--line); margin-bottom: 18px;">
                   <label class="wizard-label" for="wa-wz-test-phone">Numero di cellulare per il test</label>
                   <div class="wizard-inline" style="margin-top: 6px;">
                     <input class="wizard-input" id="wa-wz-test-phone" type="tel" placeholder="+39 340 1234567" style="max-width: 260px;">

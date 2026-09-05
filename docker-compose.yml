@@ -42,6 +42,10 @@ services:
       - ./web/landing/privacy.html:/usr/share/nginx/html/privacy.html:ro
       - ./web/landing/termini.html:/usr/share/nginx/html/termini.html:ro
       - ./web/landing/cookie.html:/usr/share/nginx/html/cookie.html:ro
+      - ./web/landing/sitemap.xml:/usr/share/nginx/html/sitemap.xml:ro
+      - ./web/landing/settori:/usr/share/nginx/html/settori:ro
+      - ./web/landing/prezzi:/usr/share/nginx/html/prezzi:ro
+      - ./web/landing/documentazione:/usr/share/nginx/html/documentazione:ro
       - ./web/index.html:/usr/share/nginx/html/app/index.html:ro
       - ./web/style.css:/usr/share/nginx/html/app/style.css:ro
       - ./web/app.js:/usr/share/nginx/html/app/app.js:ro

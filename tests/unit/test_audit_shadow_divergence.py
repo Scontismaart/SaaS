@@ -1,16 +1,22 @@
+import importlib.util
 import sys
 from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+_SCRIPT_PATH = REPO_ROOT / "scripts" / "audit_shadow_divergence.py"
 
-from scripts.audit_shadow_divergence import (
-    ShadowAuditEvent,
-    evaluate_shadow_audit,
-    parse_shadow_logs,
-)
+def _load_audit_module():
+    spec = importlib.util.spec_from_file_location("scripts.audit_shadow_divergence", _SCRIPT_PATH)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["scripts.audit_shadow_divergence"] = module
+    spec.loader.exec_module(module)
+    return module
+
+_audit_mod = _load_audit_module()
+ShadowAuditEvent = _audit_mod.ShadowAuditEvent
+evaluate_shadow_audit = _audit_mod.evaluate_shadow_audit
+parse_shadow_logs = _audit_mod.parse_shadow_logs
 
 
 def test_parse_shadow_logs_extracts_cleanly():

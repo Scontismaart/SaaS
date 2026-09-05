@@ -13,6 +13,7 @@ class AppConfig:
     postgres_dsn: str
     verify_token: str
     max_retry_attempts: int = 5
+    use_conversation_orchestrator: bool = True
 
 
 @dataclass

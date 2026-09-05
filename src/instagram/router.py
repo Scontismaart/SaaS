@@ -1,13 +1,11 @@
-import hmac
 import json
 import logging
-import time
 import uuid
 from fastapi import APIRouter, Request, Response, HTTPException, Query
 
 from src.whatsapp.config import AppConfig
 from src.whatsapp.idempotency import dedup_check
-from src.whatsapp.router import _read_limited_body, _verify_hmac
+from src.core.channels.inbound.meta_security import MetaWebhookSecurity
 from src.instagram.models import InstagramWebhook
 
 logger = logging.getLogger(__name__)
@@ -16,11 +14,18 @@ MAX_BODY_SIZE = 5 * 1024 * 1024  # 5 MB
 TIMESTAMP_TOLERANCE = 300  # ±5 minuti per replay check
 
 
-def create_router(app_config: AppConfig, wrepo, igrepo):
+def create_router(app_config: AppConfig, wrepo, igrepo, security: MetaWebhookSecurity = None):
     """Webhook Instagram DM. La sicurezza (verifica firma HMAC con la stessa
-    META_APP_SECRET dell'app Meta, replay protection, body limit) e' riusata
-    da src.whatsapp.router: stessa piattaforma Meta, stesse garanzie."""
+    META_APP_SECRET dell'app Meta, replay protection, body limit) e' gestita
+    dal componente centralizzato MetaWebhookSecurity."""
     router = APIRouter(prefix="/webhooks", tags=["instagram"])
+
+    webhook_sec = security or MetaWebhookSecurity(
+        app_secret=app_config.app_secret if app_config else "",
+        verify_token=app_config.verify_token if app_config else "",
+        max_body_size=MAX_BODY_SIZE,
+        timestamp_tolerance=TIMESTAMP_TOLERANCE,
+    )
 
     @router.get("/instagram")
     async def verify_webhook(
@@ -28,42 +33,20 @@ def create_router(app_config: AppConfig, wrepo, igrepo):
         hub_verify_token: str = Query(None, alias="hub.verify_token"),
         hub_challenge: str = Query(None, alias="hub.challenge"),
     ):
-        verify_token_configured = app_config.verify_token or ""
-        if (hub_mode == "subscribe"
-                and verify_token_configured
-                and hmac.compare_digest(hub_verify_token or "", verify_token_configured)):
-            return Response(content=hub_challenge, media_type="text/plain")
-        raise HTTPException(status_code=403, detail="Verify token mismatch")
+        verify_token_configured = app_config.verify_token if app_config else webhook_sec.verify_token
+        return webhook_sec.verify_challenge(
+            hub_mode=hub_mode,
+            hub_verify_token=hub_verify_token,
+            hub_challenge=hub_challenge,
+            override_token=verify_token_configured,
+        )
 
     @router.post("/instagram")
     async def receive_webhook(request: Request):
         trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex[:16])
-        client_ip = request.client.host if request.client else "unknown"
-        signature = request.headers.get("X-Hub-Signature-256", "")
-        timestamp_str = request.headers.get("X-Timestamp", "")
+        active_secret = app_config.app_secret if app_config else webhook_sec.app_secret
 
-        if timestamp_str:
-            try:
-                ts = int(timestamp_str)
-                if abs(time.time() - ts) > TIMESTAMP_TOLERANCE:
-                    logger.warning("webhook_timestamp_rejected ip=%s path=%s", client_ip, request.url.path)
-                    raise HTTPException(status_code=403, detail="Timestamp out of tolerance")
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid X-Timestamp")
-
-        body = await _read_limited_body(request, MAX_BODY_SIZE)
-
-        if not _verify_hmac(body, signature, app_config.app_secret):
-            logger.warning(
-                json.dumps({
-                    "event": "webhook_hmac_rejected",
-                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "ip": client_ip,
-                    "path": request.url.path,
-                    "reason": "signature_mismatch",
-                })
-            )
-            raise HTTPException(status_code=403, detail="Invalid signature")
+        body = await webhook_sec.authenticate_and_read(request, override_secret=active_secret)
 
         try:
             data = json.loads(body)

@@ -74,7 +74,12 @@ async def indicizza_dati_struttura(
 
     chunks = chunk_testo(testo_completo)
     if chunks:
-        embeds = vettorizza(chunks, tipo="passage")
+        try:
+            from src.api.routes.common import resolve_vettorizza
+            vettorizza_fn = resolve_vettorizza()
+        except Exception:
+            from src.core.documenti.embeddings import vettorizza as vettorizza_fn
+        embeds = vettorizza_fn(chunks, tipo="passage")
         for i, (chunk, emb) in enumerate(zip(chunks, embeds)):
             await repo.add_chunk(
                 organization_id,

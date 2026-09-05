@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import json
 import logging
+import os
 import uuid
 
 from pydantic import ValidationError
@@ -36,9 +37,6 @@ logger = logging.getLogger(__name__)
 
 HEARTBEAT_INTERVAL = 30
 
-# Messaggio neutro per il cliente finale quando l'org e' sospesa: nessuna
-# menzione di abbonamenti/fatturazione (esporrebbe lo stato di billing del
-# locale a un cliente casuale). La notifica vera va al gestore via email.
 ORG_SUSPENDED_REPLY = "Grazie per averci scritto, ti risponderemo al piu' presto."
 
 DISCLOSURE_TEXT = (
@@ -80,28 +78,71 @@ def _profile_from_dict(raw: dict | str | None, fallback_name: str = "Attivita") 
     )
 
 
-async def decorate_with_disclosure(org_id: str, from_number: str, testo: str, repo,
-                                   nome_attivita: str = "Attivita") -> str:
-    """Prepende la disclosure AI al primo messaggio automatico per quel contatto."""
-    contact = await repo.get_or_create_contact(org_id, from_number)
-    sent = await repo.mark_ai_disclosure_sent(contact["id"], org_id)
-    if not sent:
-        return testo
-    return DISCLOSURE_TEXT.format(nome=nome_attivita) + "\n\n" + testo
-
-
-def _extract_from(content: dict) -> str:
-    if not isinstance(content, dict):
-        return ""
-    return str(content.get("from") or content.get("from_") or "").strip()
+from src.core.inbound.service import (
+    decorate_with_disclosure,
+    _extract_from,
+)
 
 
 class InboundProcessor:
-    def __init__(self, app_config: AppConfig, repo, service, booking_service=None):
+    """
+    Facade di retrocompatibilità al 100% per l'elaborazione dei messaggi inbound.
+    Delega l'orchestrazione applicativa a InboundProcessingService e InboundWorker.
+    Mantiene identiche signature, attributi e metodi interni per preservare i test esistenti.
+    """
+
+    def __init__(
+        self,
+        app_config: AppConfig,
+        repo,
+        service,
+        booking_service=None,
+        orchestrator=None,
+    ):
         self.app_config = app_config
         self.repo = repo
         self.service = service
         self.booking_service = booking_service
+        self.use_orchestrator = getattr(
+            app_config, "use_conversation_orchestrator", False
+        ) or (
+            os.getenv("USE_CONVERSATION_ORCHESTRATOR", "false").lower()
+            in ("true", "1", "yes")
+        )
+        self.shadow_orchestrator = (
+            os.getenv("SHADOW_ORCHESTRATOR", "false").lower() in ("true", "1", "yes")
+        )
+        if orchestrator is not None:
+            self.orchestrator = orchestrator
+        elif self.use_orchestrator or self.shadow_orchestrator:
+            from src.core.receptionist.conversation_orchestrator import (
+                ConversationOrchestrator,
+            )
+            self.orchestrator = ConversationOrchestrator(
+                org_repo=getattr(repo, "org_repo", repo),
+                doc_repo=getattr(repo, "doc_repo", repo),
+                billing_repo=getattr(repo, "billing_repo", repo),
+                conv_repo=getattr(repo, "conv_repo", repo),
+                booking_service=booking_service,
+                fast_path_matcher=service.fast_path_match if service else None,
+            )
+        else:
+            self.orchestrator = None
+
+        from src.core.inbound.service import InboundProcessingService
+        from src.core.workers.inbound_worker import InboundWorker
+        self.inbound_service = InboundProcessingService(
+            app_config=app_config,
+            repo=repo,
+            service=service,
+            booking_service=booking_service,
+            orchestrator=self.orchestrator,
+            send_reply_fn=lambda *args, **kwargs: self._send_ai_reply(*args, **kwargs),
+            finalize_fn=lambda *args, **kwargs: self._finalize_message(*args, **kwargs),
+        )
+        self.inbound_service.use_orchestrator = self.use_orchestrator
+        self.inbound_service.shadow_orchestrator = self.shadow_orchestrator
+        self.worker = InboundWorker(repo=repo, inbound_service=self.inbound_service)
 
     async def process_next_batch(self):
         await self.repo.reap_stale_claims()
@@ -110,7 +151,7 @@ class InboundProcessor:
             try:
                 await self._process_one(msg)
             except Exception as e:
-                logger.error("Error processing message %s: %s", msg["id"], e)
+                logger.exception("Error processing message %s: %s", msg["id"], e)
 
     async def _heartbeat_loop(self, msg_id, organization_id):
         try:
@@ -121,480 +162,14 @@ class InboundProcessor:
             pass
 
     async def _process_one(self, msg: dict):
-        org_id = msg["organization_id"]
-        text = msg.get("content_text", "")
-        content = msg.get("content", {})
-        if isinstance(content, str):
-            try:
-                content = json.loads(content)
-            except Exception:
-                content = {}
-        if not isinstance(content, dict):
-            content = {}
-        canale = msg.get("canale") or "whatsapp"
-        
-        claim_result = await self.repo.claim_message_and_check_quota(msg["id"], org_id)
-        if claim_result.get("status") == "not_found":
-            return
-        if claim_result.get("status") == "already_sent":
-            return
-            
-        if claim_result.get("status") == "currently_processing":
-            logger.info("Message %s is currently being processed by another worker. Yielding.", msg["id"])
-            return
-        if claim_result.get("status") == "quota_exceeded":
-            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-            try:
-                res = await self._send_ai_reply(
-                    org_id, msg, content, tenant_config, 
-                    "Stiamo ricevendo troppe richieste, attendi l'operatore.", 
-                    handling_type="quota_exceeded"
-                )
-                meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
-                if conv:
-                    enqueue_escalation(
-                        org_id=str(org_id),
-                        conversation_id=str(msg["conversation_id"]),
-                        contact_name=content.get("from", "cliente"),
-                        pool=self.repo.pool,
-                    )
-                await self._finalize_message(msg["id"], handling_type="quota_exceeded", meta_message_id=meta_id, organization_id=org_id)
-            except Exception as e:
-                logger.error("Quota exceeded notification send failed for %s: %s", msg["id"], e)
-            return
-
-        opt_out = await self.service.check_opt_out(text)
-        if opt_out["is_opt_out"]:
-            from_number = _extract_from(content)
-            contact = await self.repo.get_or_create_contact(org_id, from_number)
-            await self.repo.record_consent_event(
-                contact_id=contact["id"],
-                event_type="opt_out",
-                method="keyword_match",
-                triggering_message_id=msg["id"],
-                matched_text=text,
-                organization_id=org_id,
-            )
-            security_audit("consent_opt_out", contact_id=str(contact["id"]), organization_id=str(org_id))
-            # Il percorso di opt-out non ha side-effect esterni verso Meta (fail-closed opt-out).
-            # La persistenza del consenso e l'audit log sono transazionalmente completati nel DB locale.
-            # È quindi sicuro finalizzare/marcare subito il messaggio come handled ('opt_out').
-            await self._finalize_message(msg["id"], handling_type="opt_out", organization_id=org_id)
-            return
-
-        wants_human = await self.service.check_human_request(text)
-        if wants_human:
-            from_number = _extract_from(content)
-            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-            try:
-                res = await self._send_ai_reply(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY, handling_type="automation")
-                meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
-                if conv:
-                    enqueue_escalation(
-                        org_id=str(org_id),
-                        conversation_id=str(msg["conversation_id"]),
-                        contact_name=from_number or "cliente",
-                        pool=self.repo.pool,
-                    )
-                await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id, organization_id=org_id)
-            except Exception as e:
-                logger.error("Human request notification send failed for %s: %s", msg["id"], e)
-            return
-
-        feedback_emoji = rileva_feedback_emoji(text)
-        if feedback_emoji:
-            await self._handle_feedback_emoji(org_id, msg, feedback_emoji)
-            return
-
-        if self.booking_service:
-            booking_reply = await self.booking_service.handle_reminder_reply(
-                org_id, _extract_from(content), text
-            )
-            if booking_reply:
-                # Booking reminder reply invia la risposta internamente via booking_service._send_whatsapp;
-                # la finalizzazione avviene qui una volta completata l'elaborazione.
-                await self._finalize_message(msg["id"], handling_type="automation", organization_id=org_id)
-                return
-
-        state = await self.repo.get_org_subscription_state(org_id)
-        if state and is_org_suspended(state.get("subscription_status"), state.get("trial_end")):
-            logger.warning("org_id=%s message_id=%s event=org_suspended — risposta AI inibita", org_id, msg["id"])
-            tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-            try:
-                res = await self._send_ai_reply(org_id, msg, content, tenant_config, ORG_SUSPENDED_REPLY, handling_type="automation")
-                meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                await self._finalize_message(msg["id"], handling_type="suspended", meta_message_id=meta_id, organization_id=org_id)
-            except Exception as e:
-                logger.error("Org suspended message send failed for %s: %s", msg["id"], e)
-            return
-
-        # Check se il ticket è CLAIMED da un operatore - se sì, non generare risposta AI
-        get_conv_fn = getattr(self.repo, "get_conversation", None)
-        if get_conv_fn is not None:
-            conv_res = get_conv_fn(str(msg["conversation_id"]), org_id)
-            if inspect.isawaitable(conv_res):
-                conversation = await conv_res
-            else:
-                conversation = conv_res
-            if isinstance(conversation, dict) and conversation.get("ticket_status") == "CLAIMED":
-                logger.info("Ticket %s is CLAIMED, skipping AI response for message %s", msg["conversation_id"], msg["id"])
-                await self._finalize_message(msg["id"], handling_type="claimed_by_operator", organization_id=org_id)
-                return
-
-        tenant_config = await load_tenant_config(org_id, self.app_config, self.repo)
-        if tenant_config is not None:
-            business_profile_raw = getattr(tenant_config, "business_profile", None) or {}
-        else:
-            business_profile_raw = await self.repo.get_org_business_profile(org_id) or {}
-        if isinstance(business_profile_raw, str):
-            try:
-                business_profile_raw = json.loads(business_profile_raw)
-            except Exception:
-                business_profile_raw = {}
-        if not isinstance(business_profile_raw, dict):
-            business_profile_raw = {}
-
-        fast_reply = await self.service.fast_path_match(text, business_profile_raw)
-        if fast_reply:
-            from_number = _extract_from(content)
-            nome = (business_profile_raw or {}).get("nome") or "Attivita"
-            decorated = await decorate_with_disclosure(org_id, from_number, fast_reply, self.repo, nome_attivita=nome)
-            try:
-                res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
-                meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id, organization_id=org_id)
-            except Exception as e:
-                logger.error("Fast reply send failed for %s: %s", msg["id"], e)
-            return
-
-        profilo = _profile_from_dict(business_profile_raw)
-        
-        # Outbox Pattern (P0-2) legacy handled by sent_at in claim_message_and_check_quota
-        dedup = await self.repo.get_outbound_dedup(msg["organization_id"], msg["id"])
-        if dedup:
-            from_number = _extract_from(content)
-            try:
-                res = await self._send_ai_reply(org_id, msg, content, tenant_config, dedup["response_text"])
-                meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id, organization_id=org_id)
-            except Exception as e:
-                logger.error("Dedup send failed for %s: %s", msg["id"], e)
-            return
-
-        messaggio = MessaggioInput(
-            testo=text,
-            canale=CanaleMessaggio(canale),
-            id_conversazione=str(msg.get("conversation_id", "")),
-            telefono_mittente=_extract_from(content),
-        )
-
-        intent_result = await classifica_intent(text)
-        if intent_result.source == "llm":
-            try:
-                await self.repo.record_usage(
-                    org_id,
-                    "intent_classification",
-                    metadata={
-                        "intent": intent_result.intent,
-                        "confidence": intent_result.confidence,
-                        "message_id": str(msg["id"]),
-                        "model": modello_intent(),
-                    },
-                )
-            except Exception as e:
-                logger.warning("Intent usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
-
-        q_emb = None
-        if faq_cache.cache_enabled() and intent_result.intent == "faq":
-            try:
-                q_emb = await faq_cache.embedding_query(text)
-                cached_answer = await faq_cache.cerca_in_cache(str(org_id), text, self.repo, q_emb=q_emb)
-            except Exception as e:
-                logger.warning("FAQ cache lookup failed for org %s msg %s: %s", org_id, msg["id"], e)
-                cached_answer = None
-            if cached_answer:
-                from_number = _extract_from(content)
-                decorated = await decorate_with_disclosure(org_id, from_number, cached_answer, self.repo, profilo.nome)
-                try:
-                    res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
-                    meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                    try:
-                        await self.repo.record_usage(
-                            org_id,
-                            "cache_hit",
-                            metadata={
-                                "conversation_id": str(msg.get("conversation_id", "")),
-                                "message_id": str(msg["id"]),
-                                "intent": intent_result.intent,
-                            },
-                        )
-                    except Exception as e:
-                        logger.warning("Cache hit usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
-                    await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_id, organization_id=org_id)
-                except Exception as e:
-                    logger.error("FAQ cache reply send failed for %s: %s", msg["id"], e)
-                return
-
-        ai_cached = claim_result.get("ai_reply_cache")
-        risposta_text = ""
-        richiede_umano = False
-        pren = None
-        esito = None
-        variante_prompt = assegna_variante(str(org_id))
-        
-        if ai_cached:
-            if isinstance(ai_cached, dict):
-                risposta_text = ai_cached.get("text", "")
-                richiede_umano = bool(ai_cached.get("richiede_umano", False))
-            elif isinstance(ai_cached, str):
-                try:
-                    parsed = json.loads(ai_cached)
-                    if isinstance(parsed, dict):
-                        risposta_text = parsed.get("text", "")
-                        richiede_umano = bool(parsed.get("richiede_umano", False))
-                    else:
-                        risposta_text = parsed
-                except Exception:
-                    risposta_text = ai_cached
-        else:
-            if await self.repo.check_booking_exists(msg["id"], org_id):
-                risposta_text = "Ho confermato la tua prenotazione!"
-                richiede_umano = False
-                await self.repo.save_ai_reply(
-                    msg["id"],
-                    reply={"text": risposta_text, "richiede_umano": False, "motivo": "booking_exists"},
-                    organization_id=org_id,
-                )
-            else:
-                heartbeat_task = asyncio.ensure_future(self._heartbeat_loop(msg["id"], org_id))
-                try:
-                    usage: dict = {}
-                    contesto = await recupera_contesto_documenti(str(org_id), text, self.repo, q_emb=q_emb)
-
-                    # Recupera cronologia recente per mantenere il contesto multi-turn
-                    cronologia: list[tuple[str, str]] = []
-                    conversation_id_str = str(msg.get("conversation_id", "") or "")
-                    testi_cronologia: list[str] = []
-                    if conversation_id_str:
-                        try:
-                            prior_msgs = await self.repo.list_conversation_messages(str(org_id), conversation_id_str, limit=20)
-                            prior_msgs = [m for m in prior_msgs if str(m.get("id")) != str(msg["id"])]
-                            ultimo_in = None
-                            for pm in prior_msgs:
-                                p_text = (pm.get("content_text") or "").strip()
-                                if not p_text:
-                                    continue
-                                testi_cronologia.append(p_text)
-                                if pm.get("direction") == "inbound":
-                                    if ultimo_in is not None:
-                                        cronologia.append((ultimo_in, ""))
-                                    ultimo_in = p_text
-                                elif pm.get("direction") == "outbound":
-                                    if ultimo_in is not None:
-                                        cronologia.append((ultimo_in, p_text))
-                                        ultimo_in = None
-                                    else:
-                                        cronologia.append(("", p_text))
-                            if ultimo_in is not None:
-                                cronologia.append((ultimo_in, ""))
-                        except Exception as e:
-                            logger.warning("Recupero cronologia fallito per conv %s: %s", conversation_id_str, e)
-
-                    # Pre-fetch semaforo: estrae date dal testo e dalla cronologia recente
-                    contesto_disp = ""
-                    if self.booking_service:
-                        try:
-                            date_candidate = estrai_date_da_testo(text)
-                            if not date_candidate and testi_cronologia:
-                                for prev_t in reversed(testi_cronologia[-4:]):
-                                    cand = estrai_date_da_testo(prev_t)
-                                    if cand:
-                                        date_candidate = cand
-                                        break
-                            if date_candidate:
-                                all_slots = []
-                                for d in date_candidate[:3]:  # max 3 date
-                                    slots = await self.booking_service.semaforo_giorno(org_id, d)
-                                    all_slots.extend([s.model_dump() if hasattr(s, 'model_dump') else s for s in slots])
-                                if all_slots:
-                                    contesto_disp = formatta_disponibilita(all_slots)
-                        except Exception as e:
-                            logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id, e)
-
-                    risposta = await genera_risposta_async(
-                        messaggio, profilo,
-                        cronologia=cronologia,
-                        billing=state,
-                        contesto_documenti=contesto.testo,
-                        intent=intent_result.intent,
-                        variante=variante_prompt,
-                        contesto_disponibilita=contesto_disp,
-                        usage_sink=usage,
-                    )
-                finally:
-                    heartbeat_task.cancel()
-
-                esito = valida_risposta(risposta, contesto.chunks, profilo)
-                if esito.azione != "none":
-                    risposta = applica_guardrail(risposta, esito)
-                    if esito.azione == "block":
-                        logger.warning("guardrail block org_id=%s message_id=%s motivo=%s", org_id, msg["id"], esito.motivo)
-                        try:
-                            await self.repo.record_usage(
-                                org_id, "guardrail_block",
-                                metadata={"motivo": esito.motivo, "violazioni": list(esito.violazioni), "conversation_id": str(msg.get("conversation_id", "")), "message_id": str(msg["id"])}
-                            )
-                        except Exception as e:
-                            logger.warning("Guardrail usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
-
-                try:
-                    route = route_llm(
-                        LLMRouteRequest(
-                            task_type="customer_message",
-                            user_text=text,
-                            remaining_budget_ratio=budget_ratio_from_billing(state),
-                            intent=intent_result.intent,
-                        )
-                    )
-                    await self.repo.record_usage(
-                        org_id, "ai_response", quantity=1,
-                        metadata={
-                            "channel": canale, "model": route.model, "tier": route.tier, "reason": route.reason,
-                            "intent": intent_result.intent, "intent_source": intent_result.source, "prompt_variant": variante_prompt,
-                            "conversation_id": str(msg.get("conversation_id", "")), "message_id": str(msg["id"]),
-                            # Metriche reali della chiamata (invariante 8):
-                            **{
-                                k: usage[k] for k in
-                                ("model_effettivo", "fallback_usato", "latenza_ms",
-                                 "prompt_tokens", "completion_tokens", "total_tokens")
-                                if k in usage
-                            },
-                            "stima_costo_eur": stima_costo_eur(
-                                usage.get("model_effettivo") or route.model,
-                                usage.get("prompt_tokens"), usage.get("completion_tokens"),
-                            ),
-                        }
-                    )
-                except Exception as e:
-                    logger.warning("AI usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
-
-                from src.core.verticals import get_vertical_strategy
-                strategy = get_vertical_strategy(profilo.verticale, organization_id=str(org_id))
-                risposta.prenotazione = strategy.valida_e_arricchisci_prenotazione(risposta.prenotazione, text)
-                pren = risposta.prenotazione
-                if pren and pren.data and pren.ora and pren.coperti:
-                    if self.booking_service:
-                        try:
-                            created = await self.booking_service.create_booking(
-                                org_id=org_id,
-                                nome_cliente=pren.nome_cliente or ("Cliente Instagram" if canale == "instagram" else "Cliente WhatsApp"),
-                                telefono=pren.telefono or ("" if canale == "instagram" else content.get("from", "")),
-                                data=pren.data,
-                                ora=pren.ora,
-                                coperti=pren.coperti,
-                                note=pren.note,
-                                origine="Instagram" if canale == "instagram" else "WhatsApp",
-                                richiede_intervento=risposta.richiede_umano,
-                                id_conversazione=str(msg.get("conversation_id", "")),
-                                source_message_id=str(msg["id"])
-                            )
-                            logger.info("Booking %s created from AI response for org %s", created["id"], org_id)
-                        except SlotPienoError as e:
-                            if e.alternative:
-                                alt_text = " o ".join(e.alternative)
-                                risposta.risposta += f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone. Ti andrebbe bene alle {alt_text}?"
-                            else:
-                                risposta.risposta += f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone. Posso chiedere allo staff una fascia alternativa."
-                            risposta.motivo = "slot_prenotazione_pieno"
-                        except Exception as e:
-                            logger.error("Booking creation from AI failed for org %s: %s", org_id, e)
-
-                risposta_text = risposta.risposta
-                richiede_umano = bool(risposta.richiede_umano)
-
-                # Persist full JSONB metadata structure to ai_reply_cache
-                await self.repo.save_ai_reply(
-                    msg["id"],
-                    reply={
-                        "text": risposta_text,
-                        "richiede_umano": richiede_umano,
-                        "motivo": getattr(risposta, "motivo", "") or (getattr(esito, "motivo", "") if esito else ""),
-                    },
-                    organization_id=org_id,
-                )
-
-        if richiede_umano:
-            try:
-                meta_id = None
-                if risposta_text:
-                    from_number = _extract_from(content)
-                    decorated = await decorate_with_disclosure(org_id, from_number, risposta_text, self.repo, profilo.nome)
-                    res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
-                    meta_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-                conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
-                if conv:
-                    enqueue_escalation(
-                        org_id=str(org_id), conversation_id=str(msg["conversation_id"]),
-                        contact_name=_extract_from(content) or "cliente", pool=self.repo.pool,
-                    )
-                await self._finalize_message(msg["id"], handling_type="escalated", meta_message_id=meta_id, organization_id=org_id)
-            except Exception as e:
-                logger.error("Human escalation reply send failed for %s: %s", msg["id"], e)
-            return
-
-        from_number = _extract_from(content)
-        decorated = await decorate_with_disclosure(org_id, from_number, risposta_text, self.repo, profilo.nome)
-        
-        await self.repo.save_outbound_dedup(msg["id"], org_id, decorated)
-        
-        # Step 7: Send to Meta
-        try:
-            res = await self._send_ai_reply(org_id, msg, content, tenant_config, decorated)
-            meta_message_id = (res.get("wam_id") or f"meta-{msg['id']}") if isinstance(res, dict) else f"meta-{msg['id']}"
-            await self._finalize_message(msg["id"], handling_type="ai_handled", meta_message_id=meta_message_id, organization_id=org_id)
-        except Exception as e:
-            logger.error("Meta send failed for %s: %s", msg["id"], e)
-            return
-
-        if (esito and faq_cache.cache_enabled() and intent_result.intent == "faq"
-                and esito.azione != "block" and not richiede_umano
-                and not (pren and pren.data and pren.ora and pren.coperti)):
-            try:
-                await faq_cache.salva_in_cache(
-                    str(org_id), text, risposta_text, self.repo,
-                    q_emb=q_emb, prompt_variant=variante_prompt,
-                )
-            except Exception as e:
-                logger.warning("FAQ cache store failed for org %s msg %s: %s", org_id, msg["id"], e)
+        # Sincronizza lo stato dei flag a runtime se modificati dopo l'istanziazione
+        self.inbound_service.use_orchestrator = self.use_orchestrator
+        self.inbound_service.shadow_orchestrator = self.shadow_orchestrator
+        self.inbound_service.orchestrator = self.orchestrator
+        await self.inbound_service.process_message(msg)
 
     async def _handle_feedback_emoji(self, org_id, msg, value: str):
-        """Registra il 👍/👎 del cliente sull'ultima risposta AI della
-        conversazione e chiude il messaggio senza generare risposta. Se non
-        c'e' una risposta AI recente il feedback non ha target, ma il
-        messaggio resta comunque gestito (un pollice non va mai all'LLM)."""
-        try:
-            ultimo_ai = await self.repo.get_last_ai_outbound_message(
-                org_id, str(msg["conversation_id"])
-            )
-            if ultimo_ai:
-                await self.repo.registra_feedback(
-                    organization_id=org_id,
-                    message_id=ultimo_ai["id"],
-                    conversation_id=str(msg["conversation_id"]),
-                    source="customer_emoji",
-                    value=value,
-                )
-                logger.info(
-                    "feedback cliente %s su risposta AI %s (org %s)",
-                    value, ultimo_ai["id"], org_id,
-                )
-        except Exception as e:
-            logger.error("Registrazione feedback emoji fallita msg %s: %s", msg["id"], e)
-        # Il feedback emoji non esegue alcuna chiamata di rete esterna (nessun invio a Meta/AI).
-        # La persistenza del feedback avviene interamente su DB locale; è sicuro finalizzare subito.
-        await self._finalize_message(msg["id"], handling_type="feedback", organization_id=org_id)
+        await self.inbound_service._handle_feedback_emoji(org_id, msg, value)
 
     async def _finalize_message(self, msg_id: str, handling_type: str, organization_id,
                                 meta_message_id: str | None = None) -> bool:
@@ -628,10 +203,14 @@ class InboundProcessor:
                 tenant_config=tenant_config,
                 handling_type=handling_type,
             )
-        except self.service.MessageUsageExceeded:
-            logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
-            raise
         except Exception as e:
+            from src.whatsapp.service import WhatsAppService
+            usage_exc = getattr(self.service, "MessageUsageExceeded", None)
+            if not (isinstance(usage_exc, type) and issubclass(usage_exc, BaseException)):
+                usage_exc = WhatsAppService.MessageUsageExceeded
+            if isinstance(e, usage_exc):
+                logger.warning("Quota messaggi esaurita per org %s: risposta AI non inviata", org_id)
+                raise
             logger.error("Invio risposta AI fallito per messaggio %s: %s", msg["id"], e)
             raise
 

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Request, Response, HTTPException, Query
 from src.whatsapp.config import AppConfig
 from src.whatsapp.models import IngoingWebhook
 from src.whatsapp.idempotency import dedup_check
+from src.core.channels.inbound.meta_security import MetaWebhookSecurity
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +17,17 @@ MAX_BODY_SIZE = 5 * 1024 * 1024  # 5 MB
 TIMESTAMP_TOLERANCE = 300  # ±5 minuti per replay check
 
 
-def create_router(app_config: AppConfig = None, repo = None):
+def create_router(app_config: AppConfig = None, repo = None, security: MetaWebhookSecurity = None):
     router = APIRouter(prefix="/webhooks", tags=["whatsapp"])
+
+    default_secret = (app_config.app_secret if app_config and app_config.app_secret else None) or os.getenv("META_APP_SECRET", "")
+    default_verify = (app_config.verify_token if app_config and app_config.verify_token else None) or os.getenv("META_VERIFY_TOKEN", "")
+    webhook_sec = security or MetaWebhookSecurity(
+        app_secret=default_secret,
+        verify_token=default_verify,
+        max_body_size=MAX_BODY_SIZE,
+        timestamp_tolerance=TIMESTAMP_TOLERANCE,
+    )
 
     @router.get("/whatsapp")
     async def verify_webhook(
@@ -25,69 +35,27 @@ def create_router(app_config: AppConfig = None, repo = None):
         hub_verify_token: str = Query(None, alias="hub.verify_token"),
         hub_challenge: str = Query(None, alias="hub.challenge"),
     ):
-        verify_token_configured = os.getenv("META_VERIFY_TOKEN") or (app_config.verify_token if app_config else "")
-        if (hub_mode == "subscribe"
-                and verify_token_configured
-                and (hub_verify_token == verify_token_configured or hmac.compare_digest(hub_verify_token or "", verify_token_configured))):
-            return Response(content=hub_challenge or "challenge_ok", media_type="text/plain")
-        raise HTTPException(status_code=403, detail="Verify token mismatch")
+        verify_token_configured = (app_config.verify_token if app_config and app_config.verify_token else None) or os.getenv("META_VERIFY_TOKEN") or webhook_sec.verify_token
+        return webhook_sec.verify_challenge(
+            hub_mode=hub_mode,
+            hub_verify_token=hub_verify_token,
+            hub_challenge=hub_challenge,
+            override_token=verify_token_configured,
+        )
 
     @router.post("/whatsapp")
     async def receive_webhook(request: Request):
         active_repo = getattr(request.app.state, "wrepo", None) or repo
-        active_secret = os.getenv("META_APP_SECRET") or (app_config.app_secret if app_config else "")
+        active_secret = (app_config.app_secret if app_config and app_config.app_secret else None) or os.getenv("META_APP_SECRET") or webhook_sec.app_secret
         trace_id = getattr(request.state, "trace_id", uuid.uuid4().hex[:16])
-        client_ip = request.client.host if request.client else "unknown"
-        signature = request.headers.get("X-Hub-Signature-256", "")
-        timestamp_str = request.headers.get("X-Timestamp", "")
 
-        # Replay protection via X-Timestamp (opt-in — Meta non lo invia)
-        if timestamp_str:
-            try:
-                ts = int(timestamp_str)
-                now = time.time()
-                if abs(now - ts) > TIMESTAMP_TOLERANCE:
-                    logger.warning(
-                        json.dumps({
-                            "event": "webhook_timestamp_rejected",
-                            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                            "ip": client_ip,
-                            "path": request.url.path,
-                            "reason": f"timestamp {ts} out of tolerance {TIMESTAMP_TOLERANCE}s",
-                        })
-                    )
-                    raise HTTPException(status_code=403, detail="Timestamp out of tolerance")
-            except ValueError:
-                logger.warning(
-                    json.dumps({
-                        "event": "webhook_timestamp_invalid",
-                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        "ip": client_ip,
-                        "path": request.url.path,
-                        "reason": f"non-integer timestamp: {timestamp_str}",
-                    })
-                )
-                raise HTTPException(status_code=400, detail="Invalid X-Timestamp")
-
-        # Body size limit — letto con streaming per supportare chunked encoding
-        body = await _read_limited_body(request, MAX_BODY_SIZE)
-
-        if active_secret and active_secret != "placeholder_meta_app_secret" and not _verify_hmac(body, signature, active_secret):
-            logger.warning(
-                json.dumps({
-                    "event": "webhook_hmac_rejected",
-                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "ip": client_ip,
-                    "path": request.url.path,
-                    "signature": signature,
-                    "reason": "signature_mismatch",
-                })
-            )
-            raise HTTPException(status_code=403, detail="Invalid signature")
+        # Validazione unificata MetaWebhookSecurity: replay protection, streaming body limit, HMAC-SHA256
+        body = await webhook_sec.authenticate_and_read(request, override_secret=active_secret)
 
         try:
             data = json.loads(body)
         except json.JSONDecodeError:
+            client_ip = request.client.host if request.client else "unknown"
             logger.warning(
                 json.dumps({
                     "event": "webhook_json_invalid",
@@ -133,43 +101,14 @@ def create_router(app_config: AppConfig = None, repo = None):
     return router
 
 
-async def _read_limited_body(request: Request, max_size: int) -> bytes:
-    """Legge il body con limite di dimensione, supporta chunked encoding."""
-    content_length = request.headers.get("content-length")
-    if content_length and int(content_length) > max_size:
-        logger.warning(
-            json.dumps({
-                "event": "webhook_body_oversize",
-                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "ip": request.client.host if request.client else "unknown",
-                "path": request.url.path,
-                "reason": f"Content-Length {content_length} exceeds {max_size}",
-            })
-        )
-        raise HTTPException(status_code=413, detail="Payload too large")
-
-    chunks = []
-    total = 0
-    async for chunk in request.stream():
-        total += len(chunk)
-        if total > max_size:
-            logger.warning(
-                json.dumps({
-                    "event": "webhook_body_oversize",
-                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "ip": request.client.host if request.client else "unknown",
-                    "path": request.url.path,
-                    "reason": f"body exceeded {max_size} during streaming read",
-                })
-            )
-            raise HTTPException(status_code=413, detail="Payload too large")
-        chunks.append(chunk)
-    return b"".join(chunks)
+async def _read_limited_body(request: Request, max_size: int = MAX_BODY_SIZE) -> bytes:
+    """Compat shim: delega al componente unificato MetaWebhookSecurity."""
+    return await MetaWebhookSecurity(max_body_size=max_size).read_limited_body(request)
 
 
 def _verify_hmac(body: bytes, signature: str, secret: str) -> bool:
-    expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(f"sha256={expected}", signature)
+    """Compat shim: delega al componente unificato MetaWebhookSecurity."""
+    return MetaWebhookSecurity(app_secret=secret).verify_hmac(body, signature)
 
 
 async def _handle_status_update(repo, org_id, status):

@@ -14,12 +14,15 @@ async def send_reminders_for_org(service, org_id, org_timezone: str = "Europe/Ro
     sent = []
     for b in bookings:
         try:
-            async with service.repo.pool.acquire() as conn:
-                await conn.execute("""
-                    UPDATE bookings SET reminder_status = 'sent',
-                        reminder_sent_at = NOW(), updated_at = NOW()
-                    WHERE organization_id = $2 AND id = $1
-                """, b["id"], org_id)
+            if hasattr(service.repo, "mark_reminder_sent"):
+                await service.repo.mark_reminder_sent(org_id, b["id"])
+            else:
+                async with service.repo.pool.acquire() as conn:
+                    await conn.execute("""
+                        UPDATE bookings SET reminder_status = 'sent',
+                            reminder_sent_at = NOW(), updated_at = NOW()
+                        WHERE organization_id = $2 AND id = $1
+                    """, b["id"], org_id)
             msg = (f"Ciao {b['nome_cliente']}! Confermi la prenotazione di domani "
                    f"alle {b['ora']} per {b['coperti']} persone? "
                    f"Rispondi 'Si' per confermare o 'No' per annullare.")
@@ -33,14 +36,17 @@ async def send_reminders_for_org(service, org_id, org_timezone: str = "Europe/Ro
 async def check_timeouts_for_org(service, org_id, org_timezone: str = "Europe/Rome"):
     tz = ZoneInfo(org_timezone)
     cutoff = datetime.now(timezone.utc) - timedelta(hours=TIMEOUT_HOURS)
-    async with service.repo.pool.acquire() as conn:
-        rows = await conn.fetch("""
-            SELECT * FROM bookings
-            WHERE organization_id = $1
-              AND reminder_status = 'sent'
-              AND reminder_sent_at <= $2
-              AND data >= $3::date
-        """, org_id, cutoff, datetime.now(tz).date())
+    if hasattr(service.repo, "list_reminders_timed_out"):
+        rows = await service.repo.list_reminders_timed_out(org_id, cutoff, datetime.now(tz).date())
+    else:
+        async with service.repo.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT * FROM bookings
+                WHERE organization_id = $1
+                  AND reminder_status = 'sent'
+                  AND reminder_sent_at <= $2
+                  AND data >= $3::date
+            """, org_id, cutoff, datetime.now(tz).date())
     flagged = []
     for b in rows:
         try:

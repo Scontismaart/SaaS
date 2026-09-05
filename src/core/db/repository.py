@@ -1,237 +1,155 @@
-import json
+from __future__ import annotations
+
 import uuid
 from contextlib import asynccontextmanager
-from datetime import date, datetime, time
+from datetime import datetime
+from typing import Any
 
-import asyncpg
-
+from src.core.db.repositories.billing_repo import BillingRepository
+from src.core.db.repositories.booking_repo import BookingRepository
+from src.core.db.repositories.contact_repo import ContactRepository
+from src.core.db.repositories.conversation_repo import ConversationRepository
+from src.core.db.repositories.document_repo import DocumentRepository
+from src.core.db.repositories.message_repo import MessageRepository
+from src.core.db.repositories.organization_repo import OrganizationRepository
+from src.core.db.repositories.review_repo import ReviewRepository
 from src.core.db.scoping import TenantScopedRepository, system_scope
 
 
 class CoreRepository(TenantScopedRepository):
+    """Facade di retrocompatibilità per CoreRepository.
+
+    Delega tutte le chiamate ai repository specializzati per dominio:
+    - OrganizationRepository
+    - ContactRepository
+    - ConversationRepository
+    - MessageRepository
+    - BookingRepository
+    - DocumentRepository
+    - ReviewRepository
+    - BillingRepository
+    """
+
+    _CAMPI_REVIEW_AGGIORNABILI = ReviewRepository._CAMPI_REVIEW_AGGIORNABILI
+
     def __init__(self, pool):
         self.pool = pool
+        self._org_repo = OrganizationRepository(pool)
+        self._booking_repo = BookingRepository(pool)
+        self._doc_repo = DocumentRepository(pool)
+        self._review_repo = ReviewRepository(pool)
+        self._billing_repo = BillingRepository(pool)
+        self._contact_repo = ContactRepository(pool)
+        self._conv_repo = ConversationRepository(pool)
+        self._msg_repo = MessageRepository(pool)
+
+        # Accesso diretto ai sotto-repository per migrazione progressiva
+        self.org_repo = self._org_repo
+        self.booking_repo = self._booking_repo
+        self.doc_repo = self._doc_repo
+        self.review_repo = self._review_repo
+        self.billing_repo = self._billing_repo
+        self.contact_repo = self._contact_repo
+        self.conv_repo = self._conv_repo
+        self.msg_repo = self._msg_repo
+
+    def __getattr__(self, name: str):
+        if name in (
+            "_org_repo", "_booking_repo", "_doc_repo", "_review_repo",
+            "_billing_repo", "_contact_repo", "_conv_repo", "_msg_repo",
+            "org_repo", "booking_repo", "doc_repo", "review_repo",
+            "billing_repo", "contact_repo", "conv_repo", "msg_repo",
+        ):
+            pool = getattr(self, "pool", None)
+            if pool is not None:
+                self._org_repo = OrganizationRepository(pool)
+                self._booking_repo = BookingRepository(pool)
+                self._doc_repo = DocumentRepository(pool)
+                self._review_repo = ReviewRepository(pool)
+                self._billing_repo = BillingRepository(pool)
+                self._contact_repo = ContactRepository(pool)
+                self._conv_repo = ConversationRepository(pool)
+                self._msg_repo = MessageRepository(pool)
+                self.org_repo = self._org_repo
+                self.booking_repo = self._booking_repo
+                self.doc_repo = self._doc_repo
+                self.review_repo = self._review_repo
+                self.billing_repo = self._billing_repo
+                self.contact_repo = self._contact_repo
+                self.conv_repo = self._conv_repo
+                self.msg_repo = self._msg_repo
+                return getattr(self, name)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     # ── Bookings ──────────────────────────────────────────────
 
     @asynccontextmanager
     async def slot_lock(self, organization_id, data, ora):
-        """Lock consultivo transazionale su una fascia oraria (anti double-booking).
-
-        Serializza check-then-insert su uno slot: due richieste concorrenti
-        per la stessa (org, data, fascia) non possono entrambe superare la
-        verifica di capienza. Rilasciato al commit della transazione portante.
-
-        Nota operativa: mentre il lock è tenuto la sezione critica acquisisce
-        altre connessioni dallo stesso pool (list_bookings/create_booking);
-        il pool deve quindi avere margine sopra la concorrenza massima
-        attesa di prenotazioni simultanee. Usa hashtext (int4): collisioni
-        tra chiavi diverse causano solo serializzazione extra, mai errori."""
-        fascia = int(ora[:2]) if isinstance(ora, str) else ora.hour
-        chiave = f"{organization_id}|{data}|{fascia}"
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.fetchval("SELECT pg_advisory_xact_lock(hashtext($1))", chiave)
-                yield
+        """Lock consultivo transazionale su una fascia oraria (anti double-booking)."""
+        async with self._booking_repo.slot_lock(organization_id, data, ora):
+            yield
 
     async def create_booking(self, organization_id, nome_cliente, data, ora, coperti,
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
                              richiede_intervento=False, id_conversazione=None,
                              contact_id=None, richiede_deposito=False,
                              completata_at=None, tipo_evento="", source_message_id=None):
-        if isinstance(data, str):
-            data = date.fromisoformat(data)
-        if isinstance(ora, str):
-            ore, minuti = ora.split(":")
-            ora = time(int(ore), int(minuti))
-        async with self.pool.acquire() as conn:
-            if source_message_id:
-                try:
-                    row = await conn.fetchrow("""
-                        INSERT INTO bookings (id, organization_id, contact_id,
-                                              nome_cliente, telefono, data, ora, coperti,
-                                              note, stato, origine, richiede_intervento,
-                                              id_conversazione, richiede_deposito, completata_at,
-                                              tipo_evento, source_message_id)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-                        ON CONFLICT (organization_id, source_message_id) WHERE source_message_id IS NOT NULL
-                            DO NOTHING
-                        RETURNING *
-                    """, uuid.uuid4(), organization_id, contact_id,
-                    nome_cliente, telefono, data, ora, coperti,
-                    note, stato, origine, richiede_intervento,
-                    id_conversazione, richiede_deposito, completata_at, tipo_evento, source_message_id)
-                except asyncpg.exceptions.UniqueViolationError:
-                    row = None
-                if not row:
-                    row = await conn.fetchrow("""
-                        SELECT * FROM bookings WHERE organization_id = $1 AND source_message_id = $2
-                    """, organization_id, source_message_id)
-                return dict(row) if row else None
-            else:
-                row = await conn.fetchrow("""
-                    INSERT INTO bookings (id, organization_id, contact_id,
-                                          nome_cliente, telefono, data, ora, coperti,
-                                          note, stato, origine, richiede_intervento,
-                                          id_conversazione, richiede_deposito, completata_at,
-                                          tipo_evento)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-                    RETURNING *
-                """, uuid.uuid4(), organization_id, contact_id,
-                nome_cliente, telefono, data, ora, coperti,
-                note, stato, origine, richiede_intervento,
-                id_conversazione, richiede_deposito, completata_at, tipo_evento)
-                return dict(row)
+        return await self._booking_repo.create_booking(
+            organization_id, nome_cliente, data, ora, coperti,
+            telefono=telefono, note=note, stato=stato, origine=origine,
+            richiede_intervento=richiede_intervento, id_conversazione=id_conversazione,
+            contact_id=contact_id, richiede_deposito=richiede_deposito,
+            completata_at=completata_at, tipo_evento=tipo_evento, source_message_id=source_message_id,
+        )
 
     async def get_booking(self, organization_id, booking_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM bookings WHERE organization_id = $1 AND id = $2",
-                organization_id, booking_id,
-            )
-            return dict(row) if row else None
+        return await self._booking_repo.get_booking(organization_id, booking_id)
 
     async def list_bookings(self, organization_id, data=None):
-        if data is not None and isinstance(data, str):
-            data = date.fromisoformat(data)
-        async with self.pool.acquire() as conn:
-            if data is not None:
-                rows = await conn.fetch(
-                    "SELECT * FROM bookings WHERE organization_id = $1 AND data = $2 ORDER BY ora",
-                    organization_id, data,
-                )
-            else:
-                rows = await conn.fetch(
-                    "SELECT * FROM bookings WHERE organization_id = $1 ORDER BY data DESC, ora",
-                    organization_id,
-                )
-            return [dict(r) for r in rows]
+        return await self._booking_repo.list_bookings(organization_id, data=data)
 
     async def update_booking_status(self, organization_id, booking_id, stato):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE bookings SET stato = $3, updated_at = NOW()
-                WHERE organization_id = $1 AND id = $2
-                RETURNING *
-            """, organization_id, booking_id, stato)
-            return dict(row) if row else None
+        return await self._booking_repo.update_booking_status(organization_id, booking_id, stato)
 
     async def update_booking_details(self, organization_id, booking_id,
                                      nome_cliente, telefono, data, ora,
                                      coperti, note, stato):
-        if isinstance(data, str):
-            data = date.fromisoformat(data)
-        if isinstance(ora, str):
-            ore, minuti = ora.split(":")
-            ora = time(int(ore), int(minuti))
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE bookings SET nome_cliente = $3, telefono = $4,
-                    data = $5, ora = $6, coperti = $7, note = $8,
-                    stato = $9, updated_at = NOW()
-                WHERE organization_id = $1 AND id = $2
-                RETURNING *
-            """, organization_id, booking_id, nome_cliente, telefono,
-                data, ora, coperti, note, stato)
-            return dict(row) if row else None
+        return await self._booking_repo.update_booking_details(
+            organization_id, booking_id, nome_cliente, telefono, data, ora, coperti, note, stato
+        )
 
     async def update_booking_payment(self, organization_id, booking_id,
                                       payment_status, session_id=None):
-        async with self.pool.acquire() as conn:
-            if session_id:
-                row = await conn.fetchrow("""
-                    UPDATE bookings SET payment_status = $3, payment_link = $4,
-                        payment_link_created_at = NOW(), updated_at = NOW()
-                    WHERE organization_id = $1 AND id = $2
-                    RETURNING *
-                """, organization_id, booking_id, payment_status, session_id)
-            else:
-                row = await conn.fetchrow("""
-                    UPDATE bookings SET payment_status = $3, updated_at = NOW()
-                    WHERE organization_id = $1 AND id = $2
-                    RETURNING *
-                """, organization_id, booking_id, payment_status)
-            return dict(row) if row else None
+        return await self._booking_repo.update_booking_payment(
+            organization_id, booking_id, payment_status, session_id=session_id
+        )
 
     async def list_bookings_by_stato(self, organization_id, stato):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM bookings WHERE organization_id = $1 AND stato = $2 ORDER BY data, ora",
-                organization_id, stato,
-            )
-            return [dict(r) for r in rows]
+        return await self._booking_repo.list_bookings_by_stato(organization_id, stato)
 
     async def list_bookings_for_reminder(self, organization_id, target_date):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT * FROM bookings
-                WHERE organization_id = $1 AND data = $2
-                  AND stato = 'confermata' AND reminder_status = 'none'
-                ORDER BY ora
-            """, organization_id, target_date)
-            return [dict(r) for r in rows]
+        return await self._booking_repo.list_bookings_for_reminder(organization_id, target_date)
 
     async def update_booking_reminder_status(self, organization_id, booking_id,
-                                              reminder_status, responded_at=None):
-        async with self.pool.acquire() as conn:
-            if responded_at:
-                row = await conn.fetchrow("""
-                    UPDATE bookings SET reminder_status = $3,
-                        reminder_responded_at = $4, updated_at = NOW()
-                    WHERE organization_id = $1 AND id = $2
-                    RETURNING *
-                """, organization_id, booking_id, reminder_status, responded_at)
-            else:
-                row = await conn.fetchrow("""
-                    UPDATE bookings SET reminder_status = $3, updated_at = NOW()
-                    WHERE organization_id = $1 AND id = $2
-                    RETURNING *
-                """, organization_id, booking_id, reminder_status)
-            return dict(row) if row else None
+                                             reminder_status, responded_at=None):
+        return await self._booking_repo.update_booking_reminder_status(
+            organization_id, booking_id, reminder_status, responded_at=responded_at
+        )
 
     async def list_bookings_da_verificare(self, organization_id, target_date):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT * FROM bookings
-                WHERE organization_id = $1 AND data = $2
-                  AND stato = 'confermata'
-                  AND completata_at IS NULL AND no_show_at IS NULL
-                ORDER BY ora
-            """, organization_id, target_date)
-            return [dict(r) for r in rows]
+        return await self._booking_repo.list_bookings_da_verificare(organization_id, target_date)
 
     async def upsert_booking_settings_config(self, organization_id, config):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO booking_settings (id, organization_id, config)
-                VALUES ($1, $2, $3::jsonb)
-                ON CONFLICT (organization_id) DO UPDATE
-                    SET config = $3::jsonb, updated_at = NOW()
-                RETURNING *
-            """, uuid.uuid4(), organization_id, json.dumps(config))
-            result = dict(row)
-            if isinstance(result.get("config"), str):
-                result["config"] = json.loads(result["config"])
-            return result
-
-    # ── Booking settings ─────────────────────────────────────
+        return await self._booking_repo.upsert_booking_settings_config(organization_id, config)
 
     async def get_booking_settings(self, organization_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM booking_settings WHERE organization_id = $1",
-                organization_id,
-            )
-            if row is None:
-                return None
-            result = dict(row)
-            if isinstance(result.get("fasce_orarie"), str):
-                result["fasce_orarie"] = json.loads(result["fasce_orarie"])
-            if isinstance(result.get("capienze_orarie"), str):
-                result["capienze_orarie"] = json.loads(result["capienze_orarie"])
-            if isinstance(result.get("config"), str):
-                result["config"] = json.loads(result["config"])
-            return result
+        return await self._booking_repo.get_booking_settings(organization_id)
+
+    async def upsert_booking_settings(self, organization_id, fasce_orarie,
+                                       capienze_orarie, slot_minutes=60):
+        return await self._booking_repo.upsert_booking_settings(
+            organization_id, fasce_orarie, capienze_orarie, slot_minutes=slot_minutes
+        )
 
     # ── Reviews ───────────────────────────────────────────────
 
@@ -242,672 +160,170 @@ class CoreRepository(TenantScopedRepository):
                              sentiment="", categoria="",
                              richiede_revisione_urgente=False,
                              stato="nuova"):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO reviews (id, organization_id, contact_id, testo,
-                                     valutazione_stelle, fonte, autore,
-                                     external_id, bozza_risposta, sentiment,
-                                     categoria, richiede_revisione_urgente, stato)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                RETURNING *
-            """, uuid.uuid4(), organization_id, contact_id, testo,
-            valutazione_stelle, fonte, autore,
-            external_id, bozza_risposta, sentiment,
-            categoria, richiede_revisione_urgente, stato)
-            return dict(row)
+        return await self._review_repo.create_review(
+            organization_id, testo, valutazione_stelle=valutazione_stelle, fonte=fonte,
+            autore=autore, contact_id=contact_id, external_id=external_id,
+            bozza_risposta=bozza_risposta, sentiment=sentiment, categoria=categoria,
+            richiede_revisione_urgente=richiede_revisione_urgente, stato=stato,
+        )
 
     async def get_review(self, organization_id, review_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM reviews WHERE organization_id = $1 AND id = $2",
-                organization_id, review_id,
-            )
-            return dict(row) if row else None
+        return await self._review_repo.get_review(organization_id, review_id)
 
     async def get_review_by_external_id(self, organization_id, external_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM reviews WHERE organization_id = $1 AND external_id = $2",
-                organization_id, external_id,
-            )
-            return dict(row) if row else None
+        return await self._review_repo.get_review_by_external_id(organization_id, external_id)
 
     async def list_reviews(self, organization_id, stato=None, fonte=None,
                            page=1, limit=20):
-        clauses = ["organization_id = $1"]
-        args = [organization_id]
-        idx = 2
-        if stato:
-            clauses.append(f"stato = ${idx}")
-            args.append(stato)
-            idx += 1
-        if fonte:
-            clauses.append(f"fonte = ${idx}")
-            args.append(fonte)
-            idx += 1
-        where = " AND ".join(clauses)
-        offset = (page - 1) * limit
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                f"SELECT * FROM reviews WHERE {where} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
-                *args, limit, offset,
-            )
-            return [dict(r) for r in rows]
-
-    # Whitelist esplicita: i nomi colonna finiscono interpolati nella query,
-    # mai fidarsi di **kwargs arbitrari anche se oggi chiamato solo internamente.
-    _CAMPI_REVIEW_AGGIORNABILI = frozenset({
-        "bozza_risposta", "sentiment", "categoria",
-        "richiede_revisione_urgente", "stato", "external_id",
-        "published_at", "is_anonymized",
-    })
+        return await self._review_repo.list_reviews(
+            organization_id, stato=stato, fonte=fonte, page=page, limit=limit
+        )
 
     async def update_review(self, organization_id, review_id, **kwargs):
-        if not kwargs:
-            return None
-        campi_non_ammessi = set(kwargs) - self._CAMPI_REVIEW_AGGIORNABILI
-        if campi_non_ammessi:
-            raise ValueError(f"Campi non aggiornabili: {sorted(campi_non_ammessi)}")
-        sets = ", ".join(f"{k} = ${i + 3}" for i, k in enumerate(kwargs))
-        values = list(kwargs.values())
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"UPDATE reviews SET {sets} WHERE organization_id = $1 AND id = $2 RETURNING *",
-                organization_id, review_id, *values,
-            )
-            return dict(row) if row else None
+        return await self._review_repo.update_review(organization_id, review_id, **kwargs)
 
     async def approve_review(self, organization_id, review_id):
-        # FOR UPDATE blocca solo dentro una transazione esplicita: senza
-        # conn.transaction() il lock si rilascia subito dopo la SELECT
-        # (autocommit) e non protegge dal doppio click concorrente.
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow(
-                    "SELECT * FROM reviews WHERE organization_id = $1 AND id = $2 FOR UPDATE",
-                    organization_id, review_id,
-                )
-                if row is None:
-                    return None
-                review = dict(row)
-                if review["stato"] == "pubblicata":
-                    return review
-                updated = await conn.fetchrow(
-                    "UPDATE reviews SET stato = 'approvata' WHERE organization_id = $1 AND id = $2 RETURNING *",
-                    organization_id, review_id,
-                )
-                return dict(updated)
+        return await self._review_repo.approve_review(organization_id, review_id)
 
     async def get_review_analytics(self, organization_id, giorni=90):
-        from datetime import datetime, timedelta, timezone
-        cutoff = datetime.now(timezone.utc) - timedelta(days=giorni)
-        async with self.pool.acquire() as conn:
-            sentiment_trend = await conn.fetch("""
-                SELECT DATE(created_at) AS giorno,
-                       sentiment,
-                       COUNT(*) AS cnt
-                FROM reviews
-                WHERE organization_id = $1
-                  AND created_at >= $2
-                  AND is_anonymized = FALSE
-                GROUP BY giorno, sentiment
-                ORDER BY giorno
-            """, organization_id, cutoff)
-            star_dist = await conn.fetch("""
-                SELECT valutazione_stelle, COUNT(*) AS cnt
-                FROM reviews
-                WHERE organization_id = $1
-                  AND created_at >= $2
-                GROUP BY valutazione_stelle
-                ORDER BY valutazione_stelle
-            """, organization_id, cutoff)
-            cat_dist = await conn.fetch("""
-                SELECT categoria, COUNT(*) AS cnt
-                FROM reviews
-                WHERE organization_id = $1
-                  AND created_at >= $2
-                  AND categoria != ''
-                GROUP BY categoria
-                ORDER BY cnt DESC
-            """, organization_id, cutoff)
-            fonte_dist = await conn.fetch("""
-                SELECT fonte, COUNT(*) AS cnt
-                FROM reviews
-                WHERE organization_id = $1
-                  AND created_at >= $2
-                GROUP BY fonte
-                ORDER BY cnt DESC
-            """, organization_id, cutoff)
-            return {
-                "sentiment_trend": [dict(r) for r in sentiment_trend],
-                "star_distribution": [dict(r) for r in star_dist],
-                "category_distribution": [dict(r) for r in cat_dist],
-                "source_distribution": [dict(r) for r in fonte_dist],
-            }
+        return await self._review_repo.get_review_analytics(organization_id, giorni=giorni)
 
-    async def upsert_booking_settings(self, organization_id, fasce_orarie,
-                                       capienze_orarie, slot_minutes=60):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO booking_settings (id, organization_id, slot_minutes,
-                                              fasce_orarie, capienze_orarie)
-                VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
-                ON CONFLICT (organization_id) DO UPDATE
-                    SET slot_minutes = $3,
-                        fasce_orarie = $4::jsonb,
-                        capienze_orarie = $5::jsonb,
-                        updated_at = NOW()
-                RETURNING *
-            """, uuid.uuid4(), organization_id, slot_minutes,
-            json.dumps(fasce_orarie), json.dumps(capienze_orarie))
-            result = dict(row)
-            if isinstance(result.get("fasce_orarie"), str):
-                result["fasce_orarie"] = json.loads(result["fasce_orarie"])
-            if isinstance(result.get("capienze_orarie"), str):
-                result["capienze_orarie"] = json.loads(result["capienze_orarie"])
-            return result
-
-    # ── Documents & Knowledge Base ───────────────────────────
+    # ── Knowledge Base (RAG) ──────────────────────────────────
 
     async def create_document(self, organization_id, nome, tipo="upload",
-                               fonte="", caricato_il=None, is_active=True,
-                               stato="indicizzata", errore="", metadata=None):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO documents (
-                    id, organization_id, nome, tipo, fonte,
-                    is_active, stato, errore, metadata,
-                    caricato_il, updated_at
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, COALESCE($10, NOW()), NOW())
-                RETURNING *
-            """, uuid.uuid4(), organization_id, nome, tipo, fonte,
-            is_active, stato, errore, json.dumps(metadata or {}), caricato_il)
-            result = dict(row)
-            if isinstance(result.get("metadata"), str):
-                result["metadata"] = json.loads(result["metadata"])
-            return result
+                              fonte="", caricato_il=None, is_active=True,
+                              stato="indicizzata", errore="", metadata=None):
+        return await self._doc_repo.create_document(
+            organization_id, nome, tipo=tipo, fonte=fonte, caricato_il=caricato_il,
+            is_active=is_active, stato=stato, errore=errore, metadata=metadata,
+        )
 
     async def get_document(self, organization_id, document_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT * FROM documents
-                WHERE id = $1 AND organization_id = $2
-            """, document_id, organization_id)
-            if not row:
-                return None
-            res = dict(row)
-            if isinstance(res.get("metadata"), str):
-                res["metadata"] = json.loads(res["metadata"])
-            return res
+        return await self._doc_repo.get_document(organization_id, document_id)
 
     async def update_document(self, organization_id, document_id, **fields):
-        if not fields:
-            return await self.get_document(organization_id, document_id)
-
-        set_clauses = ["updated_at = NOW()"]
-        vals = [document_id, organization_id]
-        idx = 3
-
-        for col in ("nome", "tipo", "fonte", "is_active", "stato", "errore"):
-            if col in fields:
-                set_clauses.append(f"{col} = ${idx}")
-                vals.append(fields[col])
-                idx += 1
-
-        if "metadata" in fields:
-            set_clauses.append(f"metadata = ${idx}::jsonb")
-            vals.append(json.dumps(fields["metadata"]))
-            idx += 1
-
-        sql = f"""
-            UPDATE documents
-            SET {', '.join(set_clauses)}
-            WHERE id = $1 AND organization_id = $2
-            RETURNING *
-        """
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(sql, *vals)
-            if not row:
-                return None
-            res = dict(row)
-            if isinstance(res.get("metadata"), str):
-                res["metadata"] = json.loads(res["metadata"])
-            return res
+        return await self._doc_repo.update_document(organization_id, document_id, **fields)
 
     async def toggle_document_active(self, organization_id, document_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE documents
-                SET is_active = NOT is_active, updated_at = NOW()
-                WHERE id = $1 AND organization_id = $2
-                RETURNING *
-            """, document_id, organization_id)
-            if not row:
-                return None
-            res = dict(row)
-            if isinstance(res.get("metadata"), str):
-                res["metadata"] = json.loads(res["metadata"])
-            return res
+        return await self._doc_repo.toggle_document_active(organization_id, document_id)
 
     async def delete_document_chunks(self, organization_id, document_id):
-        async with self.pool.acquire() as conn:
-            res = await conn.execute("""
-                DELETE FROM document_chunks
-                WHERE document_id = $1 AND organization_id = $2
-            """, document_id, organization_id)
-            return int(res.split()[-1]) if res else 0
+        return await self._doc_repo.delete_document_chunks(organization_id, document_id)
 
     async def add_chunk(self, organization_id, document_id, chunk_index,
-                         content, embedding, metadata=None):
-        async with self.pool.acquire() as conn:
-            vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
-            row = await conn.fetchrow("""
-                INSERT INTO document_chunks (id, organization_id, document_id,
-                                             chunk_index, content, embedding, metadata)
-                VALUES ($1, $2, $3, $4, $5, $6::vector, $7::jsonb)
-                RETURNING *
-            """, uuid.uuid4(), organization_id, document_id,
-            chunk_index, content, vec_str,
-            json.dumps(metadata or {}))
-            result = dict(row)
-            if isinstance(result.get("metadata"), str):
-                result["metadata"] = json.loads(result["metadata"])
-            return result
+                        content, embedding, metadata=None):
+        return await self._doc_repo.add_chunk(
+            organization_id, document_id, chunk_index, content, embedding, metadata=metadata,
+        )
 
     async def search_similar(self, organization_id, embedding, k=5, only_active=True):
-        async with self.pool.acquire() as conn:
-            vec_str = "[" + ",".join(str(v) for v in embedding) + "]"
-            active_filter = "AND d.is_active = TRUE AND d.stato = 'indicizzata'" if only_active else ""
-            sql = f"""
-                SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
-                       dc.document_id, d.nome as document_name, d.tipo, d.stato, d.is_active,
-                       dc.embedding <=> $2::vector AS distance
-                FROM document_chunks dc
-                JOIN documents d ON d.id = dc.document_id
-                WHERE dc.organization_id = $1 {active_filter}
-                ORDER BY dc.embedding <=> $2::vector
-                LIMIT $3
-            """
-            rows = await conn.fetch(sql, organization_id, vec_str, k)
-            results = [dict(r) for r in rows]
-            for r in results:
-                if isinstance(r.get("metadata"), str):
-                    r["metadata"] = json.loads(r["metadata"])
-            return results
+        return await self._doc_repo.search_similar(
+            organization_id, embedding, k=k, only_active=only_active
+        )
 
     async def list_documents(self, organization_id):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM documents WHERE organization_id = $1 ORDER BY created_at DESC",
-                organization_id,
-            )
-            return [dict(r) for r in rows]
+        return await self._doc_repo.list_documents(organization_id)
 
     async def get_ui_summary(self, organization_id):
-        """Conteggi org-scoped per il polling leggero del frontend (task18
-        Fase 3): un solo round-trip al DB invece delle N chiamate pesanti
-        che faceva aggiornaNotifiche (bookings+documenti+inbox+recensioni).
-        Tutti i COUNT sono filtrati per organization_id: nessuna leak tra
-        tenant."""
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT
-                  (SELECT COUNT(*) FROM conversations
-                   WHERE organization_id = $1 AND deleted_at IS NULL
-                     AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')) AS inbox_attivi,
-                  (SELECT COUNT(*) FROM bookings
-                   WHERE organization_id = $1) AS prenotazioni,
-                  (SELECT COUNT(*) FROM documents
-                   WHERE organization_id = $1) AS documenti,
-                  (SELECT COUNT(*) FROM reviews
-                   WHERE organization_id = $1 AND stato = 'bozza_generata') AS recensioni_da_approvare
-            """, organization_id)
-            inbox_ids = await conn.fetch("""
-                SELECT id FROM conversations
-                WHERE organization_id = $1 AND deleted_at IS NULL
-                  AND ticket_status IN ('PENDING_STAFF', 'CLAIMED')
-                ORDER BY pending_staff_at ASC NULLS LAST
-            """, organization_id)
-            result = dict(row)
-            result["inbox_attivi_ids"] = [str(r["id"]) for r in inbox_ids]
-            return result
+        return await self._doc_repo.get_ui_summary(organization_id)
 
     async def count_chunks(self, organization_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT COUNT(*) AS n FROM document_chunks WHERE organization_id = $1",
-                organization_id,
-            )
-            return row["n"]
+        return await self._doc_repo.count_chunks(organization_id)
 
     async def list_sources(self, organization_id, tipo=None):
-        async with self.pool.acquire() as conn:
-            if tipo:
-                rows = await conn.fetch("""
-                    SELECT d.id, d.nome, d.tipo, d.fonte, d.is_active, d.stato, d.errore,
-                           d.metadata, d.caricato_il, d.updated_at,
-                           COUNT(dc.id) AS chunk
-                    FROM documents d
-                    LEFT JOIN document_chunks dc ON dc.document_id = d.id
-                    WHERE d.organization_id = $1 AND d.tipo = $2
-                    GROUP BY d.id
-                    ORDER BY d.caricato_il DESC, d.nome
-                """, organization_id, tipo)
-            else:
-                rows = await conn.fetch("""
-                    SELECT d.id, d.nome, d.tipo, d.fonte, d.is_active, d.stato, d.errore,
-                           d.metadata, d.caricato_il, d.updated_at,
-                           COUNT(dc.id) AS chunk
-                    FROM documents d
-                    LEFT JOIN document_chunks dc ON dc.document_id = d.id
-                    WHERE d.organization_id = $1
-                    GROUP BY d.id
-                    ORDER BY d.caricato_il DESC, d.nome
-                """, organization_id)
-            results = [dict(r) for r in rows]
-            for r in results:
-                if isinstance(r.get("metadata"), str):
-                    r["metadata"] = json.loads(r["metadata"])
-            return results
+        return await self._doc_repo.list_sources(organization_id, tipo=tipo)
 
     async def list_all_active_chunks(self, organization_id):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
-                       dc.document_id, d.nome as document_name, d.tipo, d.stato, d.is_active
-                FROM document_chunks dc
-                JOIN documents d ON d.id = dc.document_id
-                WHERE dc.organization_id = $1 AND d.is_active = TRUE
-                ORDER BY d.caricato_il DESC
-            """, organization_id)
-            results = [dict(r) for r in rows]
-            for r in results:
-                if isinstance(r.get("metadata"), str):
-                    r["metadata"] = json.loads(r["metadata"])
-            return results
+        return await self._doc_repo.list_all_active_chunks(organization_id)
 
     async def delete_document(self, organization_id, document_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                DELETE FROM documents WHERE id = $1 AND organization_id = $2
-                RETURNING id
-            """, document_id, organization_id)
-            return 1 if row else 0
+        return await self._doc_repo.delete_document(organization_id, document_id)
 
     async def faq_cache_invalidate(self, organization_id) -> int:
-        """Svuota la cache FAQ dell'org (migration 031): da chiamare quando
-        la knowledge base cambia (upload/eliminazione documento) perche' le
-        risposte in cache potrebbero contenere informazioni non piu' valide
-        (es. prezzi del menu aggiornati)."""
-        async with self.pool.acquire() as conn:
-            result = await conn.execute(
-                "DELETE FROM faq_cache WHERE organization_id = $1::uuid",
-                organization_id,
-            )
-            return int(result.split()[-1]) if result else 0
+        return await self._doc_repo.faq_cache_invalidate(organization_id)
 
-    # ── Onboarding ────────────────────────────────────────────
+    # ── Business Profile & Onboarding ─────────────────────────
 
     @staticmethod
     def _json_fields_onboarding(result: dict) -> dict:
-        for key in ("servizi", "regole_escalation", "profilo", "lingue_supportate"):
-            if isinstance(result.get(key), str):
-                result[key] = json.loads(result[key])
-        return result
+        return OrganizationRepository._json_fields_onboarding(result)
 
     async def get_onboarding_profile(self, organization_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT * FROM onboarding_profiles WHERE organization_id = $1",
-                organization_id,
-            )
-            return self._json_fields_onboarding(dict(row)) if row else None
+        return await self._org_repo.get_onboarding_profile(organization_id)
 
     async def save_onboarding_profile(self, organization_id, verticale, nome_attivita,
                                       orari, tono, servizi, regole_escalation,
                                       whatsapp_collegato, documenti_importati, profilo,
                                       lingue_supportate=None, lingua_default=None,
                                       descrizione=""):
-        """Upsert del profilo onboarding dell'org + sync atomico su
-        organizations.business_profile in una sola transazione.
-
-        `profilo` deve essere il model_dump() di ProfiloAttivita: le chiavi
-        combaciano 1:1 con WhatsAppBusinessProfile, il formato che il responder
-        WhatsApp reale si aspetta in organizations.business_profile
-        (inbound_processor._profile_from_dict)."""
-        if lingue_supportate is None:
-            lingue_supportate = ["it"]
-        if lingua_default is None:
-            lingua_default = "it"
-        async with self.pool.acquire() as conn:
-            async with conn.transaction():
-                row = await conn.fetchrow("""
-                    INSERT INTO onboarding_profiles (organization_id, verticale,
-                                                     nome_attivita, orari, tono,
-                                                     descrizione,
-                                                     servizi, regole_escalation,
-                                                     whatsapp_collegato,
-                                                     documenti_importati, profilo,
-                                                     lingue_supportate, lingua_default)
-                    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10,
-                            $11::jsonb, $12::jsonb, $13)
-                    ON CONFLICT (organization_id) DO UPDATE SET
-                        verticale = EXCLUDED.verticale,
-                        nome_attivita = EXCLUDED.nome_attivita,
-                        orari = EXCLUDED.orari,
-                        tono = EXCLUDED.tono,
-                        descrizione = EXCLUDED.descrizione,
-                        servizi = EXCLUDED.servizi,
-                        regole_escalation = EXCLUDED.regole_escalation,
-                        whatsapp_collegato = EXCLUDED.whatsapp_collegato,
-                        documenti_importati = EXCLUDED.documenti_importati,
-                        profilo = EXCLUDED.profilo,
-                        lingue_supportate = EXCLUDED.lingue_supportate,
-                        lingua_default = EXCLUDED.lingua_default,
-                        updated_at = NOW()
-                    RETURNING *
-                """, organization_id, verticale, nome_attivita, orari, tono,
-                descrizione,
-                json.dumps(servizi), json.dumps(regole_escalation),
-                whatsapp_collegato, documenti_importati, json.dumps(profilo),
-                json.dumps(lingue_supportate), lingua_default)
-                await conn.execute(
-                    "UPDATE organizations SET business_profile = $2::jsonb WHERE id = $1",
-                    organization_id,
-                    json.dumps(profilo),
-                )
-            return self._json_fields_onboarding(dict(row))
+        return await self._org_repo.save_onboarding_profile(
+            organization_id, verticale, nome_attivita, orari, tono, servizi,
+            regole_escalation, whatsapp_collegato, documenti_importati, profilo,
+            lingue_supportate=lingue_supportate, lingua_default=lingua_default,
+            descrizione=descrizione,
+        )
 
     async def get_org_business_profile(self, organization_id):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT business_profile FROM organizations WHERE id = $1", organization_id)
-            if not row or not row["business_profile"]:
-                return {}
-            bp = row["business_profile"]
-            if isinstance(bp, str):
-                try:
-                    bp = json.loads(bp)
-                except Exception:
-                    bp = {}
-            return bp
+        return await self._org_repo.get_org_business_profile(organization_id)
 
     async def update_org_business_profile(self, organization_id, business_profile: dict):
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE organizations SET business_profile = $2::jsonb WHERE id = $1",
-                organization_id,
-                json.dumps(business_profile),
-            )
+        return await self._org_repo.update_org_business_profile(organization_id, business_profile)
 
-    # ── Email configs ─────────────────────────────────────────
+    # ── Email Configurations ──────────────────────────────────
 
     async def add_email_config(self, organization_id, indirizzo, is_active=True):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO email_configs (id, organization_id, indirizzo, is_active)
-                VALUES ($1, $2, $3, $4)
-                RETURNING *
-            """, uuid.uuid4(), organization_id, indirizzo, is_active)
-            return dict(row)
+        return await self._org_repo.add_email_config(organization_id, indirizzo, is_active=is_active)
 
     async def list_email_configs(self, organization_id):
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM email_configs WHERE organization_id = $1 ORDER BY created_at",
-                organization_id,
-            )
-            return [dict(r) for r in rows]
+        return await self._org_repo.list_email_configs(organization_id)
 
     async def remove_email_config(self, organization_id, indirizzo):
-        async with self.pool.acquire() as conn:
-            result = await conn.execute("""
-                DELETE FROM email_configs
-                WHERE organization_id = $1 AND indirizzo = $2
-            """, organization_id, indirizzo)
-            return result != "DELETE 0"
+        return await self._org_repo.remove_email_config(organization_id, indirizzo)
 
     # ── Usage events ──────────────────────────────────────────
 
-    async def record_usage(self, organization_id, event_type, quantity=1,
-                            metadata=None):
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                INSERT INTO usage_events (id, organization_id, event_type,
-                                          quantity, metadata)
-                VALUES ($1, $2, $3, $4, $5::jsonb)
-                RETURNING *
-            """, uuid.uuid4(), organization_id, event_type, quantity,
-            json.dumps(metadata or {}))
-            return dict(row)
+    async def record_usage(self, organization_id, event_type, quantity=1, metadata=None):
+        return await self._billing_repo.record_usage(
+            organization_id, event_type, quantity=quantity, metadata=metadata
+        )
 
     async def get_usage_by_month(self, organization_id, year, month):
-        from datetime import date
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT * FROM usage_events
-                WHERE organization_id = $1
-                  AND billing_month = $2
-                ORDER BY created_at
-            """, organization_id, date(year, month, 1))
-            return [dict(r) for r in rows]
+        return await self._billing_repo.get_usage_by_month(organization_id, year, month)
 
     async def get_usage_summary(self, organization_id, year, month):
-        from datetime import date
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT event_type, SUM(quantity)::int as total
-                FROM usage_events
-                WHERE organization_id = $1
-                  AND billing_month = $2
-                GROUP BY event_type
-            """, organization_id, date(year, month, 1))
-            return {r["event_type"]: r["total"] for r in rows}
+        return await self._billing_repo.get_usage_summary(organization_id, year, month)
 
-    # ── Auth ──────────────────────────────────────────────────
+    # ── Auth & Memberships ────────────────────────────────────
 
     async def get_membership_by_auth(self, auth_user_id: str, organization_id: str) -> dict | None:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT om.ruolo, om.organization_id, up.id as user_id
-                FROM organization_memberships om
-                JOIN user_profiles up ON up.id = om.user_id
-                WHERE up.auth_user_id = $1 AND om.organization_id = $2::uuid
-            """, auth_user_id, organization_id)
-            return dict(row) if row else None
+        return await self._org_repo.get_membership_by_auth(auth_user_id, organization_id=organization_id)
 
     @system_scope("risoluzione multi-org da JWT validato server-side")
     async def get_memberships_by_auth(self, auth_user_id: str) -> list[dict]:
-        """Tutti i membership dell'utente. Fonte unica per la risoluzione del
-        tenant server-side (task18): l'org NON si deduce più da un header
-        client, ma dall'identità nel JWT validato."""
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT om.ruolo, om.organization_id, up.id as user_id
-                FROM organization_memberships om
-                JOIN user_profiles up ON up.id = om.user_id
-                WHERE up.auth_user_id = $1
-            """, auth_user_id)
-            return [dict(r) for r in rows]
-
-    # ── Billing ──────────────────────────────────────────────────
+        return await self._org_repo.get_memberships_by_auth(auth_user_id)
 
     async def get_organization(self, organization_id: uuid.UUID | str) -> dict | None:
-        """Riga minima dell'organizzazione (nome + business_profile per il
-        responder/simulatore). None se l'org non esiste."""
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """SELECT id, name, business_profile
-                   FROM organizations WHERE id = $1""",
-                organization_id,
-            )
-            return dict(row) if row else None
+        return await self._org_repo.get_organization(organization_id)
+
+    # ── Billing & Abbonamento ─────────────────────────────────
 
     async def get_organization_billing(self, organization_id: uuid.UUID | str) -> dict:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                SELECT stripe_customer_id, subscription_id, subscription_status,
-                       plan, messages_used_this_period, messages_limit,
-                       users_limit, whatsapp_numbers_limit,
-                       current_period_start, current_period_end,
-                       trial_start, trial_end, suspension_notified_at
-                FROM organizations WHERE id = $1
-            """, organization_id)
-            if row is None:
-                raise ValueError(f"Organization {organization_id} not found")
-            return dict(row)
+        return await self._billing_repo.get_organization_billing(organization_id)
 
     async def update_organization_billing(
         self, organization_id: uuid.UUID | str, data: dict
     ) -> dict:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        sets = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(data))
-        values = list(data.values())
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                f"""UPDATE organizations SET {sets}
-                    WHERE id = $1
-                    RETURNING stripe_customer_id, subscription_id, subscription_status,
-                              plan, messages_used_this_period, messages_limit,
-                              users_limit, whatsapp_numbers_limit,
-                              current_period_start, current_period_end,
-                              trial_start, trial_end""",
-                organization_id,
-                *values,
-            )
-            return dict(row)
+        return await self._billing_repo.update_organization_billing(organization_id, data)
 
     async def set_subscription_status(
         self, organization_id: uuid.UUID | str, status: str
     ) -> None:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE organizations SET subscription_status = $1 WHERE id = $2",
-                status,
-                organization_id,
-            )
+        return await self._billing_repo.set_subscription_status(organization_id, status)
 
     async def increment_message_usage(
         self, organization_id: uuid.UUID | str
     ) -> int | None:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """UPDATE organizations
-                   SET messages_used_this_period = messages_used_this_period + 1
-                   WHERE id = $1 AND (messages_limit IS NULL OR messages_used_this_period < messages_limit)
-                   RETURNING messages_used_this_period""",
-                organization_id,
-            )
-            return row["messages_used_this_period"] if row else None
+        return await self._billing_repo.increment_message_usage(organization_id)
 
     async def reset_message_usage(
         self,
@@ -915,145 +331,46 @@ class CoreRepository(TenantScopedRepository):
         period_start: datetime,
         period_end: datetime,
     ) -> None:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                """UPDATE organizations
-                   SET messages_used_this_period = 0,
-                       current_period_start = $1,
-                       current_period_end = $2
-                   WHERE id = $3""",
-                period_start,
-                period_end,
-                organization_id,
-            )
+        return await self._billing_repo.reset_message_usage(organization_id, period_start, period_end)
 
     async def process_stripe_event(
         self, event_id: str, organization_id: uuid.UUID | str
     ) -> bool:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            try:
-                await conn.execute(
-                    "INSERT INTO processed_stripe_events (event_id, organization_id) VALUES ($1, $2)",
-                    event_id,
-                    organization_id,
-                )
-                return True
-            except asyncpg.exceptions.UniqueViolationError:
-                return False
+        return await self._billing_repo.process_stripe_event(event_id, organization_id)
 
     async def process_stripe_event_in_tx(
         self, conn, event_id: str, organization_id: uuid.UUID | str
     ) -> bool:
-        """Like process_stripe_event but uses an existing connection/transaction
-        so the dedup INSERT and the billing effect run atomically together."""
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        try:
-            await conn.execute(
-                "INSERT INTO processed_stripe_events (event_id, organization_id) VALUES ($1, $2)",
-                event_id,
-                organization_id,
-            )
-            return True
-        except asyncpg.exceptions.UniqueViolationError:
-            return False
+        return await self._billing_repo.process_stripe_event_in_tx(conn, event_id, organization_id)
 
     async def update_plan_limits(
         self, organization_id: uuid.UUID | str, plan_slug: str
     ) -> dict:
-        from src.core.billing.plans import get_plan
-        plan = get_plan(plan_slug)
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                """UPDATE organizations
-                   SET plan = $1,
-                       messages_limit = $2,
-                       users_limit = $3,
-                       whatsapp_numbers_limit = $4
-                   WHERE id = $5
-                   RETURNING stripe_customer_id, subscription_id, subscription_status,
-                             plan, messages_used_this_period, messages_limit,
-                             users_limit, whatsapp_numbers_limit,
-                             current_period_start, current_period_end,
-                             trial_start, trial_end""",
-                plan_slug,
-                plan.messages_limit,
-                plan.users_limit,
-                plan.whatsapp_numbers_limit,
-                organization_id,
-            )
-            return dict(row)
+        return await self._billing_repo.update_plan_limits(organization_id, plan_slug)
 
     @system_scope("risoluzione tenant da stripe_customer_id platform-unique")
     async def get_organization_by_stripe_customer(
         self, stripe_customer_id: str
     ) -> dict | None:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT id, stripe_customer_id, subscription_status, plan, "
-                "current_period_start "
-                "FROM organizations WHERE stripe_customer_id = $1",
-                stripe_customer_id,
-            )
-            if row is None:
-                return None
-            return dict(row)
+        return await self._billing_repo.get_organization_by_stripe_customer(stripe_customer_id)
 
     # ── GDPR ─────────────────────────────────────────────────────
 
     async def get_contacts_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM contacts WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
-                organization_id,
-            )
-            return [dict(r) for r in rows]
+        return await self._contact_repo.get_contacts_by_org(organization_id)
 
     async def get_conversations_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM conversations WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
-                organization_id,
-            )
-            return [dict(r) for r in rows]
+        return await self._conv_repo.get_conversations_by_org(organization_id)
 
     async def get_messages_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM messages WHERE organization_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
-                organization_id,
-            )
-            return [dict(r) for r in rows]
+        return await self._msg_repo.get_messages_by_org(organization_id)
 
     async def get_organization_owners(self, org_id: str) -> list[dict]:
-        async with self.pool.acquire() as conn:
-            rows = await conn.fetch(
-                """SELECT up.id, up.email, up.nome
-                   FROM user_profiles up
-                   JOIN organization_memberships om ON om.user_id = up.id
-                   WHERE om.organization_id = $1::uuid AND om.ruolo = 'owner'""",
-                org_id
-            )
-            return [dict(r) for r in rows]
+        return await self._org_repo.get_organization_owners(org_id)
 
     @system_scope("root PK delete, cascade DB, endpoint owner-only")
     async def delete_organization(self, organization_id: uuid.UUID | str) -> None:
-        if isinstance(organization_id, str):
-            organization_id = uuid.UUID(organization_id)
-        async with self.pool.acquire() as conn:
-            await conn.execute("DELETE FROM organizations WHERE id = $1", organization_id)
+        return await self._org_repo.delete_organization(organization_id)
 
     # ── Registrazione (system scope: l'org non esiste ancora) ──
 
@@ -1063,35 +380,9 @@ class CoreRepository(TenantScopedRepository):
         nome_attivita: str,
         trial_days: int = 14,
     ) -> dict:
-        """Crea organizzazione + membership owner in un'unica transazione.
-
-        System-scope giustificato: la registrazione crea una NUOVA org, non
-        tocca dati di tenant esistenti. user_profiles e' popolato dal trigger
-        sync_auth_user_profile() sull'INSERT in auth.users (stesso DB), quindi
-        al momento della chiamata la riga esiste gia'.
-        """
-        org_id = uuid.uuid4()
-        async with self.pool.acquire() as conn, conn.transaction():
-            row = await conn.fetchrow("""
-                WITH new_org AS (
-                    INSERT INTO organizations
-                        (id, name, subscription_status, trial_start, trial_end)
-                    VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3))
-                    RETURNING id
-                )
-                INSERT INTO organization_memberships
-                    (organization_id, user_id, ruolo, joined_at)
-                SELECT o.id, up.id, 'owner', NOW()
-                FROM new_org o
-                JOIN user_profiles up ON up.auth_user_id = $4::uuid
-                RETURNING organization_id, user_id
-            """, org_id, nome_attivita, trial_days, uuid.UUID(auth_user_id))
-            if not row:
-                raise RuntimeError(
-                    "user_profiles non trovato per l'utente appena registrato"
-                )
-        return {"organization_id": str(org_id)}
+        return await self._org_repo.create_organization_with_owner(
+            auth_user_id, nome_attivita, trial_days=trial_days
+        )
 
     @system_scope("provisioning JIT org al primo accesso OAuth")
     async def get_or_create_organization_with_owner(
@@ -1100,52 +391,6 @@ class CoreRepository(TenantScopedRepository):
         nome_attivita: str,
         trial_days: int = 7,
     ) -> dict:
-        """Restituisce l'org dell'utente se ne ha gia' una, altrimenti crea
-        organizzazione + membership owner con trial attivo.
-
-        Differenza da create_organization_with_owner: idempotente per
-        costruzione. L'advisory lock per auth_user_id serializza i callback
-        concorrenti (doppio click, retry) e la SELECT di esistenza dentro la
-        STESSA transazione rende impossibile il doppio provisioning: due
-        callback simultanei del primo accesso producono una sola org.
-        user_profiles esiste gia' al momento della chiamata: popolato dal
-        trigger sync_auth_user_profile() sull'INSERT in auth.users.
-        """
-        uid = uuid.UUID(auth_user_id)
-        async with self.pool.acquire() as conn, conn.transaction():
-            # Lock per-utente sulla transazione: i callback paralleli dello
-            # stesso utente si mettono in coda invece di gareggiare.
-            await conn.execute(
-                "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
-                str(uid),
-            )
-            existing = await conn.fetchrow("""
-                SELECT om.organization_id::text AS organization_id
-                FROM organization_memberships om
-                JOIN user_profiles up ON up.id = om.user_id
-                WHERE up.auth_user_id = $1
-                LIMIT 1
-            """, uid)
-            if existing:
-                return dict(existing)
-            org_id = uuid.uuid4()
-            row = await conn.fetchrow("""
-                WITH new_org AS (
-                    INSERT INTO organizations
-                        (id, name, subscription_status, trial_start, trial_end)
-                    VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3))
-                    RETURNING id
-                )
-                INSERT INTO organization_memberships
-                    (organization_id, user_id, ruolo, joined_at)
-                SELECT o.id, up.id, 'owner', NOW()
-                FROM new_org o
-                JOIN user_profiles up ON up.auth_user_id = $4::uuid
-                RETURNING organization_id, user_id
-            """, org_id, nome_attivita, trial_days, uid)
-            if not row:
-                raise RuntimeError(
-                    "user_profiles non trovato per l'utente OAuth"
-                )
-        return {"organization_id": str(org_id)}
+        return await self._org_repo.get_or_create_organization_with_owner(
+            auth_user_id, nome_attivita, trial_days=trial_days
+        )

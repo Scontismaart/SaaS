@@ -6,104 +6,373 @@
     <title>Termini di Servizio — Melpis</title>
     <meta name="description" content="Condizioni generali di contratto per l'utilizzo del servizio Melpis, assistente AI per WhatsApp Business.">
     <meta name="robots" content="noindex, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/termini/">
     <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
 </head>
 <body class="legal-body">
 
-<nav class="legal-nav">
-    <a href="/" class="brand" aria-label="Melpis — home">
-        <img src="/logo.webp" alt="Melpis Logo" class="brand-logo" width="30" height="30">
-        <span>Melpis</span>
-    </a>
-    <a href="/" class="btn-secondary btn-nav">Torna al sito</a>
-</nav>
+    <!-- ==================== UNIFIED STICKY HEADER ==================== -->
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <div class="nav-item-dropdown" id="navDropdownSettori">
+                    <button type="button" class="hero-nav-link dropdown-trigger-btn" id="settoriDropdownTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="settoriDropdownPanel">
+                        <span>Settori</span>
+                        <svg class="dropdown-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="dropdown-menu-panel" id="settoriDropdownPanel" role="region" aria-labelledby="settoriDropdownTrigger">
+                        <div class="dropdown-sectors-list">
+                            <a href="/settori/ristoranti/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                        <path d="M15 2v14a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2V2"/>
+                                        <path d="M6 2v20"/>
+                                        <path d="M9 2v4a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Ristoranti e Pizzerie</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Prenotazioni tavoli, gestione no-show, sincronizzazione calendario</p>
+                                </div>
+                            </a>
+
+                            <a href="/settori/saloni-bellezza/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Saloni &amp; Centri Estetici</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Appuntamenti per operatore, trattamenti combinati, promemoria</p>
+                                </div>
+                            </a>
+
+                            <a href="/settori/studi-medici/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
+                                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
+                                        <circle cx="20" cy="10" r="2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Studi Medici &amp; Dentistici</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Triage preliminare, privacy rigorosa, supporto segreteria 24/7</p>
+                                </div>
+                            </a>
+
+                            <a href="/settori/hotel/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 21h18"/>
+                                        <path d="M19 21v-4"/>
+                                        <path d="M19 17a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14z"/>
+                                        <path d="M7 10h4"/>
+                                        <path d="M7 14h2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Hotel &amp; Ricettivo</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Disponibilità camere, concierge WhatsApp multilingue, check-in rapido</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/documentazione/" class="hero-nav-link">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+                <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
+                    <span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+        <!-- ==================== MOBILE MENU OVERLAY ==================== -->
+    <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true">
+        <div class="mobile-menu-inner">
+            <a href="/" class="mobile-link">Home</a>
+            
+            <!-- Mobile Accordion for Settori -->
+            <div class="mobile-accordion" id="mobileSettoriAccordion">
+                <button type="button" class="mobile-accordion-btn" id="mobileSettoriBtn" aria-expanded="false" aria-controls="mobileSettoriList">
+                    <span>Settori</span>
+                    <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="mobile-accordion-content" id="mobileSettoriList" role="region" aria-labelledby="mobileSettoriBtn">
+                    <a href="/settori/ristoranti/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🍽️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Ristoranti e Pizzerie</span>
+                            <span class="mobile-sublink-desc">Tavoli, turni e no-show</span>
+                        </div>
+                    </a>
+                    <a href="/settori/saloni-bellezza/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">✨</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Saloni &amp; Bellezza</span>
+                            <span class="mobile-sublink-desc">Poltrona e promemoria</span>
+                        </div>
+                    </a>
+                    <a href="/settori/studi-medici/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🩺</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Studi Medici &amp; Dentisti</span>
+                            <span class="mobile-sublink-desc">Triage e segreteria 24/7</span>
+                        </div>
+                    </a>
+                    <a href="/settori/hotel/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🛎️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Hotel &amp; Ricettivo</span>
+                            <span class="mobile-sublink-desc">Camere e concierge</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <a href="/documentazione/" class="mobile-link">Documentazione</a>
+            <a href="/prezzi/" class="mobile-link">Prezzi</a>
+            <a href="/accedi/" class="mobile-link mobile-login">Accedi al pannello</a>
+        <a href="/registrati/" class="btn-cta-primary w-full" style="margin-top: 8px;">
+            <span>Inizia la prova di 7 giorni</span>
+        </a>
+        </div>
+    </div>
 
 <main class="legal-main container-narrow">
 
-<h1>Termini di Servizio</h1>
-<p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
+    <h1>Termini di Servizio</h1>
+    <p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
 
-<section>
-<h2>1. Oggetto del servizio</h2>
-<p>Melpis è un servizio software-as-a-service che fornisce un assistente AI per WhatsApp Business: risposte automatiche ai clienti, gestione prenotazioni, bozze di risposta alle recensioni e report operativi. Il servizio è erogato tramite dashboard web e integrazione con WhatsApp Business API.</p>
-</section>
+    <section>
+        <h2>1. Oggetto del servizio</h2>
+        <p>Melpis è un servizio software-as-a-service che fornisce un assistente AI per WhatsApp Business: risposte automatiche ai clienti, gestione prenotazioni, bozze di risposta alle recensioni e report operativi. Il servizio è erogato tramite dashboard web e integrazione con WhatsApp Business API.</p>
+    </section>
 
-<section>
-<h2>2. Registrazione e account</h2>
-<ul>
-    <li>La registrazione richiede un indirizzo email valido e la creazione di una password.</li>
-    <li>Sei responsabile della riservatezza delle tue credenziali e di ogni attività svolta con il tuo account.</li>
-    <li>Ogni account corrisponde a un'organizzazione (attività) con i propri dati isolati.</li>
-</ul>
-</section>
+    <section>
+        <h2>2. Registrazione e account</h2>
+        <ul>
+            <li>La registrazione richiede un indirizzo email valido e la creazione di una password.</li>
+            <li>Sei responsabile della riservatezza delle tue credenziali e di ogni attività svolta con il tuo account.</li>
+            <li>Ogni account corrisponde a un'organizzazione (attività) con i propri dati isolati.</li>
+        </ul>
+    </section>
 
-<section>
-<h2>3. Prova gratuita</h2>
-<p>Alla registrazione hai diritto a una prova gratuita di <strong>7 giorni oppure 150 conversazioni AI</strong>, a seconda di quale limite si esaurisce prima, senza obbligo di inserire un metodo di pagamento. Alla scadenza il servizio va in pausa (sola lettura dei dati): nessun addebito automatico.</p>
-</section>
+    <section>
+        <h2>3. Prova gratuita</h2>
+        <p>Alla registrazione hai diritto a una prova gratuita di <strong>7 giorni oppure 150 conversazioni AI</strong>, a seconda di quale limite si esaurisce prima, senza obbligo di inserire un metodo di pagamento. Alla scadenza il servizio va in pausa (sola lettura dei dati): nessun addebito automatico.</p>
+    </section>
 
-<section>
-<h2>4. Piani, prezzi e fatturazione</h2>
-<ul>
-    <li>I piani disponibili e i relativi prezzi sono pubblicati sulla pagina Prezzi del sito.</li>
-    <li>Fatturazione mensile o annuale in base alla scelta; i prezzi sono IVA esclusa.</li>
-    <li><strong>Superamento del limite incluso</strong>: se raggiungi la quota di conversazioni inclusa nel piano, l'assistente va in pausa per il resto del mese: riprende automaticamente al rinnovo o passando a un piano superiore. Nessun costo aggiuntivo per singola conversazione.</li>
-    <li>Cambio piano immediato, con conguaglio proporzionale.</li>
-</ul>
-</section>
+    <section>
+        <h2>4. Piani, prezzi e fatturazione</h2>
+        <ul>
+            <li>I piani disponibili e i relativi prezzi sono pubblicati sulla pagina Prezzi del sito.</li>
+            <li>Fatturazione mensile o annuale in base alla scelta; i prezzi sono IVA esclusa.</li>
+            <li><strong>Superamento del limite incluso</strong>: se raggiungi la quota di conversazioni inclusa nel piano, l'assistente va in pausa per il resto del mese: riprende automaticamente al rinnovo o passando a un piano superiore. Nessun costo aggiuntivo per singola conversazione.</li>
+            <li>Cambio piano immediato, con conguaglio proporzionale.</li>
+        </ul>
+    </section>
 
-<section>
-<h2>5. Rinnovo, recesso e rimborsi</h2>
-<ul>
-    <li>L'abbonamento mensile si rinnova automaticamente e può essere cancellato in qualsiasi momento dalla dashboard; il servizio resta attivo fino alla fine del periodo già pagato.</li>
-    <li>L'abbonamento annuale prevede rimborso della parte non utilizzata se richiesto entro i primi 30 giorni.</li>
-    <li>In caso di cancellazione, l'account passa in sola lettura e i dati sono eliminati secondo la Privacy Policy.</li>
-</ul>
-</section>
+    <section>
+        <h2>5. Rinnovo, recesso e rimborsi</h2>
+        <ul>
+            <li>L'abbonamento mensile si rinnova automaticamente e può essere cancellato in qualsiasi momento dalla dashboard; il servizio resta attivo fino alla fine del periodo già pagato.</li>
+            <li>L'abbonamento annuale prevede rimborso della parte non utilizzata se richiesto entro i primi 30 giorni.</li>
+            <li>In caso di cancellazione, l'account passa in sola lettura e i dati sono eliminati secondo la Privacy Policy.</li>
+        </ul>
+    </section>
 
-<section>
-<h2>6. Uso corretto del servizio</h2>
-<p>È vietato: utilizzare Melpis per inviare comunicazioni non richieste o spam; violare le norme Meta su WhatsApp Business (incluse quelle sul consenso dell'utente); trattare categorie particolari di dati (es. dati sanitari sensibili) tramite l'assistente senza adeguata valutazione; rivendere o fornire il servizio a terzi senza accordo scritto.</p>
-<p>Il rispetto delle norme WhatsApp relative all'opt-out dei contatti è parte integrante dell'uso del servizio: Melpis applica automaticamente la gestione delle richieste di disiscrizione dal marketing.</p>
-</section>
+    <section>
+        <h2>6. Uso corretto del servizio</h2>
+        <p>È vietato: utilizzare Melpis per inviare comunicazioni non richieste o spam; violare le norme Meta su WhatsApp Business (incluse quelle sul consenso dell'utente); trattare categorie particolari di dati (es. dati sanitari sensibili) tramite l'assistente senza adeguata valutazione; rivendere o fornire il servizio a terzi senza accordo scritto.</p>
+        <p>Il rispetto delle norme WhatsApp relative all'opt-out dei contatti è parte integrante dell'uso del servizio: Melpis applica automaticamente la gestione delle richieste di disiscrizione dal marketing.</p>
+    </section>
 
-<section>
-<h2>7. Ruolo dell'intelligenza artificiale</h2>
-<p>L'assistente genera risposte basandosi sulle informazioni fornite dall'utente (scheda attività, documenti caricati). Sebbene progettato per la precisione, l'output AI può contenere imprecisioni: l'utente resta responsabile della verifica delle comunicazioni verso i propri clienti. Le funzioni critiche prevedono sempre la supervisione umana (escalation, revisione bozze recensioni).</p>
-</section>
+    <section>
+        <h2>7. Ruolo dell'intelligenza artificiale</h2>
+        <p>L'assistente genera risposte basandosi sulle informazioni fornite dall'utente (scheda attività, documenti caricati). Sebbene progettato per la precisione, l'output AI può contenere imprecisioni: l'utente resta responsabile della verifica delle comunicazioni verso i propri clienti. Le funzioni critiche prevedono sempre la supervisione umana (escalation, revisione bozze recensioni).</p>
+    </section>
 
-<section>
-<h2>8. Disponibilità e supporto</h2>
-<p>Puntiamo a un servizio affidabile e monitorato H24; non garantiamo però l'assenza totale di interruzioni, incluse quelle dipendenti da Meta o da provider terzi. Il supporto tecnico è incluso in tutti i piani via email.</p>
-</section>
+    <section>
+        <h2>8. Disponibilità e supporto</h2>
+        <p>Puntiamo a un servizio affidabile e monitorato H24; non garantiamo però l'assenza totale di interruzioni, incluse quelle dipendenti da Meta o da provider terzi. Il supporto tecnico è incluso in tutti i piani via email.</p>
+    </section>
 
-<section>
-<h2>9. Limitazione di responsabilità</h2>
-<p>Nella misura massima consentita dalla legge, la responsabilità complessiva di Melpis per danni diretti è limitata agli importi pagati nei 12 mesi precedenti il fatto generatore. Sono esclusi i danni indiretti, come perdita di profitti o opportunità commerciali.</p>
-</section>
+    <section>
+        <h2>9. Limitazione di responsabilità</h2>
+        <p>Nella misura massima consentita dalla legge, la responsabilità complessiva di Melpis per danni diretti è limitata agli importi pagati nei 12 mesi precedenti il fatto generatore. Sono esclusi i danni indiretti, come perdita di profitti o opportunità commerciali.</p>
+    </section>
 
-<section>
-<h2>10. Legge e foro competente</h2>
-<p>I presenti Termini sono regolati dalla legge italiana. Per le controversie è competente il Foro di <em>[sede legale — completare]</em>, salvo il foro del consumatore dove applicabile.</p>
-</section>
+    <section>
+        <h2>10. Legge e foro competente</h2>
+        <p>I presenti Termini sono regolati dalla legge italiana. Per le controversie è competente il Foro di <em>[sede legale — completare]</em>, salvo il foro del consumatore dove applicabile.</p>
+    </section>
 
-<section>
-<h2>11. Contatti</h2>
-<p>Per qualsiasi comunicazione: <strong>support@melpis.it</strong>.</p>
-</section>
+    <section>
+        <h2>11. Contatti</h2>
+        <p>Per qualsiasi comunicazione: <strong>support@melpis.it</strong>.</p>
+    </section>
 
 </main>
 
-<footer class="footer legal-footer">
-    <div class="container footer-bottom">
-        <p>&copy; 2026 Melpis AI. Tutti i diritti riservati.</p>
-        <div style="display:flex; gap:24px;">
-            <a href="/privacy/">Privacy Policy</a>
-            <a href="/cookie/">Cookie Policy</a>
+<footer class="site-footer">
+    <div class="container">
+        <div class="footer-top-row">
+            <div class="footer-brand-col">
+                <a href="/" class="nav-brand">
+                    <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                    <span class="nav-brand-text">Melpis</span>
+                </a>
+                <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+            </div>
+            <div class="footer-links-grid">
+                <div class="footer-col">
+                    <h4>Prodotto</h4>
+                    <a href="/#panoramica">Panoramica</a>
+                    <a href="/#come-funziona">Come funziona</a>
+                    <a href="/#integrazioni">Integrazioni</a>
+                    <a href="/prezzi/">Prezzi</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Piattaforma</h4>
+                    <a href="/app/">Pannello di controllo</a>
+                    <a href="/accedi/">Accedi</a>
+                    <a href="/registrati/">Registrati</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Legale</h4>
+                    <a href="/privacy/">Privacy Policy</a>
+                    <a href="/termini/">Termini di Servizio</a>
+                    <a href="/cookie/">Cookie Policy</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom-row">
+            <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
         </div>
     </div>
 </footer>
 
+<script>
+    (function() {
+        var header = document.getElementById('mainHeader');
+        var dropdown = document.getElementById('navDropdownSettori');
+        var trigger = document.getElementById('settoriDropdownTrigger');
+        var hamburger = document.getElementById('navHamburger');
+        var overlay = document.getElementById('mobileOverlay');
+        var accordionBtn = document.getElementById('mobileSettoriBtn');
+        var accordionWrap = document.getElementById('mobileSettoriAccordion');
+
+        if (header) {
+            var updateScrollState = function() {
+                var isScrolled = (window.pageYOffset || document.documentElement.scrollTop || 0) > 15;
+                header.classList.toggle('is-scrolled', isScrolled);
+            };
+            window.addEventListener('scroll', updateScrollState, { passive: true });
+            updateScrollState();
+        }
+
+        if (dropdown && trigger) {
+            var setDropdown = function(open) {
+                dropdown.classList.toggle('is-open', open);
+                trigger.setAttribute('aria-expanded', String(open));
+            };
+
+            trigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                setDropdown(!dropdown.classList.contains('is-open'));
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!dropdown.contains(e.target)) {
+                    setDropdown(false);
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
+                    setDropdown(false);
+                    trigger.focus();
+                }
+            });
+
+            dropdown.addEventListener('focusout', function() {
+                setTimeout(function() {
+                    if (!dropdown.contains(document.activeElement)) {
+                        setDropdown(false);
+                    }
+                }, 10);
+            });
+        }
+
+        if (hamburger && overlay) {
+            var setNav = function(open) {
+                overlay.classList.toggle('open', open);
+                overlay.setAttribute('aria-hidden', String(!open));
+                hamburger.setAttribute('aria-expanded', String(open));
+                document.body.style.overflow = open ? 'hidden' : '';
+            };
+
+            hamburger.addEventListener('click', function(e) {
+                e.preventDefault();
+                setNav(!overlay.classList.contains('open'));
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && overlay.classList.contains('open')) {
+                    setNav(false);
+                }
+            });
+
+            overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-cta-primary, .btn-pill-cta').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    setNav(false);
+                });
+            });
+        }
+
+        if (accordionBtn && accordionWrap) {
+            accordionBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var isExpanded = accordionWrap.classList.toggle('is-expanded');
+                accordionBtn.setAttribute('aria-expanded', String(isExpanded));
+            });
+        }
+    })();
+</script>
+
+    <script src="/app.js" defer></script>
 </body>
 </html>

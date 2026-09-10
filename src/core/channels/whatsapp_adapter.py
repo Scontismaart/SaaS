@@ -22,6 +22,7 @@ class WhatsAppOutboundAdapter(ChannelOutboundPort):
         text: str,
         tenant_config: Any = None,
         handling_type: str = "ai_handled",
+        idempotency_key: str | None = None,
     ) -> OutboundSendResult:
         if not to_destination or not tenant_config:
             logger.warning(
@@ -44,6 +45,7 @@ class WhatsAppOutboundAdapter(ChannelOutboundPort):
                 meta_client=None,
                 tenant_config=tenant_config,
                 handling_type=handling_type,
+                idempotency_key=idempotency_key,
             )
             wam_id = (res.get("wam_id") or res.get("id")) if isinstance(res, dict) else None
             return OutboundSendResult(

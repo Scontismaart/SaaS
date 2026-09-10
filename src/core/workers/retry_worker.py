@@ -56,6 +56,23 @@ class MultiChannelRetryWorker:
             return
 
         org_id = payload["organization_id"]
+        # P1.2 — mai reinviare alla cieca: la riga puo' essere gia' stata
+        # inviata (mark arrivato dopo il claim) o in attesa webhook.
+        from src.whatsapp.service import _row_awaiting_webhook, _row_is_delivered
+
+        if _row_is_delivered(payload):
+            await self.repo.update_delivery_attempt(
+                attempt["id"], "succeeded", {"skipped": "already_delivered"})
+            return
+        if _row_awaiting_webhook(payload):
+            # Ambiguous fresca: possibile invio in volo o status in arrivo.
+            # Non toccare l'attempt (resta processing): il reaper lo ricicla
+            # dopo il timeout e intanto il webhook riconcilia lo stato.
+            logger.info(
+                "Delivery attempt %s skipped (sending_ambiguous, awaiting webhook) for %s",
+                attempt["id"], message_id,
+            )
+            return
         channel = (payload.get("channel") or payload.get("canale") or "whatsapp").lower()
         attempt_num = attempt["attempt_number"]
 

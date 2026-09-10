@@ -235,6 +235,36 @@ async def _nonce_cleanup_job(pool):
         logger.info("cleanup=oauth_nonces deleted=%s", result)
 
 
+def _run_booking_sync_sweep():
+    asyncio.run(_con_pool_esimero(_booking_sync_sweep_job))
+
+
+async def _booking_sync_sweep_job(pool):
+    """Riconcilia i sync esterni orfani (pending oltre soglia -> failed + log
+    escalation). Idempotente: righe gia' terminali non vengono toccate."""
+    from src.core.bookings.sync_sweep_job import sweep_stale_syncs
+
+    outcome = await sweep_stale_syncs(pool)
+    logger = __import__("logging").getLogger(__name__)
+    logger.info("booking_sync_sweep=completato examined=%d swept=%d",
+                outcome["examined"], outcome["swept_to_failed"])
+
+
+def _run_airtable_webhook_reap():
+    asyncio.run(_con_pool_esimero(_airtable_webhook_reap_job))
+
+
+async def _airtable_webhook_reap_job(pool):
+    """Rimette in coda gli eventi webhook Airtable orfani in processing."""
+    from src.integrations.airtable.repository import AirtableWebhookRepository
+    from src.integrations.airtable.webhook_service import AirtableWebhookService
+
+    service = AirtableWebhookService(repo=AirtableWebhookRepository(pool))
+    outcome = await service.reap_stale_events()
+    logger = __import__("logging").getLogger(__name__)
+    logger.info("airtable_webhook_reap=completato reaped=%d", outcome["reaped"])
+
+
 def _run_suspension_notice():
     asyncio.run(_con_pool_esimero(_suspension_notice_job))
 
@@ -336,6 +366,20 @@ def avvia_scheduler():
         CronTrigger(hour=8, minute=0),
         id="suspension_notice",
         name="Notifica email org con trial scaduto",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        _run_booking_sync_sweep,
+        CronTrigger(minute="*/30"),
+        id="booking_sync_sweep",
+        name="Riconcilia sync esterni orfani (pending oltre soglia)",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
+        _run_airtable_webhook_reap,
+        CronTrigger(minute="*/30"),
+        id="airtable_webhook_reap",
+        name="Rimette in coda eventi webhook Airtable orfani",
         replace_existing=True,
     )
     _scheduler.add_job(

@@ -27,6 +27,9 @@ STATUS_RANK = {
 def apply_status_update(current_status: str, new_status: str) -> bool:
     if new_status == "failed":
         return True
+    if new_status == "sending_ambiguous" and current_status in ("queued", "processing"):
+        # Pre-mark Send-Then-Mark: mossa laterale consentita prima della chiamata Meta.
+        return True
     return STATUS_RANK.get(new_status, 0) > STATUS_RANK.get(current_status, 0)
 
 
@@ -97,6 +100,12 @@ class Repository(TenantScopedRepository):
     @system_scope("tenant-resolution: lookup da webhook Meta (identita' platform-unique, pre-auth)")
     async def get_org_by_waba_id(self, waba_id: str):
         return await self._org_repo.get_org_by_waba_id(waba_id)
+
+    @system_scope("tenant-resolution: lookup fan-out da webhook Meta (waba_id 1:N, pre-auth)")
+    async def get_orgs_by_waba_id(self, waba_id: str) -> list:
+        """Tutte le org su un waba_id (condiviso possibile): il chiamante applica
+        ogni write a ciascuna org scoped sul proprio organization_id."""
+        return await self._org_repo.get_orgs_by_waba_id(waba_id)
 
     async def get_org_subscription_state(self, org_id):
         return await self._billing_repo.get_org_subscription_state(org_id)

@@ -9,10 +9,13 @@ Gestisce:
 import json
 import logging
 import os
+from typing import Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 
-from src.api.dependencies import get_repo, require_ruolo
+from src.api.dependencies import get_external_booking_repo, get_repo, require_ruolo
+from src.core.bookings.router import BookingMode
 
 logger = logging.getLogger(__name__)
 
@@ -315,3 +318,209 @@ async def test_integrazione(
             }
 
     raise HTTPException(400, f"Canale non supportato: {canale}")
+
+
+# ── Integrazioni Gestionale di Prenotazione (PMS / Booking System) ─────────
+
+class ConfigureBookingIntegrationRequest(BaseModel):
+    """Payload per configurazione o aggiornamento delle credenziali del gestionale."""
+    provider: str = Field(description="Identificativo del gestionale: simplybook, zak, fake, internal")
+    credentials: dict[str, Any] = Field(default_factory=dict, description="Envelope credenziali cifrate at-rest")
+    mode: str = Field(default="authoritative", description="Modalità operativa: authoritative, shadow, mirror, local_only")
+    config: dict[str, Any] = Field(default_factory=dict, description="Parametri di configurazione (es. medical_dpa_signed, timeout_seconds)")
+    is_active: bool = True
+
+
+class UpdateBookingModeRequest(BaseModel):
+    """Payload per la modifica della modalità operativa dell'integrazione."""
+    mode: str = Field(description="Nuova modalità operativa: authoritative, shadow, mirror, local_only")
+
+
+@router.post("/api/v1/integrations/booking")
+async def configura_integrazione_booking(
+    req: ConfigureBookingIntegrationRequest,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    """Configura o aggiorna le credenziali e la modalità per il gestionale di prenotazioni.
+
+    Invarianti:
+    - Invariante 1 (Tenant Isolation): Esegue la scrittura strettamente sull'organization_id autenticato.
+    - Invariante 10 (Sicurezza Segreti): Cifra le credenziali at-rest e non le restituisce mai in chiaro.
+    - Vincolo di Governance: WuBook ZaK (o alias) non è certificato per produzione in modalità authoritative/mirror.
+    """
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+
+    provider = req.provider.strip().lower()
+    mode_str = req.mode.strip().lower()
+
+    # Validazione modalità
+    try:
+        mode = BookingMode(mode_str)
+    except ValueError:
+        raise HTTPException(
+            400,
+            detail=f"Modalità operativa non valida: {req.mode}. Valori ammessi: authoritative, shadow, mirror, local_only",
+        )
+
+    # Vincolo tassativo di governance per WuBook ZaK (e suoi alias)
+    if provider in ("zak", "wubook", "wubook_zak") and mode not in (BookingMode.SHADOW, BookingMode.LOCAL_ONLY):
+        raise HTTPException(
+            400,
+            detail=(
+                "L'integrazione con WuBook ZaK è attualmente un template architetturale e non è ancora certificata "
+                "per la produzione in modalità authoritative/mirror. È consentita solo la modalità 'shadow' o 'local_only'."
+            ),
+        )
+
+    ext_repo = get_external_booking_repo(request)
+    full_config = {**req.config, "mode": mode.value}
+
+    res = await ext_repo.save_credentials(
+        organization_id=org_id,
+        provider=provider,
+        credentials=req.credentials,
+        config=full_config,
+        is_active=req.is_active,
+    )
+
+    # Invariante 10: Mai restituire credenziali in chiaro nella risposta
+    return {
+        "success": True,
+        "message": "Integrazione gestionale di prenotazione configurata con successo.",
+        "provider": res.get("provider"),
+        "mode": res.get("config", {}).get("mode", mode.value),
+        "is_active": res.get("is_active", True),
+        "updated_at": res.get("updated_at"),
+    }
+
+
+@router.get("/api/v1/integrations/booking/status")
+async def stato_integrazione_booking(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
+    """Restituisce lo stato di configurazione, modalità e salute del gestionale senza esporre credenziali.
+
+    Invarianti:
+    - Invariante 1 (Tenant Isolation): Lettura limitata all'organizzazione del richiedente.
+    - Invariante 10 (Sicurezza Segreti): Le credenziali decifrate non vengono MAI serializzate nella risposta.
+    """
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+
+    ext_repo = get_external_booking_repo(request)
+    creds_row = await ext_repo.get_credentials(org_id)
+
+    if not creds_row or not creds_row.get("is_active", True):
+        return {
+            "is_configured": False,
+            "provider": None,
+            "mode": "local_only",
+            "is_active": False,
+            "circuit_breaker": {"state": "CLOSED", "failure_count": 0},
+            "last_sync": None,
+            "medical_dpa_signed": False,
+        }
+
+    config = creds_row.get("config") or {}
+    mode = config.get("mode", "authoritative")
+    provider = creds_row.get("provider")
+    medical_dpa_signed = (config.get("medical_dpa_signed") is True)
+
+    last_sync_record = await ext_repo.get_latest_sync(org_id)
+    last_sync = None
+    if last_sync_record:
+        updated_val = last_sync_record.get("updated_at")
+        last_sync = {
+            "id": str(last_sync_record.get("id")),
+            "status": last_sync_record.get("sync_status"),
+            "external_booking_id": last_sync_record.get("external_booking_id"),
+            "sync_error": last_sync_record.get("sync_error"),
+            "retry_count": last_sync_record.get("retry_count", 0),
+            "updated_at": updated_val.isoformat() if hasattr(updated_val, "isoformat") else str(updated_val),
+        }
+
+    return {
+        "is_configured": True,
+        "provider": provider,
+        "mode": mode,
+        "is_active": creds_row.get("is_active", True),
+        "medical_dpa_signed": medical_dpa_signed,
+        "circuit_breaker": {
+            "state": "CLOSED",
+            "threshold": config.get("circuit_breaker_threshold", 5),
+            "timeout_seconds": config.get("timeout_seconds", 4.0),
+        },
+        "last_sync": last_sync,
+        "updated_at": creds_row.get("updated_at"),
+    }
+
+
+@router.patch("/api/v1/integrations/booking/mode")
+async def aggiorna_modalita_booking(
+    req: UpdateBookingModeRequest,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    """Aggiorna la modalità operativa per l'integrazione di prenotazione corrente."""
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+
+    mode_str = req.mode.strip().lower()
+    try:
+        new_mode = BookingMode(mode_str)
+    except ValueError:
+        raise HTTPException(
+            400,
+            detail=f"Modalità operativa non valida: {req.mode}. Valori ammessi: authoritative, shadow, mirror, local_only",
+        )
+
+    ext_repo = get_external_booking_repo(request)
+    existing = await ext_repo.get_credentials(org_id)
+    if not existing:
+        raise HTTPException(404, "Nessuna integrazione di prenotazione configurata per questa organizzazione")
+
+    provider = existing.get("provider", "").lower()
+    # Vincolo tassativo di governance per ZaK
+    if provider in ("zak", "wubook", "wubook_zak") and new_mode not in (BookingMode.SHADOW, BookingMode.LOCAL_ONLY):
+        raise HTTPException(
+            400,
+            detail=(
+                "L'integrazione con WuBook ZaK è attualmente un template architetturale e non è ancora certificata "
+                "per la produzione in modalità authoritative/mirror. È consentita solo la modalità 'shadow' o 'local_only'."
+            ),
+        )
+
+    updated = await ext_repo.update_mode(org_id, new_mode.value)
+    return {
+        "success": True,
+        "message": f"Modalità operativa aggiornata a '{new_mode.value}'.",
+        "provider": provider,
+        "mode": new_mode.value,
+        "updated_at": updated.get("updated_at") if updated else None,
+    }
+
+
+@router.delete("/api/v1/integrations/booking")
+async def elimina_integrazione_booking(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    """Rimuove l'integrazione di prenotazione e le credenziali cifrate per l'organizzazione corrente."""
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(401, "Nessuna organizzazione collegata")
+
+    ext_repo = get_external_booking_repo(request)
+    deleted = await ext_repo.delete_credentials(org_id)
+    return {
+        "success": True,
+        "message": "Integrazione gestionale di prenotazione rimossa con successo.",
+        "deleted": deleted,
+    }
+

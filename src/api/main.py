@@ -182,6 +182,14 @@ async def lifespan(app: FastAPI):
             )
 
             from src.core.receptionist.conversation_orchestrator import ConversationOrchestrator
+            try:
+                from src.integrations.airtable.wiring import build_airtable_tool_factory
+                airtable_tool_factory = build_airtable_tool_factory(
+                    pool, getattr(app.state, "repo", None)
+                )
+            except Exception as e:
+                logger.warning("[startup] Airtable AI tools non disponibili: %s", e)
+                airtable_tool_factory = None
             app.state.orchestrator = ConversationOrchestrator(
                 org_repo=getattr(app.state.repo, "org_repo", app.state.repo),
                 doc_repo=getattr(app.state.repo, "doc_repo", app.state.repo),
@@ -189,6 +197,7 @@ async def lifespan(app: FastAPI):
                 conv_repo=getattr(app.state.repo, "conv_repo", app.state.repo),
                 booking_service=app.state.booking_service,
                 fast_path_matcher=wservice.fast_path_match if wservice else None,
+                airtable_tool_factory=airtable_tool_factory,
             )
 
             from src.whatsapp.inbound_processor import InboundProcessor
@@ -198,6 +207,7 @@ async def lifespan(app: FastAPI):
                 repo=wrepo,
                 service=wservice,
                 booking_service=app.state.booking_service,
+                orchestrator=app.state.orchestrator,
             )
             retry_worker = RetryWorker(
                 app_config=whatsapp_app_config,
@@ -319,6 +329,8 @@ from src.api.routes.organization import router as organization_router
 app.include_router(organization_router)
 from src.api.routes.integrations import router as integrations_router
 app.include_router(integrations_router)
+from src.api.routes.airtable import router as airtable_router
+app.include_router(airtable_router)
 from src.api.routes.dashboard import (
     router as dashboard_router,
     DASHBOARD_EVENTI_WINDOW_DAYS,

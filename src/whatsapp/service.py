@@ -1,10 +1,57 @@
 import uuid
 import re
 import json
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from src.whatsapp.config import AppConfig, TenantConfig
 from src.whatsapp.models import SendTextRequest, OutboundTextPayload
+
+logger = logging.getLogger(__name__)
+
+# Attesa riconciliazione webhook per righe 'sending_ambiguous' fresche (Q4):
+# stessa soglia del reaper (reap_stale_claims, 15 min). Entro la soglia non si
+# reinvia (lo status Meta arriva via webhook); oltre, si ritenta l'invio.
+AMBIGUOUS_WEBHOOK_WAIT_SECONDS = 15 * 60
+
+_TERMINAL_DELIVERED_STATUSES = frozenset({"sent", "delivered", "read"})
+
+
+def _row_is_delivered(row: dict) -> bool:
+    """True se la riga risulta gia' inviata (stato terminale o wam_id Meta)."""
+    if not row:
+        return False
+    if row.get("status") in _TERMINAL_DELIVERED_STATUSES:
+        return True
+    return bool(row.get("wam_id"))
+
+
+def _row_updated_at(row: dict):
+    value = row.get("updated_at")
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except ValueError:
+            return None
+    return None
+
+
+def _row_awaiting_webhook(row: dict) -> bool:
+    """True se riga ambiguous fresca: non reinviare, attendi lo status Meta."""
+    if not row or row.get("status") != "sending_ambiguous":
+        return False
+    updated = _row_updated_at(row)
+    if updated is None:
+        return False  # prudenza verso la consegna: marca mancante -> ritenta
+    age = (datetime.now(timezone.utc) - updated).total_seconds()
+    return age < AMBIGUOUS_WEBHOOK_WAIT_SECONDS
 
 
 OPT_OUT_KEYWORDS = {
@@ -50,7 +97,26 @@ class WhatsAppService:
         if idempotency_key:
             existing = await self.repo.check_idempotency(str(org_id), idempotency_key)
             if existing:
-                return existing
+                if _row_is_delivered(existing):
+                    # Gia' inviata (stato terminale o wam_id Meta): nessun reinvio.
+                    return existing
+                if _row_awaiting_webhook(existing):
+                    # Ambiguous fresca: la chiamata potrebbe essere in volo o lo
+                    # status sta arrivando via webhook. Non duplicare.
+                    return existing
+                # Riga esistente mai inviata (queued/failed/ambiguous stolta):
+                # riusa la STESSA riga per continuita' di marcatura.
+                result = await self.attempt_delivery(
+                    message_id=existing["id"],
+                    phone_number_id=tenant_config.phone_number_id,
+                    access_token=tenant_config.access_token,
+                    payload=payload,
+                    meta_client=meta_client,
+                    organization_id=org_id,
+                )
+                if result:
+                    await self.repo.increment_message_usage(org_id)
+                return result
         usage = await self.repo.check_message_usage(org_id)
         if usage and usage["messages_limit"] is not None:
             if usage["messages_used_this_period"] >= usage["messages_limit"]:
@@ -81,9 +147,22 @@ class WhatsAppService:
         )
         if idempotency_key and str(msg["id"]) != str(msg_id):
             # Race genuina: un'altra richiesta con la stessa idempotency_key
-            # ha vinto l'insert tra il pre-check e qui. Il messaggio esiste
-            # gia' (o e' in corso): non tentare un secondo invio.
-            return msg
+            # ha vinto l'insert tra il pre-check e qui. Stessa disciplina:
+            # mai duplicare un invio avvenuto o in volo, ma inviare se la
+            # riga vincitrice non e' mai partita (continuita' di marcatura).
+            if _row_is_delivered(msg) or _row_awaiting_webhook(msg):
+                return msg
+            result = await self.attempt_delivery(
+                message_id=msg["id"],
+                phone_number_id=tenant_config.phone_number_id,
+                access_token=tenant_config.access_token,
+                payload=payload,
+                meta_client=meta_client,
+                organization_id=org_id,
+            )
+            if result:
+                await self.repo.increment_message_usage(org_id)
+            return result
         result = await self.attempt_delivery(
             message_id=msg_id,
             phone_number_id=tenant_config.phone_number_id,
@@ -125,6 +204,19 @@ class WhatsAppService:
             text=OutboundTextPayload(body=payload.get("text", {}).get("body", "")),
             biz_opaque_callback_data=str(message_id),
         )
+        # Send-Then-Mark: marca 'sending_ambiguous' PRIMA della chiamata Meta.
+        # Se il processo crasha o va in timeout dopo un invio reale, la riga
+        # non resta 'queued' (che causerebbe un reinvio cieco): il retry
+        # riconosce l'ambiguità e attende lo status via webhook.
+        try:
+            await self.repo.update_message_status(
+                message_id, "sending_ambiguous", organization_id=organization_id
+            )
+        except Exception:
+            logger.warning(
+                "Pre-mark sending_ambiguous fallito per msg %s (procedo comunque)",
+                message_id,
+            )
         try:
             response = await meta_client.send_message(send_request)
             wam_id = response.messages[0].id if response.messages else None

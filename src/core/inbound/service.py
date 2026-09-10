@@ -171,12 +171,17 @@ class InboundProcessingService:
         canale = msg.get("canale") or "whatsapp"
         to_dest = _extract_from(content)
         adapter = self.channel_router.get_adapter(canale)
+        # Chiave deterministica per inbound: doppio processing dello stesso
+        # messaggio riusa la riga esistente (mai doppio invio Meta; invio se
+        # la riga non e' mai partita). Non tocca i custom _send_reply_fn.
+        reply_key = f"reply:{msg.get('id')}" if msg.get("id") else None
         res = await adapter.send_reply(
             org_id=org_id,
             to_destination=to_dest,
             text=testo_risposta,
             tenant_config=tenant_config,
             handling_type=handling_type,
+            idempotency_key=reply_key,
         )
         if not res.success and res.error != "missing_recipient_or_tenant_config":
             logger.warning(

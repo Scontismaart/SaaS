@@ -290,6 +290,26 @@ class OrganizationRepository(TenantScopedRepository):
             """, waba_id)
             return dict(row) if row else None
 
+    @system_scope("tenant-resolution: lookup fan-out da webhook Meta (waba_id 1:N, pre-auth)")
+    async def get_orgs_by_waba_id(self, waba_id: str) -> list:
+        """Tutte le organizzazioni collegate a un waba_id (un WABA contiene N numeri).
+
+        Il waba_id NON e' globalmente unique per realta' Meta (WABA condiviso tra
+        org/utenze): il chiamante deve applicare la write a OGNI org restituita,
+        ciascuna scoped sul proprio organization_id. Ordinamento deterministico.
+        """
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT o.id as organization_id, o.name, o.business_profile,
+                       wa.id as account_id, wa.phone_number_id, wa.waba_id,
+                       wa.access_token, wa.verify_token
+                FROM whatsapp_accounts wa
+                JOIN organizations o ON o.id = wa.organization_id
+                WHERE wa.waba_id = $1
+                ORDER BY o.id
+            """, waba_id)
+            return [dict(r) for r in rows]
+
     async def get_tenant_config(self, org_id):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""

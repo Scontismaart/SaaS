@@ -42,7 +42,7 @@ function _sanitize(v) {
    TOAST — notifiche non bloccanti al posto di alert()
    ============================================================ */
 
-function toast(messaggio, tipo = "info", durata = 4200) {
+function toast(messaggio, tipo = "info", durata = 4200, azione = null) {
   let container = document.getElementById("toast-container");
   if (!container) {
     container = document.createElement("div");
@@ -53,7 +53,32 @@ function toast(messaggio, tipo = "info", durata = 4200) {
   }
   const el = document.createElement("div");
   el.className = `toast toast-${tipo}`;
-  el.textContent = messaggio;
+  
+  const textSpan = document.createElement("span");
+  textSpan.textContent = messaggio;
+  el.appendChild(textSpan);
+
+  if (azione && azione.testo && typeof azione.onClick === "function") {
+    const actionBtn = document.createElement("button");
+    actionBtn.type = "button";
+    actionBtn.className = "toast-action-btn";
+    actionBtn.textContent = azione.testo;
+    actionBtn.style.marginLeft = "8px";
+    actionBtn.style.textDecoration = "underline";
+    actionBtn.style.fontWeight = "600";
+    actionBtn.style.cursor = "pointer";
+    actionBtn.style.background = "transparent";
+    actionBtn.style.border = "none";
+    actionBtn.style.color = "inherit";
+    actionBtn.style.font = "inherit";
+    actionBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      azione.onClick();
+      el.remove();
+    });
+    el.appendChild(actionBtn);
+  }
+
   container.appendChild(el);
   requestAnimationFrame(() => el.classList.add("toast-in"));
   setTimeout(() => {
@@ -204,6 +229,35 @@ async function apiFetch(url, options = {}) {
       sessione = null;
       aggiornaBottoneAccesso();
       vaiAdAccesso();
+    }
+  }
+  if (res.status === 403) {
+    const mfaHeader = res.headers.get("X-MFA-Required");
+    let isMfa = mfaHeader === "true";
+    if (!isMfa) {
+      try {
+        const cloned = res.clone();
+        const data = await cloned.json();
+        if (
+          data &&
+          typeof data.detail === "string" &&
+          (data.detail.includes("MFA") || data.detail.includes("due fattori"))
+        ) {
+          isMfa = true;
+        }
+      } catch (_) {}
+    }
+    if (isMfa) {
+      res.mfaRequired = true;
+      toast(
+        "Questa operazione richiede la verifica a due fattori (MFA), non ancora disponibile nella dashboard.",
+        "warning",
+        8000,
+        {
+          testo: "Contatta assistenza",
+          onClick: () => window.open("mailto:assistenza@melpis.it?subject=Richiesta%20abilitazione%20MFA", "_blank"),
+        }
+      );
     }
   }
   segnaReteOk();
@@ -478,7 +532,10 @@ async function cambiaPiano(slug) {
         cancel_url: window.location.origin + "/app/",
       }),
     });
-    if (!res.ok) throw new Error("checkout non disponibile");
+    if (!res.ok) {
+      if (res.status === 403) return;
+      throw new Error("checkout non disponibile");
+    }
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   } catch (e) {
@@ -493,7 +550,10 @@ async function apriPortaleBilling() {
   const status = document.getElementById("account-status");
   try {
     const res = await apiFetch(`${API_BASE}/api/billing/create-portal-session`, { method: "POST" });
-    if (!res.ok) throw new Error("portale non disponibile");
+    if (!res.ok) {
+      if (res.status === 403) return;
+      throw new Error("portale non disponibile");
+    }
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   } catch (e) {
@@ -6881,7 +6941,11 @@ async function caricaStatoCalendar() {
   }
 }
 
-document.getElementById("integ-calendar-connect")?.addEventListener("click", () => {
+document.getElementById("integ-calendar-connect")?.addEventListener("click", async () => {
+  try {
+    const checkRes = await apiFetch(`${API_BASE}/api/calendar/auth`, { method: "GET", redirect: "manual" });
+    if (checkRes.status === 403) return;
+  } catch (_) {}
   window.location.href = `${API_BASE}/api/calendar/auth`;
 });
 
@@ -6897,7 +6961,7 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
     if (res.ok) {
       toast("Google Calendar disconnesso con successo.");
       await caricaStatoCalendar();
-    } else {
+    } else if (res.status !== 403) {
       toast("Errore durante la disconnessione.", "error");
     }
   } catch {

@@ -15,6 +15,8 @@
 --    per operatore per messaggio). FK su messages ON DELETE CASCADE per
 --    rispettare la retention/GDPR.
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 CREATE TABLE IF NOT EXISTS faq_cache (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     organization_id     UUID NOT NULL REFERENCES organizations(id),

@@ -27,6 +27,8 @@ ORG = uuid.uuid4()
 @pytest.fixture(autouse=True)
 def _mock_embeddings(monkeypatch):
     monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setenv("MISTRAL_API_KEY", "mock-mistral-key-for-test")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "mock-openrouter-key-for-test")
     try:
         from contextlib import nullcontext
         import crewai_core.lock_store

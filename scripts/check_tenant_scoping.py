@@ -40,6 +40,8 @@ DEFAULT_TARGETS = [
     "src/core/calendar/service.py",
     "src/core/report/weekly_report.py",
     "src/core/scheduler.py",
+    "src/core/db/repositories/external_booking_repo.py",
+    "src/integrations/airtable/repository.py",
 ]
 
 # Eccezioni revisionate a mano: chiave "{percorso}::{funzione}", valore =

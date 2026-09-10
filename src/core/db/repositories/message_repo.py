@@ -18,6 +18,9 @@ STATUS_RANK = {
 def apply_status_update(current_status: str, new_status: str) -> bool:
     if new_status == "failed":
         return True
+    if new_status == "sending_ambiguous" and current_status in ("queued", "processing"):
+        # Pre-mark Send-Then-Mark: mossa laterale consentita prima della chiamata Meta.
+        return True
     return STATUS_RANK.get(new_status, 0) > STATUS_RANK.get(current_status, 0)
 
 

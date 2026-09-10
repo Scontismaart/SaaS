@@ -32,6 +32,7 @@ class BookingService:
         calendar_service=None,
         booking_repo=None,
         org_repo=None,
+        booking_router=None,
     ):
         target_repo = booking_repo or repo
         from src.core.db.repositories.booking_repo import BookingRepository
@@ -43,6 +44,7 @@ class BookingService:
         self.whatsapp = whatsapp_service
         self.app_config = app_config
         self.calendar_service = calendar_service
+        self.booking_router = booking_router
 
     def _slot_lock(self, org_id, data, ora):
         """Lock consultivo per fascia oraria se il repo lo supporta
@@ -182,7 +184,7 @@ class BookingService:
     async def create_booking(self, org_id=None, nome_cliente="", data=None, ora=None, coperti=1,
                               telefono="", note="", tipo_evento="", origine="Dashboard",
                               richiede_intervento=False, id_conversazione="", source_message_id=None,
-                              organization_id=None):
+                              organization_id=None, verticale=None, external_service_id=None):
         org_id = org_id or organization_id
         values = self._validated_booking_values(
             nome_cliente, telefono, data, ora, coperti, note
@@ -229,6 +231,76 @@ class BookingService:
                 await self.calendar_service.sync_booking_state(booking, org_id)
             except Exception:
                 logger.exception("calendar=sync_fail create_booking id=%s", booking.get("id"))
+
+        # Sincronizzazione gestionale esterno tramite BookingAdapterRouter (Send-Then-Mark)
+        if self.booking_router and org_id:
+            try:
+                from src.core.bookings.ports.base import CreateBookingRequest, CustomerResult
+                from datetime import date as date_cls, time as time_cls
+                d_val = date_cls.fromisoformat(data) if isinstance(data, str) else data
+                if isinstance(ora, str):
+                    h, m = ora.split(":")[:2]
+                    t_val = time_cls(int(h), int(m))
+                else:
+                    t_val = ora
+                resolved_verticale = verticale
+                if resolved_verticale is None and self.org_repo:
+                    try:
+                        prof = await self.org_repo.get_org_business_profile(org_id)
+                        if prof:
+                            resolved_verticale = prof.get("verticale")
+                    except Exception as e:
+                        logger.warning("Recupero profilo per verticale fallito (fail-closed applicato): %s", e)
+
+                if source_message_id:
+                    idemp_key = f"ext-book:{org_id}:{source_message_id}"
+                else:
+                    # Senza source_message_id la chiave NON deve degenerare in un
+                    # id effimero per riga (ucciderebbe il replay cross-retry):
+                    # fallback deterministico sugli attributi del booking.
+                    import hashlib
+
+                    raw = "|".join([
+                        str(org_id), str(d_val), str(t_val),
+                        str(telefono or ""), str(nome_cliente or ""),
+                        str(coperti),
+                    ])
+                    digest = hashlib.sha256(raw.encode()).hexdigest()[:24]
+                    idemp_key = f"ext-book:{org_id}:attr-{digest}"
+                req = CreateBookingRequest(
+                    idempotency_key=idemp_key,
+                    customer=CustomerResult(
+                        customer_id=str(booking.get("id", "")),
+                        nome=nome_cliente,
+                        telefono=telefono,
+                    ),
+                    data=d_val,
+                    ora_inizio=t_val,
+                    coperti=coperti,
+                    note=note,
+                    origine=origine,
+                    source_message_id=source_message_id,
+                    internal_booking_id=booking.get("id"),
+                    service_id=external_service_id,
+                )
+                ext_res = await self.booking_router.dispatch_create_booking(
+                    org_id=org_id,
+                    req=req,
+                    verticale=resolved_verticale,
+                )
+                if not ext_res.success and ext_res.sync_status == "failed":
+                    logger.warning(
+                        "External booking sync failed for booking %s: %s",
+                        booking.get("id"), ext_res.error_message
+                    )
+                    booking["external_sync_status"] = "failed"
+                    booking["richiede_intervento"] = True
+                else:
+                    booking["external_sync_status"] = ext_res.sync_status
+                    booking["external_booking_id"] = ext_res.external_booking_id
+            except Exception as e:
+                logger.exception("booking_router dispatch failed for booking %s: %s", booking.get("id"), e)
+
         return booking
 
     @staticmethod
@@ -446,6 +518,16 @@ class BookingService:
 
     async def cancel(self, org_id, booking_id):
         booking = await self.repo.update_booking_status(org_id, booking_id, "cancellata")
+        if self.booking_router and org_id and booking and booking.get("external_booking_id"):
+            try:
+                from src.core.bookings.ports.base import CancelBookingRequest
+                cancel_req = CancelBookingRequest(
+                    idempotency_key=f"ext-cancel:{org_id}:{booking_id}",
+                    external_booking_id=str(booking["external_booking_id"]),
+                )
+                await self.booking_router.dispatch_cancel_booking(org_id, cancel_req)
+            except Exception as e:
+                logger.error("External cancel failed for booking %s: %s", booking_id, e)
         if self.calendar_service:
             try:
                 await self.calendar_service.sync_booking_state(booking, org_id)

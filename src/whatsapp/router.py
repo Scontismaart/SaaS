@@ -195,18 +195,37 @@ async def _handle_inbound_message(repo, org_id, msg, contacts, trace_id=None):
 
 
 async def _handle_template_status_update(repo, value, entry_id=None):
+    """Applica lo stato template a TUTTE le org collegate al waba_id.
+
+    L'evento Meta e' a livello WABA (entry.id) senza phone_number_id e il waba_id
+    e' 1:N per realta' Meta (WABA condiviso). Il fan-out elimina la write nel
+    tenant errato: ogni update resta scoped sul proprio organization_id e lo
+    stato upstream (verita' condivisa del WABA) raggiunge tutte le org legittime.
+    """
     waba_id = entry_id
-    if waba_id:
-        org_data = await repo.get_org_by_waba_id(waba_id)
+    if not waba_id:
+        logger.warning("Missing waba_id for template status update")
+        return
+    get_all = getattr(repo, "get_orgs_by_waba_id", None)
+    if callable(get_all):
+        orgs = await get_all(waba_id) or []
     else:
-        org_data = None
-    if not org_data:
+        # Retrocompatibilita': repo che espongono solo il lookup singolare.
+        single = await repo.get_org_by_waba_id(waba_id)
+        orgs = [single] if single else []
+    if not orgs:
         logger.warning("Unknown waba_id for template status update: %s", waba_id)
         return
-    await repo.update_template_status(
-        organization_id=org_data["organization_id"],
-        name=value.message_template_name,
-        language=value.message_template_language,
-        status=value.message_template_status,
-        rejected_reason=getattr(value, "reason", None),
-    )
+    if len(orgs) > 1:
+        logger.warning(
+            "Shared waba_id %s matches %d organizations: fan-out template status",
+            waba_id, len(orgs),
+        )
+    for org_data in orgs:
+        await repo.update_template_status(
+            organization_id=org_data["organization_id"],
+            name=value.message_template_name,
+            language=value.message_template_language,
+            status=value.message_template_status,
+            rejected_reason=getattr(value, "reason", None),
+        )

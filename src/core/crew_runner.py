@@ -70,6 +70,7 @@ def genera_risposta(
     contesto_disponibilita: str = "",
     tentativi_falliti: int = 0,
     usage_sink: dict | None = None,
+    tools: list | None = None,
 ) -> RispostaOutput:
     """Esegue la crew su un singolo messaggio e restituisce l'output
     strutturato e validato.
@@ -91,7 +92,7 @@ def genera_risposta(
             crew = crea_crew(profilo, messaggio, cronologia, route_request=route_request,
                              model=model, variante=variante,
                              contesto_disponibilita=contesto_disponibilita,
-                             tentativi_falliti=tentativi_falliti)
+                             tentativi_falliti=tentativi_falliti, tools=tools)
             out = _validate_output(crew.kickoff())
             _riempi_sink(usage_sink, model, idx > 0, inizio, crew)
             return out
@@ -111,6 +112,7 @@ async def genera_risposta_async(
     contesto_disponibilita: str = "",
     tentativi_falliti: int = 0,
     usage_sink: dict | None = None,
+    tools: list | None = None,
 ) -> RispostaOutput:
     """Versione asincrona di genera_risposta per essere usata da route
     FastAPI che girano in un event loop già attivo.
@@ -132,7 +134,7 @@ async def genera_risposta_async(
                                  route_request=route_request, model=model,
                                  contesto_documenti=contesto_documenti, variante=variante,
                                  contesto_disponibilita=contesto_disponibilita,
-                                 tentativi_falliti=tentativi_falliti)
+                                 tentativi_falliti=tentativi_falliti, tools=tools)
                 out = _validate_output(await crew.kickoff_async())
                 _riempi_sink(usage_sink, model, idx > 0, inizio, crew)
                 return out

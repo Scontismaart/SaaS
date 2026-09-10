@@ -54,6 +54,7 @@ async def test_whatsapp_adapter_success():
         meta_client=None,
         tenant_config=tenant_cfg,
         handling_type="ai_handled",
+        idempotency_key=None,
     )
 
 

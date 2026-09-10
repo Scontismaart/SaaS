@@ -25,5 +25,6 @@ class ChannelOutboundPort(Protocol):
         text: str,
         tenant_config: Any = None,
         handling_type: str = "ai_handled",
+        idempotency_key: str | None = None,
     ) -> OutboundSendResult:
         ...

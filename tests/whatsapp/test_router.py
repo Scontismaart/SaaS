@@ -36,6 +36,11 @@ def mock_repo():
         "organization_id": uuid.uuid4(),
         "name": "Test Org",
     })
+    repo.get_orgs_by_waba_id = AsyncMock(return_value=[{
+        "organization_id": uuid.uuid4(),
+        "name": "Test Org",
+    }])
+    repo.update_template_status = AsyncMock()
     repo.update_message_status = AsyncMock(return_value={"status": "delivered"})
     repo.update_message_status_by_wam_id = AsyncMock(return_value={"status": "delivered"})
     repo.upsert_message = AsyncMock(return_value={"id": uuid.uuid4(), "status": "received_pending_ai"})

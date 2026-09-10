@@ -80,6 +80,7 @@ class ConversationOrchestrator:
         booking_service=None,
         fast_path_matcher: Callable | None = None,
         booking_svc=None,
+        airtable_tool_factory: Callable | None = None,
     ):
         self.org_repo = org_repo
         self.doc_repo = doc_repo
@@ -87,6 +88,9 @@ class ConversationOrchestrator:
         self.conv_repo = conv_repo
         self.booking_service = booking_service or booking_svc
         self.fast_path_matcher = fast_path_matcher
+        # Factory per-request (org_id) -> list[BaseTool] Airtable Fase A (no delete).
+        # None = AI Airtable disabilitata (comportamento storico invariato).
+        self.airtable_tool_factory = airtable_tool_factory
 
     async def orchestrate(self, req: OrchestrationInput) -> OrchestrationOutput:
         """Esegue l'intero workflow decisionale dell'AI Receptionist per un messaggio."""
@@ -198,6 +202,36 @@ class ConversationOrchestrator:
         variante_prompt = assegna_variante(str(org_id)) if org_id else "control"
         usage: dict = {}
 
+        # 7.5 Airtable AI tools (Fase A, P1.4): offerti solo se intent CRM,
+        # budget ok e connessione attiva; mai delete. Fail-closed: [].
+        airtable_tools: list = []
+        try:
+            from src.integrations.airtable.wiring import select_airtable_tools
+
+            airtable_tools = await select_airtable_tools(
+                intent=intent_result.intent,
+                budget_ratio=budget_ratio_from_billing(billing_state),
+                organization_id=org_id,
+                factory=self.airtable_tool_factory,
+            )
+        except Exception as e:
+            logger.warning("Airtable tools selection failed for org %s: %s", org_id, e)
+            airtable_tools = []
+        if airtable_tools and org_id and req.record_billing_usage and self.billing_repo:
+            try:
+                await self.billing_repo.record_usage(
+                    org_id,
+                    "airtable_ai_tools",
+                    metadata={
+                        "tools": sorted(getattr(t, "name", "?") for t in airtable_tools),
+                        "intent": intent_result.intent,
+                        "conversation_id": req.conversation_id,
+                        "message_id": str(req.message_id or ""),
+                    },
+                )
+            except Exception as e:
+                logger.warning("Airtable tools usage logging failed for org %s: %s", org_id, e)
+
         try:
             canale_enum = (
                 CanaleMessaggio(req.channel)
@@ -224,6 +258,7 @@ class ConversationOrchestrator:
             variante=variante_prompt,
             contesto_disponibilita=contesto_disp,
             usage_sink=usage,
+            tools=airtable_tools or None,
         )
 
         # 9. Guardrail Pipeline & Filtering

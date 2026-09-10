@@ -36,6 +36,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /usr/share/swift /usr/local/.ghcup
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+
       - name: Install psql
         run: |
           sudo apt-get update
@@ -78,6 +84,14 @@ jobs:
       - name: Apply triggers
         run: PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d test -f src/core/db/triggers.sql
 
+      - name: Configure test database search_path
+        run: |
+          PGPASSWORD=test psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d test <<'EOSQL'
+          CREATE SCHEMA IF NOT EXISTS extensions;
+          ALTER DATABASE test SET search_path TO public, extensions;
+          ALTER ROLE postgres SET search_path TO public, extensions;
+          EOSQL
+
       - name: Apply all migrations in order
         run: |
           for f in $(ls src/core/db/migrations/0*.sql | sort); do
@@ -88,6 +102,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
 
       - name: Install dependencies
         run: pip install -r requirements.txt

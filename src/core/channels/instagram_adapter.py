@@ -23,6 +23,7 @@ class InstagramOutboundAdapter(ChannelOutboundPort):
         text: str,
         tenant_config: Any = None,
         handling_type: str = "ai_handled",
+        idempotency_key: str | None = None,  # accettata per interfaccia; IG fuori scope P1.2
     ) -> OutboundSendResult:
         if not to_destination:
             logger.warning(

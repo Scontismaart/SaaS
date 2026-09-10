@@ -663,6 +663,7 @@ const VIEW_FALLBACK = {
   fatturazione: { view: "impostazioni", tab: "fatturazione" },
   sicurezza: { view: "impostazioni", tab: "sicurezza" },
   profilo: { view: "impostazioni", tab: "profilo" },
+  reviews: { view: "impostazioni", tab: "reviews" },
   documenti: { view: "conoscenza" },
   report: { view: "panoramica" },
   onboarding: { view: "assistente" },
@@ -681,6 +682,10 @@ function apriVistaImpostazioni(cat = "generale") {
   const titles = {
     piano: "Piano e abbonamento",
     fatturazione: "Piano e abbonamento",
+    whatsapp: "WhatsApp Business",
+    instagram: "Instagram Direct",
+    calendar: "Google Calendar",
+    reviews: "Google Recensioni",
   };
   topbarTitle.textContent = titles[cat] || "Impostazioni";
 
@@ -726,6 +731,7 @@ function attivaCategoriaImpostazioni(cat) {
     whatsapp: "whatsapp",
     instagram: "instagram",
     calendar: "calendar",
+    reviews: "reviews",
     webhook: "webhook",
   };
   const targetCat = MAPPATURA_LEGACY[cat] || cat || "generale";
@@ -744,7 +750,7 @@ function attivaCategoriaImpostazioni(cat) {
   // Carica i dati specifici della categoria attiva
   if (targetCat === "generale") {
     if (typeof caricaTimezone === "function") caricaTimezone();
-  } else if (["whatsapp", "instagram", "calendar", "webhook"].includes(targetCat)) {
+  } else if (["whatsapp", "instagram", "calendar", "reviews", "webhook"].includes(targetCat)) {
     if (typeof caricaIntegrazioni === "function") caricaIntegrazioni();
   } else if (targetCat === "piano" || targetCat === "fatturazione") {
     if (typeof caricaAccount === "function") caricaAccount();
@@ -6488,7 +6494,9 @@ function _aggiornaBadgeStato(el, statoKey, customLabel) {
 
 async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
   if (!btn) return;
+  if (btn.classList.contains("loading")) return;
   const originalHtml = btn.innerHTML;
+  btn.disabled = true;
   btn.classList.add("loading");
   btn.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -6513,6 +6521,12 @@ async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
       feedbackEl.textContent = data.message || (data.success ? "Test completato con successo." : "Errore durante la verifica.");
     }
 
+    const verifiedUser = data.details?.username || (data.message && data.message.match(/@([a-zA-Z0-9._]+)/)?.[1]);
+    if (canale === "instagram" && verifiedUser) {
+      const igIdVal = document.getElementById("integ-ig-id");
+      if (igIdVal) igIdVal.textContent = `@${verifiedUser}`;
+    }
+
     if (data.success) {
       toast(data.message || "Connessione verificata con successo!", "success");
     } else {
@@ -6527,6 +6541,7 @@ async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
     toast("Impossibile eseguire il test di connessione.", "error");
   } finally {
     btn.classList.remove("loading");
+    btn.disabled = false;
     btn.innerHTML = originalHtml;
   }
 }
@@ -6581,6 +6596,7 @@ async function caricaStatoInstagram() {
   const connectedCard = document.getElementById("integ-instagram-connected-card");
   const wizardCard = document.getElementById("integ-instagram-wizard-card");
   const igIdVal = document.getElementById("integ-ig-id");
+  const statoEl = document.getElementById("integ-instagram-stato");
 
   try {
     const res = await apiFetch(`${API_BASE}/api/instagram/account`);
@@ -6589,13 +6605,16 @@ async function caricaStatoInstagram() {
       if (connectedCard) connectedCard.hidden = false;
       if (wizardCard) wizardCard.hidden = true;
       if (igIdVal) igIdVal.textContent = d.ig_user_id ? `@${d.ig_user_id}` : "Account collegato";
+      if (statoEl) _aggiornaBadgeStato(statoEl, "connected");
     } else {
       if (connectedCard) connectedCard.hidden = true;
       if (wizardCard) wizardCard.hidden = false;
+      if (statoEl) _aggiornaBadgeStato(statoEl, "disconnected");
     }
   } catch (err) {
     if (connectedCard) connectedCard.hidden = true;
     if (wizardCard) wizardCard.hidden = false;
+    if (statoEl) _aggiornaBadgeStato(statoEl, "disconnected");
   }
 }
 
@@ -6605,7 +6624,8 @@ async function caricaIntegrazioni() {
     await Promise.allSettled([
       caricaStatoWhatsApp(),
       caricaStatoInstagram(),
-      caricaStatoCalendar()
+      caricaStatoCalendar(),
+      caricaStatoReviews()
     ]);
   } catch (err) {
     if (status) { status.textContent = "Errore durante il caricamento integrazioni."; status.style.color = "var(--red)"; }
@@ -6872,6 +6892,8 @@ document.getElementById("integ-instagram-disconnect")?.addEventListener("click",
     const res = await apiFetch(`${API_BASE}/api/instagram/account`, { method: "DELETE" });
     if (res.ok) {
       toast("Instagram Direct disconnesso con successo.");
+      const feedbackEl = document.getElementById("integ-instagram-feedback");
+      if (feedbackEl) feedbackEl.hidden = true;
       await caricaStatoInstagram();
     } else {
       toast("Errore durante la disconnessione.", "error");
@@ -6881,9 +6903,10 @@ document.getElementById("integ-instagram-disconnect")?.addEventListener("click",
   }
 });
 
-document.querySelectorAll(".btn-test-conn").forEach((btn) => {
+document.querySelectorAll(".btn-test-conn[data-canale]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const canale = btn.dataset.canale;
+    if (!canale) return;
     const feedbackEl = document.getElementById(`integ-${canale}-feedback`);
     eseguiTestIntegrazione(canale, btn, feedbackEl);
   });
@@ -7005,6 +7028,183 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
       server_error: "Errore del server: riprova più tardi.",
     };
     setTimeout(() => toast(msgs[reason] || `Errore: ${reason}`, "error"), 400);
+  }
+})();
+
+/* ============================================================
+   GOOGLE RECENSIONI (BUSINESS PROFILE) — stato, connect, sync, disconnect
+   ============================================================ */
+
+async function caricaStatoReviews() {
+  const stato = document.getElementById("integ-reviews-stato");
+  const sub = document.getElementById("integ-reviews-sub");
+  const help = document.getElementById("integ-reviews-help");
+  const accountMeta = document.getElementById("integ-reviews-account");
+  const locationMeta = document.getElementById("integ-reviews-location");
+  const btnConnect = document.getElementById("integ-reviews-connect");
+  const btnSync = document.getElementById("integ-reviews-sync");
+  const btnDisconnect = document.getElementById("integ-reviews-disconnect");
+
+  if (!stato || !sub) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reviews/google/status`);
+    if (!res.ok) {
+      _aggiornaBadgeStato(stato, "error", "Errore");
+      sub.textContent = "Impossibile verificare lo stato";
+      return;
+    }
+    const d = await res.json();
+    if (d.connected) {
+      _aggiornaBadgeStato(stato, "connected", "Connesso");
+      const acc = d.account_name || "Account Google collegato";
+      const loc = d.location_name || "Sede predefinita";
+      sub.textContent = `${loc} · Connesso`;
+      if (accountMeta) accountMeta.textContent = acc;
+      if (locationMeta) locationMeta.textContent = loc;
+      if (help) {
+        help.textContent = d.last_sync_at
+          ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+          : "Account collegato: pronto alla sincronizzazione delle recensioni.";
+      }
+      if (btnConnect) btnConnect.hidden = true;
+      if (btnSync) btnSync.hidden = false;
+      if (btnDisconnect) btnDisconnect.hidden = false;
+    } else {
+      _aggiornaBadgeStato(stato, "disconnected", "Non connesso");
+      sub.textContent = "Nessun account Google collegato";
+      if (accountMeta) accountMeta.textContent = "Nessun account";
+      if (locationMeta) locationMeta.textContent = "—";
+      if (help) {
+        help.textContent = "Collega Google Business Profile per importare le recensioni dei clienti e generare risposte AI automatiche.";
+      }
+      if (btnConnect) btnConnect.hidden = false;
+      if (btnSync) btnSync.hidden = true;
+      if (btnDisconnect) btnDisconnect.hidden = true;
+    }
+  } catch {
+    _aggiornaBadgeStato(stato, "error", "Errore");
+    sub.textContent = "Errore di connessione";
+  }
+}
+
+document.getElementById("integ-reviews-connect")?.addEventListener("click", async () => {
+  try {
+    const checkRes = await apiFetch(`${API_BASE}/api/reviews/google/auth`, { method: "GET", redirect: "manual" });
+    if (checkRes.status === 403) return;
+  } catch (_) {}
+  window.location.href = `${API_BASE}/api/reviews/google/auth`;
+});
+
+document.getElementById("integ-reviews-sync")?.addEventListener("click", async () => {
+  const btn = document.getElementById("integ-reviews-sync");
+  const feedbackEl = document.getElementById("integ-reviews-feedback");
+  if (!btn || btn.classList.contains("loading")) return;
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add("loading");
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Sincronizzo…
+  `;
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reviews/google/sync`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const msg = typeof d.nuove === "number"
+        ? (d.nuove > 0 ? `Sincronizzazione completata: ${d.nuove} nuove recensioni importate.` : "Nessuna nuova recensione da importare.")
+        : "Sincronizzazione completata con successo!";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback success";
+        feedbackEl.textContent = msg;
+      }
+      toast(msg, "success");
+      await caricaStatoReviews();
+      if (typeof aggiornaRecensioni === "function") {
+        aggiornaRecensioni();
+      }
+    } else if (res.status !== 403) {
+      const errMsg = d.detail || "Errore durante la sincronizzazione delle recensioni.";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante la sincronizzazione.";
+    }
+    toast("Impossibile sincronizzare le recensioni.", "error");
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+});
+
+document.getElementById("integ-reviews-disconnect")?.addEventListener("click", async () => {
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere Google Recensioni?",
+    descrizione: "Le recensioni già importate rimarranno salvate in Melpis, ma non verranno più scaricate nuove recensioni né pubblicate risposte automatiche su Google Business.",
+    label: "Disconnetti profilo",
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reviews/google/disconnect`, { method: "DELETE" });
+    if (res.ok) {
+      toast("Google Business disconnesso con successo.");
+      const feedbackEl = document.getElementById("integ-reviews-feedback");
+      if (feedbackEl) feedbackEl.hidden = true;
+      await caricaStatoReviews();
+    } else if (res.status !== 403) {
+      toast("Errore durante la disconnessione.", "error");
+    }
+  } catch {
+    toast("Errore di connessione.", "error");
+  }
+});
+
+/* Gestione redirect OAuth callback per Google Reviews */
+(function gestisciReviewsRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const rev = params.get("reviews_google");
+  if (!rev) return;
+
+  if (rev === "connected") {
+    const url = new URL(window.location);
+    url.searchParams.delete("reviews_google");
+    window.history.replaceState({}, "", url);
+    if (typeof apriVistaImpostazioni === "function") {
+      apriVistaImpostazioni("reviews");
+    }
+    setTimeout(() => toast("Google Recensioni connesso con successo!", "success"), 400);
+  } else if (rev === "error") {
+    const reason = params.get("reason") || "errore_sconosciuto";
+    const url = new URL(window.location);
+    url.searchParams.delete("reviews_google");
+    url.searchParams.delete("reason");
+    window.history.replaceState({}, "", url);
+    if (typeof apriVistaImpostazioni === "function") {
+      apriVistaImpostazioni("reviews");
+    }
+    const msgs = {
+      no_refresh_token: "Autorizzazione negata: account non autorizzato o refresh token assente.",
+      invalid_state: "Sessione scaduta: riprova la connessione.",
+      invalid_nonce: "Sessione scaduta: riprova la connessione.",
+      nonce_expired: "Timeout: la richiesta di autorizzazione è scaduta, riprova.",
+      missing_code: "Autorizzazione Google annullata o codice mancante.",
+      access_denied: "Autorizzazione rifiutata su Google.",
+    };
+    setTimeout(() => toast(msgs[reason] || `Errore autorizzazione Google: ${reason}`, "error"), 400);
   }
 })();
 

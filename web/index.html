@@ -6,7 +6,7 @@
 <title>Melpis — Pannello di controllo</title>
 <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="logo.webp" type="image/webp">
-<link rel="stylesheet" href="style.css?v=integ-v3">
+<link rel="stylesheet" href="style.css?v=integ-v4">
 </head>
 <body>
 
@@ -1567,6 +1567,12 @@
                 </span>
                 <span>Google Calendar</span>
               </button>
+              <button type="button" class="settings-cat-btn" data-settings-cat-btn="reviews" data-keywords="google recensioni business reviews feedback reputazione sync gmb stelle">
+                <span class="settings-cat-icon icon-reviews" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span>Google Recensioni</span>
+              </button>
             </div>
 
             <!-- Gruppo ACCOUNT -->
@@ -1957,7 +1963,7 @@
               <div class="integrazione-actions">
                 <button type="button" class="btn-test-conn" id="integ-instagram-test" data-canale="instagram">
                   <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Testa connessione
+                  Test connessione
                 </button>
                 <button type="button" class="btn-danger-outline" id="integ-instagram-disconnect">Disconnetti</button>
               </div>
@@ -2030,6 +2036,47 @@
                 <button type="button" class="btn-danger-outline" id="integ-calendar-disconnect" hidden>Disconnetti agenda</button>
               </div>
               <div class="integ-test-feedback" id="integ-calendar-feedback" hidden></div>
+            </div>
+          </div>
+
+          <!-- PANNELLO: GOOGLE RECENSIONI -->
+          <div class="settings-panel" data-settings-panel="reviews" hidden>
+            <header class="settings-panel-header">
+              <h2 class="settings-panel-title">Google Recensioni</h2>
+              <p class="settings-panel-subtitle">Sincronizzazione e gestione automatica delle recensioni da Google Business Profile.</p>
+            </header>
+
+            <div class="dash-card integrazione-card" id="integ-reviews">
+              <div class="integrazione-head">
+                <span class="integrazione-icona icon-reviews">
+                  <svg viewBox="0 0 24 24" fill="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <div class="integrazione-info-main">
+                  <h3 class="integrazione-titolo">Google Business Profile</h3>
+                  <span class="integrazione-sub" id="integ-reviews-sub">Verifica stato…</span>
+                </div>
+                <span class="integrazione-stato badge-status disconnected" id="integ-reviews-stato"><span class="badge-status-dot"></span><span class="badge-status-label">Verifica…</span></span>
+              </div>
+              <div class="integrazione-meta-grid" id="integ-reviews-meta">
+                <div class="integrazione-meta-item">
+                  <span class="integrazione-meta-label">Account associato</span>
+                  <span class="integrazione-meta-val" id="integ-reviews-account">Nessun account</span>
+                </div>
+                <div class="integrazione-meta-item">
+                  <span class="integrazione-meta-label">Sede / Location</span>
+                  <span class="integrazione-meta-val" id="integ-reviews-location">—</span>
+                </div>
+              </div>
+              <p class="settings-help" id="integ-reviews-help">Collega Google Business Profile per importare le recensioni dei clienti e generare risposte AI automatiche.</p>
+              <div class="integrazione-actions" id="integ-reviews-actions">
+                <button type="button" class="review-analyze" id="integ-reviews-connect" hidden>Connetti Google Recensioni</button>
+                <button type="button" class="btn-test-conn" id="integ-reviews-sync" hidden>
+                  <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  Sincronizza ora
+                </button>
+                <button type="button" class="btn-danger-outline" id="integ-reviews-disconnect" hidden>Disconnetti profilo</button>
+              </div>
+              <div class="integ-test-feedback" id="integ-reviews-feedback" hidden></div>
             </div>
           </div>
 

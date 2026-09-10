@@ -25,10 +25,18 @@ ORG = uuid.uuid4()
 
 
 @pytest.fixture(autouse=True)
-def _mock_embeddings():
+def _mock_embeddings(monkeypatch):
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    try:
+        from contextlib import nullcontext
+        import crewai_core.lock_store
+        crewai_core.lock_store.set_lock_backend(lambda *a, **kw: nullcontext())
+    except Exception:
+        pass
     with patch("src.core.documenti.rag_context.vettorizza", return_value=[[0.1] * 384]), \
          patch("src.core.guardrails.faq_cache.vettorizza", return_value=[[0.1] * 384]):
         yield
+
 
 
 def _tool(name):

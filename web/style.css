@@ -16,10 +16,30 @@
   unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* ==========================================================================
+   TECH DEBT TRACKER — Issue #CSS-DARK-HARDCODED-AUDIT
+   Rilevate 70 occorrenze totali di colori hardcoded (#fff/#000/white/black).
+   - Risolti in questa sessione: Sezione Recensioni (10 casi) & Modale Prenotazioni (1 caso).
+   - Restanti (60 casi) da migrare a variabili CSS semantiche nelle prossime fasi:
+     * Settings & Knowledge Base: ~23 occorrenze (righe 4000-7000)
+     * Tipografia & Global storici: ~15 occorrenze (righe 400-1500)
+     * Modali secondari & Responsive overrides: ~14 occorrenze (righe 7000+)
+     * Ticket & Dettaglio Inbox: ~8 occorrenze (righe 1500-2200)
+
+   ⚠️ RISCHIO ARCHITETTURALE SEPARATO: Doppio blocco :root (righe ~35 e ~4845).
+   Qualsiasi modifica ai token base (:root) deve essere allineata in entrambi i blocchi
+   finché non viene eseguito il refactoring di unificazione dei token.
+   ========================================================================== */
+
 /* ============================================================
    DESIGN TOKENS  —  Allineati alla Landing Page Melpis
    Luxury Obsidian & Light Slate / Nero, Grigio, Bianco
    Canvas #F8F9FA · Testo #0F172A · Accenti Monochrome & Emerald #10b981
+
+   ⚠️ ATTENZIONE ARCHITETTURALE:
+   Esiste un secondo blocco :root (PREMIUM REDESIGN OVERRIDE) a riga ~4845
+   che sovrascrive questi valori. Verificare e sincronizzare SEMPRE entrambi
+   i blocchi :root prima di modificare o aggiungere un token colore!
    ============================================================ */
 :root {
   /* Superfici */
@@ -43,23 +63,25 @@
   --ink-soft:         #475569;
   --ink-muted:        #64748B;
 
-  /* Accenti Brand (Monochrome alta leggibilità come Landing) */
+  /* Accenti Brand (Monochrome alta leggibilità come Landing + Emerald) */
+  --brand:            #059669;
+  --brand-soft:       rgba(5, 150, 105, 0.10);
   --accent:           #08090c;
   --accent-hover:     #1E293B;
   --accent-2:         #0F172A;
   --accent-soft:      rgba(15, 23, 42, 0.06);
 
-  /* Accenti Semantici */
+  /* Accenti Semantici WCAG AA */
   --green-deep:       #059669;
   --green-glow:       rgba(5, 150, 105, 0.20);
   --sage:             #059669;
   --sage-soft:        rgba(5, 150, 105, 0.10);
-  --amber:            #475569;
-  --amber-soft:       rgba(15, 23, 42, 0.06);
-  --red:              #0F172A;
-  --red-soft:         rgba(15, 23, 42, 0.06);
-  --gold:             #475569;
-  --gold-soft:        rgba(15, 23, 42, 0.06);
+  --amber:            #D97706;
+  --amber-soft:       rgba(217, 119, 6, 0.10);
+  --red:              #DC2626;
+  --red-soft:         rgba(220, 38, 38, 0.08);
+  --gold:             #D97706;
+  --gold-soft:        rgba(217, 119, 6, 0.10);
 
   /* Bordi e linee */
   --line:             rgba(15, 23, 42, 0.08);
@@ -2259,7 +2281,7 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
   font-family: var(--font-body);
   font-size: 0.84rem;
   font-weight: 700;
-  background: var(--ink);
+  background: var(--brand);
   color: #ffffff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   transition: all 0.2s ease;
@@ -2268,8 +2290,8 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
 
 .review-analyze-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
-  background: var(--ink-soft);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+  filter: brightness(1.08);
 }
 
 .review-analyze-btn:active {
@@ -2515,7 +2537,7 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
   font-size: 0.88rem;
   line-height: 1.55;
   color: var(--ink);
-  background: #ffffff;
+  background: var(--card-bg);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -2574,19 +2596,20 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
   padding: 8px 20px;
   border-radius: 999px;
   border: none;
-  background: var(--ink);
+  background: var(--green-deep);
   color: #ffffff;
   font-family: var(--font-body);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.35);
   transition: all 0.15s ease;
 }
 
 .btn-review-approve:hover {
   transform: translateY(-1px);
-  box-shadow: 0 5px 14px rgba(16, 185, 129, 0.45);
+  box-shadow: 0 5px 14px rgba(5, 150, 105, 0.45);
+  filter: brightness(1.08);
 }
 
 .btn-review-approve:disabled {
@@ -2651,9 +2674,9 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
 }
 
 .review-tab.active {
-  background: var(--ink);
+  background: var(--brand);
   color: #ffffff;
-  border-color: var(--ink);
+  border-color: var(--brand);
 }
 
 .review-tab .tab-count {
@@ -2749,7 +2772,7 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
 
 .review-history-item.item-urgente {
   border-left: 3.5px solid var(--red);
-  background: #fffbfa;
+  background: var(--red-soft);
 }
 
 .review-history-item.item-approvata {
@@ -2828,7 +2851,7 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
 }
 
 .history-ai-reply-box {
-  background: #ffffff;
+  background: var(--bg-elev);
   border: 1px solid var(--card-border);
   border-left: 2.5px solid var(--green-deep);
   border-radius: 6px;
@@ -2881,7 +2904,7 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
   padding: 5px 12px;
   border-radius: 999px;
   border: 1px solid var(--card-border);
-  background: #ffffff;
+  background: var(--bg-elev);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 0.76rem;
@@ -3109,7 +3132,7 @@ html[data-theme="dark"] .send-button:hover { background: #F1F5F9; box-shadow: 0 
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 700;
-  background: #ffffff;
+  background: var(--bg-elev-2);
   border: 1px solid var(--card-border);
 }
 
@@ -4816,6 +4839,11 @@ html[data-theme="dark"] .settings-lang-checkbox input:checked ~ .lang-tag {
 /* ============================================================
    PREMIUM REDESIGN OVERRIDE
    (dimensioni e motion premium armonizzati alla Landing Page)
+
+   ⚠️ ATTENZIONE ARCHITETTURALE:
+   Questo è il secondo blocco :root che sovrascrive a cascata le variabili
+   dichiarate nel primo blocco :root a riga ~40. Verificare e sincronizzare
+   SEMPRE entrambi i blocchi prima di modificare o aggiungere qualsiasi token!
    ============================================================ */
 
 :root {
@@ -4837,14 +4865,17 @@ html[data-theme="dark"] .settings-lang-checkbox input:checked ~ .lang-tag {
   --accent:           #08090c;
   --accent-2:         #0F172A;
   --accent-soft:      rgba(15, 23, 42, 0.06);
+  --brand:            #059669;
+  --brand-soft:       rgba(5, 150, 105, 0.10);
+  --green-deep:       #059669;
   --sage:             #059669;
   --sage-soft:        rgba(5, 150, 105, 0.10);
-  --amber:            #475569;
-  --amber-soft:       rgba(15, 23, 42, 0.06);
-  --red:              #0F172A;
-  --red-soft:         rgba(15, 23, 42, 0.06);
-  --gold:             #475569;
-  --gold-soft:        rgba(15, 23, 42, 0.06);
+  --amber:            #D97706;
+  --amber-soft:       rgba(217, 119, 6, 0.10);
+  --red:              #DC2626;
+  --red-soft:         rgba(220, 38, 38, 0.08);
+  --gold:             #D97706;
+  --gold-soft:        rgba(217, 119, 6, 0.10);
 
   --border:           var(--line);
   --muted:            #64748B;
@@ -6863,23 +6894,29 @@ html[data-theme="dark"] .onboarding-step-row:hover {
   color: #ffffff;
 }
 
-.btn-danger:hover { filter: brightness(1.08); box-shadow: 0 6px 18px -8px rgba(194, 67, 87, 0.6); }
+.btn-danger:hover { filter: brightness(1.08); box-shadow: 0 6px 18px -8px rgba(220, 38, 38, 0.5); }
 
 .btn-danger-outline {
-  border: 1px solid rgba(194, 67, 87, 0.45);
-  background: transparent;
+  border: 1px solid var(--red);
+  background: var(--red-soft);
   color: var(--red);
 }
 
-.btn-danger-outline:hover { background: var(--red-soft); }
+.btn-danger-outline:hover {
+  background: var(--red);
+  color: #ffffff;
+}
 
 .btn-success {
   border: none;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #0a0f08;
+  background: var(--green-deep);
+  color: #ffffff;
 }
 
-.btn-success:hover { filter: brightness(1.05); box-shadow: 0 6px 18px -8px rgba(16, 185, 129, 0.35); }
+.btn-success:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px -8px rgba(5, 150, 105, 0.45);
+}
 
 .btn-danger:disabled,
 .btn-success:disabled,
@@ -6894,6 +6931,41 @@ html[data-theme="dark"] .onboarding-step-row:hover {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
+}
+
+.booking-detail-actions #booking-confirm-btn {
+  background: var(--green-deep);
+  color: #ffffff;
+  border: 1px solid transparent;
+  font-weight: 700;
+}
+.booking-detail-actions #booking-confirm-btn:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 6px 18px -8px rgba(5, 150, 105, 0.45);
+}
+
+.booking-detail-actions #booking-reject-btn,
+.booking-detail-actions #booking-cancel-btn {
+  background: var(--red-soft);
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-weight: 600;
+}
+.booking-detail-actions #booking-reject-btn:hover,
+.booking-detail-actions #booking-cancel-btn:hover {
+  background: var(--red);
+  color: #ffffff;
+}
+
+.booking-detail-actions #booking-edit-btn {
+  background: var(--bg-elev);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  font-weight: 600;
+}
+.booking-detail-actions #booking-edit-btn:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--ink-soft);
 }
 
 /* ============================================================
@@ -7374,6 +7446,7 @@ html[data-theme="dark"] .onboarding-step-row:hover {
    ============================================================ */
 
 html[data-theme="dark"] {
+  color-scheme: dark;
   --bg:               #08090A;
   --bg-elev:          #141518;
   --bg-elev-2:        #1D1E22;
@@ -7393,21 +7466,25 @@ html[data-theme="dark"] {
   --ink-soft:         #94A3B8;
   --ink-muted:        #64748B;
 
+  /* Accenti Brand & Monochrome Dark */
+  --brand:            #10B981;
+  --brand-soft:       rgba(16, 185, 129, 0.14);
   --accent:           #FFFFFF;
   --accent-hover:     #E2E8F0;
   --accent-2:         #CBD5E1;
   --accent-soft:      rgba(255, 255, 255, 0.08);
 
+  /* Accenti Semantici Dark WCAG AA */
   --green-deep:       #059669;
   --green-glow:       rgba(5, 150, 105, 0.20);
   --sage:             #059669;
   --sage-soft:        rgba(5, 150, 105, 0.14);
-  --amber:            #94A3B8;
-  --amber-soft:       rgba(255, 255, 255, 0.06);
-  --red:              #CBD5E1;
-  --red-soft:         rgba(255, 255, 255, 0.06);
-  --gold:             #94A3B8;
-  --gold-soft:        rgba(255, 255, 255, 0.06);
+  --amber:            #FBBF24;
+  --amber-soft:       rgba(251, 191, 36, 0.12);
+  --red:              #F87171;
+  --red-soft:         rgba(248, 113, 113, 0.12);
+  --gold:             #FBBF24;
+  --gold-soft:        rgba(251, 191, 36, 0.12);
 
   --line:             rgba(255, 255, 255, 0.08);
   --line-strong:      rgba(255, 255, 255, 0.14);
@@ -7477,6 +7554,305 @@ html[data-theme="dark"] .bubble-in {
 
 html[data-theme="dark"] .toast {
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* --- DARK THEME: MESSAGES & CHAT (INBOX + SIMULATORE) --- */
+
+/* Scrollbars custom per il tema dark */
+html[data-theme="dark"] ::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+html[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--bg-elev-2);
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
+}
+
+/* Inbox Col 1: Filtri e navigazione interna */
+html[data-theme="dark"] .inbox-col-filters {
+  background: var(--card-bg);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .inbox-nav-filter {
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .inbox-nav-filter:hover {
+  background: var(--sidebar-hover);
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-nav-filter.active {
+  background: rgba(5, 150, 105, 0.16);
+  color: #34d399;
+}
+html[data-theme="dark"] .inbox-filters-close-btn {
+  color: var(--ink-soft);
+}
+
+/* Inbox Col 2: Lista conversazioni & quick filters */
+html[data-theme="dark"] .inbox-col-list {
+  background: var(--card-bg);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .inbox-chip {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .inbox-chip:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-chip.active {
+  background: #FFFFFF;
+  border-color: #FFFFFF;
+  color: #08090c;
+}
+html[data-theme="dark"] .inbox-conv-row {
+  background: var(--card-bg);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .inbox-conv-row:hover {
+  background: var(--bg-elev);
+  border-color: var(--line-strong);
+}
+html[data-theme="dark"] .inbox-conv-avatar {
+  background: #1e293b;
+  color: #93c5fd;
+  border: 1px solid var(--line);
+}
+html[data-theme="dark"] .inbox-conv-name {
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-conv-preview {
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .inbox-conv-time {
+  color: var(--ink-muted);
+}
+
+/* Inbox Col 3: Dettaglio, Header, Status Strip, Messaggi, Composer */
+html[data-theme="dark"] .inbox-col-detail {
+  background: var(--card-bg);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .inbox-detail-header {
+  background: var(--card-bg);
+  border-bottom-color: var(--line);
+}
+html[data-theme="dark"] .inbox-detail-avatar {
+  background: #1e293b;
+  color: #93c5fd;
+  border: 1px solid var(--line);
+}
+html[data-theme="dark"] .inbox-detail-name {
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-back-btn {
+  border-color: var(--line);
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-back-btn:hover {
+  background: var(--bg-elev-2);
+}
+html[data-theme="dark"] .inbox-action-btn {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-action-btn:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--line-strong);
+}
+html[data-theme="dark"] .inbox-action-select {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-status-strip {
+  background: var(--bg-elev);
+  border-bottom-color: var(--line);
+}
+html[data-theme="dark"] .inbox-status-strip.pending {
+  background: rgba(234, 179, 8, 0.12);
+}
+html[data-theme="dark"] .inbox-status-strip.pending .inbox-ai-badge {
+  color: #facc15;
+}
+
+/* Container Thread Messaggi (elimina sfondo bianco fisso #fafcfa) */
+html[data-theme="dark"] .inbox-messages-container {
+  background: #090a0d;
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.02), transparent 60%),
+    radial-gradient(circle at 100% 100%, rgba(5, 150, 105, 0.03), transparent 40%);
+}
+
+/* Messaggi Outbound (Staff / AI inviato) */
+html[data-theme="dark"] .inbox-msg-row.outbound .inbox-msg-bubble {
+  background: #181a1f;
+  border-color: rgba(255, 255, 255, 0.10);
+  color: #f8fafc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+html[data-theme="dark"] .inbox-msg-row.outbound .inbox-msg-text {
+  color: #f8fafc;
+}
+html[data-theme="dark"] .inbox-msg-row.outbound .inbox-msg-author {
+  color: #34d399;
+}
+html[data-theme="dark"] .inbox-msg-row.outbound .inbox-msg-meta {
+  color: #94a3b8;
+}
+
+/* Messaggi Inbound (Cliente) */
+html[data-theme="dark"] .inbox-msg-row.inbound .inbox-msg-bubble {
+  background: #005c4b;
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+html[data-theme="dark"] .inbox-msg-row.inbound .inbox-msg-text {
+  color: #ffffff;
+}
+html[data-theme="dark"] .inbox-msg-row.inbound .inbox-msg-author {
+  color: #a7f3d0;
+}
+html[data-theme="dark"] .inbox-msg-row.inbound .inbox-msg-meta {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Avatars nei messaggi */
+html[data-theme="dark"] .inbox-msg-avatar {
+  background: #1e293b;
+  color: #93c5fd;
+  border: 1px solid var(--line);
+}
+html[data-theme="dark"] .inbox-msg-avatar.melpis-avatar {
+  background: #16181d;
+  border-color: var(--line);
+}
+
+/* Feedback thread */
+html[data-theme="dark"] .thread-feedback-btn {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .thread-feedback-btn:hover:not(:disabled) {
+  background: var(--bg-elev-2);
+  color: var(--ink);
+}
+html[data-theme="dark"] .thread-feedback-btn.selected {
+  background: rgba(5, 150, 105, 0.20);
+  border-color: var(--green-deep);
+  color: var(--ink);
+}
+
+/* Composer / Input risposta */
+html[data-theme="dark"] .inbox-reply-container {
+  background: var(--card-bg);
+  border-top-color: var(--line);
+}
+html[data-theme="dark"] .inbox-input-wrapper {
+  background: var(--bg-elev);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .inbox-input-wrapper:focus-within {
+  background: var(--bg-elev-2);
+  border-color: var(--green-deep);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.20);
+}
+html[data-theme="dark"] .inbox-text-input {
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-text-input::placeholder {
+  color: var(--ink-muted);
+}
+html[data-theme="dark"] .inbox-reply-disabled-banner {
+  background: var(--bg-elev-2);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+
+/* Placeholder & Empty States */
+html[data-theme="dark"] .inbox-detail-placeholder {
+  color: var(--ink-muted);
+}
+html[data-theme="dark"] .inbox-detail-placeholder h4 {
+  color: var(--ink);
+}
+html[data-theme="dark"] .inbox-empty-icon {
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .inbox-load-more {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .inbox-load-more:hover:not(:disabled) {
+  background: var(--bg-elev-2);
+  color: var(--ink);
+}
+
+/* Simulatore AI / Assistente Chat */
+html[data-theme="dark"] .chat-window {
+  background: var(--card-bg);
+  border-color: var(--line);
+}
+html[data-theme="dark"] .chat-body {
+  background: #090a0d;
+}
+html[data-theme="dark"] .chat-day-divider span {
+  background: var(--bg-elev-2);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .chat-instructions {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .bubble-out {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.35);
+}
+html[data-theme="dark"] .bubble-ai {
+  background: var(--bg-elev-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+html[data-theme="dark"] .suggestion-chip {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .suggestion-chip:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+html[data-theme="dark"] .quick-action-chip {
+  background: var(--bg-elev);
+  border-color: var(--line);
+  color: var(--ink-soft);
+}
+html[data-theme="dark"] .quick-action-chip:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+html[data-theme="dark"] .bubble-typing {
+  background: var(--bg-elev);
+}
+html[data-theme="dark"] .bubble-typing span {
+  background: var(--ink-muted);
 }
 
 /* ============================================================
@@ -8945,3 +9321,133 @@ html[data-theme="dark"] .theme-seg-btn.active {
 .theme-seg-btn:active {
   transform: scale(0.97);
 }
+
+/* ============================================================
+   TEAM & COLLABORATORI
+   ============================================================ */
+.team-form-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1.5fr 1fr;
+  gap: 16px;
+  align-items: flex-end;
+}
+@media (max-width: 860px) {
+  .team-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.team-table tr {
+  border-bottom: 1px solid var(--line);
+  transition: background 150ms ease;
+}
+.team-table tr:last-child {
+  border-bottom: none;
+}
+.team-table tr:hover td {
+  background: rgba(15, 23, 42, 0.02);
+}
+html[data-theme="dark"] .team-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+.team-table td {
+  padding: 14px;
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+.team-member-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.team-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.84rem;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+}
+.team-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.team-role-owner {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--line);
+}
+.team-role-manager {
+  background: var(--amber-soft);
+  color: var(--amber);
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+.team-role-staff {
+  background: var(--bg-elev-2);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+}
+html[data-theme="dark"] .team-role-owner {
+  background: rgba(255, 255, 255, 0.10);
+  color: #FFFFFF;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+html[data-theme="dark"] .team-role-manager {
+  background: var(--amber-soft);
+  color: var(--amber);
+  border-color: rgba(251, 191, 36, 0.30);
+}
+html[data-theme="dark"] .team-role-staff {
+  background: var(--bg-elev-2);
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+.team-action-btn {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: var(--ink-soft);
+  transition: all 150ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+}
+.team-action-btn:hover {
+  background: var(--bg-elev-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+.team-action-btn.team-change-role {
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.team-action-btn.team-change-role:focus {
+  border-color: var(--brand);
+  outline: none;
+}
+.team-action-btn.delete {
+  color: var(--ink-muted);
+}
+.team-action-btn.delete:hover {
+  background: var(--red-soft);
+  border-color: var(--red);
+  color: var(--red);
+}
+

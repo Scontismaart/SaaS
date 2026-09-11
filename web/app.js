@@ -269,6 +269,7 @@ const RUOLO_LABEL = {
   manager: "Manager",
   staff: "Staff",
 };
+const RUOLI_LABELS = RUOLO_LABEL;
 
 function aggiornaBottoneAccesso() {
   const btn = document.getElementById("accesso-btn");
@@ -284,8 +285,23 @@ function aggiornaBottoneAccesso() {
   // Sidebar account trigger
   const sbAvatar = document.getElementById("sidebar-avatar-initial");
   const sbEmail = document.getElementById("sidebar-account-email");
+  const sbPlan = document.getElementById("sidebar-account-plan");
   if (sbAvatar) sbAvatar.textContent = iniziale;
   if (sbEmail) sbEmail.textContent = email;
+  if (sbPlan && sessione.ruolo) {
+    const rLabel = RUOLI_LABELS[sessione.ruolo] || sessione.ruolo;
+    sbPlan.textContent = `Ruolo: ${rLabel}`;
+  }
+
+  // Restrizioni UI per staff: nascondi gestione billing e Stripe
+  const isStaff = sessione.ruolo === "staff";
+  const pianoMenuBtn = document.getElementById("sidebar-menu-piano");
+  if (pianoMenuBtn) pianoMenuBtn.hidden = isStaff;
+
+  const pianoCatBtns = document.querySelectorAll('[data-settings-cat-btn="piano"], [data-settings-cat-btn="fatturazione"]');
+  pianoCatBtns.forEach(b => {
+    b.style.display = isStaff ? "none" : "";
+  });
 }
 
 function toggleSidebarAccountMenu(force) {
@@ -306,9 +322,26 @@ document.getElementById("sidebar-account-trigger")?.addEventListener("click", (e
   toggleSidebarAccountMenu();
 });
 
-document.getElementById("sidebar-menu-impostazioni")?.addEventListener("click", () => {
+document.addEventListener("click", (e) => {
+  const trigger = document.getElementById("sidebar-account-trigger");
+  const dropdown = document.getElementById("sidebar-account-dropdown");
+  if (!dropdown || dropdown.hidden) return;
+  if (!trigger?.contains(e.target) && !dropdown.contains(e.target)) {
+    chiudiSidebarAccountMenu();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    chiudiSidebarAccountMenu();
+    chiudiPannelloNotifiche();
+  }
+});
+
+document.getElementById("sidebar-logout-btn")?.addEventListener("click", async () => {
   chiudiSidebarAccountMenu();
-  apriVistaImpostazioni("generale");
+  await faiLogout();
+  window.location.href = "/accedi/";
 });
 
 document.getElementById("sidebar-menu-piano")?.addEventListener("click", () => {
@@ -316,15 +349,9 @@ document.getElementById("sidebar-menu-piano")?.addEventListener("click", () => {
   apriVistaImpostazioni("piano");
 });
 
-document.getElementById("sidebar-logout-btn")?.addEventListener("click", async () => {
-  await faiLogout();
-  window.location.href = "/accedi/";
-});
-
-document.addEventListener("click", (e) => {
-  if (!e.target.closest("#sidebar-account-trigger") && !e.target.closest("#sidebar-account-dropdown")) {
-    chiudiSidebarAccountMenu();
-  }
+document.getElementById("sidebar-menu-impostazioni")?.addEventListener("click", () => {
+  chiudiSidebarAccountMenu();
+  apriVistaImpostazioni("generale");
 });
 
 /* Login su pagina dedicata /accedi/, registrazione su /registrati/
@@ -336,7 +363,15 @@ function vaiAdAccesso() {
 
 async function caricaSessione() {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+    let res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+    if (res.status === 401) {
+      try {
+        const refRes = await tentaRefresh();
+        if (refRes && refRes.ok) {
+          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+        }
+      } catch { /* ignora */ }
+    }
     if (!res.ok) {
       sessione = null;
       aggiornaBottoneAccesso();
@@ -382,10 +417,10 @@ const ACCOUNT_PLANS = [
     nome: "Essenziale",
     prezzo: "€29",
     cadenza: "/mese",
-    limite: "300 conversazioni / mese",
+    limite: "500 conversazioni / mese",
     features: [
       "1 numero WhatsApp Business",
-      "Knowledge Base fino a 20 parti",
+      "1 utente staff (operatore)",
       "Gestione orari e listino servizi",
       "Supporto standard"
     ],
@@ -396,12 +431,12 @@ const ACCOUNT_PLANS = [
     nome: "Crescita",
     prezzo: "€69",
     cadenza: "/mese",
-    limite: "1.200 conversazioni / mese",
+    limite: "2.000 conversazioni / mese",
     features: [
       "WhatsApp + Instagram Direct",
-      "Knowledge Base illimitata (RAG Priorità 1)",
+      "Fino a 3 utenti staff (operatori)",
+      "Gestione e risposta recensioni Google",
       "Sincronizzazione Google Calendar",
-      "Escalation a operatore umano",
       "Supporto prioritario"
     ],
     popolare: true,
@@ -411,12 +446,12 @@ const ACCOUNT_PLANS = [
     nome: "Scala",
     prezzo: "€149",
     cadenza: "/mese",
-    limite: "5.000 conversazioni / mese",
+    limite: "10.000 conversazioni / mese",
     features: [
-      "Tutti i canali inclusi senza limiti",
-      "Multi-operatore dedicato",
-      "Onboarding personalizzato e SLA 99.9%",
-      "Webhook e integrazioni API custom"
+      "Knowledge Base AI illimitata (RAG)",
+      "Utenti e numeri illimitati",
+      "Multi-canale e multi-sede",
+      "Supporto dedicato 1-to-1"
     ],
     popolare: false,
   },
@@ -868,6 +903,7 @@ navItems.forEach((btn) => {
       inbox: "Inbox",
       prenotazioni: "Prenotazioni",
       recensioni: "Recensioni",
+      team: "Team & Collaboratori",
       assistente: "Simulatore AI",
       conoscenza: "Conoscenza",
       impostazioni: "Impostazioni",
@@ -886,6 +922,9 @@ navItems.forEach((btn) => {
       aggiornaPrioritari();
     } else {
       fermaPanoramicaPolling();
+    }
+    if (viewName === "team") {
+      caricaTeam();
     }
     if (viewName === "assistente") {
       // Il wizard salva solo owner/manager (gate lato API): per lo staff
@@ -3036,10 +3075,18 @@ document.getElementById("booking-export-csv")?.addEventListener("click", () => {
 });
 
 async function aggiornaReport(forza = false) {
+  const origHtml = reportRefresh ? reportRefresh.innerHTML : "";
+  if (forza && reportRefresh) {
+    reportRefresh.disabled = true;
+    reportRefresh.textContent = "Generazione in corso...";
+  }
   try {
     const url = `${API_BASE}/api/report${forza ? "?forza=true" : ""}`;
     const res = await apiFetch(url);
-    if (!res.ok) return;
+    if (!res.ok) {
+      if (forza) toast("Impossibile aggiornare il report in questo momento. Riprova più tardi.", "error");
+      return;
+    }
     const report = await res.json().catch(() => ({}));
     if (!report || !report.statistiche) return;
     reportSection.hidden = false;
@@ -3064,8 +3111,15 @@ async function aggiornaReport(forza = false) {
     } else {
       reportSuggestions.hidden = true;
     }
+    if (forza) toast("Report aggiornato con successo!", "success");
   } catch (err) {
     console.error("Impossibile caricare il report:", err);
+    if (forza) toast("Errore di connessione durante l'aggiornamento del report.", "error");
+  } finally {
+    if (forza && reportRefresh) {
+      reportRefresh.disabled = false;
+      reportRefresh.innerHTML = origHtml;
+    }
   }
 }
 
@@ -3239,15 +3293,14 @@ async function aggiornaPrioritari(silent = false) {
           </div>
         `;
         li.querySelector('[data-action="setup-wa"]')?.addEventListener("click", () => {
-          document.querySelector('[data-view="impostazioni"]')?.click();
-          setTimeout(() => document.querySelector('[data-settings-tab="whatsapp"]')?.click(), 50);
+          apriVistaImpostazioni("whatsapp");
         });
         li.querySelector('[data-action="setup-docs"]')?.addEventListener("click", () => {
-          document.querySelector('[data-view="conoscenza"]')?.click();
+          apriView("conoscenza");
         });
         li.querySelector('[data-action="setup-booking"]')?.addEventListener("click", () => {
-          document.querySelector('[data-view="impostazioni"]')?.click();
-          setTimeout(() => document.querySelector('[data-settings-tab="regole"]')?.click(), 50);
+          apriView("prenotazioni");
+          setTimeout(() => apriBookingModal("booking-availability-modal"), 100);
         });
       } else {
         li.appendChild(_emptyState(
@@ -4921,8 +4974,7 @@ function renderInboxConversazioni() {
             "Collega il tuo account WhatsApp Business o Instagram per iniziare a ricevere i messaggi dei clienti.",
             "Collega i canali",
             () => {
-              document.querySelector('[data-view="impostazioni"]')?.click();
-              setTimeout(() => document.querySelector('[data-settings-tab="whatsapp"]')?.click(), 50);
+              apriVistaImpostazioni("whatsapp");
             }
           )
         );
@@ -5644,25 +5696,6 @@ if (document.readyState === "loading") {
   inizializzaEventiInbox();
 }
 
-/* ---------- Auto-refresh inbox + polling ---------- */
-
-const INBOX_POLL_MS = 15000;
-let inboxPollTimer = null;
-
-function avviaInboxPolling() {
-  if (inboxPollTimer) return;
-  inboxPollTimer = setInterval(() => {
-    if (document.visibilityState !== "visible") return;
-    caricaInbox();
-  }, INBOX_POLL_MS);
-}
-
-function fermaInboxPolling() {
-  if (inboxPollTimer) {
-    clearInterval(inboxPollTimer);
-    inboxPollTimer = null;
-  }
-}
 
 /* ============================================================
    MENU MOBILE — sidebar off-canvas sotto 1100px
@@ -5733,9 +5766,6 @@ function chiudiMenuUtente() {
 
 document.addEventListener("click", (event) => {
   if (!(event.target instanceof Element)) return;
-  if (!event.target.closest("#sidebar-account-btn") && !event.target.closest("#sidebar-account-popover")) {
-    chiudiSidebarAccountMenu();
-  }
   if (!event.target.closest(".notif-wrap")) chiudiPannelloNotifiche();
 });
 
@@ -5850,14 +5880,16 @@ notifBell?.addEventListener("click", () => {
     sessionStorage.removeItem("melpis_benvenuto");
     toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
   }
-  if (typeof caricaProfiloImpostazioni === "function") {
-    await caricaProfiloImpostazioni();
+  if (typeof window.caricaProfiloImpostazioni === "function") {
+    await window.caricaProfiloImpostazioni();
   }
   aggiornaRiepilogo();
   aggiornaPrioritari();
   avviaPanoramicaPolling();
   aggiornaReport();
-  aggiornaConteggio();
+  if (typeof window.aggiornaConteggio === "function") {
+    window.aggiornaConteggio();
+  }
   aggiornaNotifiche();
   aggiornaCampana();
   setInterval(aggiornaNotifiche, 30000);
@@ -5998,9 +6030,12 @@ notifBell?.addEventListener("click", () => {
     const view = row.dataset.view;
     chiudi();
     input.value = "";
-    const btn = document.querySelector(`[data-view="${view}"]`);
-    if (btn) btn.click();
-    if (row.dataset.tab) attivaTabImpostazioni(row.dataset.tab);
+    if (view === "impostazioni") {
+      apriVistaImpostazioni(row.dataset.tab || "generale");
+    } else {
+      apriView(view);
+      if (row.dataset.tab) attivaCategoriaImpostazioni(row.dataset.tab);
+    }
   });
 
   document.addEventListener("click", (e) => {
@@ -7170,12 +7205,7 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
     const url = new URL(window.location);
     url.searchParams.delete("calendar");
     window.history.replaceState({}, "", url);
-    const btn = document.querySelector('[data-view="impostazioni"]');
-    if (btn) btn.click();
-    setTimeout(() => {
-      const tabBtn = document.querySelector('[data-settings-tab-btn="integrazioni"]');
-      if (tabBtn) tabBtn.click();
-    }, 100);
+    apriVistaImpostazioni("calendar");
     setTimeout(() => toast("Google Calendar connesso con successo!", "success"), 400);
   } else if (cal === "error") {
     const reason = params.get("reason") || "errore_sconosciuto";
@@ -7183,12 +7213,7 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
     url.searchParams.delete("calendar");
     url.searchParams.delete("reason");
     window.history.replaceState({}, "", url);
-    const btn = document.querySelector('[data-view="impostazioni"]');
-    if (btn) btn.click();
-    setTimeout(() => {
-      const tabBtn = document.querySelector('[data-settings-tab-btn="integrazioni"]');
-      if (tabBtn) tabBtn.click();
-    }, 100);
+    apriVistaImpostazioni("calendar");
     const msgs = {
       no_refresh_token: "Autorizzazione negata: la tua app Google non è in produzione. Aggiungi il tuo account come test user nella Google Cloud Console.",
       invalid_state: "Sessione scaduta: riprova la connessione.",
@@ -8392,3 +8417,302 @@ document.getElementById("report-print")?.addEventListener("click", () => window.
     }
   });
 })();
+
+/* ============================================================
+   TEAM & COLLABORATORI — Gestione Membri e Limiti Piano
+   ============================================================ */
+
+let teamDataCache = null;
+
+async function caricaTeam() {
+  const tbody = document.getElementById("team-members-tbody");
+  const statLimit = document.getElementById("team-stat-limit");
+  const statPlan = document.getElementById("team-stat-plan");
+  const countBadge = document.getElementById("team-count-badge");
+  const limitBanner = document.getElementById("team-limit-banner");
+  const limitTitle = document.getElementById("team-limit-title");
+  const limitDesc = document.getElementById("team-limit-desc");
+  const submitBtn = document.getElementById("team-submit-btn");
+  const addCard = document.getElementById("team-add-card");
+
+  if (!tbody) return;
+
+  const mioRuolo = sessione?.ruolo || "staff";
+
+  // Se l'utente è staff, nascondi la card di aggiunta
+  if (addCard) {
+    addCard.style.display = mioRuolo === "staff" ? "none" : "";
+  }
+
+  // Se l'utente è manager, può aggiungere solo staff
+  const ruoloSelect = document.getElementById("team-add-ruolo");
+  if (ruoloSelect && mioRuolo === "manager") {
+    const mgrOpt = ruoloSelect.querySelector('option[value="manager"]');
+    if (mgrOpt) mgrOpt.disabled = true;
+    ruoloSelect.value = "staff";
+  } else if (ruoloSelect) {
+    const mgrOpt = ruoloSelect.querySelector('option[value="manager"]');
+    if (mgrOpt) mgrOpt.disabled = false;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/team/members`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      tbody.innerHTML = `<tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--red);">Impossibile caricare i membri del team: ${_estraiMessaggioErroreApi(res, err, "Errore")}</td></tr>`;
+      return;
+    }
+    const data = await res.json();
+    teamDataCache = data;
+
+    const { members, total, users_limit, can_add_more } = data;
+
+    // Aggiorna contatori e badge
+    if (countBadge) countBadge.textContent = `${total} membr${total === 1 ? 'o' : 'i'}`;
+
+    if (statLimit) {
+      if (users_limit === null) {
+        statLimit.textContent = `${total} account attivi (illimitati)`;
+      } else if (users_limit === 1) {
+        statLimit.textContent = `1 / 1 account (Piano Essenziale - Solo titolare)`;
+      } else {
+        const operatori = Math.max(0, total - 1);
+        const maxOperatori = users_limit - 1;
+        statLimit.textContent = `${total} / ${users_limit} account (${operatori} di ${maxOperatori} collaboratori)`;
+      }
+    }
+
+    // Aggiorna piano visualizzato
+    if (statPlan) {
+      let nomePiano = "Essenziale";
+      if (users_limit === 3) nomePiano = "Crescita (Pro)";
+      else if (users_limit === null) nomePiano = "Scala";
+      statPlan.textContent = nomePiano;
+    }
+
+    // Gestione banner limite raggiunto
+    if (limitBanner && submitBtn) {
+      if (!can_add_more) {
+        limitBanner.hidden = false;
+        submitBtn.disabled = true;
+        submitBtn.title = users_limit === 1
+          ? "Il piano Essenziale non include collaboratori aggiuntivi"
+          : "Limite massimo collaboratori raggiunto per il piano corrente";
+        if (limitTitle) {
+          limitTitle.textContent = users_limit === 1
+            ? "Il piano Essenziale include solo il titolare"
+            : `Limite account raggiunto (${total}/${users_limit})`;
+        }
+        if (limitDesc) {
+          if (users_limit === 1) {
+            limitDesc.textContent = "Il piano Essenziale è riservato al solo account titolare. Effettua l'upgrade al piano Crescita per abilitare fino a 2 collaboratori operativi.";
+          } else {
+            limitDesc.textContent = "Hai occupato tutti gli slot collaboratori inclusi nel tuo piano. Effettua l'upgrade a Scala per aggiungere collaboratori illimitati.";
+          }
+        }
+      } else {
+        limitBanner.hidden = true;
+        submitBtn.disabled = false;
+        submitBtn.title = "";
+      }
+    }
+
+    if (!members || members.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="padding: 30px; text-align: center; color: var(--ink-soft);">Nessun collaboratore trovato.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = members.map((m) => {
+      const isOwner = m.ruolo === "owner";
+      const isManager = m.ruolo === "manager";
+      const isStaff = m.ruolo === "staff";
+      const initials = (m.nome || m.email || "U").substring(0, 2).toUpperCase();
+
+      let rolePillClass = "team-role-staff";
+      let roleLabel = "Operatore Staff";
+      if (isOwner) {
+        rolePillClass = "team-role-owner";
+        roleLabel = "Proprietario";
+      } else if (isManager) {
+        rolePillClass = "team-role-manager";
+        roleLabel = "Manager";
+      }
+
+      let dateFormatted = "—";
+      if (m.joined_at) {
+        try {
+          dateFormatted = new Date(m.joined_at).toLocaleDateString("it-IT", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+          });
+        } catch { /* ignora */ }
+      }
+
+      // Permessi azioni
+      let actionsHtml = "";
+      if (isOwner) {
+        actionsHtml = `<span style="font-size:0.8rem; color:var(--ink-soft); font-style:italic;">Proprietario account</span>`;
+      } else if (mioRuolo === "staff") {
+        actionsHtml = `<span style="font-size:0.8rem; color:var(--ink-soft); font-style:italic;">Nessuna azione</span>`;
+      } else if (mioRuolo === "manager" && isManager) {
+        actionsHtml = `<span style="font-size:0.8rem; color:var(--ink-soft); font-style:italic;">Manager</span>`;
+      } else {
+        // Owner o Manager su Staff
+        const canChangeRole = mioRuolo === "owner";
+        actionsHtml = `
+          <div style="display:inline-flex; align-items:center; gap:8px;">
+            ${canChangeRole ? `
+              <select class="team-action-btn team-change-role" data-user-id="${m.user_id}" style="padding:4px 8px; font-size:0.78rem;">
+                <option value="staff" ${isStaff ? "selected" : ""}>Staff</option>
+                <option value="manager" ${isManager ? "selected" : ""}>Manager</option>
+              </select>
+            ` : ""}
+            <button type="button" class="team-action-btn delete team-delete-btn" data-user-id="${m.user_id}" data-email="${m.email}" title="Rimuovi dal team">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Rimuovi
+            </button>
+          </div>
+        `;
+      }
+
+      return `
+        <tr data-user-id="${m.user_id}">
+          <td>
+            <div class="team-member-cell">
+              <div class="team-avatar-circle" aria-hidden="true">${initials}</div>
+              <div>
+                <strong style="color:var(--ink); display:block;">${_escapeHtml(m.nome)}</strong>
+              </div>
+            </div>
+          </td>
+          <td><span style="color:var(--ink-soft); font-family:monospace; font-size:0.85rem;">${_escapeHtml(m.email)}</span></td>
+          <td><span class="team-role-pill ${rolePillClass}">${roleLabel}</span></td>
+          <td style="color:var(--ink-soft); font-size:0.85rem;">${dateFormatted}</td>
+          <td style="text-align: right;">${actionsHtml}</td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error("Errore fetch team:", err);
+    tbody.innerHTML = `<tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--red);">Errore di connessione durante il recupero dei collaboratori.</td></tr>`;
+  }
+}
+
+async function aggiungiMembroTeam(e) {
+  e?.preventDefault?.();
+  const emailInput = document.getElementById("team-add-email");
+  const ruoloSelect = document.getElementById("team-add-ruolo");
+  const submitBtn = document.getElementById("team-submit-btn");
+
+  const email = (emailInput?.value || "").trim();
+  const ruolo = ruoloSelect?.value || "staff";
+
+  if (!email) {
+    toast("Inserisci l'indirizzo email del collaboratore.", "warning");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Aggiunta in corso...";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/team/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, ruolo }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const errMsg = _estraiMessaggioErroreApi(res, data, "Impossibile aggiungere il collaboratore.");
+      toast(errMsg, "error", 6000);
+      return;
+    }
+
+    toast(`Collaboratore ${email} aggiunto con successo al team!`, "success");
+    if (emailInput) emailInput.value = "";
+    await caricaTeam();
+  } catch (err) {
+    console.error("Errore aggiunta collaboratore:", err);
+    toast("Errore di connessione durante l'aggiunta.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        Aggiungi al Team
+      `;
+    }
+  }
+}
+
+async function gestisciAzioniTeam(e) {
+  const deleteBtn = e.target.closest(".team-delete-btn");
+  if (deleteBtn) {
+    const userId = deleteBtn.dataset.userId;
+    const email = deleteBtn.dataset.email;
+    const ok = await confermaDestructiva({
+      titolo: "Rimuovi collaboratore",
+      descrizione: `Sei sicuro di voler rimuovere ${email} dal team? L'utente non potrà più accedere alle chat e al pannello di questa attività.`,
+      label: "Rimuovi collaboratore"
+    });
+    if (!ok) return;
+
+    try {
+      const res = await apiFetch(`${API_BASE}/api/team/members/${userId}`, {
+        method: "DELETE"
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(_estraiMessaggioErroreApi(res, data, "Errore rimozione."), "error");
+        return;
+      }
+      toast("Collaboratore rimosso dal team.", "success");
+      await caricaTeam();
+    } catch (err) {
+      toast("Errore di connessione durante la rimozione.", "error");
+    }
+    return;
+  }
+
+  const roleSelect = e.target.closest(".team-change-role");
+  if (roleSelect) {
+    const userId = roleSelect.dataset.userId;
+    const newRole = roleSelect.value;
+    try {
+      const res = await apiFetch(`${API_BASE}/api/team/members/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ruolo: newRole })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(_estraiMessaggioErroreApi(res, data, "Errore aggiornamento ruolo."), "error");
+        await caricaTeam();
+        return;
+      }
+      toast(`Ruolo aggiornato a ${newRole === "manager" ? "Manager" : "Staff"}.`, "success");
+      await caricaTeam();
+    } catch (err) {
+      toast("Errore di connessione.", "error");
+      await caricaTeam();
+    }
+  }
+}
+
+document.getElementById("team-add-form")?.addEventListener("submit", aggiungiMembroTeam);
+document.getElementById("btn-refresh-team")?.addEventListener("click", caricaTeam);
+document.getElementById("team-limit-upgrade-btn")?.addEventListener("click", () => {
+  apriView("account");
+});
+document.getElementById("team-members-tbody")?.addEventListener("click", (e) => {
+  if (e.target.closest(".team-delete-btn")) gestisciAzioniTeam(e);
+});
+document.getElementById("team-members-tbody")?.addEventListener("change", (e) => {
+  if (e.target.closest(".team-change-role")) gestisciAzioniTeam(e);
+});
+

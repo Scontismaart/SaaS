@@ -54,6 +54,12 @@
         </span>
         Recensioni <span class="nav-badge" data-notification-badge="recensioni" hidden></span>
       </button>
+      <button class="nav-item" type="button" data-view="team" id="nav-item-team">
+        <span class="nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Team &amp; Collaboratori
+      </button>
 
       <span class="nav-group-label" aria-hidden="true">Assistente</span>
       <button class="nav-item" type="button" data-view="assistente">
@@ -87,7 +93,7 @@
           <svg class="sidebar-account-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="sidebar-account-dropdown" id="sidebar-account-dropdown" role="menu" hidden>
-          <button type="button" class="sidebar-dropdown-item" id="sidebar-menu-impostazioni" role="menuitem">
+          <button type="button" class="sidebar-dropdown-item" id="sidebar-menu-impostazioni" data-view="impostazioni" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.55a.5.5 0 0 0 .12-.64l-1.9-3.3a.5.5 0 0 0-.61-.22l-2.36.95a7.6 7.6 0 0 0-2.6-1.5L13.7.94a.5.5 0 0 0-.5-.42h-3.8a.5.5 0 0 0-.5.42l-.35 2.5c-.96.35-1.83.87-2.6 1.5l-2.36-.95a.5.5 0 0 0-.6.22l-1.91 3.3a.5.5 0 0 0 .12.64l2.01 1.56a7.6 7.6 0 0 0 0 3L2.2 14.27a.5.5 0 0 0-.12.64l1.9 3.3c.13.21.39.3.61.21l2.36-.95c.77.64 1.64 1.16 2.6 1.51l.35 2.5c.04.24.25.42.5.42h3.8c.25 0 .46-.18.5-.42l.35-2.5c.96-.35 1.83-.87 2.6-1.5l2.36.94c.22.09.48 0 .6-.22l1.91-3.3a.5.5 0 0 0-.12-.63l-2.01-1.57Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
             Impostazioni
           </button>
@@ -439,6 +445,13 @@
 
     <!-- ---------- VISTA: SIMULATORE AI ---------- -->
     <section class="view view-hidden" data-view-panel="assistente">
+      <div class="onboarding-banner" id="onboarding-banner" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: var(--sage-soft, #f0fdf4); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 12px 18px; margin-bottom: 16px;">
+        <div>
+          <strong style="font-size: 0.95rem; color: var(--text-heading, #0f172a);">Personalizza l'assistente per la tua attività</strong>
+          <p style="margin: 2px 0 0; font-size: 0.85rem; color: var(--text-muted, #64748b);">Configura nome, orari, tono di voce, servizi e regole di escalation con il wizard guidato.</p>
+        </div>
+        <button type="button" class="btn-primary" id="onboarding-banner-cta" style="white-space: nowrap; font-size: 0.85rem; padding: 7px 14px;">Configura assistente &rarr;</button>
+      </div>
       <p class="view-intro">Simula una conversazione come farebbe un cliente reale per verificare le risposte e il comportamento del tuo assistente AI.</p>
 
       <div class="chat-window">
@@ -933,6 +946,102 @@
       </div>
     </section>
 
+    <!-- ---------- VISTA: TEAM & COLLABORATORI ---------- -->
+    <section class="view view-hidden" data-view-panel="team">
+      <div class="view-header-bar">
+        <div>
+          <h2 class="view-title">Team &amp; Collaboratori</h2>
+          <p class="view-intro">Gestisci l'accesso e i ruoli dei membri del tuo staff per rispondere ai clienti su WhatsApp, gestire le prenotazioni e monitorare l'attività.</p>
+        </div>
+        <div class="review-header-stats" id="team-header-stats">
+          <span class="review-stat-pill" id="team-stat-limit">Caricamento account...</span>
+          <span class="account-stato-pill" id="team-stat-plan">Piano...</span>
+          <button type="button" class="btn-refresh-reviews" id="btn-refresh-team" title="Aggiorna elenco team">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Banner Limite Raggiunto -->
+      <div class="kb-conflict-banner" id="team-limit-banner" hidden style="background: rgba(234, 88, 12, 0.08); border-color: rgba(234, 88, 12, 0.25); color: #c2410c; margin-bottom: 20px;">
+        <div class="kb-conflict-icon" aria-hidden="true" style="color: #ea580c;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="kb-conflict-content" style="flex:1;">
+          <strong id="team-limit-title">Limite massimo collaboratori raggiunto per il tuo piano</strong>
+          <p id="team-limit-desc" style="margin-top:2px; font-size:0.85rem;">Hai occupato tutti gli slot collaboratori disponibili. Effettua l'upgrade per aggiungere altri operatori.</p>
+        </div>
+        <button type="button" class="btn-primary" id="team-limit-upgrade-btn" style="padding: 6px 14px; font-size: 0.82rem; align-self: center; white-space: nowrap;">
+          Passa a un piano superiore
+        </button>
+      </div>
+
+      <div class="team-layout">
+        <!-- Card: Invita / Aggiungi Collaboratore -->
+        <div class="dash-card" id="team-add-card">
+          <div class="dash-card-header">
+            <div>
+              <span class="dash-card-title">Aggiungi un collaboratore</span>
+              <span class="dash-card-sub">Associa un operatore o un manager al pannello aziendale della tua attività.</span>
+            </div>
+          </div>
+          <form id="team-add-form" class="team-add-form" style="margin-top: 14px;">
+            <div class="team-form-grid">
+              <div class="field-group">
+                <label for="team-add-email" class="field-label" style="display:block; font-size:0.82rem; font-weight:600; margin-bottom:6px; color:var(--ink);">Email collaboratore <span style="color:var(--red)">*</span></label>
+                <input type="email" id="team-add-email" class="form-input" placeholder="es. operatore@azienda.it" required autocomplete="off" style="width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:0.88rem; background:var(--card-bg); color:var(--ink);">
+              </div>
+              <div class="field-group">
+                <label for="team-add-ruolo" class="field-label" style="display:block; font-size:0.82rem; font-weight:600; margin-bottom:6px; color:var(--ink);">Ruolo assegnato <span style="color:var(--red)">*</span></label>
+                <select id="team-add-ruolo" class="form-select" style="width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:0.88rem; background:var(--card-bg); color:var(--ink);">
+                  <option value="staff" selected>Operatore Staff (Inbox, chat clienti e prenotazioni)</option>
+                  <option value="manager">Manager (Gestione team, listini e report)</option>
+                </select>
+              </div>
+              <div class="field-group team-submit-group" style="display:flex; align-items:flex-end;">
+                <button type="submit" class="btn-primary" id="team-submit-btn" style="height: 40px; width: 100%; justify-content: center; display:inline-flex; align-items:center; gap: 8px;">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                  Aggiungi al Team
+                </button>
+              </div>
+            </div>
+            <p class="field-hint" style="margin-top: 12px; font-size: 0.8rem; color: var(--ink-soft); line-height: 1.45;">
+              💡 <strong>Accesso immediato:</strong> Se il collaboratore ha già un profilo Melpis, viene collegato all'istante a questo pannello. Se è un nuovo collega, può creare il proprio account personale su <a href="/registrati/" target="_blank" style="color:var(--brand); text-decoration:underline;">melpis.it/registrati</a> con la stessa email e troverà l'accesso già configurato.
+            </p>
+          </form>
+        </div>
+
+        <!-- Card: Membri attivi del Team -->
+        <div class="dash-card" id="team-members-card" style="margin-top: 20px;">
+          <div class="dash-card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span class="dash-card-title">Membri del team attivi</span>
+              <span class="dash-card-sub">Persone autorizzate ad accedere alle conversazioni WhatsApp e alle prenotazioni.</span>
+            </div>
+            <span class="review-stat-pill" id="team-count-badge">0 membri</span>
+          </div>
+
+          <div class="team-table-responsive" style="overflow-x: auto; margin-top: 16px;">
+            <table class="team-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--line); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);">
+                  <th style="padding: 10px 14px;">Collaboratore</th>
+                  <th style="padding: 10px 14px;">Email</th>
+                  <th style="padding: 10px 14px;">Ruolo</th>
+                  <th style="padding: 10px 14px;">Data adesione</th>
+                  <th style="padding: 10px 14px; text-align: right;">Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="team-members-tbody">
+                <tr>
+                  <td colspan="5" style="padding: 30px; text-align: center; color: var(--ink-soft);">Caricamento membri del team...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- ---------- VISTA: CONOSCENZA RISTRUTTURATA (4 CATEGORIE) ---------- -->
     <section class="view view-hidden" data-view-panel="conoscenza">
@@ -2643,6 +2752,6 @@
 <script src="/config.js"></script>
 <script src="vendor/fullcalendar.min.js"></script>
 <script src="vendor/dompurify.min.js"></script>
-<script src="app.js?v=integ-v7"></script>
+<script src="app.js?v=integ-v9"></script>
 </body>
 </html>

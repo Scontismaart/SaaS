@@ -686,6 +686,7 @@ function apriVistaImpostazioni(cat = "generale") {
     instagram: "Instagram Direct",
     calendar: "Google Calendar",
     reviews: "Google Recensioni",
+    "booking-pms": "Gestionale Prenotazioni (PMS)",
   };
   topbarTitle.textContent = titles[cat] || "Impostazioni";
 
@@ -733,6 +734,9 @@ function attivaCategoriaImpostazioni(cat) {
     calendar: "calendar",
     reviews: "reviews",
     webhook: "webhook",
+    "booking-pms": "booking-pms",
+    booking: "booking-pms",
+    pms: "booking-pms",
   };
   const targetCat = MAPPATURA_LEGACY[cat] || cat || "generale";
 
@@ -750,7 +754,7 @@ function attivaCategoriaImpostazioni(cat) {
   // Carica i dati specifici della categoria attiva
   if (targetCat === "generale") {
     if (typeof caricaTimezone === "function") caricaTimezone();
-  } else if (["whatsapp", "instagram", "calendar", "reviews", "webhook"].includes(targetCat)) {
+  } else if (["whatsapp", "instagram", "calendar", "reviews", "webhook", "booking-pms"].includes(targetCat)) {
     if (typeof caricaIntegrazioni === "function") caricaIntegrazioni();
   } else if (targetCat === "piano" || targetCat === "fatturazione") {
     if (typeof caricaAccount === "function") caricaAccount();
@@ -6625,7 +6629,8 @@ async function caricaIntegrazioni() {
       caricaStatoWhatsApp(),
       caricaStatoInstagram(),
       caricaStatoCalendar(),
-      caricaStatoReviews()
+      caricaStatoReviews(),
+      caricaStatoBooking()
     ]);
   } catch (err) {
     if (status) { status.textContent = "Errore durante il caricamento integrazioni."; status.style.color = "var(--red)"; }
@@ -7207,6 +7212,446 @@ document.getElementById("integ-reviews-disconnect")?.addEventListener("click", a
     setTimeout(() => toast(msgs[reason] || `Errore autorizzazione Google: ${reason}`, "error"), 400);
   }
 })();
+
+/* ============================================================
+   INTEGRAZIONE GESTIONALE PRENOTAZIONI (PMS / BOOKING FRAMEWORK - FASE 2)
+   ============================================================ */
+
+const PMS_PROVIDER_LABELS = {
+  internal: "Melpis Interno (Built-in)",
+  calcom: "Cal.com",
+  simplybook: "SimplyBook.me",
+  apaleo: "Apaleo PMS",
+  beds24: "Beds24 PMS",
+  zak: "WuBook ZaK",
+};
+
+const PMS_MODE_LABELS = {
+  authoritative: "Authoritative (Primario)",
+  shadow: "Shadow (Monitoraggio)",
+  local_only: "Local Only (Solo DB Locale)",
+  mirror: "Mirror (Sincronizzazione)",
+};
+
+async function caricaStatoBooking() {
+  const statoEl = document.getElementById("integ-booking-stato");
+  const titleEl = document.getElementById("integ-booking-title");
+  const subEl = document.getElementById("integ-booking-sub");
+  const helpEl = document.getElementById("integ-booking-help");
+  const metaProviderEl = document.getElementById("integ-booking-meta-provider");
+  const metaModeEl = document.getElementById("integ-booking-meta-mode");
+  const metaDpaEl = document.getElementById("integ-booking-meta-dpa");
+  const metaSyncEl = document.getElementById("integ-booking-meta-sync");
+  const honestContainer = document.getElementById("integ-booking-honest-badge-container");
+  const warningBanner = document.getElementById("integ-booking-warning-banner");
+  const quickModeBox = document.getElementById("integ-booking-quick-mode");
+  const quickModeSelect = document.getElementById("integ-booking-quick-mode-select");
+  const optQuickAuth = document.getElementById("opt-quick-authoritative");
+  const toggleBtn = document.getElementById("integ-booking-toggle-form-btn");
+  const disconnectBtn = document.getElementById("integ-booking-disconnect-btn");
+
+  if (!statoEl || !titleEl) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking/status`);
+    if (!res.ok) {
+      _aggiornaBadgeStato(statoEl, "error", "Errore");
+      if (subEl) subEl.textContent = "Impossibile verificare lo stato";
+      return;
+    }
+
+    const d = await res.json();
+    const isConfigured = Boolean(d.is_configured && d.provider && d.provider !== "internal" && d.is_active);
+
+    if (!isConfigured) {
+      // Motore Interno Built-in
+      _aggiornaBadgeStato(statoEl, "connected", "Built-in / Attivo");
+      titleEl.textContent = "Melpis Interno";
+      if (subEl) subEl.textContent = "Motore integrato (Local Only)";
+      if (metaProviderEl) metaProviderEl.textContent = "Melpis Interno (Built-in)";
+      if (metaModeEl) metaModeEl.textContent = "Local Only";
+      if (metaDpaEl) metaDpaEl.textContent = "Non applicabile";
+      if (metaSyncEl) metaSyncEl.textContent = "—";
+      if (helpEl) {
+        helpEl.textContent = "Il motore interno gestisce disponibilità, fasce orarie e capienze direttamente su database sicuro PostgreSQL senza software terzi.";
+      }
+      if (honestContainer) honestContainer.hidden = true;
+      if (warningBanner) warningBanner.hidden = true;
+      if (quickModeBox) quickModeBox.hidden = true;
+      if (disconnectBtn) disconnectBtn.hidden = true;
+      if (toggleBtn) toggleBtn.textContent = "Configura gestionale esterno";
+    } else {
+      // Gestionale Esterno Configurato
+      const provName = PMS_PROVIDER_LABELS[d.provider] || d.provider;
+      _aggiornaBadgeStato(statoEl, "connected", "Connesso");
+      titleEl.textContent = provName;
+      if (subEl) subEl.textContent = `Modalità ${d.mode || "authoritative"} · Attivo`;
+      if (metaProviderEl) metaProviderEl.textContent = provName;
+      if (metaModeEl) metaModeEl.textContent = PMS_MODE_LABELS[d.mode] || d.mode;
+      if (metaDpaEl) metaDpaEl.textContent = d.medical_dpa_signed ? "Firmato (Art. 9 GDPR)" : "Non attivo (Note filtrate)";
+
+      if (metaSyncEl) {
+        if (d.last_sync) {
+          const sDate = d.last_sync.updated_at ? new Date(d.last_sync.updated_at).toLocaleString("it-IT") : "";
+          if (d.last_sync.status === "synced") {
+            metaSyncEl.textContent = `Sincronizzato (${d.last_sync.external_booking_id || "OK"}) ${sDate ? "· " + sDate : ""}`;
+          } else if (d.last_sync.status === "failed") {
+            metaSyncEl.textContent = `Errore: ${d.last_sync.sync_error || "fallito"} ${sDate ? "· " + sDate : ""}`;
+          } else {
+            metaSyncEl.textContent = `${d.last_sync.status} ${sDate ? "· " + sDate : ""}`;
+          }
+        } else {
+          metaSyncEl.textContent = "Nessuna transazione recente";
+        }
+      }
+
+      if (helpEl) {
+        helpEl.textContent = `Integrazione con ${provName} attiva. Le prenotazioni inviate dai clienti WhatsApp vengono gestite in modalità ${d.mode}.`;
+      }
+
+      // Honest badge: "Verifica live consigliata" per Cal.com, Apaleo, Beds24 (§12 audit)
+      if (honestContainer) {
+        honestContainer.hidden = !["calcom", "apaleo", "beds24"].includes(d.provider);
+      }
+
+      // Warning banner per SimplyBook (aggiornamento non supportato) e ZaK (solo shadow/local_only)
+      if (warningBanner) {
+        if (d.provider === "simplybook") {
+          warningBanner.hidden = false;
+          warningBanner.innerHTML = "<strong>Attenzione SimplyBook:</strong> L'aggiornamento e la modifica delle prenotazioni non sono supportati via API da SimplyBook.me (solo creazione e cancellazione via bot).";
+        } else if (d.provider === "zak") {
+          warningBanner.hidden = false;
+          warningBanner.innerHTML = "<strong>Gating Governance:</strong> WuBook ZaK è attivo in modalità protetta (Shadow / Local Only). La modalità authoritative è disabilitata per policy di governance.";
+        } else {
+          warningBanner.hidden = true;
+        }
+      }
+
+      // Quick Mode Box
+      if (quickModeBox) {
+        quickModeBox.hidden = false;
+        if (quickModeSelect) {
+          quickModeSelect.value = d.mode || "authoritative";
+          if (optQuickAuth) {
+            if (d.provider === "zak") {
+              optQuickAuth.disabled = true;
+              optQuickAuth.textContent = "Authoritative (Disabilitato per ZaK)";
+            } else {
+              optQuickAuth.disabled = false;
+              optQuickAuth.textContent = "Authoritative (Primario)";
+            }
+          }
+        }
+      }
+
+      if (disconnectBtn) disconnectBtn.hidden = false;
+      if (toggleBtn) toggleBtn.textContent = "Riconfigura credenziali";
+    }
+  } catch (err) {
+    _aggiornaBadgeStato(statoEl, "error", "Errore");
+    if (subEl) subEl.textContent = "Errore di connessione con il server";
+  }
+}
+
+function _aggiornaDescrizioneModalitaBooking() {
+  const modeSelect = document.getElementById("booking-mode-select");
+  const descEl = document.getElementById("booking-mode-description");
+  if (!modeSelect || !descEl) return;
+
+  const m = modeSelect.value;
+  if (m === "authoritative") {
+    descEl.textContent = "Il gestionale esterno fa fede assoluta per disponibilità e prenotazioni. Nessun fallback fittizio locale; se il gestionale fallisce o è occupato, scatta l'escalation con operatore umano.";
+  } else if (m === "shadow") {
+    descEl.textContent = "La prenotazione viene salvata e confermata primariamente sul database locale di Melpis; la chiamata al gestionale esterno avviene asincronamente per audit e monitoraggio.";
+  } else {
+    descEl.textContent = "Tutte le transazioni avvengono esclusivamente sul database PostgreSQL locale di Melpis. Nessun dato inviato al gestionale esterno.";
+  }
+}
+
+function _aggiornaGatingProviderBooking() {
+  const providerSelect = document.getElementById("booking-provider-select");
+  const modeSelect = document.getElementById("booking-mode-select");
+  const optAuth = document.getElementById("opt-form-authoritative");
+  const optShadow = document.getElementById("opt-form-shadow");
+  const honestBox = document.getElementById("booking-form-honest-box");
+  const honestText = document.getElementById("booking-form-honest-text");
+  const warningBox = document.getElementById("booking-form-warning-box");
+  const warningText = document.getElementById("booking-form-warning-text");
+
+  if (!providerSelect || !modeSelect) return;
+  const p = providerSelect.value;
+
+  // 1. Mostra/Nascondi container campi per provider
+  const allFieldDivs = document.querySelectorAll(".booking-provider-fields");
+  allFieldDivs.forEach((div) => {
+    div.hidden = div.id !== `fields-provider-${p}`;
+  });
+
+  // 2. Gating §12 su modalità e provider
+  if (p === "zak") {
+    if (optAuth) {
+      optAuth.disabled = true;
+      optAuth.textContent = "Authoritative (Non consentito per WuBook ZaK)";
+    }
+    if (optShadow) {
+      optShadow.disabled = false;
+      optShadow.textContent = "Shadow (Monitoraggio / Test — Fa fede Melpis locale)";
+    }
+    if (modeSelect.value === "authoritative") {
+      modeSelect.value = "shadow";
+    }
+    if (warningBox && warningText) {
+      warningBox.hidden = false;
+      warningText.innerHTML = "<strong>Gating ZaK:</strong> WuBook ZaK è limitato alla modalità <em>Shadow</em> o <em>Local Only</em>. Le modalità Authoritative e Mirror sono bloccate perché non ancora certificate per la produzione.";
+    }
+    if (honestBox) honestBox.hidden = true;
+  } else if (p === "internal") {
+    if (optAuth) {
+      optAuth.disabled = true;
+      optAuth.textContent = "Authoritative (Non applicabile a motore interno)";
+    }
+    if (optShadow) {
+      optShadow.disabled = true;
+      optShadow.textContent = "Shadow (Non applicabile a motore interno)";
+    }
+    modeSelect.value = "local_only";
+    if (warningBox) warningBox.hidden = true;
+    if (honestBox) honestBox.hidden = true;
+  } else {
+    if (optAuth) {
+      optAuth.disabled = false;
+      optAuth.textContent = "Authoritative (Primario — Fa fede il gestionale)";
+    }
+    if (optShadow) {
+      optShadow.disabled = false;
+      optShadow.textContent = "Shadow (Monitoraggio / Test — Fa fede Melpis locale)";
+    }
+
+    if (p === "simplybook") {
+      if (warningBox && warningText) {
+        warningBox.hidden = false;
+        warningText.innerHTML = "<strong>Attenzione SimplyBook:</strong> L'aggiornamento/modifica delle prenotazioni non è supportato dall'API di SimplyBook (solo creazione e cancellazione). Eventuali cambi orario richiedono una nuova prenotazione o gestione manuale.";
+      }
+      if (honestBox) honestBox.hidden = true;
+    } else if (["calcom", "apaleo", "beds24"].includes(p)) {
+      if (warningBox) warningBox.hidden = true;
+      if (honestBox && honestText) {
+        honestBox.hidden = false;
+        const nome = PMS_PROVIDER_LABELS[p] || p;
+        honestText.innerHTML = `<strong>Verifica live consigliata (${nome}):</strong> Tutti i contratti e le API sono validati tramite test automatici. Si consiglia comunque di effettuare una prenotazione reale di test prima dell'apertura completa al pubblico.`;
+      }
+    } else {
+      if (warningBox) warningBox.hidden = true;
+      if (honestBox) honestBox.hidden = true;
+    }
+  }
+
+  _aggiornaDescrizioneModalitaBooking();
+}
+
+// Event Listeners Booking Provider Setup
+document.getElementById("booking-provider-select")?.addEventListener("change", _aggiornaGatingProviderBooking);
+document.getElementById("booking-mode-select")?.addEventListener("change", _aggiornaDescrizioneModalitaBooking);
+
+document.getElementById("integ-booking-toggle-form-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-booking-form-card");
+  if (!formCard) return;
+  const isHidden = formCard.hidden;
+  formCard.hidden = !isHidden;
+  if (isHidden) {
+    _aggiornaGatingProviderBooking();
+    formCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
+
+document.getElementById("booking-form-cancel-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-booking-form-card");
+  if (formCard) formCard.hidden = true;
+});
+
+// Quick Mode Switcher
+document.getElementById("integ-booking-quick-mode-btn")?.addEventListener("click", async () => {
+  const select = document.getElementById("integ-booking-quick-mode-select");
+  const btn = document.getElementById("integ-booking-quick-mode-btn");
+  const feedbackEl = document.getElementById("integ-booking-feedback");
+  if (!select || !btn) return;
+
+  const mode = select.value;
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = "Aggiorno…";
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking/mode`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || `Modalità aggiornata a ${mode}`, "success");
+      await caricaStatoBooking();
+    } else if (res.status !== 403) {
+      const errMsg = d.detail || "Errore durante l'aggiornamento della modalità.";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    toast("Errore di rete durante l'aggiornamento della modalità.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+// Disconnessione Gestionale
+document.getElementById("integ-booking-disconnect-btn")?.addEventListener("click", async () => {
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere il gestionale di prenotazioni?",
+    descrizione: "Le credenziali salvate verranno rimosse e Melpis tornerà a gestire le prenotazioni esclusivamente con il database locale integrato.",
+    label: "Disconnetti gestionale",
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking`, { method: "DELETE" });
+    if (res.ok) {
+      toast("Gestionale disconnesso con successo. Motore interno ripristinato.", "success");
+      const formCard = document.getElementById("integ-booking-form-card");
+      if (formCard) formCard.hidden = true;
+      await caricaStatoBooking();
+    } else if (res.status !== 403) {
+      toast("Errore durante la rimozione del gestionale.", "error");
+    }
+  } catch {
+    toast("Errore di connessione.", "error");
+  }
+});
+
+// Salvataggio Configurazione Provider
+document.getElementById("booking-config-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const provider = document.getElementById("booking-provider-select")?.value || "internal";
+  const mode = document.getElementById("booking-mode-select")?.value || "local_only";
+  const medicalDpa = Boolean(document.getElementById("booking-medical-dpa-check")?.checked);
+  const submitBtn = document.getElementById("booking-form-submit-btn");
+  const feedbackEl = document.getElementById("booking-form-feedback");
+
+  // Controllo di sicurezza: WuBook ZaK non supporta authoritative
+  if (provider === "zak" && mode === "authoritative") {
+    toast("WuBook ZaK non supporta la modalità authoritative in produzione.", "error");
+    return;
+  }
+
+  let credentials = {};
+  let config = { medical_dpa_signed: medicalDpa };
+
+  if (provider === "calcom") {
+    const apiKey = document.getElementById("calcom-api-key")?.value.trim();
+    const eventTypeId = document.getElementById("calcom-event-type-id")?.value.trim();
+    const timezone = document.getElementById("calcom-timezone")?.value.trim() || "Europe/Rome";
+    if (!apiKey) {
+      toast("Inserisci l'API Key per Cal.com.", "error");
+      return;
+    }
+    credentials = { api_key: apiKey };
+    if (eventTypeId) config.event_type_id = eventTypeId;
+    config.timezone = timezone;
+  } else if (provider === "simplybook") {
+    const companyLogin = document.getElementById("simplybook-company-login")?.value.trim();
+    const apiKey = document.getElementById("simplybook-api-key")?.value.trim();
+    if (!companyLogin || !apiKey) {
+      toast("Inserisci Company Login e API Key per SimplyBook.me.", "error");
+      return;
+    }
+    credentials = { company_login: companyLogin, api_key: apiKey };
+  } else if (provider === "apaleo") {
+    const clientId = document.getElementById("apaleo-client-id")?.value.trim();
+    const clientSecret = document.getElementById("apaleo-client-secret")?.value.trim();
+    const propertyId = document.getElementById("apaleo-property-id")?.value.trim();
+    if (!clientId || !clientSecret) {
+      toast("Inserisci Client ID e Client Secret per Apaleo.", "error");
+      return;
+    }
+    credentials = { client_id: clientId, client_secret: clientSecret };
+    if (propertyId) credentials.property_id = propertyId;
+    config.channel_code = "Direct";
+    config.timezone = "Europe/Rome";
+  } else if (provider === "beds24") {
+    const inviteCode = document.getElementById("beds24-invite-code")?.value.trim();
+    const propertyId = document.getElementById("beds24-property-id")?.value.trim();
+    if (!inviteCode || !propertyId) {
+      toast("Inserisci Invite Code e ID Proprietà per Beds24.", "error");
+      return;
+    }
+    credentials = { invite_code: inviteCode, property_id: propertyId };
+    config.timezone = "Europe/Rome";
+  } else if (provider === "zak") {
+    const propertyId = document.getElementById("zak-property-id")?.value.trim();
+    const apiKey = document.getElementById("zak-api-key")?.value.trim();
+    if (!propertyId || !apiKey) {
+      toast("Inserisci Property ID e Token API per WuBook ZaK.", "error");
+      return;
+    }
+    credentials = { property_id: propertyId, api_key: apiKey };
+  } else if (provider === "internal") {
+    credentials = {};
+    config.medical_dpa_signed = false;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Salvataggio in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider,
+        credentials,
+        mode,
+        config,
+        is_active: true,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || "Integrazione gestionale salvata con successo!", "success");
+      const formCard = document.getElementById("integ-booking-form-card");
+      if (formCard) formCard.hidden = true;
+      await caricaStatoBooking();
+    } else if (res.status !== 403) {
+      const errMsg = d.detail || "Errore durante il salvataggio dell'integrazione.";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante il salvataggio.";
+    }
+    toast("Impossibile salvare la configurazione del gestionale.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Salva Configurazione";
+    }
+  }
+});
 
 /* ============================================================
    STAMPA REPORT + SCORCIATOIE TASTIERA

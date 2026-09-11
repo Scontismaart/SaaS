@@ -488,6 +488,7 @@ html[data-theme="dark"] .settings-cat-btn.active {
 .settings-cat-icon.icon-ig { color: #E1306C; }
 .settings-cat-icon.icon-cal { color: #4285F4; }
 .settings-cat-icon.icon-reviews { color: #FBBC05; }
+.settings-cat-icon.icon-booking-pms { color: #0284c7; }
 
 .nav-badge {
   min-width: 19px;
@@ -7545,6 +7546,11 @@ html[data-theme="dark"] .toast {
   color: #FBBC05;
 }
 
+.integrazione-icona.icon-booking-pms {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+
 .integrazione-icona.icon-wh {
   background: var(--accent-soft);
   color: var(--accent);
@@ -7631,6 +7637,44 @@ html[data-theme="dark"] .toast {
 .badge-status.pending .badge-status-dot,
 .badge-status.pending_verification .badge-status-dot {
   background: var(--amber);
+}
+
+/* Badge di stato onesto / disclosure */
+.badge-status-honest {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.28);
+}
+
+/* Banner informativi e avvisi per gestionale */
+.pms-banner-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 12px 0 16px;
+}
+
+.pms-banner-box.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--amber-dark, #b45309);
+}
+
+.pms-banner-box.info {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #0369a1;
 }
 
 /* Metadata grid */

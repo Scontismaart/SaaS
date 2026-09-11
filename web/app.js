@@ -6712,8 +6712,8 @@ async function caricaStatoWhatsApp() {
       if (wizardCard) wizardCard.hidden = false;
       _setWaWizardStep(1);
     }
-  } catch (err) {
-    console.warn("caricaStatoWhatsApp error:", err);
+  } catch {
+    console.warn("[WhatsApp] Impossibile recuperare lo stato della connessione.");
     if (connectedCard) connectedCard.hidden = false;
     if (wizardCard) wizardCard.hidden = true;
     if (connectedSub) connectedSub.textContent = "Errore di connessione con il server.";
@@ -7811,6 +7811,10 @@ document.getElementById("booking-config-form")?.addEventListener("submit", async
       toast(d.message || "Integrazione gestionale salvata con successo!", "success");
       const formCard = document.getElementById("integ-booking-form-card");
       if (formCard) formCard.hidden = true;
+      ["calcom-api-key", "simplybook-api-key", "apaleo-client-secret", "beds24-invite-code", "zak-api-key"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
       await caricaStatoBooking();
     } else if (res.status !== 403) {
       const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante il salvataggio dell'integrazione.");

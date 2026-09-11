@@ -6569,7 +6569,7 @@ function _estraiMessaggioErroreApi(res, bodyData, fallbackMsg = "Operazione non 
     const trimmed = rawDetail.trim();
     // Filtro di sicurezza (Invariante 10): blocca leak di SQL, traceback o eccezioni interne grezze
     const isTechnicalLeak =
-      /SELECT\s+|INSERT\s+|UPDATE\s+|DELETE\s+|Traceback|psycopg2|sqlalchemy|Internal Server Error/i.test(trimmed);
+      /SELECT\s+|INSERT\s+|UPDATE\s+|DELETE\s+|Traceback|psycopg2|sqlalchemy|asyncpg|fastapi\.exceptions|pydantic|\/src\/|File\s+["'].*?["']|line\s+\d+|Internal Server Error/i.test(trimmed);
     if (!isTechnicalLeak) {
       return trimmed;
     }

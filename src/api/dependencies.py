@@ -11,6 +11,7 @@ from fastapi import Depends, HTTPException, Request
 from src.core.auth.dependencies import (
     get_current_user,
     get_organization_context,
+    get_optional_organization_context,
     require_ruolo,
 )
 
@@ -149,6 +150,7 @@ __all__ = [
     "get_orchestrator",
     "get_current_org_id",
     "get_organization_context",
+    "get_optional_organization_context",
     "get_current_user",
     "require_ruolo",
 ]

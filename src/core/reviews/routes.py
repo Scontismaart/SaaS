@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo
 from src.core.db.repository import CoreRepository
 from src.core.reviews.schemas import (
@@ -49,6 +50,9 @@ async def list_reviews(
 ):
     repo = _get_repo(request)
     org_id = user["organization_id"]
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     rows = await repo.list_reviews(org_id, stato=stato, fonte=fonte, page=page, limit=limit)
     return ReviewListResponse(
         recensioni=[_to_item(r) for r in rows],
@@ -63,6 +67,10 @@ async def review_analytics(
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
     repo = _get_repo(request)
+    org_id = user["organization_id"]
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     return await repo.get_review_analytics(user["organization_id"], giorni=giorni)
 
 
@@ -73,6 +81,10 @@ async def get_review(
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
     repo = _get_repo(request)
+    org_id = user["organization_id"]
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     review = await repo.get_review(user["organization_id"], review_id)
     if review is None:
         raise HTTPException(status_code=404, detail="Recensione non trovata")
@@ -88,6 +100,10 @@ async def approve_review(
     """Approvazione one-click della bozza risposta. Multi-tenant: una
     recensione di un'altra org restituisce 404 (nessuna leak informativa)."""
     repo = _get_repo(request)
+    org_id = user["organization_id"]
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     review = await repo.approve_review(user["organization_id"], review_id)
     if review is None:
         raise HTTPException(status_code=404, detail="Recensione non trovata")

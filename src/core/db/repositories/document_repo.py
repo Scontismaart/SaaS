@@ -231,11 +231,15 @@ class DocumentRepository(TenantScopedRepository):
 
     async def delete_document(self, organization_id, document_id):
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                DELETE FROM documents WHERE id = $1 AND organization_id = $2
-                RETURNING id
-            """, document_id, organization_id)
-            return 1 if row else 0
+            async with conn.transaction():
+                await conn.execute("""
+                    DELETE FROM document_chunks WHERE document_id = $1 AND organization_id = $2
+                """, document_id, organization_id)
+                row = await conn.fetchrow("""
+                    DELETE FROM documents WHERE id = $1 AND organization_id = $2
+                    RETURNING id
+                """, document_id, organization_id)
+                return 1 if row else 0
 
     # ── Guardrails: Cache FAQ Semantica ───────────────────────────
 

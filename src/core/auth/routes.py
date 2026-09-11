@@ -72,6 +72,9 @@ class LoginRequest(BaseModel):
 
 
 def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
 
 
@@ -231,11 +234,7 @@ async def google_callback(request: Request):
     except RuntimeError:
         return error_redirect
 
-    target_url = (
-        cookie_next
-        if cookie_next.startswith(("http://", "https://"))
-        else f"{bff.public_app_url()}{cookie_next}"
-    )
+    target_url = cookie_next
     redirect = RedirectResponse(target_url, status_code=302)
     _set_session_cookies(redirect, data)
     issue_csrf_token(redirect)

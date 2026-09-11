@@ -79,3 +79,54 @@ def test_recensione_feature_blocked_by_plan(client):
         assert res.status_code == 403
         assert "non include la gestione delle recensioni" in res.json()["detail"]
     app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_messaggio_authenticated_organization(client):
+    mock_org_id = str(uuid.uuid4())
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": mock_org_id,
+        "ruolo": "owner",
+        "email": "owner@example.com",
+        "source": "jwt",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.get_organization.return_value = {
+        "id": mock_org_id,
+        "name": "Pizzeria Napoli",
+        "business_profile": {
+            "nome_attivita": "Pizzeria Napoli",
+            "tipo_attivita": "ristorante",
+            "citta": "Napoli",
+            "indirizzo": "Via Roma 1",
+            "telefono": "+39081000000",
+            "orari_apertura": "Tutti i giorni 19:00 - 23:30",
+        },
+    }
+    mock_repo.get_organization_billing.return_value = {"plan": "pro"}
+
+    mock_orchestrator = AsyncMock()
+    mock_out = MagicMock()
+    mock_out.response_text = "Benvenuto a Pizzeria Napoli!"
+    mock_out.richiede_umano = False
+    mock_out.motivo_richiesta_umano = None
+    mock_out.intent = "saluto"
+    mock_out.prenotazione = None
+    mock_out.disponibilita_slot = None
+    mock_out.guardrail_action = None
+    mock_orchestrator.orchestrate.return_value = mock_out
+
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True), \
+         patch.object(app.state, "orchestrator", mock_orchestrator, create=True):
+        res = client.post("/api/messaggio", json={
+            "testo": "Siete aperti stasera?",
+            "id_conversazione": f"conv-{uuid.uuid4().hex[:8]}",
+        })
+        assert res.status_code == 200
+        assert res.json()["risposta"] == "Benvenuto a Pizzeria Napoli!"
+        call_args = mock_orchestrator.orchestrate.call_args[0][0]
+        assert call_args.organization_id == mock_org_id
+        assert call_args.business_profile.nome == "Pizzeria Napoli"
+        assert call_args.record_billing_usage is True
+    app.dependency_overrides.pop(get_organization_context, None)

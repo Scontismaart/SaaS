@@ -198,9 +198,9 @@ class OrganizationRepository(TenantScopedRepository):
             row = await conn.fetchrow("""
                 WITH new_org AS (
                     INSERT INTO organizations
-                        (id, name, subscription_status, trial_start, trial_end)
+                        (id, name, subscription_status, trial_start, trial_end, messages_limit, users_limit)
                     VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3))
+                            NOW() + make_interval(days => $3), 2000, 3)
                     RETURNING id
                 )
                 INSERT INTO organization_memberships
@@ -244,9 +244,9 @@ class OrganizationRepository(TenantScopedRepository):
             row = await conn.fetchrow("""
                 WITH new_org AS (
                     INSERT INTO organizations
-                        (id, name, subscription_status, trial_start, trial_end)
+                        (id, name, subscription_status, trial_start, trial_end, messages_limit, users_limit)
                     VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3))
+                            NOW() + make_interval(days => $3), 2000, 3)
                     RETURNING id
                 )
                 INSERT INTO organization_memberships

@@ -116,8 +116,9 @@ async def record_ai_usage(
 async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) -> str | None:
     """Verifica se il piano corrente dell'organizzazione include la feature richiesta.
     
-    Org in trial senza piano (plan IS NULL) = accesso completo: la prova e'
-    del piano massimo. Fail-open se il billing non e' leggibile.
+    Org in trial senza piano attivo o con subscription_status='trialing' = accesso basato sul piano Pro (Crescita):
+    le recensioni Google sono incluse, mentre la Knowledge Base RAG richiede l'upgrade al piano Scala.
+    Fail-open solo se repo/org_id o billing non sono disponibili.
     """
     if not repo or not org_id:
         return None
@@ -125,8 +126,11 @@ async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) 
     if not billing:
         return None
     plan_slug = billing.get("plan")
-    if not plan_slug:
-        return None
+    # Se l'utente non ha impostato un piano esplicito o è in periodo di prova (trialing),
+    # il tier operativo concesso durante la prova è 'pro' (Crescita).
+    if not plan_slug or billing.get("subscription_status") == "trialing":
+        if not plan_slug:
+            plan_slug = "pro"
     from src.core.billing.plans import PLANS
     plan = PLANS.get(plan_slug)
     if not plan:

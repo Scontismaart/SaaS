@@ -35,9 +35,14 @@ async def test_blocca_recensioni_su_starter_non_su_pro():
 
 
 @pytest.mark.asyncio
-async def test_trial_senza_piano_accesso_completo():
+async def test_trial_senza_piano_accesso_pro():
+    # In prova gratuita l'utente beneficia delle feature del piano Pro (Crescita):
+    # recensioni abilitate, ma RAG knowledge base bloccata (richiede Scala).
     repo = FakeRepo({"plan": None, "subscription_status": "trialing"})
-    assert await api_main._piano_blocca_feature(repo, "org-1", "rag") is None
+    rag_blocked = await api_main._piano_blocca_feature(repo, "org-1", "rag")
+    assert rag_blocked is not None
+    assert "Knowledge Base AI" in rag_blocked
+    assert await api_main._piano_blocca_feature(repo, "org-1", "recensioni") is None
 
 
 @pytest.mark.asyncio

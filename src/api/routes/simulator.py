@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.api.dependencies import (
     get_orchestrator,
+    get_optional_organization_context,
     get_organization_context,
     get_repo,
     require_ruolo,
@@ -59,19 +60,17 @@ async def ricevi_messaggio(
     profilo = None
     repo = getattr(request.app.state, "repo", None)
     try:
-        auth_header = request.headers.get("Authorization") or request.headers.get("X-API-Key")
-        if auth_header:
-            user = await get_organization_context(request)
-            if user and user.get("source") != "anonymous" and user.get("organization_id"):
-                org_id = user["organization_id"]
-                if repo:
-                    org_data = await repo.get_organization(org_id)
-                    if org_data and org_data.get("business_profile"):
-                        from src.whatsapp.inbound_processor import _profile_from_dict
-                        profilo = _profile_from_dict(
-                            org_data["business_profile"],
-                            fallback_name=org_data.get("name", "Attività"),
-                        )
+        user = await get_optional_organization_context(request)
+        if user and user.get("source") != "anonymous" and user.get("organization_id"):
+            org_id = user["organization_id"]
+            if repo:
+                org_data = await repo.get_organization(org_id)
+                if org_data and org_data.get("business_profile"):
+                    from src.whatsapp.inbound_processor import _profile_from_dict
+                    profilo = _profile_from_dict(
+                        org_data["business_profile"],
+                        fallback_name=org_data.get("name", "Attività"),
+                    )
     except Exception as e:
         logger.warning("Profilo organizzazione non caricato per il simulatore (fallback demo): %s", e)
 

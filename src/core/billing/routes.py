@@ -152,12 +152,22 @@ async def get_subscription(
 
     org_id = user["organization_id"]
     billing = await repo.get_organization_billing(org_id)
+    plan = billing.get("plan")
+    status = billing.get("subscription_status")
+    messages_limit = billing.get("messages_limit")
+    users_limit = billing.get("users_limit")
+    if (status == "trialing" or not plan):
+        if messages_limit is None:
+            messages_limit = 2000
+        if users_limit is None:
+            users_limit = 3
+
     return {
-        "plan": billing.get("plan"),
-        "subscription_status": billing.get("subscription_status"),
-        "messages_limit": billing.get("messages_limit"),
-        "users_limit": billing.get("users_limit"),
-        "whatsapp_numbers_limit": billing.get("whatsapp_numbers_limit"),
+        "plan": plan,
+        "subscription_status": status,
+        "messages_limit": messages_limit,
+        "users_limit": users_limit,
+        "whatsapp_numbers_limit": billing.get("whatsapp_numbers_limit") or 1,
         "messages_used_this_period": billing.get("messages_used_this_period"),
         "current_period_start": billing.get("current_period_start"),
         "current_period_end": billing.get("current_period_end"),
@@ -178,7 +188,9 @@ async def get_usage(
     org_id = user["organization_id"]
     billing = await repo.get_organization_billing(org_id)
     limit = billing.get("messages_limit")
-    used = billing.get("messages_used_this_period", 0)
+    if limit is None and (billing.get("subscription_status") == "trialing" or not billing.get("plan")):
+        limit = 2000
+    used = billing.get("messages_used_this_period", 0) or 0
 
     return {
         "messages_used": used,

@@ -42,7 +42,7 @@ function _sanitize(v) {
    TOAST — notifiche non bloccanti al posto di alert()
    ============================================================ */
 
-function toast(messaggio, tipo = "info", durata = 4200) {
+function toast(messaggio, tipo = "info", durata = 4200, azione = null) {
   let container = document.getElementById("toast-container");
   if (!container) {
     container = document.createElement("div");
@@ -53,7 +53,32 @@ function toast(messaggio, tipo = "info", durata = 4200) {
   }
   const el = document.createElement("div");
   el.className = `toast toast-${tipo}`;
-  el.textContent = messaggio;
+  
+  const textSpan = document.createElement("span");
+  textSpan.textContent = messaggio;
+  el.appendChild(textSpan);
+
+  if (azione && azione.testo && typeof azione.onClick === "function") {
+    const actionBtn = document.createElement("button");
+    actionBtn.type = "button";
+    actionBtn.className = "toast-action-btn";
+    actionBtn.textContent = azione.testo;
+    actionBtn.style.marginLeft = "8px";
+    actionBtn.style.textDecoration = "underline";
+    actionBtn.style.fontWeight = "600";
+    actionBtn.style.cursor = "pointer";
+    actionBtn.style.background = "transparent";
+    actionBtn.style.border = "none";
+    actionBtn.style.color = "inherit";
+    actionBtn.style.font = "inherit";
+    actionBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      azione.onClick();
+      el.remove();
+    });
+    el.appendChild(actionBtn);
+  }
+
   container.appendChild(el);
   requestAnimationFrame(() => el.classList.add("toast-in"));
   setTimeout(() => {
@@ -204,6 +229,35 @@ async function apiFetch(url, options = {}) {
       sessione = null;
       aggiornaBottoneAccesso();
       vaiAdAccesso();
+    }
+  }
+  if (res.status === 403) {
+    const mfaHeader = res.headers.get("X-MFA-Required");
+    let isMfa = mfaHeader === "true";
+    if (!isMfa) {
+      try {
+        const cloned = res.clone();
+        const data = await cloned.json();
+        if (
+          data &&
+          typeof data.detail === "string" &&
+          (data.detail.includes("MFA") || data.detail.includes("due fattori"))
+        ) {
+          isMfa = true;
+        }
+      } catch (_) {}
+    }
+    if (isMfa) {
+      res.mfaRequired = true;
+      toast(
+        "Questa operazione richiede la verifica a due fattori (MFA), non ancora disponibile nella dashboard.",
+        "warning",
+        8000,
+        {
+          testo: "Contatta assistenza",
+          onClick: () => window.open("mailto:assistenza@melpis.it?subject=Richiesta%20abilitazione%20MFA", "_blank"),
+        }
+      );
     }
   }
   segnaReteOk();
@@ -478,7 +532,10 @@ async function cambiaPiano(slug) {
         cancel_url: window.location.origin + "/app/",
       }),
     });
-    if (!res.ok) throw new Error("checkout non disponibile");
+    if (!res.ok) {
+      if (res.status === 403) return;
+      throw new Error("checkout non disponibile");
+    }
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   } catch (e) {
@@ -493,7 +550,10 @@ async function apriPortaleBilling() {
   const status = document.getElementById("account-status");
   try {
     const res = await apiFetch(`${API_BASE}/api/billing/create-portal-session`, { method: "POST" });
-    if (!res.ok) throw new Error("portale non disponibile");
+    if (!res.ok) {
+      if (res.status === 403) return;
+      throw new Error("portale non disponibile");
+    }
     const data = await res.json();
     if (data.url) window.location.href = data.url;
   } catch (e) {
@@ -603,6 +663,7 @@ const VIEW_FALLBACK = {
   fatturazione: { view: "impostazioni", tab: "fatturazione" },
   sicurezza: { view: "impostazioni", tab: "sicurezza" },
   profilo: { view: "impostazioni", tab: "profilo" },
+  reviews: { view: "impostazioni", tab: "reviews" },
   documenti: { view: "conoscenza" },
   report: { view: "panoramica" },
   onboarding: { view: "assistente" },
@@ -621,6 +682,12 @@ function apriVistaImpostazioni(cat = "generale") {
   const titles = {
     piano: "Piano e abbonamento",
     fatturazione: "Piano e abbonamento",
+    whatsapp: "WhatsApp Business",
+    instagram: "Instagram Direct",
+    calendar: "Google Calendar",
+    reviews: "Google Recensioni",
+    "booking-pms": "Gestionale Prenotazioni (PMS)",
+    airtable: "Airtable",
   };
   topbarTitle.textContent = titles[cat] || "Impostazioni";
 
@@ -666,7 +733,12 @@ function attivaCategoriaImpostazioni(cat) {
     whatsapp: "whatsapp",
     instagram: "instagram",
     calendar: "calendar",
+    reviews: "reviews",
     webhook: "webhook",
+    "booking-pms": "booking-pms",
+    booking: "booking-pms",
+    pms: "booking-pms",
+    airtable: "airtable",
   };
   const targetCat = MAPPATURA_LEGACY[cat] || cat || "generale";
 
@@ -684,7 +756,7 @@ function attivaCategoriaImpostazioni(cat) {
   // Carica i dati specifici della categoria attiva
   if (targetCat === "generale") {
     if (typeof caricaTimezone === "function") caricaTimezone();
-  } else if (["whatsapp", "instagram", "calendar", "webhook"].includes(targetCat)) {
+  } else if (["whatsapp", "instagram", "calendar", "reviews", "webhook", "booking-pms", "airtable"].includes(targetCat)) {
     if (typeof caricaIntegrazioni === "function") caricaIntegrazioni();
   } else if (targetCat === "piano" || targetCat === "fatturazione") {
     if (typeof caricaAccount === "function") caricaAccount();
@@ -6411,24 +6483,124 @@ async function caricaAudit({ append = false } = {}) {
    INTEGRAZIONI — stato canali e test di connessione reale
    ============================================================ */
 
+/* ============================================================
+   INTEGRAZIONI — HELPER STATI UNIFICATI (§8) ED ERROR MAPPING (§9)
+   ============================================================ */
+
+/**
+ * Estrae e normalizza i messaggi di errore restituiti dalle API (Invarianti 9 e 10).
+ * Mappa i codici HTTP standard (§9 audit) e previene l'esposizione di dettagli tecnici grezzi
+ * (stack trace, frammenti SQL o oggetti Pydantic serializzati come [object Object]).
+ */
+function _estraiMessaggioErroreApi(res, bodyData, fallbackMsg = "Operazione non riuscita.") {
+  const status = res ? res.status : null;
+
+  // 1. Mappatura prioritaria su codici di rete e infrastruttura (§9 audit)
+  if (status === 429) {
+    return "Troppe richieste inviate. Attendi qualche istante prima di riprovare.";
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return "Il servizio esterno è temporaneamente non raggiungibile. Riprova tra poco.";
+  }
+  if (status === 500) {
+    return "Si è verificato un errore interno del server. Riprova più tardi.";
+  }
+  if (status === 401) {
+    return "Sessione scaduta o credenziali non valide. Effettua nuovamente l'accesso.";
+  }
+
+  // 2. Estrazione e sanitizzazione del payload 'detail'
+  let rawDetail = bodyData?.detail || bodyData?.message || bodyData?.error;
+
+  // Se FastAPI / Pydantic ha restituito un array di errori di validazione (422)
+  if (Array.isArray(rawDetail)) {
+    const fieldErrors = rawDetail
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const loc = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : "";
+        const msg = item.msg || "non valido";
+        return loc ? `Campo "${loc}": ${msg}` : msg;
+      })
+      .filter(Boolean);
+    if (fieldErrors.length > 0) {
+      return `Dati non validi: ${fieldErrors.slice(0, 3).join("; ")}.`;
+    }
+    rawDetail = null;
+  } else if (rawDetail && typeof rawDetail === "object") {
+    rawDetail = rawDetail.message || rawDetail.detail || JSON.stringify(rawDetail);
+  }
+
+  if (typeof rawDetail === "string" && rawDetail.trim()) {
+    const trimmed = rawDetail.trim();
+    // Filtro di sicurezza (Invariante 10): blocca leak di SQL, traceback o eccezioni interne grezze
+    const isTechnicalLeak =
+      /SELECT\s+|INSERT\s+|UPDATE\s+|DELETE\s+|Traceback|psycopg2|sqlalchemy|Internal Server Error/i.test(trimmed);
+    if (!isTechnicalLeak) {
+      return trimmed;
+    }
+  }
+
+  // 3. Fallback contestuale su codici standard se detail non disponibile o non sicuro
+  if (status === 403) {
+    return res?.mfaRequired
+      ? "Operazione bloccata: autenticazione a due fattori (MFA) richiesta."
+      : "Non disponi dei permessi necessari per questa operazione.";
+  }
+  if (status === 404) {
+    return "Risorsa o configurazione richiesta non trovata.";
+  }
+  if (status === 400) {
+    return "I dati inviati non sono validi. Controlla i campi inseriti.";
+  }
+
+  return fallbackMsg;
+}
+
+/**
+ * Aggiorna il badge di stato conformemente agli stati canonici di §8:
+ * NOT_CONNECTED, CONNECTING, CONNECTED, ERROR, REQUIRES_REAUTH, DISABLED, UNAUTHORIZED, MFA_REQUIRED
+ */
 function _aggiornaBadgeStato(el, statoKey, customLabel) {
   if (!el) return;
-  el.className = `integrazione-stato badge-status ${statoKey}`;
+  const canonicalMap = {
+    connected: "connected",
+    not_connected: "disconnected",
+    disconnected: "disconnected",
+    connecting: "connecting",
+    pending: "connecting",
+    pending_verification: "connecting",
+    error: "error",
+    requires_reauth: "requires_reauth",
+    expired_token: "requires_reauth",
+    disabled: "disabled",
+    unauthorized: "unauthorized",
+    mfa_required: "mfa_required",
+  };
+
+  const safeClass = canonicalMap[statoKey] || (statoKey === "connected" ? "connected" : "error");
+  el.className = `integrazione-stato badge-status ${safeClass}`;
   const dot = '<span class="badge-status-dot"></span>';
+
   let label = customLabel;
   if (!label) {
-    if (statoKey === "connected") label = "Connesso";
-    else if (statoKey === "disconnected") label = "Non connesso";
-    else if (statoKey === "expired_token") label = "Errore — Token scaduto";
-    else if (statoKey === "pending" || statoKey === "pending_verification") label = "In attesa di verifica";
+    if (safeClass === "connected") label = "Connesso";
+    else if (safeClass === "disconnected") label = "Non connesso";
+    else if (safeClass === "connecting") label = "In attesa";
+    else if (safeClass === "requires_reauth") label = "Riconnessione necessaria";
+    else if (safeClass === "disabled") label = "Disabilitato";
+    else if (safeClass === "unauthorized") label = "Non autorizzato";
+    else if (safeClass === "mfa_required") label = "MFA richiesta";
     else label = "Errore";
   }
-  el.innerHTML = `${dot}<span class="badge-status-label">${_sanitize(label)}</span>`;
+
+  el.innerHTML = `${dot}<span class="badge-status-label">${typeof DOMPurify !== "undefined" ? DOMPurify.sanitize(label) : _sanitize(label)}</span>`;
 }
 
 async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
   if (!btn) return;
+  if (btn.classList.contains("loading")) return;
   const originalHtml = btn.innerHTML;
+  btn.disabled = true;
   btn.classList.add("loading");
   btn.innerHTML = `
     <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -6453,6 +6625,12 @@ async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
       feedbackEl.textContent = data.message || (data.success ? "Test completato con successo." : "Errore durante la verifica.");
     }
 
+    const verifiedUser = data.details?.username || (data.message && data.message.match(/@([a-zA-Z0-9._]+)/)?.[1]);
+    if (canale === "instagram" && verifiedUser) {
+      const igIdVal = document.getElementById("integ-ig-id");
+      if (igIdVal) igIdVal.textContent = `@${verifiedUser}`;
+    }
+
     if (data.success) {
       toast(data.message || "Connessione verificata con successo!", "success");
     } else {
@@ -6467,6 +6645,7 @@ async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
     toast("Impossibile eseguire il test di connessione.", "error");
   } finally {
     btn.classList.remove("loading");
+    btn.disabled = false;
     btn.innerHTML = originalHtml;
   }
 }
@@ -6495,10 +6674,30 @@ async function caricaStatoWhatsApp() {
   const phoneDisplay = document.getElementById("integ-wa-phone-number-display");
   const connectedTitle = document.getElementById("integ-wa-connected-title");
   const connectedSub = document.getElementById("integ-wa-connected-sub");
+  const statoEl = document.getElementById("integ-whatsapp-stato");
 
   try {
     const res = await apiFetch(`${API_BASE}/api/whatsapp/settings`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile recuperare lo stato di WhatsApp.");
+      if (res.status === 403) {
+        if (connectedCard) connectedCard.hidden = false;
+        if (wizardCard) wizardCard.hidden = true;
+        if (connectedTitle) connectedTitle.textContent = "WhatsApp Business";
+        if (connectedSub) connectedSub.textContent = errMsg;
+        if (phoneDisplay) phoneDisplay.textContent = "—";
+        if (statoEl) _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+      } else {
+        if (connectedCard) connectedCard.hidden = false;
+        if (wizardCard) wizardCard.hidden = true;
+        if (connectedTitle) connectedTitle.textContent = "WhatsApp Business";
+        if (connectedSub) connectedSub.textContent = errMsg;
+        if (phoneDisplay) phoneDisplay.textContent = "—";
+        if (statoEl) _aggiornaBadgeStato(statoEl, "error");
+      }
+      return;
+    }
     const d = await res.json();
 
     if (d.connesso) {
@@ -6507,13 +6706,18 @@ async function caricaStatoWhatsApp() {
       if (phoneDisplay) phoneDisplay.textContent = d.display_phone_number || d.phone_number_id || "Numero collegato";
       if (connectedTitle) connectedTitle.textContent = d.verified_name || "WhatsApp Business";
       if (connectedSub) connectedSub.textContent = "Connesso e pronto a rispondere";
+      if (statoEl) _aggiornaBadgeStato(statoEl, "connected");
     } else {
       if (connectedCard) connectedCard.hidden = true;
       if (wizardCard) wizardCard.hidden = false;
       _setWaWizardStep(1);
     }
-  } catch (err) {
-    console.warn("caricaStatoWhatsApp error:", err);
+  } catch {
+    console.warn("[WhatsApp] Impossibile recuperare lo stato della connessione.");
+    if (connectedCard) connectedCard.hidden = false;
+    if (wizardCard) wizardCard.hidden = true;
+    if (connectedSub) connectedSub.textContent = "Errore di connessione con il server.";
+    if (statoEl) _aggiornaBadgeStato(statoEl, "error", "Errore di rete");
   }
 }
 
@@ -6521,6 +6725,7 @@ async function caricaStatoInstagram() {
   const connectedCard = document.getElementById("integ-instagram-connected-card");
   const wizardCard = document.getElementById("integ-instagram-wizard-card");
   const igIdVal = document.getElementById("integ-ig-id");
+  const statoEl = document.getElementById("integ-instagram-stato");
 
   try {
     const res = await apiFetch(`${API_BASE}/api/instagram/account`);
@@ -6529,13 +6734,31 @@ async function caricaStatoInstagram() {
       if (connectedCard) connectedCard.hidden = false;
       if (wizardCard) wizardCard.hidden = true;
       if (igIdVal) igIdVal.textContent = d.ig_user_id ? `@${d.ig_user_id}` : "Account collegato";
-    } else {
+      if (statoEl) _aggiornaBadgeStato(statoEl, "connected");
+    } else if (res.status === 404) {
+      // 404: nessun account Instagram collegato per questo tenant
       if (connectedCard) connectedCard.hidden = true;
       if (wizardCard) wizardCard.hidden = false;
+      if (statoEl) _aggiornaBadgeStato(statoEl, "disconnected");
+    } else if (res.status === 403) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Permessi insufficienti per Instagram.");
+      if (connectedCard) connectedCard.hidden = false;
+      if (wizardCard) wizardCard.hidden = true;
+      if (igIdVal) igIdVal.textContent = errMsg;
+      if (statoEl) _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile recuperare lo stato di Instagram.");
+      if (connectedCard) connectedCard.hidden = false;
+      if (wizardCard) wizardCard.hidden = true;
+      if (igIdVal) igIdVal.textContent = errMsg;
+      if (statoEl) _aggiornaBadgeStato(statoEl, "error");
     }
   } catch (err) {
     if (connectedCard) connectedCard.hidden = true;
     if (wizardCard) wizardCard.hidden = false;
+    if (statoEl) _aggiornaBadgeStato(statoEl, "error", "Errore di rete");
   }
 }
 
@@ -6545,7 +6768,10 @@ async function caricaIntegrazioni() {
     await Promise.allSettled([
       caricaStatoWhatsApp(),
       caricaStatoInstagram(),
-      caricaStatoCalendar()
+      caricaStatoCalendar(),
+      caricaStatoReviews(),
+      caricaStatoBooking(),
+      caricaStatoAirtable()
     ]);
   } catch (err) {
     if (status) { status.textContent = "Errore durante il caricamento integrazioni."; status.style.color = "var(--red)"; }
@@ -6592,17 +6818,18 @@ document.getElementById("wa-connect-form")?.addEventListener("submit", async (e)
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone_number_id: phoneId, waba_id: wabaId, access_token: token }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       if (statusEl) statusEl.textContent = "";
       toast(data.message || "WhatsApp collegato con successo!", "success");
       _setWaWizardStep(3);
     } else {
+      const errMsg = _estraiMessaggioErroreApi(res, data, "Errore durante la connessione con Meta.");
       if (statusEl) {
-        statusEl.textContent = data.detail || "Errore durante la connessione con Meta.";
+        statusEl.textContent = errMsg;
         statusEl.className = "security-status err";
       }
-      toast(data.detail || "Verifica non riuscita", "error");
+      toast(errMsg, "error");
     }
   } catch (err) {
     if (statusEl) {
@@ -6637,7 +6864,7 @@ document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to_phone: testPhone || null }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
       if (statusEl) {
         statusEl.textContent = data.message || "Messaggio di test inviato con successo!";
@@ -6645,11 +6872,12 @@ document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async 
       }
       toast(data.message || "Messaggio inviato!", "success");
     } else {
+      const errMsg = _estraiMessaggioErroreApi(res, data, data.message || "Errore durante l'invio del messaggio di test.");
       if (statusEl) {
-        statusEl.textContent = data.message || data.detail || "Errore durante l'invio del messaggio di test.";
+        statusEl.textContent = errMsg;
         statusEl.className = "security-status err";
       }
-      toast(data.message || "Invio fallito", "error");
+      toast(errMsg, "error");
     }
   } catch {
     if (statusEl) {
@@ -6700,13 +6928,23 @@ document.getElementById("integ-wa-send-test-submit")?.addEventListener("click", 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to_phone: phone }),
     });
-    const d = await res.json();
-    if (feedback) {
-      feedback.hidden = false;
-      feedback.className = `integ-test-feedback ${d.success ? "success" : "error"}`;
-      feedback.textContent = d.message || (d.success ? "Messaggio inviato!" : "Errore durante l'invio.");
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.success) {
+      if (feedback) {
+        feedback.hidden = false;
+        feedback.className = "integ-test-feedback success";
+        feedback.textContent = d.message || "Messaggio inviato!";
+      }
+      toast(d.message || "Messaggio inviato!", "success");
+    } else {
+      const errMsg = _estraiMessaggioErroreApi(res, d, d.message || "Errore durante l'invio della prova.");
+      if (feedback) {
+        feedback.hidden = false;
+        feedback.className = "integ-test-feedback error";
+        feedback.textContent = errMsg;
+      }
+      toast(errMsg, "error");
     }
-    if (d.success) toast(d.message, "success");
   } catch {
     if (feedback) {
       feedback.hidden = false;
@@ -6739,11 +6977,12 @@ document.getElementById("integ-wa-disconnect-btn")?.addEventListener("click", as
 
   try {
     const res = await apiFetch(`${API_BASE}/api/whatsapp/disconnect`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("WhatsApp disconnesso con successo.");
       await caricaStatoWhatsApp();
-    } else {
-      toast("Errore durante la disconnessione.", "error");
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di rete.", "error");
@@ -6777,15 +7016,17 @@ document.getElementById("ig-connect-form")?.addEventListener("submit", async (e)
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ig_user_id: igUserId, access_token: igToken }),
     });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Instagram Direct collegato con successo!", "success");
       await caricaStatoInstagram();
     } else {
-      const err = await res.json();
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante il collegamento di Instagram.");
       if (statusEl) {
-        statusEl.textContent = err.detail || "Errore durante il collegamento di Instagram.";
+        statusEl.textContent = errMsg;
         statusEl.className = "security-status err";
       }
+      toast(errMsg, "error");
     }
   } catch {
     if (statusEl) {
@@ -6810,20 +7051,24 @@ document.getElementById("integ-instagram-disconnect")?.addEventListener("click",
 
   try {
     const res = await apiFetch(`${API_BASE}/api/instagram/account`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Instagram Direct disconnesso con successo.");
+      const feedbackEl = document.getElementById("integ-instagram-feedback");
+      if (feedbackEl) feedbackEl.hidden = true;
       await caricaStatoInstagram();
-    } else {
-      toast("Errore durante la disconnessione.", "error");
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di rete.", "error");
   }
 });
 
-document.querySelectorAll(".btn-test-conn").forEach((btn) => {
+document.querySelectorAll(".btn-test-conn[data-canale]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const canale = btn.dataset.canale;
+    if (!canale) return;
     const feedbackEl = document.getElementById(`integ-${canale}-feedback`);
     eseguiTestIntegrazione(canale, btn, feedbackEl);
   });
@@ -6848,13 +7093,20 @@ async function caricaStatoCalendar() {
   try {
     const res = await apiFetch(`${API_BASE}/api/calendar/status`);
     if (!res.ok) {
-      _aggiornaBadgeStato(stato, "error", "Errore");
-      sub.textContent = "Impossibile verificare lo stato";
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile verificare lo stato di Google Calendar.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(stato, res.mfaRequired ? "mfa_required" : "unauthorized");
+        sub.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(stato, "error");
+        sub.textContent = errMsg;
+      }
       return;
     }
     const d = await res.json();
     if (d.connected) {
-      _aggiornaBadgeStato(stato, "connected", "Connesso");
+      _aggiornaBadgeStato(stato, "connected");
       const calId = d.calendar_id || "Primary (Predefinito)";
       const sync = d.sync_enabled ? "Sincronizzazione attiva" : "Sincronizzazione in pausa";
       sub.textContent = `${calId} · ${sync}`;
@@ -6867,7 +7119,7 @@ async function caricaStatoCalendar() {
       if (btnTest) btnTest.hidden = false;
       if (btnDisconnect) btnDisconnect.hidden = false;
     } else {
-      _aggiornaBadgeStato(stato, "disconnected", "Non connesso");
+      _aggiornaBadgeStato(stato, "disconnected");
       sub.textContent = "Nessun account Google collegato";
       if (calIdMeta) calIdMeta.textContent = "Nessun calendario";
       if (syncModeMeta) syncModeMeta.textContent = "Disattivata";
@@ -6876,12 +7128,16 @@ async function caricaStatoCalendar() {
       if (btnDisconnect) btnDisconnect.hidden = true;
     }
   } catch {
-    _aggiornaBadgeStato(stato, "error", "Errore");
-    sub.textContent = "Errore di connessione";
+    _aggiornaBadgeStato(stato, "error", "Errore di rete");
+    sub.textContent = "Errore di connessione con il server";
   }
 }
 
-document.getElementById("integ-calendar-connect")?.addEventListener("click", () => {
+document.getElementById("integ-calendar-connect")?.addEventListener("click", async () => {
+  try {
+    const checkRes = await apiFetch(`${API_BASE}/api/calendar/auth`, { method: "GET", redirect: "manual" });
+    if (checkRes.status === 403) return;
+  } catch (_) {}
   window.location.href = `${API_BASE}/api/calendar/auth`;
 });
 
@@ -6894,11 +7150,12 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
   if (!ok) return;
   try {
     const res = await apiFetch(`${API_BASE}/api/calendar/disconnect`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Google Calendar disconnesso con successo.");
       await caricaStatoCalendar();
-    } else {
-      toast("Errore durante la disconnessione.", "error");
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di connessione.", "error");
@@ -6943,6 +7200,1145 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
     setTimeout(() => toast(msgs[reason] || `Errore: ${reason}`, "error"), 400);
   }
 })();
+
+/* ============================================================
+   GOOGLE RECENSIONI (BUSINESS PROFILE) — stato, connect, sync, disconnect
+   ============================================================ */
+
+async function caricaStatoReviews() {
+  const stato = document.getElementById("integ-reviews-stato");
+  const sub = document.getElementById("integ-reviews-sub");
+  const help = document.getElementById("integ-reviews-help");
+  const accountMeta = document.getElementById("integ-reviews-account");
+  const locationMeta = document.getElementById("integ-reviews-location");
+  const btnConnect = document.getElementById("integ-reviews-connect");
+  const btnSync = document.getElementById("integ-reviews-sync");
+  const btnDisconnect = document.getElementById("integ-reviews-disconnect");
+
+  if (!stato || !sub) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reviews/google/status`);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile verificare lo stato di Google Recensioni.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(stato, res.mfaRequired ? "mfa_required" : "unauthorized");
+        sub.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(stato, "error");
+        sub.textContent = errMsg;
+      }
+      return;
+    }
+    const d = await res.json();
+    if (d.connected) {
+      _aggiornaBadgeStato(stato, "connected");
+      const acc = d.account_name || "Account Google collegato";
+      const loc = d.location_name || "Sede predefinita";
+      sub.textContent = `${loc} · Connesso`;
+      if (accountMeta) accountMeta.textContent = acc;
+      if (locationMeta) locationMeta.textContent = loc;
+      if (help) {
+        help.textContent = d.last_sync_at
+          ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+          : "Account collegato: pronto alla sincronizzazione delle recensioni.";
+      }
+      if (btnConnect) btnConnect.hidden = true;
+      if (btnSync) btnSync.hidden = false;
+      if (btnDisconnect) btnDisconnect.hidden = false;
+    } else {
+      _aggiornaBadgeStato(stato, "disconnected");
+      sub.textContent = "Nessun account Google collegato";
+      if (accountMeta) accountMeta.textContent = "Nessun account";
+      if (locationMeta) locationMeta.textContent = "—";
+      if (help) {
+        help.textContent = "Collega Google Business Profile per importare le recensioni dei clienti e generare risposte AI automatiche.";
+      }
+      if (btnConnect) btnConnect.hidden = false;
+      if (btnSync) btnSync.hidden = true;
+      if (btnDisconnect) btnDisconnect.hidden = true;
+    }
+  } catch {
+    _aggiornaBadgeStato(stato, "error", "Errore di rete");
+    sub.textContent = "Errore di connessione con il server";
+  }
+}
+
+document.getElementById("integ-reviews-connect")?.addEventListener("click", async () => {
+  try {
+    const checkRes = await apiFetch(`${API_BASE}/api/reviews/google/auth`, { method: "GET", redirect: "manual" });
+    if (checkRes.status === 403) return;
+  } catch (_) {}
+  window.location.href = `${API_BASE}/api/reviews/google/auth`;
+});
+
+document.getElementById("integ-reviews-sync")?.addEventListener("click", async () => {
+  const btn = document.getElementById("integ-reviews-sync");
+  const feedbackEl = document.getElementById("integ-reviews-feedback");
+  if (!btn || btn.classList.contains("loading")) return;
+
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add("loading");
+  btn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" width="15" height="15"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Sincronizzo…
+  `;
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reviews/google/sync`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const msg = typeof d.nuove === "number"
+        ? (d.nuove > 0 ? `Sincronizzazione completata: ${d.nuove} nuove recensioni importate.` : "Nessuna nuova recensione da importare.")
+        : "Sincronizzazione completata con successo!";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback success";
+        feedbackEl.textContent = msg;
+      }
+      toast(msg, "success");
+      await caricaStatoReviews();
+      if (typeof aggiornaRecensioni === "function") {
+        aggiornaRecensioni();
+      }
+    } else if (res.status !== 403) {
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la sincronizzazione delle recensioni.");
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante la sincronizzazione.";
+    }
+    toast("Impossibile sincronizzare le recensioni.", "error");
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+});
+
+document.getElementById("integ-reviews-disconnect")?.addEventListener("click", async () => {
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere Google Recensioni?",
+    descrizione: "Le recensioni già importate rimarranno salvate in Melpis, ma non verranno più scaricate nuove recensioni né pubblicate risposte automatiche su Google Business.",
+    label: "Disconnetti profilo",
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/reviews/google/disconnect`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast("Google Business disconnesso con successo.");
+      const feedbackEl = document.getElementById("integ-reviews-feedback");
+      if (feedbackEl) feedbackEl.hidden = true;
+      await caricaStatoReviews();
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
+    }
+  } catch {
+    toast("Errore di connessione.", "error");
+  }
+});
+
+/* Gestione redirect OAuth callback per Google Reviews */
+(function gestisciReviewsRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const rev = params.get("reviews_google");
+  if (!rev) return;
+
+  if (rev === "connected") {
+    const url = new URL(window.location);
+    url.searchParams.delete("reviews_google");
+    window.history.replaceState({}, "", url);
+    if (typeof apriVistaImpostazioni === "function") {
+      apriVistaImpostazioni("reviews");
+    }
+    setTimeout(() => toast("Google Recensioni connesso con successo!", "success"), 400);
+  } else if (rev === "error") {
+    const reason = params.get("reason") || "errore_sconosciuto";
+    const url = new URL(window.location);
+    url.searchParams.delete("reviews_google");
+    url.searchParams.delete("reason");
+    window.history.replaceState({}, "", url);
+    if (typeof apriVistaImpostazioni === "function") {
+      apriVistaImpostazioni("reviews");
+    }
+    const msgs = {
+      no_refresh_token: "Autorizzazione negata: account non autorizzato o refresh token assente.",
+      invalid_state: "Sessione scaduta: riprova la connessione.",
+      invalid_nonce: "Sessione scaduta: riprova la connessione.",
+      nonce_expired: "Timeout: la richiesta di autorizzazione è scaduta, riprova.",
+      missing_code: "Autorizzazione Google annullata o codice mancante.",
+      access_denied: "Autorizzazione rifiutata su Google.",
+    };
+    setTimeout(() => toast(msgs[reason] || `Errore autorizzazione Google: ${reason}`, "error"), 400);
+  }
+})();
+
+/* ============================================================
+   INTEGRAZIONE GESTIONALE PRENOTAZIONI (PMS / BOOKING FRAMEWORK - FASE 2)
+   ============================================================ */
+
+const PMS_PROVIDER_LABELS = {
+  internal: "Melpis Interno (Built-in)",
+  calcom: "Cal.com",
+  simplybook: "SimplyBook.me",
+  apaleo: "Apaleo PMS",
+  beds24: "Beds24 PMS",
+  zak: "WuBook ZaK",
+};
+
+const PMS_MODE_LABELS = {
+  authoritative: "Authoritative (Primario)",
+  shadow: "Shadow (Monitoraggio)",
+  local_only: "Local Only (Solo DB Locale)",
+  mirror: "Mirror (Sincronizzazione)",
+};
+
+async function caricaStatoBooking() {
+  const statoEl = document.getElementById("integ-booking-stato");
+  const titleEl = document.getElementById("integ-booking-title");
+  const subEl = document.getElementById("integ-booking-sub");
+  const helpEl = document.getElementById("integ-booking-help");
+  const metaProviderEl = document.getElementById("integ-booking-meta-provider");
+  const metaModeEl = document.getElementById("integ-booking-meta-mode");
+  const metaDpaEl = document.getElementById("integ-booking-meta-dpa");
+  const metaSyncEl = document.getElementById("integ-booking-meta-sync");
+  const honestContainer = document.getElementById("integ-booking-honest-badge-container");
+  const warningBanner = document.getElementById("integ-booking-warning-banner");
+  const quickModeBox = document.getElementById("integ-booking-quick-mode");
+  const quickModeSelect = document.getElementById("integ-booking-quick-mode-select");
+  const optQuickAuth = document.getElementById("opt-quick-authoritative");
+  const toggleBtn = document.getElementById("integ-booking-toggle-form-btn");
+  const disconnectBtn = document.getElementById("integ-booking-disconnect-btn");
+
+  if (!statoEl || !titleEl) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking/status`);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile verificare lo stato del gestionale.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+        if (subEl) subEl.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(statoEl, "error");
+        if (subEl) subEl.textContent = errMsg;
+      }
+      if (quickModeBox) quickModeBox.hidden = true;
+      if (disconnectBtn) disconnectBtn.hidden = true;
+      return;
+    }
+
+    const d = await res.json();
+    const isConfigured = Boolean(d.is_configured && d.provider && d.provider !== "internal" && d.is_active);
+
+    if (!isConfigured) {
+      // Motore Interno Built-in
+      _aggiornaBadgeStato(statoEl, "connected", "Built-in / Attivo");
+      titleEl.textContent = "Melpis Interno";
+      if (subEl) subEl.textContent = "Motore integrato (Local Only)";
+      if (metaProviderEl) metaProviderEl.textContent = "Melpis Interno (Built-in)";
+      if (metaModeEl) metaModeEl.textContent = "Local Only";
+      if (metaDpaEl) metaDpaEl.textContent = "Non applicabile";
+      if (metaSyncEl) metaSyncEl.textContent = "—";
+      if (helpEl) {
+        helpEl.textContent = "Il motore interno gestisce disponibilità, fasce orarie e capienze direttamente su database sicuro PostgreSQL senza software terzi.";
+      }
+      if (honestContainer) honestContainer.hidden = true;
+      if (warningBanner) warningBanner.hidden = true;
+      if (quickModeBox) quickModeBox.hidden = true;
+      if (disconnectBtn) disconnectBtn.hidden = true;
+      if (toggleBtn) toggleBtn.textContent = "Configura gestionale esterno";
+    } else {
+      // Gestionale Esterno Configurato
+      const provName = PMS_PROVIDER_LABELS[d.provider] || d.provider;
+      _aggiornaBadgeStato(statoEl, "connected", "Connesso");
+      titleEl.textContent = provName;
+      if (subEl) subEl.textContent = `Modalità ${d.mode || "authoritative"} · Attivo`;
+      if (metaProviderEl) metaProviderEl.textContent = provName;
+      if (metaModeEl) metaModeEl.textContent = PMS_MODE_LABELS[d.mode] || d.mode;
+      if (metaDpaEl) metaDpaEl.textContent = d.medical_dpa_signed ? "Firmato (Art. 9 GDPR)" : "Non attivo (Note filtrate)";
+
+      if (metaSyncEl) {
+        if (d.last_sync) {
+          const sDate = d.last_sync.updated_at ? new Date(d.last_sync.updated_at).toLocaleString("it-IT") : "";
+          if (d.last_sync.status === "synced") {
+            metaSyncEl.textContent = `Sincronizzato (${d.last_sync.external_booking_id || "OK"}) ${sDate ? "· " + sDate : ""}`;
+          } else if (d.last_sync.status === "failed") {
+            metaSyncEl.textContent = `Errore: ${d.last_sync.sync_error || "fallito"} ${sDate ? "· " + sDate : ""}`;
+          } else {
+            metaSyncEl.textContent = `${d.last_sync.status} ${sDate ? "· " + sDate : ""}`;
+          }
+        } else {
+          metaSyncEl.textContent = "Nessuna transazione recente";
+        }
+      }
+
+      if (helpEl) {
+        helpEl.textContent = `Integrazione con ${provName} attiva. Le prenotazioni inviate dai clienti WhatsApp vengono gestite in modalità ${d.mode}.`;
+      }
+
+      // Honest badge: "Verifica live consigliata" per Cal.com, Apaleo, Beds24 (§12 audit)
+      if (honestContainer) {
+        honestContainer.hidden = !["calcom", "apaleo", "beds24"].includes(d.provider);
+      }
+
+      // Warning banner per SimplyBook (aggiornamento non supportato) e ZaK (solo shadow/local_only)
+      if (warningBanner) {
+        if (d.provider === "simplybook") {
+          warningBanner.hidden = false;
+          warningBanner.innerHTML = "<strong>Attenzione SimplyBook:</strong> L'aggiornamento e la modifica delle prenotazioni non sono supportati via API da SimplyBook.me (solo creazione e cancellazione via bot).";
+        } else if (d.provider === "zak") {
+          warningBanner.hidden = false;
+          warningBanner.innerHTML = "<strong>Gating Governance:</strong> WuBook ZaK è attivo in modalità protetta (Shadow / Local Only). La modalità authoritative è disabilitata per policy di governance.";
+        } else {
+          warningBanner.hidden = true;
+        }
+      }
+
+      // Quick Mode Box
+      if (quickModeBox) {
+        quickModeBox.hidden = false;
+        if (quickModeSelect) {
+          quickModeSelect.value = d.mode || "authoritative";
+          if (optQuickAuth) {
+            if (d.provider === "zak") {
+              optQuickAuth.disabled = true;
+              optQuickAuth.textContent = "Authoritative (Disabilitato per ZaK)";
+            } else {
+              optQuickAuth.disabled = false;
+              optQuickAuth.textContent = "Authoritative (Primario)";
+            }
+          }
+        }
+      }
+
+      if (disconnectBtn) disconnectBtn.hidden = false;
+      if (toggleBtn) toggleBtn.textContent = "Riconfigura credenziali";
+    }
+  } catch (err) {
+    _aggiornaBadgeStato(statoEl, "error", "Errore");
+    if (subEl) subEl.textContent = "Errore di connessione con il server";
+  }
+}
+
+function _aggiornaDescrizioneModalitaBooking() {
+  const modeSelect = document.getElementById("booking-mode-select");
+  const descEl = document.getElementById("booking-mode-description");
+  if (!modeSelect || !descEl) return;
+
+  const m = modeSelect.value;
+  if (m === "authoritative") {
+    descEl.textContent = "Il gestionale esterno fa fede assoluta per disponibilità e prenotazioni. Nessun fallback fittizio locale; se il gestionale fallisce o è occupato, scatta l'escalation con operatore umano.";
+  } else if (m === "shadow") {
+    descEl.textContent = "La prenotazione viene salvata e confermata primariamente sul database locale di Melpis; la chiamata al gestionale esterno avviene asincronamente per audit e monitoraggio.";
+  } else {
+    descEl.textContent = "Tutte le transazioni avvengono esclusivamente sul database PostgreSQL locale di Melpis. Nessun dato inviato al gestionale esterno.";
+  }
+}
+
+function _aggiornaGatingProviderBooking() {
+  const providerSelect = document.getElementById("booking-provider-select");
+  const modeSelect = document.getElementById("booking-mode-select");
+  const optAuth = document.getElementById("opt-form-authoritative");
+  const optShadow = document.getElementById("opt-form-shadow");
+  const honestBox = document.getElementById("booking-form-honest-box");
+  const honestText = document.getElementById("booking-form-honest-text");
+  const warningBox = document.getElementById("booking-form-warning-box");
+  const warningText = document.getElementById("booking-form-warning-text");
+
+  if (!providerSelect || !modeSelect) return;
+  const p = providerSelect.value;
+
+  // 1. Mostra/Nascondi container campi per provider
+  const allFieldDivs = document.querySelectorAll(".booking-provider-fields");
+  allFieldDivs.forEach((div) => {
+    div.hidden = div.id !== `fields-provider-${p}`;
+  });
+
+  // 2. Gating §12 su modalità e provider
+  if (p === "zak") {
+    if (optAuth) {
+      optAuth.disabled = true;
+      optAuth.textContent = "Authoritative (Non consentito per WuBook ZaK)";
+    }
+    if (optShadow) {
+      optShadow.disabled = false;
+      optShadow.textContent = "Shadow (Monitoraggio / Test — Fa fede Melpis locale)";
+    }
+    if (modeSelect.value === "authoritative") {
+      modeSelect.value = "shadow";
+    }
+    if (warningBox && warningText) {
+      warningBox.hidden = false;
+      warningText.innerHTML = "<strong>Gating ZaK:</strong> WuBook ZaK è limitato alla modalità <em>Shadow</em> o <em>Local Only</em>. Le modalità Authoritative e Mirror sono bloccate perché non ancora certificate per la produzione.";
+    }
+    if (honestBox) honestBox.hidden = true;
+  } else if (p === "internal") {
+    if (optAuth) {
+      optAuth.disabled = true;
+      optAuth.textContent = "Authoritative (Non applicabile a motore interno)";
+    }
+    if (optShadow) {
+      optShadow.disabled = true;
+      optShadow.textContent = "Shadow (Non applicabile a motore interno)";
+    }
+    modeSelect.value = "local_only";
+    if (warningBox) warningBox.hidden = true;
+    if (honestBox) honestBox.hidden = true;
+  } else {
+    if (optAuth) {
+      optAuth.disabled = false;
+      optAuth.textContent = "Authoritative (Primario — Fa fede il gestionale)";
+    }
+    if (optShadow) {
+      optShadow.disabled = false;
+      optShadow.textContent = "Shadow (Monitoraggio / Test — Fa fede Melpis locale)";
+    }
+
+    if (p === "simplybook") {
+      if (warningBox && warningText) {
+        warningBox.hidden = false;
+        warningText.innerHTML = "<strong>Attenzione SimplyBook:</strong> L'aggiornamento/modifica delle prenotazioni non è supportato dall'API di SimplyBook (solo creazione e cancellazione). Eventuali cambi orario richiedono una nuova prenotazione o gestione manuale.";
+      }
+      if (honestBox) honestBox.hidden = true;
+    } else if (["calcom", "apaleo", "beds24"].includes(p)) {
+      if (warningBox) warningBox.hidden = true;
+      if (honestBox && honestText) {
+        honestBox.hidden = false;
+        const nome = PMS_PROVIDER_LABELS[p] || p;
+        honestText.innerHTML = `<strong>Verifica live consigliata (${nome}):</strong> Tutti i contratti e le API sono validati tramite test automatici. Si consiglia comunque di effettuare una prenotazione reale di test prima dell'apertura completa al pubblico.`;
+      }
+    } else {
+      if (warningBox) warningBox.hidden = true;
+      if (honestBox) honestBox.hidden = true;
+    }
+  }
+
+  _aggiornaDescrizioneModalitaBooking();
+}
+
+// Event Listeners Booking Provider Setup
+document.getElementById("booking-provider-select")?.addEventListener("change", _aggiornaGatingProviderBooking);
+document.getElementById("booking-mode-select")?.addEventListener("change", _aggiornaDescrizioneModalitaBooking);
+
+document.getElementById("integ-booking-toggle-form-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-booking-form-card");
+  if (!formCard) return;
+  const isHidden = formCard.hidden;
+  formCard.hidden = !isHidden;
+  if (isHidden) {
+    _aggiornaGatingProviderBooking();
+    formCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
+
+document.getElementById("booking-form-cancel-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-booking-form-card");
+  if (formCard) formCard.hidden = true;
+});
+
+// Quick Mode Switcher
+document.getElementById("integ-booking-quick-mode-btn")?.addEventListener("click", async () => {
+  const select = document.getElementById("integ-booking-quick-mode-select");
+  const btn = document.getElementById("integ-booking-quick-mode-btn");
+  const feedbackEl = document.getElementById("integ-booking-feedback");
+  if (!select || !btn) return;
+
+  const mode = select.value;
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = "Aggiorno…";
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking/mode`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || `Modalità aggiornata a ${mode}`, "success");
+      await caricaStatoBooking();
+    } else if (res.status !== 403) {
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante l'aggiornamento della modalità.");
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    toast("Errore di rete durante l'aggiornamento della modalità.", "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+});
+
+// Disconnessione Gestionale
+document.getElementById("integ-booking-disconnect-btn")?.addEventListener("click", async () => {
+  const ok = await confermaDestructiva({
+    titolo: "Disconnettere il gestionale di prenotazioni?",
+    descrizione: "Le credenziali salvate verranno rimosse e Melpis tornerà a gestire le prenotazioni esclusivamente con il database locale integrato.",
+    label: "Disconnetti gestionale",
+  });
+  if (!ok) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast("Gestionale disconnesso con successo. Motore interno ripristinato.", "success");
+      const formCard = document.getElementById("integ-booking-form-card");
+      if (formCard) formCard.hidden = true;
+      await caricaStatoBooking();
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la rimozione del gestionale."), "error");
+    }
+  } catch {
+    toast("Errore di connessione.", "error");
+  }
+});
+
+// Salvataggio Configurazione Provider
+document.getElementById("booking-config-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const provider = document.getElementById("booking-provider-select")?.value || "internal";
+  const mode = document.getElementById("booking-mode-select")?.value || "local_only";
+  const medicalDpa = Boolean(document.getElementById("booking-medical-dpa-check")?.checked);
+  const submitBtn = document.getElementById("booking-form-submit-btn");
+  const feedbackEl = document.getElementById("booking-form-feedback");
+
+  // Controllo di sicurezza: WuBook ZaK non supporta authoritative
+  if (provider === "zak" && mode === "authoritative") {
+    toast("WuBook ZaK non supporta la modalità authoritative in produzione.", "error");
+    return;
+  }
+
+  let credentials = {};
+  let config = { medical_dpa_signed: medicalDpa };
+
+  if (provider === "calcom") {
+    const apiKey = document.getElementById("calcom-api-key")?.value.trim();
+    const eventTypeId = document.getElementById("calcom-event-type-id")?.value.trim();
+    const timezone = document.getElementById("calcom-timezone")?.value.trim() || "Europe/Rome";
+    if (!apiKey) {
+      toast("Inserisci l'API Key per Cal.com.", "error");
+      return;
+    }
+    credentials = { api_key: apiKey };
+    if (eventTypeId) config.event_type_id = eventTypeId;
+    config.timezone = timezone;
+  } else if (provider === "simplybook") {
+    const companyLogin = document.getElementById("simplybook-company-login")?.value.trim();
+    const apiKey = document.getElementById("simplybook-api-key")?.value.trim();
+    if (!companyLogin || !apiKey) {
+      toast("Inserisci Company Login e API Key per SimplyBook.me.", "error");
+      return;
+    }
+    credentials = { company_login: companyLogin, api_key: apiKey };
+  } else if (provider === "apaleo") {
+    const clientId = document.getElementById("apaleo-client-id")?.value.trim();
+    const clientSecret = document.getElementById("apaleo-client-secret")?.value.trim();
+    const propertyId = document.getElementById("apaleo-property-id")?.value.trim();
+    if (!clientId || !clientSecret) {
+      toast("Inserisci Client ID e Client Secret per Apaleo.", "error");
+      return;
+    }
+    credentials = { client_id: clientId, client_secret: clientSecret };
+    if (propertyId) credentials.property_id = propertyId;
+    config.channel_code = "Direct";
+    config.timezone = "Europe/Rome";
+  } else if (provider === "beds24") {
+    const inviteCode = document.getElementById("beds24-invite-code")?.value.trim();
+    const propertyId = document.getElementById("beds24-property-id")?.value.trim();
+    if (!inviteCode || !propertyId) {
+      toast("Inserisci Invite Code e ID Proprietà per Beds24.", "error");
+      return;
+    }
+    credentials = { invite_code: inviteCode, property_id: propertyId };
+    config.timezone = "Europe/Rome";
+  } else if (provider === "zak") {
+    const propertyId = document.getElementById("zak-property-id")?.value.trim();
+    const apiKey = document.getElementById("zak-api-key")?.value.trim();
+    if (!propertyId || !apiKey) {
+      toast("Inserisci Property ID e Token API per WuBook ZaK.", "error");
+      return;
+    }
+    credentials = { property_id: propertyId, api_key: apiKey };
+  } else if (provider === "internal") {
+    credentials = {};
+    config.medical_dpa_signed = false;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Salvataggio in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider,
+        credentials,
+        mode,
+        config,
+        is_active: true,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || "Integrazione gestionale salvata con successo!", "success");
+      const formCard = document.getElementById("integ-booking-form-card");
+      if (formCard) formCard.hidden = true;
+      ["calcom-api-key", "simplybook-api-key", "apaleo-client-secret", "beds24-invite-code", "zak-api-key"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      await caricaStatoBooking();
+    } else if (res.status !== 403) {
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante il salvataggio dell'integrazione.");
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante il salvataggio.";
+    }
+    toast("Impossibile salvare la configurazione del gestionale.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Salva Configurazione";
+    }
+  }
+});
+
+/* ============================================================
+   INTEGRAZIONE AIRTABLE (FASE 3)
+   Invarianti: 1 (Tenant Isolation), 6 (GDPR Sanità), 10 (Zero Secrets)
+   ============================================================ */
+
+let _airtableBasesCache = [];
+
+async function caricaStatoAirtable() {
+  const statoEl = document.getElementById("integ-airtable-stato");
+  const subEl = document.getElementById("integ-airtable-sub");
+  const basesCountEl = document.getElementById("integ-airtable-bases-count");
+  const lastUpdateEl = document.getElementById("integ-airtable-last-update");
+  const basesListEl = document.getElementById("airtable-bases-list");
+  const basesEmptyEl = document.getElementById("airtable-bases-empty");
+  const valBaseSelect = document.getElementById("airtable-val-base-select");
+  const subBaseSelect = document.getElementById("airtable-sub-base-select");
+  const endpointUrlEl = document.getElementById("airtable-webhook-endpoint-url");
+
+  if (endpointUrlEl) {
+    const baseOrigin = window.location.origin || "";
+    endpointUrlEl.textContent = `${baseOrigin}/api/v1/integrations/airtable/webhook`;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/status`);
+    if (!res.ok) {
+      if (basesListEl) basesListEl.innerHTML = "";
+      if (basesEmptyEl) basesEmptyEl.hidden = true;
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile recuperare lo stato di Airtable.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+        if (subEl) subEl.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(statoEl, "error");
+        if (subEl) subEl.textContent = errMsg;
+      }
+      return;
+    }
+
+    const d = await res.json().catch(() => ({}));
+    const connections = Array.isArray(d.connections) ? d.connections : [];
+    _airtableBasesCache = connections;
+
+    const count = connections.length;
+    if (basesCountEl) basesCountEl.textContent = String(count);
+
+    if (d.is_configured && count > 0) {
+      _aggiornaBadgeStato(statoEl, "connected");
+      if (subEl) {
+        subEl.textContent = `${count} ${count === 1 ? "Base collegata" : "Basi collegate"}`;
+      }
+
+      const lastUpdated = connections[0]?.updated_at;
+      if (lastUpdateEl) {
+        lastUpdateEl.textContent = lastUpdated
+          ? new Date(lastUpdated).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          : "—";
+      }
+
+      if (basesEmptyEl) basesEmptyEl.hidden = true;
+
+      if (basesListEl) {
+        basesListEl.innerHTML = connections
+          .map((c) => {
+            const safeName = DOMPurify.sanitize(c.base_name || "Base Airtable");
+            const safeId = DOMPurify.sanitize(c.base_id);
+            const safeVerticale = c.verticale ? `<span class="badge-status-honest" style="margin-left: 6px;">${DOMPurify.sanitize(c.verticale)}</span>` : "";
+            const formattedDate = c.updated_at
+              ? new Date(c.updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+              : "";
+
+            return `
+              <div class="airtable-base-card" data-base-id="${safeId}">
+                <div class="airtable-base-head">
+                  <div>
+                    <div class="airtable-base-name">${safeName} ${safeVerticale}</div>
+                    <code class="airtable-base-id-badge">${safeId}</code>
+                  </div>
+                  <button type="button" class="btn-danger-outline btn-disconnect-airtable-base" data-base-id="${safeId}" data-base-name="${safeName}" style="padding: 4px 8px; font-size: 0.78rem;">
+                    Disconnetti
+                  </button>
+                </div>
+                <div class="airtable-base-meta">
+                  <span>Aggiornato: ${formattedDate || "—"}</span>
+                  <span class="badge-status connected" style="padding: 2px 6px; font-size: 0.74rem;">
+                    <span class="badge-status-dot"></span> Attiva
+                  </span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      const selectOptions = '<option value="">Seleziona una Base connessa…</option>' +
+        connections.map((c) => `<option value="${DOMPurify.sanitize(c.base_id)}">${DOMPurify.sanitize(c.base_name || c.base_id)} (${DOMPurify.sanitize(c.base_id)})</option>`).join("");
+
+      if (valBaseSelect) valBaseSelect.innerHTML = selectOptions;
+      if (subBaseSelect) subBaseSelect.innerHTML = selectOptions;
+
+    } else {
+      _aggiornaBadgeStato(statoEl, "disconnected");
+      if (subEl) subEl.textContent = "Nessuna Base connessa";
+      if (lastUpdateEl) lastUpdateEl.textContent = "—";
+      if (basesListEl) basesListEl.innerHTML = "";
+      if (basesEmptyEl) basesEmptyEl.hidden = false;
+      if (valBaseSelect) valBaseSelect.innerHTML = '<option value="">Nessuna Base connessa</option>';
+      if (subBaseSelect) subBaseSelect.innerHTML = '<option value="">Nessuna Base connessa</option>';
+    }
+
+    await caricaEventiWebhookAirtable();
+
+  } catch {
+    _aggiornaBadgeStato(statoEl, "error", "Errore di rete");
+    if (subEl) subEl.textContent = "Errore di connessione con il server";
+  }
+}
+
+async function disconnettiBaseAirtable(baseId, baseName) {
+  if (!baseId) return;
+
+  const confermato = await confermaDestructiva({
+    titolo: "Disconnettere la Base Airtable?",
+    descrizione: `Stai per rimuovere la connessione alla Base "${baseName}" (${baseId}). Le credenziali salvate verranno revocate e i workflow collegati a questa Base non riceveranno più dati.`,
+    label: "Disconnetti Base",
+  });
+
+  if (!confermato) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable?base_id=${encodeURIComponent(baseId)}`, {
+      method: "DELETE",
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || `Base ${baseName} disconnessa con successo.`, "success");
+      await caricaStatoAirtable();
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        toast(_estraiMessaggioErroreApi(res, d, "Permessi insufficienti per rimuovere la Base."), "error");
+      }
+    } else {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione della Base."), "error");
+    }
+  } catch {
+    toast("Errore di connessione durante la rimozione della Base.", "error");
+  }
+}
+
+async function caricaEventiWebhookAirtable() {
+  const tbody = document.getElementById("airtable-events-tbody");
+  const btn = document.getElementById("airtable-events-refresh-btn");
+  if (!tbody) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Caricamento…";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/webhooks/events?limit=20`);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile caricare gli eventi webhook.");
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">${DOMPurify.sanitize(errMsg)}</td></tr>`;
+      return;
+    }
+
+    const events = await res.json().catch(() => []);
+    if (!Array.isArray(events) || events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">Nessun evento webhook registrato di recente.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = events
+      .map((ev) => {
+        const safeBase = DOMPurify.sanitize(ev.base_id || "—");
+        const safeWebhook = DOMPurify.sanitize(ev.webhook_id || "—");
+        const safeEventId = DOMPurify.sanitize(ev.external_event_id || ev.id || "—");
+        const safeStatus = DOMPurify.sanitize(ev.status || "pending");
+        const dt = ev.created_at || ev.event_timestamp;
+        const formattedDate = dt
+          ? new Date(dt).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          : "—";
+
+        const statusClass = safeStatus === "processed" ? "connected" : safeStatus === "failed" ? "disconnected" : "pending";
+        const statusLabel = safeStatus === "processed" ? "Elaborato" : safeStatus === "failed" ? "Fallito" : "In attesa";
+
+        return `
+          <tr>
+            <td style="padding: 8px 10px; font-size: 0.78rem;">${formattedDate}</td>
+            <td style="padding: 8px 10px;"><code style="font-size: 0.76rem;">${safeBase}</code></td>
+            <td style="padding: 8px 10px;"><code style="font-size: 0.76rem;">${safeWebhook}</code></td>
+            <td style="padding: 8px 10px; font-size: 0.76rem; color: var(--text-muted);">${safeEventId}</td>
+            <td style="padding: 8px 10px;">
+              <span class="badge-status ${statusClass}" style="padding: 2px 6px; font-size: 0.74rem;">
+                <span class="badge-status-dot"></span> ${statusLabel}
+              </span>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--red); padding: 12px;">Errore di rete nel caricamento eventi.</td></tr>';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Aggiorna eventi";
+    }
+  }
+}
+
+// Event Delegation su Lista Basi (Listener Hygiene: 1 solo listener permanente)
+document.getElementById("airtable-bases-list")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btn-disconnect-airtable-base");
+  if (!btn) return;
+  const baseId = btn.dataset.baseId;
+  const baseName = btn.dataset.baseName || baseId;
+  await disconnettiBaseAirtable(baseId, baseName);
+});
+
+// Toggle Form Connessione
+document.getElementById("airtable-toggle-connect-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-airtable-connect-card");
+  if (!formCard) return;
+  const isHidden = formCard.hidden;
+  formCard.hidden = !isHidden;
+  if (isHidden) {
+    formCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
+
+document.getElementById("airtable-connect-cancel-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-airtable-connect-card");
+  if (formCard) formCard.hidden = true;
+});
+
+// Submit Form Connessione PAT
+document.getElementById("airtable-connect-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = document.getElementById("airtable-token")?.value.trim();
+  const baseId = document.getElementById("airtable-base-id")?.value.trim();
+  const baseName = document.getElementById("airtable-base-name")?.value.trim() || "";
+  const submitBtn = document.getElementById("airtable-connect-submit-btn");
+  const feedbackEl = document.getElementById("airtable-connect-feedback");
+
+  if (!token || !baseId) {
+    toast("Inserisci Personal Access Token e Base ID.", "error");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Verifica in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        base_id: baseId,
+        base_name: baseName,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || "Base Airtable collegata con successo!", "success");
+      const formCard = document.getElementById("integ-airtable-connect-card");
+      if (formCard) formCard.hidden = true;
+      const tokInput = document.getElementById("airtable-token");
+      const baseInput = document.getElementById("airtable-base-id");
+      const nameInput = document.getElementById("airtable-base-name");
+      if (tokInput) tokInput.value = "";
+      if (baseInput) baseInput.value = "";
+      if (nameInput) nameInput.value = "";
+      await caricaStatoAirtable();
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        // Messaggio esatto dal backend (es. AirtableMedicalPolicyError GDPR Art. 9) sanitizzato
+        const errMsg = _estraiMessaggioErroreApi(res, d, "Connessione ad Airtable non consentita per policy di sicurezza.");
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.textContent = errMsg;
+        }
+        toast(errMsg, "error", 8000);
+      }
+    } else {
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la connessione della Base Airtable.");
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante la verifica del token.";
+    }
+    toast("Impossibile contattare il server per la verifica del PAT.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Verifica e Connetti Base";
+    }
+  }
+});
+
+// Submit Form Validazione Schema
+document.getElementById("airtable-validate-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const baseId = document.getElementById("airtable-val-base-select")?.value.trim();
+  const table = document.getElementById("airtable-val-table")?.value.trim();
+  const fieldsRaw = document.getElementById("airtable-val-fields")?.value.trim();
+  const submitBtn = document.getElementById("airtable-validate-submit-btn");
+  const feedbackEl = document.getElementById("airtable-validate-feedback");
+
+  if (!baseId || !table || !fieldsRaw) {
+    toast("Seleziona una Base e compila nome tabella e campi richiesti.", "error");
+    return;
+  }
+
+  const requiredFields = fieldsRaw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (requiredFields.length === 0) {
+    toast("Specifica almeno un campo richiesto per la validazione.", "error");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Validazione in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/validate-schema`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base_id: baseId,
+        table_id_or_name: table,
+        required_fields: requiredFields,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (d.is_valid) {
+        const matched = Array.isArray(d.available_fields) && d.available_fields.length > 0
+          ? d.available_fields.join(", ")
+          : "Tutti i campi richiesti sono presenti";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback success";
+          feedbackEl.innerHTML = `<strong>Schema Valido:</strong> La tabella "${DOMPurify.sanitize(d.table_name || table)}" è conforme. Campi verificati con successo: ${DOMPurify.sanitize(matched)}.`;
+        }
+        toast("Schema Airtable verificato con successo!", "success");
+      } else {
+        const missing = Array.isArray(d.missing_fields) && d.missing_fields.length > 0
+          ? d.missing_fields.join(", ")
+          : "Campi mancanti non specificati";
+        const avail = Array.isArray(d.available_fields) && d.available_fields.length > 0
+          ? `<br><small style="color: var(--text-muted);">Campi trovati nella tabella: ${DOMPurify.sanitize(d.available_fields.join(", "))}</small>`
+          : "";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.innerHTML = `<strong>Schema non conforme:</strong> I seguenti campi richiesti non esistono nella tabella: <strong>${DOMPurify.sanitize(missing)}</strong>.${avail}`;
+        }
+        toast("La tabella specificata non contiene tutti i campi richiesti.", "warning");
+      }
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        const errMsg = _estraiMessaggioErroreApi(res, d, "Permessi insufficienti per validare lo schema.");
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.textContent = errMsg;
+        }
+        toast(errMsg, "error");
+      }
+    } else {
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la validazione dello schema.");
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante la validazione dello schema.";
+    }
+    toast("Impossibile convalidare lo schema su Airtable.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Valida Schema Tabella";
+    }
+  }
+});
+
+// Submit Form Sottoscrizione Webhook
+document.getElementById("airtable-webhook-sub-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const baseId = document.getElementById("airtable-sub-base-select")?.value.trim();
+  const webhookId = document.getElementById("airtable-sub-webhook-id")?.value.trim();
+  const macSecret = document.getElementById("airtable-sub-mac-secret")?.value.trim();
+  const submitBtn = document.getElementById("airtable-sub-submit-btn");
+  const feedbackEl = document.getElementById("airtable-sub-feedback");
+
+  if (!baseId || !webhookId || !macSecret) {
+    toast("Compila tutti i campi richiesti per la registrazione del webhook.", "error");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Registrazione in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/webhooks/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base_id: baseId,
+        webhook_id: webhookId,
+        mac_secret: macSecret,
+        notification_url: `${window.location.origin || ""}/api/v1/integrations/airtable/webhook`,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback success";
+        feedbackEl.textContent = `Webhook registrato con successo! ID: ${d.webhook_id} (Base: ${d.base_id}).`;
+      }
+      toast("Sottoscrizione webhook registrata con successo!", "success");
+      const whInput = document.getElementById("airtable-sub-webhook-id");
+      const macInput = document.getElementById("airtable-sub-mac-secret");
+      if (whInput) whInput.value = "";
+      if (macInput) macInput.value = "";
+      await caricaEventiWebhookAirtable();
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        const errMsg = _estraiMessaggioErroreApi(res, d, "Autorizzazione webhook non valida per questa Base.");
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.textContent = errMsg;
+        }
+        toast(errMsg, "error");
+      }
+    } else {
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la registrazione del webhook.");
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di rete durante la registrazione del webhook.";
+    }
+    toast("Impossibile registrare la sottoscrizione webhook.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Registra Sottoscrizione Webhook";
+    }
+  }
+});
+
+// Refresh Eventi Webhook (1 solo listener permanente)
+document.getElementById("airtable-events-refresh-btn")?.addEventListener("click", () => {
+  caricaEventiWebhookAirtable();
+});
 
 /* ============================================================
    STAMPA REPORT + SCORCIATOIE TASTIERA

@@ -487,6 +487,9 @@ html[data-theme="dark"] .settings-cat-btn.active {
 .settings-cat-icon.icon-wa { color: #25D366; }
 .settings-cat-icon.icon-ig { color: #E1306C; }
 .settings-cat-icon.icon-cal { color: #4285F4; }
+.settings-cat-icon.icon-reviews { color: #FBBC05; }
+.settings-cat-icon.icon-booking-pms { color: #0284c7; }
+.settings-cat-icon.icon-airtable { color: #d97706; }
 
 .nav-badge {
   min-width: 19px;
@@ -7539,6 +7542,21 @@ html[data-theme="dark"] .toast {
   color: #4285F4;
 }
 
+.integrazione-icona.icon-reviews {
+  background: rgba(251, 188, 5, 0.12);
+  color: #FBBC05;
+}
+
+.integrazione-icona.icon-booking-pms {
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+}
+
+.integrazione-icona.icon-airtable {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
 .integrazione-icona.icon-wh {
   background: var(--accent-soft);
   color: var(--accent);
@@ -7604,27 +7622,150 @@ html[data-theme="dark"] .toast {
   background: var(--muted);
 }
 
+.badge-status.requires_reauth,
 .badge-status.expired_token,
 .badge-status.error {
   background: var(--red-soft);
   color: var(--red);
   border-color: rgba(220, 38, 38, 0.25);
 }
+.badge-status.requires_reauth .badge-status-dot,
 .badge-status.expired_token .badge-status-dot,
 .badge-status.error .badge-status-dot {
   background: var(--red);
   box-shadow: 0 0 6px rgba(220, 38, 38, 0.6);
 }
 
+.badge-status.connecting,
 .badge-status.pending,
 .badge-status.pending_verification {
   background: var(--amber-soft);
   color: var(--amber);
   border-color: rgba(217, 119, 6, 0.25);
 }
+.badge-status.connecting .badge-status-dot,
 .badge-status.pending .badge-status-dot,
 .badge-status.pending_verification .badge-status-dot {
   background: var(--amber);
+}
+
+.badge-status.unauthorized,
+.badge-status.mfa_required {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.badge-status.unauthorized .badge-status-dot,
+.badge-status.mfa_required .badge-status-dot {
+  background: #d97706;
+}
+
+.badge-status.disabled {
+  background: var(--line, #e2e8f0);
+  color: var(--text-muted, #94a3b8);
+  border-color: var(--line-strong, #cbd5e1);
+}
+.badge-status.disabled .badge-status-dot {
+  background: var(--text-muted, #94a3b8);
+}
+
+/* Badge di stato onesto / disclosure */
+.badge-status-honest {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  background: rgba(14, 165, 233, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(14, 165, 233, 0.28);
+}
+
+/* Banner informativi e avvisi per gestionale */
+.pms-banner-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 12px 0 16px;
+}
+
+.pms-banner-box.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--amber-dark, #b45309);
+}
+
+.pms-banner-box.info {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(14, 165, 233, 0.25);
+  color: #0369a1;
+}
+
+/* Airtable Integration Components (Fase 3) */
+.airtable-bases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.airtable-base-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.airtable-base-card:hover {
+  border-color: var(--line-strong, #cbd5e1);
+  box-shadow: var(--shadow-sm);
+}
+
+.airtable-base-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.airtable-base-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+.airtable-base-id-badge {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.76rem;
+  padding: 2px 6px;
+  background: var(--bg-elev-2, #f1f5f9);
+  color: var(--ink-soft);
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.airtable-base-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 /* Metadata grid */

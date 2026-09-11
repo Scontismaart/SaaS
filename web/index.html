@@ -6,7 +6,7 @@
 <title>Melpis — Pannello di controllo</title>
 <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="logo.webp" type="image/webp">
-<link rel="stylesheet" href="style.css?v=integ-v5">
+<link rel="stylesheet" href="style.css?v=integ-v6">
 </head>
 <body>
 
@@ -1579,6 +1579,12 @@
                 </span>
                 <span>Gestionale (PMS)</span>
               </button>
+              <button type="button" class="settings-cat-btn" data-settings-cat-btn="airtable" data-keywords="airtable crm database tabelle sync base pat webhook fogli dati">
+                <span class="settings-cat-icon icon-airtable" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 7.5l10 4.5 10-4.5L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="m2 12 10 4.5 10-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="m2 16.5 10 4.5 10-4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span>Airtable</span>
+              </button>
             </div>
 
             <!-- Gruppo ACCOUNT -->
@@ -2318,6 +2324,217 @@
             </div>
           </div>
 
+          <!-- PANNELLO: AIRTABLE (FASE 3) -->
+          <div class="settings-panel" data-settings-panel="airtable" hidden>
+            <header class="settings-panel-header">
+              <h2 class="settings-panel-title">Airtable</h2>
+              <p class="settings-panel-subtitle">Connessione Basi tramite Personal Access Token (PAT), validazione schema e gestione notifiche webhook.</p>
+            </header>
+
+            <!-- Banner vincolo di perimetro: Mapping tabelle in arrivo (§5, §11, §15 audit) -->
+            <div class="pms-banner-box info" id="airtable-mapping-incoming-banner" style="margin-bottom: 16px;">
+              <span style="font-size: 1.15rem; line-height: 1;">ℹ️</span>
+              <div>
+                <strong>Mapping tabelle: in arrivo</strong>
+                <p style="margin: 4px 0 0; font-size: 0.83rem; color: var(--text-muted); line-height: 1.45;">
+                  La configurazione visuale dei campi e il mapping bidirezionale delle entità sono attualmente in fase di rilascio.
+                  È possibile connettere le proprie Basi con Personal Access Token (PAT), verificarne preventivamente la conformità dello schema e monitorare gli eventi webhook in tempo reale.
+                </p>
+              </div>
+            </div>
+
+            <!-- STATO ATTUALE: Card Stato & Lista Basi Connesse -->
+            <div class="dash-card integrazione-card" id="integ-airtable-card">
+              <div class="integrazione-head">
+                <span class="integrazione-icona icon-airtable">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 7.5l10 4.5 10-4.5L12 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m2 12 10 4.5 10-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="m2 16.5 10 4.5 10-4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <div class="integrazione-info-main">
+                  <h3 class="integrazione-titolo">Airtable Workspace</h3>
+                  <span class="integrazione-sub" id="integ-airtable-sub">Verifica connessioni…</span>
+                </div>
+                <span class="integrazione-stato badge-status disconnected" id="integ-airtable-stato">
+                  <span class="badge-status-dot"></span>
+                  <span class="badge-status-label">Verifica…</span>
+                </span>
+              </div>
+
+              <div class="integrazione-meta-grid" id="integ-airtable-meta">
+                <div class="integrazione-meta-item">
+                  <span class="integrazione-meta-label">Basi collegate</span>
+                  <span class="integrazione-meta-val" id="integ-airtable-bases-count">0</span>
+                </div>
+                <div class="integrazione-meta-item">
+                  <span class="integrazione-meta-label">Tipo Autenticazione</span>
+                  <span class="integrazione-meta-val" id="integ-airtable-auth-type">PAT (AES-256)</span>
+                </div>
+                <div class="integrazione-meta-item">
+                  <span class="integrazione-meta-label">Ultimo Aggiornamento</span>
+                  <span class="integrazione-meta-val" id="integ-airtable-last-update">—</span>
+                </div>
+              </div>
+
+              <!-- Lista Basi Configurate -->
+              <div id="airtable-bases-container" style="margin-top: 14px;">
+                <h4 style="font-size: 0.88rem; font-weight: 600; color: var(--ink); margin-bottom: 8px;">Basi Airtable Configurate:</h4>
+                <div id="airtable-bases-list" class="airtable-bases-grid">
+                  <!-- Renderizzato via JavaScript da app.js -->
+                </div>
+                <div id="airtable-bases-empty" class="empty-state-sm" style="padding: 14px; font-size: 0.84rem; color: var(--text-muted); text-align: center; border: 1px dashed var(--line); border-radius: var(--radius-sm);">
+                  Nessuna Base Airtable attualmente connessa. Collega una Base tramite Personal Access Token.
+                </div>
+              </div>
+
+              <div class="integrazione-actions" style="margin-top: 14px;">
+                <button type="button" class="review-analyze" id="airtable-toggle-connect-btn">Connetti nuova Base</button>
+              </div>
+              <div class="integ-test-feedback" id="integ-airtable-feedback" hidden></div>
+            </div>
+
+            <!-- FORM DI CONNESSIONE NUOVA BASE (PAT) -->
+            <div class="dash-card wizard-setup-card" id="integ-airtable-connect-card" hidden style="margin-top: 18px;">
+              <div class="wizard-intro-box" style="margin-bottom: 16px;">
+                <h3 class="wizard-section-title">Connetti Base Airtable</h3>
+                <p class="settings-help">Inserisci il Personal Access Token generato dal Builder Hub di Airtable e l'identificativo univoco della Base. Il token viene cifrato a riposo tramite envelope AES-256 e non viene mai restituito in chiaro.</p>
+              </div>
+
+              <form id="airtable-connect-form" autocomplete="off">
+                <div class="settings-field-group">
+                  <label class="wizard-label" for="airtable-token">Personal Access Token (PAT) <span class="req">*</span></label>
+                  <input class="wizard-input" id="airtable-token" type="password" placeholder="patXXXXXXXXXXXXXX..." autocomplete="new-password" required>
+                  <span class="settings-help-sm">Generato da Airtable &gt; Builder Hub &gt; Personal Access Tokens. Scopes richiesti: <code>data.records:read</code>, <code>data.records:write</code>, <code>schema.bases:read</code>.</span>
+                </div>
+
+                <div class="settings-field-group">
+                  <label class="wizard-label" for="airtable-base-id">ID della Base (Base ID) <span class="req">*</span></label>
+                  <input class="wizard-input" id="airtable-base-id" type="text" placeholder="appXXXXXXXXXXXXXX" required>
+                  <span class="settings-help-sm">Identificativo della Base Airtable visibile nell'URL del browser (inizia con <code>app</code>).</span>
+                </div>
+
+                <div class="settings-field-group">
+                  <label class="wizard-label" for="airtable-base-name">Nome Base (Opzionale)</label>
+                  <input class="wizard-input" id="airtable-base-name" type="text" placeholder="Es. CRM Prenotazioni &amp; Clienti">
+                  <span class="settings-help-sm">Nome mnemonico da visualizzare nella dashboard.</span>
+                </div>
+
+                <div class="integ-test-feedback" id="airtable-connect-feedback" hidden></div>
+
+                <div style="display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;">
+                  <button type="submit" class="review-analyze" id="airtable-connect-submit-btn">Verifica e Connetti Base</button>
+                  <button type="button" class="report-refresh" id="airtable-connect-cancel-btn">Annulla</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- VALIDAZIONE PREVENTIVA DELLO SCHEMA -->
+            <div class="dash-card wizard-setup-card" id="integ-airtable-validate-card" style="margin-top: 18px;">
+              <div class="wizard-intro-box" style="margin-bottom: 16px;">
+                <h3 class="wizard-section-title">Validazione Preventiva Schema</h3>
+                <p class="settings-help">Gate bloccante: verifica che la tabella e i campi specificati esistano nella Base prima di attivare workflow o automazioni.</p>
+              </div>
+
+              <form id="airtable-validate-form" autocomplete="off">
+                <div class="settings-field-group">
+                  <label class="wizard-label" for="airtable-val-base-select">Base di Riferimento <span class="req">*</span></label>
+                  <select class="wizard-input" id="airtable-val-base-select" required>
+                    <option value="">Seleziona una Base connessa…</option>
+                  </select>
+                </div>
+
+                <div class="settings-field-group">
+                  <label class="wizard-label" for="airtable-val-table">Nome o ID Tabella <span class="req">*</span></label>
+                  <input class="wizard-input" id="airtable-val-table" type="text" placeholder="Es. Prenotazioni o tblXXXXXXXXXXXXXX" required>
+                </div>
+
+                <div class="settings-field-group">
+                  <label class="wizard-label" for="airtable-val-fields">Campi Richiesti (separati da virgola) <span class="req">*</span></label>
+                  <input class="wizard-input" id="airtable-val-fields" type="text" placeholder="Es. Nome, Telefono, Data, Stato" required>
+                  <span class="settings-help-sm">Elenco dei nomi esatti delle colonne che devono essere presenti nella tabella.</span>
+                </div>
+
+                <div class="integ-test-feedback" id="airtable-validate-feedback" hidden></div>
+
+                <div style="margin-top: 16px;">
+                  <button type="submit" class="review-analyze" id="airtable-validate-submit-btn">Valida Schema Tabella</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- WEBHOOK AIRTABLE (RICEZIONE NOTIFICHE THIN-PING) -->
+            <div class="dash-card wizard-setup-card" id="integ-airtable-webhooks-card" style="margin-top: 18px;">
+              <div class="wizard-intro-box" style="margin-bottom: 14px;">
+                <h3 class="wizard-section-title">Webhook Airtable (Notifiche Eventi)</h3>
+                <p class="settings-help">Ricezione notifiche in tempo reale (thin-ping asincrono con elaborazione in background). Configura il webhook su Airtable e registra qui l'identificativo e il segreto MAC crittografico.</p>
+              </div>
+
+              <!-- URL Endpoint di Ricezione -->
+              <div class="settings-field-group" style="background: var(--bg-card-subtle, #f8fafc); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--line);">
+                <span class="wizard-label" style="margin-bottom: 4px; font-weight: 600;">Endpoint di notifica Melpis (URL Webhook):</span>
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                  <code id="airtable-webhook-endpoint-url" style="background: var(--bg, #fff); padding: 6px 10px; border-radius: var(--radius-xs); border: 1px solid var(--line); font-size: 0.82rem; flex: 1; word-break: break-all;">
+                    /api/v1/integrations/airtable/webhook
+                  </code>
+                </div>
+                <span class="settings-help-sm" style="margin-top: 4px;">Inserisci questo URL nelle impostazioni del webhook su Airtable con validazione HMAC-SHA256 (header <code>X-Airtable-Content-MAC</code>).</span>
+              </div>
+
+              <!-- Form Registrazione Sottoscrizione Webhook -->
+              <details style="margin-top: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px 14px;">
+                <summary style="font-size: 0.86rem; font-weight: 600; cursor: pointer; color: var(--ink);">
+                  Registra Sottoscrizione Webhook (Webhook ID &amp; Segreto MAC)
+                </summary>
+                <form id="airtable-webhook-sub-form" style="margin-top: 14px;" autocomplete="off">
+                  <div class="settings-field-group">
+                    <label class="wizard-label" for="airtable-sub-base-select">Base Airtable <span class="req">*</span></label>
+                    <select class="wizard-input" id="airtable-sub-base-select" required>
+                      <option value="">Seleziona una Base connessa…</option>
+                    </select>
+                  </div>
+                  <div class="settings-field-group">
+                    <label class="wizard-label" for="airtable-sub-webhook-id">Webhook ID (ach...) <span class="req">*</span></label>
+                    <input class="wizard-input" id="airtable-sub-webhook-id" type="text" placeholder="achXXXXXXXXXXXXXX" required>
+                    <span class="settings-help-sm">L'identificativo univoco del webhook generato da Airtable.</span>
+                  </div>
+                  <div class="settings-field-group">
+                    <label class="wizard-label" for="airtable-sub-mac-secret">Segreto MAC (macSecretBase64) <span class="req">*</span></label>
+                    <input class="wizard-input" id="airtable-sub-mac-secret" type="password" placeholder="macSecretBase64 fornito da Airtable" autocomplete="new-password" required>
+                    <span class="settings-help-sm">Chiave segreta per la verifica dell'header <code>X-Airtable-Content-MAC</code> (HMAC-SHA256).</span>
+                  </div>
+                  <div class="integ-test-feedback" id="airtable-sub-feedback" hidden></div>
+                  <div style="margin-top: 12px;">
+                    <button type="submit" class="review-analyze" id="airtable-sub-submit-btn">Registra Sottoscrizione Webhook</button>
+                  </div>
+                </form>
+              </details>
+
+              <!-- Feed Eventi Webhook Ricevuti -->
+              <div style="margin-top: 18px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                  <h4 style="font-size: 0.88rem; font-weight: 600; color: var(--ink); margin: 0;">Registro Eventi Webhook Ricevuti:</h4>
+                  <button type="button" class="report-refresh" id="airtable-events-refresh-btn" style="padding: 5px 10px; font-size: 0.8rem;">Aggiorna eventi</button>
+                </div>
+                <div class="airtable-events-container" style="border: 1px solid var(--line); border-radius: var(--radius-sm); overflow-x: auto;">
+                  <table class="report-table" style="width: 100%; font-size: 0.82rem; margin: 0; min-width: 500px;">
+                    <thead>
+                      <tr>
+                        <th style="padding: 8px 10px; text-align: left;">Data / Ora</th>
+                        <th style="padding: 8px 10px; text-align: left;">Base ID</th>
+                        <th style="padding: 8px 10px; text-align: left;">Webhook ID</th>
+                        <th style="padding: 8px 10px; text-align: left;">Event ID</th>
+                        <th style="padding: 8px 10px; text-align: left;">Stato</th>
+                      </tr>
+                    </thead>
+                    <tbody id="airtable-events-tbody">
+                      <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">Caricamento eventi…</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- PANNELLO: PIANO E ABBONAMENTO -->
           <div class="settings-panel" data-settings-panel="piano" hidden>
             <header class="settings-panel-header">
@@ -2426,6 +2643,6 @@
 <script src="/config.js"></script>
 <script src="vendor/fullcalendar.min.js"></script>
 <script src="vendor/dompurify.min.js"></script>
-<script src="app.js?v=integ-v5"></script>
+<script src="app.js?v=integ-v6"></script>
 </body>
 </html>

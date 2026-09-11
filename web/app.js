@@ -687,6 +687,7 @@ function apriVistaImpostazioni(cat = "generale") {
     calendar: "Google Calendar",
     reviews: "Google Recensioni",
     "booking-pms": "Gestionale Prenotazioni (PMS)",
+    airtable: "Airtable",
   };
   topbarTitle.textContent = titles[cat] || "Impostazioni";
 
@@ -737,6 +738,7 @@ function attivaCategoriaImpostazioni(cat) {
     "booking-pms": "booking-pms",
     booking: "booking-pms",
     pms: "booking-pms",
+    airtable: "airtable",
   };
   const targetCat = MAPPATURA_LEGACY[cat] || cat || "generale";
 
@@ -754,7 +756,7 @@ function attivaCategoriaImpostazioni(cat) {
   // Carica i dati specifici della categoria attiva
   if (targetCat === "generale") {
     if (typeof caricaTimezone === "function") caricaTimezone();
-  } else if (["whatsapp", "instagram", "calendar", "reviews", "webhook", "booking-pms"].includes(targetCat)) {
+  } else if (["whatsapp", "instagram", "calendar", "reviews", "webhook", "booking-pms", "airtable"].includes(targetCat)) {
     if (typeof caricaIntegrazioni === "function") caricaIntegrazioni();
   } else if (targetCat === "piano" || targetCat === "fatturazione") {
     if (typeof caricaAccount === "function") caricaAccount();
@@ -6630,7 +6632,8 @@ async function caricaIntegrazioni() {
       caricaStatoInstagram(),
       caricaStatoCalendar(),
       caricaStatoReviews(),
-      caricaStatoBooking()
+      caricaStatoBooking(),
+      caricaStatoAirtable()
     ]);
   } catch (err) {
     if (status) { status.textContent = "Errore durante il caricamento integrazioni."; status.style.color = "var(--red)"; }
@@ -7651,6 +7654,534 @@ document.getElementById("booking-config-form")?.addEventListener("submit", async
       submitBtn.textContent = "Salva Configurazione";
     }
   }
+});
+
+/* ============================================================
+   INTEGRAZIONE AIRTABLE (FASE 3)
+   Invarianti: 1 (Tenant Isolation), 6 (GDPR Sanità), 10 (Zero Secrets)
+   ============================================================ */
+
+let _airtableBasesCache = [];
+
+async function caricaStatoAirtable() {
+  const statoEl = document.getElementById("integ-airtable-stato");
+  const subEl = document.getElementById("integ-airtable-sub");
+  const basesCountEl = document.getElementById("integ-airtable-bases-count");
+  const lastUpdateEl = document.getElementById("integ-airtable-last-update");
+  const basesListEl = document.getElementById("airtable-bases-list");
+  const basesEmptyEl = document.getElementById("airtable-bases-empty");
+  const valBaseSelect = document.getElementById("airtable-val-base-select");
+  const subBaseSelect = document.getElementById("airtable-sub-base-select");
+  const endpointUrlEl = document.getElementById("airtable-webhook-endpoint-url");
+
+  if (endpointUrlEl) {
+    const baseOrigin = window.location.origin || "";
+    endpointUrlEl.textContent = `${baseOrigin}/api/v1/integrations/airtable/webhook`;
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/status`);
+    if (!res.ok) {
+      if (basesListEl) basesListEl.innerHTML = "";
+      if (basesEmptyEl) basesEmptyEl.hidden = true;
+      if (res.status === 403) {
+        if (!res.mfaRequired) {
+          const d = await res.json().catch(() => ({}));
+          if (statoEl) {
+            statoEl.className = "integrazione-stato badge-status disconnected";
+            statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Non autorizzato</span>';
+          }
+          if (subEl) subEl.textContent = d.detail || "Permessi insufficienti per visualizzare lo stato Airtable.";
+        } else {
+          if (statoEl) {
+            statoEl.className = "integrazione-stato badge-status disconnected";
+            statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">MFA richiesta</span>';
+          }
+          if (subEl) subEl.textContent = "Autenticazione a due fattori richiesta.";
+        }
+      } else {
+        if (statoEl) {
+          statoEl.className = "integrazione-stato badge-status disconnected";
+          statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Errore</span>';
+        }
+        if (subEl) subEl.textContent = "Impossibile recuperare lo stato.";
+      }
+      return;
+    }
+
+    const d = await res.json().catch(() => ({}));
+    const connections = Array.isArray(d.connections) ? d.connections : [];
+    _airtableBasesCache = connections;
+
+    const count = connections.length;
+    if (basesCountEl) basesCountEl.textContent = String(count);
+
+    if (d.is_configured && count > 0) {
+      if (statoEl) {
+        statoEl.className = "integrazione-stato badge-status connected";
+        statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Connesso</span>';
+      }
+      if (subEl) {
+        subEl.textContent = `${count} ${count === 1 ? "Base collegata" : "Basi collegate"}`;
+      }
+
+      const lastUpdated = connections[0]?.updated_at;
+      if (lastUpdateEl) {
+        lastUpdateEl.textContent = lastUpdated
+          ? new Date(lastUpdated).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          : "—";
+      }
+
+      if (basesEmptyEl) basesEmptyEl.hidden = true;
+
+      if (basesListEl) {
+        basesListEl.innerHTML = connections
+          .map((c) => {
+            const safeName = DOMPurify.sanitize(c.base_name || "Base Airtable");
+            const safeId = DOMPurify.sanitize(c.base_id);
+            const safeVerticale = c.verticale ? `<span class="badge-status-honest" style="margin-left: 6px;">${DOMPurify.sanitize(c.verticale)}</span>` : "";
+            const formattedDate = c.updated_at
+              ? new Date(c.updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+              : "";
+
+            return `
+              <div class="airtable-base-card" data-base-id="${safeId}">
+                <div class="airtable-base-head">
+                  <div>
+                    <div class="airtable-base-name">${safeName} ${safeVerticale}</div>
+                    <code class="airtable-base-id-badge">${safeId}</code>
+                  </div>
+                  <button type="button" class="btn-danger-outline btn-disconnect-airtable-base" data-base-id="${safeId}" data-base-name="${safeName}" style="padding: 4px 8px; font-size: 0.78rem;">
+                    Disconnetti
+                  </button>
+                </div>
+                <div class="airtable-base-meta">
+                  <span>Aggiornato: ${formattedDate || "—"}</span>
+                  <span class="badge-status connected" style="padding: 2px 6px; font-size: 0.74rem;">
+                    <span class="badge-status-dot"></span> Attiva
+                  </span>
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      const selectOptions = '<option value="">Seleziona una Base connessa…</option>' +
+        connections.map((c) => `<option value="${DOMPurify.sanitize(c.base_id)}">${DOMPurify.sanitize(c.base_name || c.base_id)} (${DOMPurify.sanitize(c.base_id)})</option>`).join("");
+
+      if (valBaseSelect) valBaseSelect.innerHTML = selectOptions;
+      if (subBaseSelect) subBaseSelect.innerHTML = selectOptions;
+
+    } else {
+      if (statoEl) {
+        statoEl.className = "integrazione-stato badge-status disconnected";
+        statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Non connesso</span>';
+      }
+      if (subEl) subEl.textContent = "Nessuna Base connessa";
+      if (lastUpdateEl) lastUpdateEl.textContent = "—";
+      if (basesListEl) basesListEl.innerHTML = "";
+      if (basesEmptyEl) basesEmptyEl.hidden = false;
+      if (valBaseSelect) valBaseSelect.innerHTML = '<option value="">Nessuna Base connessa</option>';
+      if (subBaseSelect) subBaseSelect.innerHTML = '<option value="">Nessuna Base connessa</option>';
+    }
+
+    await caricaEventiWebhookAirtable();
+
+  } catch {
+    if (statoEl) {
+      statoEl.className = "integrazione-stato badge-status disconnected";
+      statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Errore rete</span>';
+    }
+  }
+}
+
+async function disconnettiBaseAirtable(baseId, baseName) {
+  if (!baseId) return;
+
+  const confermato = await confermaDestructiva({
+    titolo: "Disconnettere la Base Airtable?",
+    descrizione: `Stai per rimuovere la connessione alla Base "${baseName}" (${baseId}). Le credenziali salvate verranno revocate e i workflow collegati a questa Base non riceveranno più dati.`,
+    label: "Disconnetti Base",
+  });
+
+  if (!confermato) return;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable?base_id=${encodeURIComponent(baseId)}`, {
+      method: "DELETE",
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || `Base ${baseName} disconnessa con successo.`, "success");
+      await caricaStatoAirtable();
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        toast(d.detail || "Permessi insufficienti per rimuovere la Base.", "error");
+      }
+    } else {
+      toast(d.detail || "Errore durante la disconnessione della Base.", "error");
+    }
+  } catch {
+    toast("Errore di connessione durante la rimozione della Base.", "error");
+  }
+}
+
+async function caricaEventiWebhookAirtable() {
+  const tbody = document.getElementById("airtable-events-tbody");
+  const btn = document.getElementById("airtable-events-refresh-btn");
+  if (!tbody) return;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Caricamento…";
+  }
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/webhooks/events?limit=20`);
+    if (!res.ok) {
+      if (res.status === 403) {
+        if (!res.mfaRequired) {
+          const d = await res.json().catch(() => ({}));
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">${DOMPurify.sanitize(d.detail || "Permessi insufficienti per visualizzare gli eventi webhook.")}</td></tr>`;
+        } else {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">Verifica MFA richiesta per accedere agli eventi.</td></tr>';
+        }
+      } else {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--red); padding: 12px;">Impossibile caricare gli eventi webhook.</td></tr>';
+      }
+      return;
+    }
+
+    const events = await res.json().catch(() => []);
+    if (!Array.isArray(events) || events.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">Nessun evento webhook registrato di recente.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = events
+      .map((ev) => {
+        const safeBase = DOMPurify.sanitize(ev.base_id || "—");
+        const safeWebhook = DOMPurify.sanitize(ev.webhook_id || "—");
+        const safeEventId = DOMPurify.sanitize(ev.external_event_id || ev.id || "—");
+        const safeStatus = DOMPurify.sanitize(ev.status || "pending");
+        const dt = ev.created_at || ev.event_timestamp;
+        const formattedDate = dt
+          ? new Date(dt).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          : "—";
+
+        const statusClass = safeStatus === "processed" ? "connected" : safeStatus === "failed" ? "disconnected" : "pending";
+        const statusLabel = safeStatus === "processed" ? "Elaborato" : safeStatus === "failed" ? "Fallito" : "In attesa";
+
+        return `
+          <tr>
+            <td style="padding: 8px 10px; font-size: 0.78rem;">${formattedDate}</td>
+            <td style="padding: 8px 10px;"><code style="font-size: 0.76rem;">${safeBase}</code></td>
+            <td style="padding: 8px 10px;"><code style="font-size: 0.76rem;">${safeWebhook}</code></td>
+            <td style="padding: 8px 10px; font-size: 0.76rem; color: var(--text-muted);">${safeEventId}</td>
+            <td style="padding: 8px 10px;">
+              <span class="badge-status ${statusClass}" style="padding: 2px 6px; font-size: 0.74rem;">
+                <span class="badge-status-dot"></span> ${statusLabel}
+              </span>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--red); padding: 12px;">Errore di rete nel caricamento eventi.</td></tr>';
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Aggiorna eventi";
+    }
+  }
+}
+
+// Event Delegation su Lista Basi (Listener Hygiene: 1 solo listener permanente)
+document.getElementById("airtable-bases-list")?.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btn-disconnect-airtable-base");
+  if (!btn) return;
+  const baseId = btn.dataset.baseId;
+  const baseName = btn.dataset.baseName || baseId;
+  await disconnettiBaseAirtable(baseId, baseName);
+});
+
+// Toggle Form Connessione
+document.getElementById("airtable-toggle-connect-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-airtable-connect-card");
+  if (!formCard) return;
+  const isHidden = formCard.hidden;
+  formCard.hidden = !isHidden;
+  if (isHidden) {
+    formCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+});
+
+document.getElementById("airtable-connect-cancel-btn")?.addEventListener("click", () => {
+  const formCard = document.getElementById("integ-airtable-connect-card");
+  if (formCard) formCard.hidden = true;
+});
+
+// Submit Form Connessione PAT
+document.getElementById("airtable-connect-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = document.getElementById("airtable-token")?.value.trim();
+  const baseId = document.getElementById("airtable-base-id")?.value.trim();
+  const baseName = document.getElementById("airtable-base-name")?.value.trim() || "";
+  const submitBtn = document.getElementById("airtable-connect-submit-btn");
+  const feedbackEl = document.getElementById("airtable-connect-feedback");
+
+  if (!token || !baseId) {
+    toast("Inserisci Personal Access Token e Base ID.", "error");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Verifica in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token,
+        base_id: baseId,
+        base_name: baseName,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      toast(d.message || "Base Airtable collegata con successo!", "success");
+      const formCard = document.getElementById("integ-airtable-connect-card");
+      if (formCard) formCard.hidden = true;
+      const tokInput = document.getElementById("airtable-token");
+      const baseInput = document.getElementById("airtable-base-id");
+      const nameInput = document.getElementById("airtable-base-name");
+      if (tokInput) tokInput.value = "";
+      if (baseInput) baseInput.value = "";
+      if (nameInput) nameInput.value = "";
+      await caricaStatoAirtable();
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        // Messaggio esatto dal backend (es. AirtableMedicalPolicyError GDPR Art. 9)
+        const errMsg = d.detail || "Connessione ad Airtable non consentita per policy di sicurezza.";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.textContent = errMsg;
+        }
+        toast(errMsg, "error", 8000);
+      }
+    } else {
+      const errMsg = d.detail || "Errore durante la connessione della Base Airtable.";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante la verifica del token.";
+    }
+    toast("Impossibile contattare il server per la verifica del PAT.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Verifica e Connetti Base";
+    }
+  }
+});
+
+// Submit Form Validazione Schema
+document.getElementById("airtable-validate-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const baseId = document.getElementById("airtable-val-base-select")?.value.trim();
+  const table = document.getElementById("airtable-val-table")?.value.trim();
+  const fieldsRaw = document.getElementById("airtable-val-fields")?.value.trim();
+  const submitBtn = document.getElementById("airtable-validate-submit-btn");
+  const feedbackEl = document.getElementById("airtable-validate-feedback");
+
+  if (!baseId || !table || !fieldsRaw) {
+    toast("Seleziona una Base e compila nome tabella e campi richiesti.", "error");
+    return;
+  }
+
+  const requiredFields = fieldsRaw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (requiredFields.length === 0) {
+    toast("Specifica almeno un campo richiesto per la validazione.", "error");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Validazione in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/validate-schema`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base_id: baseId,
+        table_id_or_name: table,
+        required_fields: requiredFields,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (d.is_valid) {
+        const matched = Array.isArray(d.available_fields) && d.available_fields.length > 0
+          ? d.available_fields.join(", ")
+          : "Tutti i campi richiesti sono presenti";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback success";
+          feedbackEl.innerHTML = `<strong>Schema Valido:</strong> La tabella "${DOMPurify.sanitize(d.table_name || table)}" è conforme. Campi verificati con successo: ${DOMPurify.sanitize(matched)}.`;
+        }
+        toast("Schema Airtable verificato con successo!", "success");
+      } else {
+        const missing = Array.isArray(d.missing_fields) && d.missing_fields.length > 0
+          ? d.missing_fields.join(", ")
+          : "Campi mancanti non specificati";
+        const avail = Array.isArray(d.available_fields) && d.available_fields.length > 0
+          ? `<br><small style="color: var(--text-muted);">Campi trovati nella tabella: ${DOMPurify.sanitize(d.available_fields.join(", "))}</small>`
+          : "";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.innerHTML = `<strong>Schema non conforme:</strong> I seguenti campi richiesti non esistono nella tabella: <strong>${DOMPurify.sanitize(missing)}</strong>.${avail}`;
+        }
+        toast("La tabella specificata non contiene tutti i campi richiesti.", "warning");
+      }
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        const errMsg = d.detail || "Permessi insufficienti per validare lo schema.";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.textContent = errMsg;
+        }
+        toast(errMsg, "error");
+      }
+    } else {
+      const errMsg = d.detail || "Errore durante la validazione dello schema.";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di connessione durante la validazione dello schema.";
+    }
+    toast("Impossibile convalidare lo schema su Airtable.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Valida Schema Tabella";
+    }
+  }
+});
+
+// Submit Form Sottoscrizione Webhook
+document.getElementById("airtable-webhook-sub-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const baseId = document.getElementById("airtable-sub-base-select")?.value.trim();
+  const webhookId = document.getElementById("airtable-sub-webhook-id")?.value.trim();
+  const macSecret = document.getElementById("airtable-sub-mac-secret")?.value.trim();
+  const submitBtn = document.getElementById("airtable-sub-submit-btn");
+  const feedbackEl = document.getElementById("airtable-sub-feedback");
+
+  if (!baseId || !webhookId || !macSecret) {
+    toast("Compila tutti i campi richiesti per la registrazione del webhook.", "error");
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Registrazione in corso…";
+  }
+  if (feedbackEl) feedbackEl.hidden = true;
+
+  try {
+    const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/webhooks/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base_id: baseId,
+        webhook_id: webhookId,
+        mac_secret: macSecret,
+        notification_url: `${window.location.origin || ""}/api/v1/integrations/airtable/webhook`,
+      }),
+    });
+
+    const d = await res.json().catch(() => ({}));
+    if (res.ok) {
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback success";
+        feedbackEl.textContent = `Webhook registrato con successo! ID: ${d.webhook_id} (Base: ${d.base_id}).`;
+      }
+      toast("Sottoscrizione webhook registrata con successo!", "success");
+      const whInput = document.getElementById("airtable-sub-webhook-id");
+      const macInput = document.getElementById("airtable-sub-mac-secret");
+      if (whInput) whInput.value = "";
+      if (macInput) macInput.value = "";
+      await caricaEventiWebhookAirtable();
+    } else if (res.status === 403) {
+      if (!res.mfaRequired) {
+        const errMsg = d.detail || "Autorizzazione webhook non valida per questa Base.";
+        if (feedbackEl) {
+          feedbackEl.hidden = false;
+          feedbackEl.className = "integ-test-feedback error";
+          feedbackEl.textContent = errMsg;
+        }
+        toast(errMsg, "error");
+      }
+    } else {
+      const errMsg = d.detail || "Errore durante la registrazione del webhook.";
+      if (feedbackEl) {
+        feedbackEl.hidden = false;
+        feedbackEl.className = "integ-test-feedback error";
+        feedbackEl.textContent = errMsg;
+      }
+      toast(errMsg, "error");
+    }
+  } catch {
+    if (feedbackEl) {
+      feedbackEl.hidden = false;
+      feedbackEl.className = "integ-test-feedback error";
+      feedbackEl.textContent = "Errore di rete durante la registrazione del webhook.";
+    }
+    toast("Impossibile registrare la sottoscrizione webhook.", "error");
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Registra Sottoscrizione Webhook";
+    }
+  }
+});
+
+// Refresh Eventi Webhook (1 solo listener permanente)
+document.getElementById("airtable-events-refresh-btn")?.addEventListener("click", () => {
+  caricaEventiWebhookAirtable();
 });
 
 /* ============================================================

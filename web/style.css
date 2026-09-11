@@ -489,6 +489,7 @@ html[data-theme="dark"] .settings-cat-btn.active {
 .settings-cat-icon.icon-cal { color: #4285F4; }
 .settings-cat-icon.icon-reviews { color: #FBBC05; }
 .settings-cat-icon.icon-booking-pms { color: #0284c7; }
+.settings-cat-icon.icon-airtable { color: #d97706; }
 
 .nav-badge {
   min-width: 19px;
@@ -7551,6 +7552,11 @@ html[data-theme="dark"] .toast {
   color: #0284c7;
 }
 
+.integrazione-icona.icon-airtable {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
 .integrazione-icona.icon-wh {
   background: var(--accent-soft);
   color: var(--accent);
@@ -7675,6 +7681,67 @@ html[data-theme="dark"] .toast {
   background: rgba(14, 165, 233, 0.08);
   border: 1px solid rgba(14, 165, 233, 0.25);
   color: #0369a1;
+}
+
+/* Airtable Integration Components (Fase 3) */
+.airtable-bases-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.airtable-base-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.airtable-base-card:hover {
+  border-color: var(--line-strong, #cbd5e1);
+  box-shadow: var(--shadow-sm);
+}
+
+.airtable-base-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.airtable-base-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+.airtable-base-id-badge {
+  display: inline-block;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.76rem;
+  padding: 2px 6px;
+  background: var(--bg-elev-2, #f1f5f9);
+  color: var(--ink-soft);
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+
+.airtable-base-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 0.78rem;
+  color: var(--text-muted);
 }
 
 /* Metadata grid */

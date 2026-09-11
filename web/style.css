@@ -7622,27 +7622,51 @@ html[data-theme="dark"] .toast {
   background: var(--muted);
 }
 
+.badge-status.requires_reauth,
 .badge-status.expired_token,
 .badge-status.error {
   background: var(--red-soft);
   color: var(--red);
   border-color: rgba(220, 38, 38, 0.25);
 }
+.badge-status.requires_reauth .badge-status-dot,
 .badge-status.expired_token .badge-status-dot,
 .badge-status.error .badge-status-dot {
   background: var(--red);
   box-shadow: 0 0 6px rgba(220, 38, 38, 0.6);
 }
 
+.badge-status.connecting,
 .badge-status.pending,
 .badge-status.pending_verification {
   background: var(--amber-soft);
   color: var(--amber);
   border-color: rgba(217, 119, 6, 0.25);
 }
+.badge-status.connecting .badge-status-dot,
 .badge-status.pending .badge-status-dot,
 .badge-status.pending_verification .badge-status-dot {
   background: var(--amber);
+}
+
+.badge-status.unauthorized,
+.badge-status.mfa_required {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.badge-status.unauthorized .badge-status-dot,
+.badge-status.mfa_required .badge-status-dot {
+  background: #d97706;
+}
+
+.badge-status.disabled {
+  background: var(--line, #e2e8f0);
+  color: var(--text-muted, #94a3b8);
+  border-color: var(--line-strong, #cbd5e1);
+}
+.badge-status.disabled .badge-status-dot {
+  background: var(--text-muted, #94a3b8);
 }
 
 /* Badge di stato onesto / disclosure */

@@ -6483,19 +6483,117 @@ async function caricaAudit({ append = false } = {}) {
    INTEGRAZIONI — stato canali e test di connessione reale
    ============================================================ */
 
+/* ============================================================
+   INTEGRAZIONI — HELPER STATI UNIFICATI (§8) ED ERROR MAPPING (§9)
+   ============================================================ */
+
+/**
+ * Estrae e normalizza i messaggi di errore restituiti dalle API (Invarianti 9 e 10).
+ * Mappa i codici HTTP standard (§9 audit) e previene l'esposizione di dettagli tecnici grezzi
+ * (stack trace, frammenti SQL o oggetti Pydantic serializzati come [object Object]).
+ */
+function _estraiMessaggioErroreApi(res, bodyData, fallbackMsg = "Operazione non riuscita.") {
+  const status = res ? res.status : null;
+
+  // 1. Mappatura prioritaria su codici di rete e infrastruttura (§9 audit)
+  if (status === 429) {
+    return "Troppe richieste inviate. Attendi qualche istante prima di riprovare.";
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return "Il servizio esterno è temporaneamente non raggiungibile. Riprova tra poco.";
+  }
+  if (status === 500) {
+    return "Si è verificato un errore interno del server. Riprova più tardi.";
+  }
+  if (status === 401) {
+    return "Sessione scaduta o credenziali non valide. Effettua nuovamente l'accesso.";
+  }
+
+  // 2. Estrazione e sanitizzazione del payload 'detail'
+  let rawDetail = bodyData?.detail || bodyData?.message || bodyData?.error;
+
+  // Se FastAPI / Pydantic ha restituito un array di errori di validazione (422)
+  if (Array.isArray(rawDetail)) {
+    const fieldErrors = rawDetail
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const loc = Array.isArray(item.loc) ? item.loc[item.loc.length - 1] : "";
+        const msg = item.msg || "non valido";
+        return loc ? `Campo "${loc}": ${msg}` : msg;
+      })
+      .filter(Boolean);
+    if (fieldErrors.length > 0) {
+      return `Dati non validi: ${fieldErrors.slice(0, 3).join("; ")}.`;
+    }
+    rawDetail = null;
+  } else if (rawDetail && typeof rawDetail === "object") {
+    rawDetail = rawDetail.message || rawDetail.detail || JSON.stringify(rawDetail);
+  }
+
+  if (typeof rawDetail === "string" && rawDetail.trim()) {
+    const trimmed = rawDetail.trim();
+    // Filtro di sicurezza (Invariante 10): blocca leak di SQL, traceback o eccezioni interne grezze
+    const isTechnicalLeak =
+      /SELECT\s+|INSERT\s+|UPDATE\s+|DELETE\s+|Traceback|psycopg2|sqlalchemy|Internal Server Error/i.test(trimmed);
+    if (!isTechnicalLeak) {
+      return trimmed;
+    }
+  }
+
+  // 3. Fallback contestuale su codici standard se detail non disponibile o non sicuro
+  if (status === 403) {
+    return res?.mfaRequired
+      ? "Operazione bloccata: autenticazione a due fattori (MFA) richiesta."
+      : "Non disponi dei permessi necessari per questa operazione.";
+  }
+  if (status === 404) {
+    return "Risorsa o configurazione richiesta non trovata.";
+  }
+  if (status === 400) {
+    return "I dati inviati non sono validi. Controlla i campi inseriti.";
+  }
+
+  return fallbackMsg;
+}
+
+/**
+ * Aggiorna il badge di stato conformemente agli stati canonici di §8:
+ * NOT_CONNECTED, CONNECTING, CONNECTED, ERROR, REQUIRES_REAUTH, DISABLED, UNAUTHORIZED, MFA_REQUIRED
+ */
 function _aggiornaBadgeStato(el, statoKey, customLabel) {
   if (!el) return;
-  el.className = `integrazione-stato badge-status ${statoKey}`;
+  const canonicalMap = {
+    connected: "connected",
+    not_connected: "disconnected",
+    disconnected: "disconnected",
+    connecting: "connecting",
+    pending: "connecting",
+    pending_verification: "connecting",
+    error: "error",
+    requires_reauth: "requires_reauth",
+    expired_token: "requires_reauth",
+    disabled: "disabled",
+    unauthorized: "unauthorized",
+    mfa_required: "mfa_required",
+  };
+
+  const safeClass = canonicalMap[statoKey] || (statoKey === "connected" ? "connected" : "error");
+  el.className = `integrazione-stato badge-status ${safeClass}`;
   const dot = '<span class="badge-status-dot"></span>';
+
   let label = customLabel;
   if (!label) {
-    if (statoKey === "connected") label = "Connesso";
-    else if (statoKey === "disconnected") label = "Non connesso";
-    else if (statoKey === "expired_token") label = "Errore — Token scaduto";
-    else if (statoKey === "pending" || statoKey === "pending_verification") label = "In attesa di verifica";
+    if (safeClass === "connected") label = "Connesso";
+    else if (safeClass === "disconnected") label = "Non connesso";
+    else if (safeClass === "connecting") label = "In attesa";
+    else if (safeClass === "requires_reauth") label = "Riconnessione necessaria";
+    else if (safeClass === "disabled") label = "Disabilitato";
+    else if (safeClass === "unauthorized") label = "Non autorizzato";
+    else if (safeClass === "mfa_required") label = "MFA richiesta";
     else label = "Errore";
   }
-  el.innerHTML = `${dot}<span class="badge-status-label">${_sanitize(label)}</span>`;
+
+  el.innerHTML = `${dot}<span class="badge-status-label">${typeof DOMPurify !== "undefined" ? DOMPurify.sanitize(label) : _sanitize(label)}</span>`;
 }
 
 async function eseguiTestIntegrazione(canale, btn, feedbackEl) {
@@ -6576,10 +6674,30 @@ async function caricaStatoWhatsApp() {
   const phoneDisplay = document.getElementById("integ-wa-phone-number-display");
   const connectedTitle = document.getElementById("integ-wa-connected-title");
   const connectedSub = document.getElementById("integ-wa-connected-sub");
+  const statoEl = document.getElementById("integ-whatsapp-stato");
 
   try {
     const res = await apiFetch(`${API_BASE}/api/whatsapp/settings`);
-    if (!res.ok) return;
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile recuperare lo stato di WhatsApp.");
+      if (res.status === 403) {
+        if (connectedCard) connectedCard.hidden = false;
+        if (wizardCard) wizardCard.hidden = true;
+        if (connectedTitle) connectedTitle.textContent = "WhatsApp Business";
+        if (connectedSub) connectedSub.textContent = errMsg;
+        if (phoneDisplay) phoneDisplay.textContent = "—";
+        if (statoEl) _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+      } else {
+        if (connectedCard) connectedCard.hidden = false;
+        if (wizardCard) wizardCard.hidden = true;
+        if (connectedTitle) connectedTitle.textContent = "WhatsApp Business";
+        if (connectedSub) connectedSub.textContent = errMsg;
+        if (phoneDisplay) phoneDisplay.textContent = "—";
+        if (statoEl) _aggiornaBadgeStato(statoEl, "error");
+      }
+      return;
+    }
     const d = await res.json();
 
     if (d.connesso) {
@@ -6588,6 +6706,7 @@ async function caricaStatoWhatsApp() {
       if (phoneDisplay) phoneDisplay.textContent = d.display_phone_number || d.phone_number_id || "Numero collegato";
       if (connectedTitle) connectedTitle.textContent = d.verified_name || "WhatsApp Business";
       if (connectedSub) connectedSub.textContent = "Connesso e pronto a rispondere";
+      if (statoEl) _aggiornaBadgeStato(statoEl, "connected");
     } else {
       if (connectedCard) connectedCard.hidden = true;
       if (wizardCard) wizardCard.hidden = false;
@@ -6595,6 +6714,10 @@ async function caricaStatoWhatsApp() {
     }
   } catch (err) {
     console.warn("caricaStatoWhatsApp error:", err);
+    if (connectedCard) connectedCard.hidden = false;
+    if (wizardCard) wizardCard.hidden = true;
+    if (connectedSub) connectedSub.textContent = "Errore di connessione con il server.";
+    if (statoEl) _aggiornaBadgeStato(statoEl, "error", "Errore di rete");
   }
 }
 
@@ -6612,15 +6735,30 @@ async function caricaStatoInstagram() {
       if (wizardCard) wizardCard.hidden = true;
       if (igIdVal) igIdVal.textContent = d.ig_user_id ? `@${d.ig_user_id}` : "Account collegato";
       if (statoEl) _aggiornaBadgeStato(statoEl, "connected");
-    } else {
+    } else if (res.status === 404) {
+      // 404: nessun account Instagram collegato per questo tenant
       if (connectedCard) connectedCard.hidden = true;
       if (wizardCard) wizardCard.hidden = false;
       if (statoEl) _aggiornaBadgeStato(statoEl, "disconnected");
+    } else if (res.status === 403) {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Permessi insufficienti per Instagram.");
+      if (connectedCard) connectedCard.hidden = false;
+      if (wizardCard) wizardCard.hidden = true;
+      if (igIdVal) igIdVal.textContent = errMsg;
+      if (statoEl) _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile recuperare lo stato di Instagram.");
+      if (connectedCard) connectedCard.hidden = false;
+      if (wizardCard) wizardCard.hidden = true;
+      if (igIdVal) igIdVal.textContent = errMsg;
+      if (statoEl) _aggiornaBadgeStato(statoEl, "error");
     }
   } catch (err) {
     if (connectedCard) connectedCard.hidden = true;
     if (wizardCard) wizardCard.hidden = false;
-    if (statoEl) _aggiornaBadgeStato(statoEl, "disconnected");
+    if (statoEl) _aggiornaBadgeStato(statoEl, "error", "Errore di rete");
   }
 }
 
@@ -6680,17 +6818,18 @@ document.getElementById("wa-connect-form")?.addEventListener("submit", async (e)
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone_number_id: phoneId, waba_id: wabaId, access_token: token }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
       if (statusEl) statusEl.textContent = "";
       toast(data.message || "WhatsApp collegato con successo!", "success");
       _setWaWizardStep(3);
     } else {
+      const errMsg = _estraiMessaggioErroreApi(res, data, "Errore durante la connessione con Meta.");
       if (statusEl) {
-        statusEl.textContent = data.detail || "Errore durante la connessione con Meta.";
+        statusEl.textContent = errMsg;
         statusEl.className = "security-status err";
       }
-      toast(data.detail || "Verifica non riuscita", "error");
+      toast(errMsg, "error");
     }
   } catch (err) {
     if (statusEl) {
@@ -6725,7 +6864,7 @@ document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to_phone: testPhone || null }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
       if (statusEl) {
         statusEl.textContent = data.message || "Messaggio di test inviato con successo!";
@@ -6733,11 +6872,12 @@ document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async 
       }
       toast(data.message || "Messaggio inviato!", "success");
     } else {
+      const errMsg = _estraiMessaggioErroreApi(res, data, data.message || "Errore durante l'invio del messaggio di test.");
       if (statusEl) {
-        statusEl.textContent = data.message || data.detail || "Errore durante l'invio del messaggio di test.";
+        statusEl.textContent = errMsg;
         statusEl.className = "security-status err";
       }
-      toast(data.message || "Invio fallito", "error");
+      toast(errMsg, "error");
     }
   } catch {
     if (statusEl) {
@@ -6788,13 +6928,23 @@ document.getElementById("integ-wa-send-test-submit")?.addEventListener("click", 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ to_phone: phone }),
     });
-    const d = await res.json();
-    if (feedback) {
-      feedback.hidden = false;
-      feedback.className = `integ-test-feedback ${d.success ? "success" : "error"}`;
-      feedback.textContent = d.message || (d.success ? "Messaggio inviato!" : "Errore durante l'invio.");
+    const d = await res.json().catch(() => ({}));
+    if (res.ok && d.success) {
+      if (feedback) {
+        feedback.hidden = false;
+        feedback.className = "integ-test-feedback success";
+        feedback.textContent = d.message || "Messaggio inviato!";
+      }
+      toast(d.message || "Messaggio inviato!", "success");
+    } else {
+      const errMsg = _estraiMessaggioErroreApi(res, d, d.message || "Errore durante l'invio della prova.");
+      if (feedback) {
+        feedback.hidden = false;
+        feedback.className = "integ-test-feedback error";
+        feedback.textContent = errMsg;
+      }
+      toast(errMsg, "error");
     }
-    if (d.success) toast(d.message, "success");
   } catch {
     if (feedback) {
       feedback.hidden = false;
@@ -6827,11 +6977,12 @@ document.getElementById("integ-wa-disconnect-btn")?.addEventListener("click", as
 
   try {
     const res = await apiFetch(`${API_BASE}/api/whatsapp/disconnect`, { method: "POST" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("WhatsApp disconnesso con successo.");
       await caricaStatoWhatsApp();
-    } else {
-      toast("Errore durante la disconnessione.", "error");
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di rete.", "error");
@@ -6865,15 +7016,17 @@ document.getElementById("ig-connect-form")?.addEventListener("submit", async (e)
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ig_user_id: igUserId, access_token: igToken }),
     });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Instagram Direct collegato con successo!", "success");
       await caricaStatoInstagram();
     } else {
-      const err = await res.json();
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante il collegamento di Instagram.");
       if (statusEl) {
-        statusEl.textContent = err.detail || "Errore durante il collegamento di Instagram.";
+        statusEl.textContent = errMsg;
         statusEl.className = "security-status err";
       }
+      toast(errMsg, "error");
     }
   } catch {
     if (statusEl) {
@@ -6898,13 +7051,14 @@ document.getElementById("integ-instagram-disconnect")?.addEventListener("click",
 
   try {
     const res = await apiFetch(`${API_BASE}/api/instagram/account`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Instagram Direct disconnesso con successo.");
       const feedbackEl = document.getElementById("integ-instagram-feedback");
       if (feedbackEl) feedbackEl.hidden = true;
       await caricaStatoInstagram();
-    } else {
-      toast("Errore durante la disconnessione.", "error");
+    } else if (res.status !== 403) {
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di rete.", "error");
@@ -6939,13 +7093,20 @@ async function caricaStatoCalendar() {
   try {
     const res = await apiFetch(`${API_BASE}/api/calendar/status`);
     if (!res.ok) {
-      _aggiornaBadgeStato(stato, "error", "Errore");
-      sub.textContent = "Impossibile verificare lo stato";
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile verificare lo stato di Google Calendar.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(stato, res.mfaRequired ? "mfa_required" : "unauthorized");
+        sub.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(stato, "error");
+        sub.textContent = errMsg;
+      }
       return;
     }
     const d = await res.json();
     if (d.connected) {
-      _aggiornaBadgeStato(stato, "connected", "Connesso");
+      _aggiornaBadgeStato(stato, "connected");
       const calId = d.calendar_id || "Primary (Predefinito)";
       const sync = d.sync_enabled ? "Sincronizzazione attiva" : "Sincronizzazione in pausa";
       sub.textContent = `${calId} · ${sync}`;
@@ -6958,7 +7119,7 @@ async function caricaStatoCalendar() {
       if (btnTest) btnTest.hidden = false;
       if (btnDisconnect) btnDisconnect.hidden = false;
     } else {
-      _aggiornaBadgeStato(stato, "disconnected", "Non connesso");
+      _aggiornaBadgeStato(stato, "disconnected");
       sub.textContent = "Nessun account Google collegato";
       if (calIdMeta) calIdMeta.textContent = "Nessun calendario";
       if (syncModeMeta) syncModeMeta.textContent = "Disattivata";
@@ -6967,8 +7128,8 @@ async function caricaStatoCalendar() {
       if (btnDisconnect) btnDisconnect.hidden = true;
     }
   } catch {
-    _aggiornaBadgeStato(stato, "error", "Errore");
-    sub.textContent = "Errore di connessione";
+    _aggiornaBadgeStato(stato, "error", "Errore di rete");
+    sub.textContent = "Errore di connessione con il server";
   }
 }
 
@@ -6989,11 +7150,12 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
   if (!ok) return;
   try {
     const res = await apiFetch(`${API_BASE}/api/calendar/disconnect`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Google Calendar disconnesso con successo.");
       await caricaStatoCalendar();
     } else if (res.status !== 403) {
-      toast("Errore durante la disconnessione.", "error");
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di connessione.", "error");
@@ -7058,13 +7220,20 @@ async function caricaStatoReviews() {
   try {
     const res = await apiFetch(`${API_BASE}/api/reviews/google/status`);
     if (!res.ok) {
-      _aggiornaBadgeStato(stato, "error", "Errore");
-      sub.textContent = "Impossibile verificare lo stato";
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile verificare lo stato di Google Recensioni.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(stato, res.mfaRequired ? "mfa_required" : "unauthorized");
+        sub.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(stato, "error");
+        sub.textContent = errMsg;
+      }
       return;
     }
     const d = await res.json();
     if (d.connected) {
-      _aggiornaBadgeStato(stato, "connected", "Connesso");
+      _aggiornaBadgeStato(stato, "connected");
       const acc = d.account_name || "Account Google collegato";
       const loc = d.location_name || "Sede predefinita";
       sub.textContent = `${loc} · Connesso`;
@@ -7079,7 +7248,7 @@ async function caricaStatoReviews() {
       if (btnSync) btnSync.hidden = false;
       if (btnDisconnect) btnDisconnect.hidden = false;
     } else {
-      _aggiornaBadgeStato(stato, "disconnected", "Non connesso");
+      _aggiornaBadgeStato(stato, "disconnected");
       sub.textContent = "Nessun account Google collegato";
       if (accountMeta) accountMeta.textContent = "Nessun account";
       if (locationMeta) locationMeta.textContent = "—";
@@ -7091,8 +7260,8 @@ async function caricaStatoReviews() {
       if (btnDisconnect) btnDisconnect.hidden = true;
     }
   } catch {
-    _aggiornaBadgeStato(stato, "error", "Errore");
-    sub.textContent = "Errore di connessione";
+    _aggiornaBadgeStato(stato, "error", "Errore di rete");
+    sub.textContent = "Errore di connessione con il server";
   }
 }
 
@@ -7136,7 +7305,7 @@ document.getElementById("integ-reviews-sync")?.addEventListener("click", async (
         aggiornaRecensioni();
       }
     } else if (res.status !== 403) {
-      const errMsg = d.detail || "Errore durante la sincronizzazione delle recensioni.";
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la sincronizzazione delle recensioni.");
       if (feedbackEl) {
         feedbackEl.hidden = false;
         feedbackEl.className = "integ-test-feedback error";
@@ -7168,13 +7337,14 @@ document.getElementById("integ-reviews-disconnect")?.addEventListener("click", a
 
   try {
     const res = await apiFetch(`${API_BASE}/api/reviews/google/disconnect`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Google Business disconnesso con successo.");
       const feedbackEl = document.getElementById("integ-reviews-feedback");
       if (feedbackEl) feedbackEl.hidden = true;
       await caricaStatoReviews();
     } else if (res.status !== 403) {
-      toast("Errore durante la disconnessione.", "error");
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione."), "error");
     }
   } catch {
     toast("Errore di connessione.", "error");
@@ -7258,8 +7428,17 @@ async function caricaStatoBooking() {
   try {
     const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking/status`);
     if (!res.ok) {
-      _aggiornaBadgeStato(statoEl, "error", "Errore");
-      if (subEl) subEl.textContent = "Impossibile verificare lo stato";
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile verificare lo stato del gestionale.");
+      if (res.status === 403) {
+        _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+        if (subEl) subEl.textContent = errMsg;
+      } else {
+        _aggiornaBadgeStato(statoEl, "error");
+        if (subEl) subEl.textContent = errMsg;
+      }
+      if (quickModeBox) quickModeBox.hidden = true;
+      if (disconnectBtn) disconnectBtn.hidden = true;
       return;
     }
 
@@ -7496,7 +7675,7 @@ document.getElementById("integ-booking-quick-mode-btn")?.addEventListener("click
       toast(d.message || `Modalità aggiornata a ${mode}`, "success");
       await caricaStatoBooking();
     } else if (res.status !== 403) {
-      const errMsg = d.detail || "Errore durante l'aggiornamento della modalità.";
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante l'aggiornamento della modalità.");
       if (feedbackEl) {
         feedbackEl.hidden = false;
         feedbackEl.className = "integ-test-feedback error";
@@ -7523,13 +7702,14 @@ document.getElementById("integ-booking-disconnect-btn")?.addEventListener("click
 
   try {
     const res = await apiFetch(`${API_BASE}/api/v1/integrations/booking`, { method: "DELETE" });
+    const d = await res.json().catch(() => ({}));
     if (res.ok) {
       toast("Gestionale disconnesso con successo. Motore interno ripristinato.", "success");
       const formCard = document.getElementById("integ-booking-form-card");
       if (formCard) formCard.hidden = true;
       await caricaStatoBooking();
     } else if (res.status !== 403) {
-      toast("Errore durante la rimozione del gestionale.", "error");
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la rimozione del gestionale."), "error");
     }
   } catch {
     toast("Errore di connessione.", "error");
@@ -7633,7 +7813,7 @@ document.getElementById("booking-config-form")?.addEventListener("submit", async
       if (formCard) formCard.hidden = true;
       await caricaStatoBooking();
     } else if (res.status !== 403) {
-      const errMsg = d.detail || "Errore durante il salvataggio dell'integrazione.";
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante il salvataggio dell'integrazione.");
       if (feedbackEl) {
         feedbackEl.hidden = false;
         feedbackEl.className = "integ-test-feedback error";
@@ -7684,27 +7864,14 @@ async function caricaStatoAirtable() {
     if (!res.ok) {
       if (basesListEl) basesListEl.innerHTML = "";
       if (basesEmptyEl) basesEmptyEl.hidden = true;
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile recuperare lo stato di Airtable.");
       if (res.status === 403) {
-        if (!res.mfaRequired) {
-          const d = await res.json().catch(() => ({}));
-          if (statoEl) {
-            statoEl.className = "integrazione-stato badge-status disconnected";
-            statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Non autorizzato</span>';
-          }
-          if (subEl) subEl.textContent = d.detail || "Permessi insufficienti per visualizzare lo stato Airtable.";
-        } else {
-          if (statoEl) {
-            statoEl.className = "integrazione-stato badge-status disconnected";
-            statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">MFA richiesta</span>';
-          }
-          if (subEl) subEl.textContent = "Autenticazione a due fattori richiesta.";
-        }
+        _aggiornaBadgeStato(statoEl, res.mfaRequired ? "mfa_required" : "unauthorized");
+        if (subEl) subEl.textContent = errMsg;
       } else {
-        if (statoEl) {
-          statoEl.className = "integrazione-stato badge-status disconnected";
-          statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Errore</span>';
-        }
-        if (subEl) subEl.textContent = "Impossibile recuperare lo stato.";
+        _aggiornaBadgeStato(statoEl, "error");
+        if (subEl) subEl.textContent = errMsg;
       }
       return;
     }
@@ -7717,10 +7884,7 @@ async function caricaStatoAirtable() {
     if (basesCountEl) basesCountEl.textContent = String(count);
 
     if (d.is_configured && count > 0) {
-      if (statoEl) {
-        statoEl.className = "integrazione-stato badge-status connected";
-        statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Connesso</span>';
-      }
+      _aggiornaBadgeStato(statoEl, "connected");
       if (subEl) {
         subEl.textContent = `${count} ${count === 1 ? "Base collegata" : "Basi collegate"}`;
       }
@@ -7774,10 +7938,7 @@ async function caricaStatoAirtable() {
       if (subBaseSelect) subBaseSelect.innerHTML = selectOptions;
 
     } else {
-      if (statoEl) {
-        statoEl.className = "integrazione-stato badge-status disconnected";
-        statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Non connesso</span>';
-      }
+      _aggiornaBadgeStato(statoEl, "disconnected");
       if (subEl) subEl.textContent = "Nessuna Base connessa";
       if (lastUpdateEl) lastUpdateEl.textContent = "—";
       if (basesListEl) basesListEl.innerHTML = "";
@@ -7789,10 +7950,8 @@ async function caricaStatoAirtable() {
     await caricaEventiWebhookAirtable();
 
   } catch {
-    if (statoEl) {
-      statoEl.className = "integrazione-stato badge-status disconnected";
-      statoEl.innerHTML = '<span class="badge-status-dot"></span><span class="badge-status-label">Errore rete</span>';
-    }
+    _aggiornaBadgeStato(statoEl, "error", "Errore di rete");
+    if (subEl) subEl.textContent = "Errore di connessione con il server";
   }
 }
 
@@ -7818,10 +7977,10 @@ async function disconnettiBaseAirtable(baseId, baseName) {
       await caricaStatoAirtable();
     } else if (res.status === 403) {
       if (!res.mfaRequired) {
-        toast(d.detail || "Permessi insufficienti per rimuovere la Base.", "error");
+        toast(_estraiMessaggioErroreApi(res, d, "Permessi insufficienti per rimuovere la Base."), "error");
       }
     } else {
-      toast(d.detail || "Errore durante la disconnessione della Base.", "error");
+      toast(_estraiMessaggioErroreApi(res, d, "Errore durante la disconnessione della Base."), "error");
     }
   } catch {
     toast("Errore di connessione durante la rimozione della Base.", "error");
@@ -7841,16 +8000,9 @@ async function caricaEventiWebhookAirtable() {
   try {
     const res = await apiFetch(`${API_BASE}/api/v1/integrations/airtable/webhooks/events?limit=20`);
     if (!res.ok) {
-      if (res.status === 403) {
-        if (!res.mfaRequired) {
-          const d = await res.json().catch(() => ({}));
-          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">${DOMPurify.sanitize(d.detail || "Permessi insufficienti per visualizzare gli eventi webhook.")}</td></tr>`;
-        } else {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">Verifica MFA richiesta per accedere agli eventi.</td></tr>';
-        }
-      } else {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--red); padding: 12px;">Impossibile caricare gli eventi webhook.</td></tr>';
-      }
+      const d = await res.json().catch(() => ({}));
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Impossibile caricare gli eventi webhook.");
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 14px;">${DOMPurify.sanitize(errMsg)}</td></tr>`;
       return;
     }
 
@@ -7970,8 +8122,8 @@ document.getElementById("airtable-connect-form")?.addEventListener("submit", asy
       await caricaStatoAirtable();
     } else if (res.status === 403) {
       if (!res.mfaRequired) {
-        // Messaggio esatto dal backend (es. AirtableMedicalPolicyError GDPR Art. 9)
-        const errMsg = d.detail || "Connessione ad Airtable non consentita per policy di sicurezza.";
+        // Messaggio esatto dal backend (es. AirtableMedicalPolicyError GDPR Art. 9) sanitizzato
+        const errMsg = _estraiMessaggioErroreApi(res, d, "Connessione ad Airtable non consentita per policy di sicurezza.");
         if (feedbackEl) {
           feedbackEl.hidden = false;
           feedbackEl.className = "integ-test-feedback error";
@@ -7980,7 +8132,7 @@ document.getElementById("airtable-connect-form")?.addEventListener("submit", asy
         toast(errMsg, "error", 8000);
       }
     } else {
-      const errMsg = d.detail || "Errore durante la connessione della Base Airtable.";
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la connessione della Base Airtable.");
       if (feedbackEl) {
         feedbackEl.hidden = false;
         feedbackEl.className = "integ-test-feedback error";
@@ -8068,7 +8220,7 @@ document.getElementById("airtable-validate-form")?.addEventListener("submit", as
       }
     } else if (res.status === 403) {
       if (!res.mfaRequired) {
-        const errMsg = d.detail || "Permessi insufficienti per validare lo schema.";
+        const errMsg = _estraiMessaggioErroreApi(res, d, "Permessi insufficienti per validare lo schema.");
         if (feedbackEl) {
           feedbackEl.hidden = false;
           feedbackEl.className = "integ-test-feedback error";
@@ -8077,7 +8229,7 @@ document.getElementById("airtable-validate-form")?.addEventListener("submit", as
         toast(errMsg, "error");
       }
     } else {
-      const errMsg = d.detail || "Errore durante la validazione dello schema.";
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la validazione dello schema.");
       if (feedbackEl) {
         feedbackEl.hidden = false;
         feedbackEl.className = "integ-test-feedback error";
@@ -8147,7 +8299,7 @@ document.getElementById("airtable-webhook-sub-form")?.addEventListener("submit",
       await caricaEventiWebhookAirtable();
     } else if (res.status === 403) {
       if (!res.mfaRequired) {
-        const errMsg = d.detail || "Autorizzazione webhook non valida per questa Base.";
+        const errMsg = _estraiMessaggioErroreApi(res, d, "Autorizzazione webhook non valida per questa Base.");
         if (feedbackEl) {
           feedbackEl.hidden = false;
           feedbackEl.className = "integ-test-feedback error";
@@ -8156,7 +8308,7 @@ document.getElementById("airtable-webhook-sub-form")?.addEventListener("submit",
         toast(errMsg, "error");
       }
     } else {
-      const errMsg = d.detail || "Errore durante la registrazione del webhook.";
+      const errMsg = _estraiMessaggioErroreApi(res, d, "Errore durante la registrazione del webhook.");
       if (feedbackEl) {
         feedbackEl.hidden = false;
         feedbackEl.className = "integ-test-feedback error";

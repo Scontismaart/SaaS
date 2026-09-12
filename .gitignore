@@ -1,6 +1,5 @@
-﻿data/chroma/
-data/*.json
-data/gmail_tokens/
+# Dati locali e cache
+data/
 .env
 .env.local
 .env.production
@@ -29,7 +28,24 @@ src/logs/
 .opencode/
 .claude/
 .zcode/
+.agents/
+agent/
+.playwright-mcp/
+.qwen/
+skills-lock.json
 graphify-out/
+~/
+
+# Scratch, test usa-e-getta e screenshot di verifica visiva (solo a livello root)
+scratch/
+scratch_*
+/*.png
+/*.jpeg
+/*.jpg
+/*.gif
+ci_log_tmp.txt
+lh_report.json
 
 # dipendenze frontend
 node_modules/
+

@@ -56,6 +56,10 @@
       `APP_ENV=production`, **MAI** `DEMO_MODE`, `DATABASE_URL` con `sslmode=require`, `DB_POOL_MAX_SIZE=10`,
       `REDIS_URL=redis://valkey:6379/0`, `RATE_LIMIT_BACKEND=redis`,
       `CORS_ORIGINS=https://melpis.it,https://app.melpis.it`, `PUBLIC_APP_URL=https://melpis.it`
+- [ ] **2.6 SENTRY_DSN di produzione configurato e testato:**
+      Inserire la chiave `SENTRY_DSN` reale in `.env.production`. Se non valorizzata, i log `logger.critical` (incluso il blocco di fallback quota e fallimento escalation DB) restano su log file locale senza scatenare alert proattivi.
+- [ ] **2.7 Filtro / Badge Inbox Dashboard per `escalation_failed` (PRIMA di avere traffico WhatsApp reale):**
+      Aggiungere in `web/app.js` e nella Inbox operatore un filtro o badge di allerta visibile (es. badge rosso *"Escalation fallita — richiede intervento manuale"*) per i messaggi con `handling_type = 'escalation_failed'`. Completa la catena *"evento anomalo rilevato → staff allertato visivamente → intervento manuale immediato"*.
 
 ---
 

@@ -115,26 +115,46 @@ async def record_ai_usage(
 
 async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) -> str | None:
     """Verifica se il piano corrente dell'organizzazione include la feature richiesta.
-    
-    Org in trial senza piano attivo o con subscription_status='trialing' = accesso basato sul piano Pro (Crescita):
-    le recensioni Google sono incluse, mentre la Knowledge Base RAG richiede l'upgrade al piano Scala.
-    Fail-open solo se repo/org_id o billing non sono disponibili.
+
+    Regole di accesso:
+    1. Sospensione / Cancellazione: se l'abbonamento e' 'canceled', 'unpaid' o il trial e' scaduto,
+       l'accesso alle feature a pagamento e' bloccato (fail-closed, Invariante 8).
+    2. Trial attivo: se l'org e' in prova gratuita valida, opera con il tier 'pro' (Crescita).
+    3. Piano sconosciuto / anomalo: se plan_slug e' valorizzato ma non corrisponde a una chiave
+       in PLANS, blocca l'accesso e logga un warning (fail-closed contro drift di naming).
+    4. Fail-open solo su transient failure di repo/org_id/billing.
     """
     if not repo or not org_id:
         return None
     billing = await get_billing_snapshot(repo, org_id)
     if not billing:
         return None
+
+    status = billing.get("subscription_status")
+    trial_end = billing.get("trial_end")
+
+    # 1. Verifica sospensione abbonamento / scadenza trial (Invariante 8)
+    from src.core.billing.suspension import is_org_suspended
+    if is_org_suspended(status, trial_end) or status in ("canceled", "unpaid", "incomplete_expired"):
+        return "Abbonamento sospeso o scaduto. Rinnova l'abbonamento per accedere a questa funzionalità."
+
+    # 2. Risoluzione piano effettivo
     plan_slug = billing.get("plan")
-    # Se l'utente non ha impostato un piano esplicito o è in periodo di prova (trialing),
-    # il tier operativo concesso durante la prova è 'pro' (Crescita).
-    if not plan_slug or billing.get("subscription_status") == "trialing":
+    if not plan_slug or status == "trialing":
         if not plan_slug:
             plan_slug = "pro"
+
+    # 3. Mappatura piano e blocco fail-closed su plan_slug inatteso
     from src.core.billing.plans import PLANS
     plan = PLANS.get(plan_slug)
     if not plan:
-        return None
+        logger.warning(
+            "[feature_gating] piano sconosciuto '%s' per org=%s (status=%s): blocco prudenziale fail-closed",
+            plan_slug, org_id, status,
+        )
+        return f"Configurazione piano '{plan_slug}' non riconosciuta. Contatta l'assistenza per verificare l'abbonamento."
+
+    # 4. Verifica capabilities del piano
     if feature == "rag" and not plan.has_rag:
         return f"Il piano {plan.name} non include la Knowledge Base AI. Effettua l'upgrade al piano Scala per caricare documenti."
     if feature == "recensioni" and not plan.has_reviews:

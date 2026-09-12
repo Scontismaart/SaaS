@@ -49,3 +49,59 @@ async def test_trial_senza_piano_accesso_pro():
 async def test_billing_assente_consentire_failopen():
     repo = FakeRepo(None)
     assert await api_main._piano_blocca_feature(repo, "org-1", "rag") is None
+
+
+@pytest.mark.asyncio
+async def test_unknown_plan_slug_fails_closed(caplog):
+    import logging
+    repo = FakeRepo({"plan": "piano_inesistente", "subscription_status": "active"})
+    with caplog.at_level(logging.WARNING):
+        msg = await api_main._piano_blocca_feature(repo, "org-1", "rag")
+    assert msg is not None
+    assert "piano_inesistente" in msg
+    assert "non riconosciuta" in msg
+    assert "piano sconosciuto 'piano_inesistente'" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_canceled_subscription_blocks_features_even_on_business():
+    # Invariante 8: anche se la colonna plan è 'business', un'utenza canceled è bloccata
+    repo = FakeRepo({"plan": "business", "subscription_status": "canceled"})
+    msg = await api_main._piano_blocca_feature(repo, "org-1", "rag")
+    assert msg is not None
+    assert "Abbonamento sospeso o scaduto" in msg
+
+
+@pytest.mark.asyncio
+async def test_unpaid_subscription_blocks_features():
+    repo = FakeRepo({"plan": "business", "subscription_status": "unpaid"})
+    msg = await api_main._piano_blocca_feature(repo, "org-1", "rag")
+    assert msg is not None
+    assert "Abbonamento sospeso o scaduto" in msg
+
+
+@pytest.mark.asyncio
+async def test_incomplete_expired_subscription_blocks_features():
+    repo = FakeRepo({"plan": "business", "subscription_status": "incomplete_expired"})
+    msg = await api_main._piano_blocca_feature(repo, "org-1", "recensioni")
+    assert msg is not None
+    assert "Abbonamento sospeso o scaduto" in msg
+
+
+@pytest.mark.asyncio
+async def test_expired_trial_blocks_features():
+    from datetime import datetime, timezone, timedelta
+    expired = datetime.now(timezone.utc) - timedelta(days=2)
+    repo = FakeRepo({"plan": None, "subscription_status": "trialing", "trial_end": expired})
+    msg = await api_main._piano_blocca_feature(repo, "org-1", "recensioni")
+    assert msg is not None
+    assert "Abbonamento sospeso o scaduto" in msg
+
+
+@pytest.mark.asyncio
+async def test_active_trial_allows_pro_features():
+    from datetime import datetime, timezone, timedelta
+    future = datetime.now(timezone.utc) + timedelta(days=5)
+    repo = FakeRepo({"plan": None, "subscription_status": "trialing", "trial_end": future})
+    assert await api_main._piano_blocca_feature(repo, "org-1", "recensioni") is None
+

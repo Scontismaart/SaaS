@@ -114,16 +114,17 @@ class WhatsAppService:
                     meta_client=meta_client,
                     organization_id=org_id,
                 )
-                if result:
+                if result and handling_type != "quota_exceeded":
                     await self.repo.increment_message_usage(org_id)
                 return result
-        usage = await self.repo.check_message_usage(org_id)
-        if usage and usage["messages_limit"] is not None:
-            if usage["messages_used_this_period"] >= usage["messages_limit"]:
-                raise self.MessageUsageExceeded(
-                    f"Message limit reached for organization {org_id}: "
-                    f"{usage['messages_used_this_period']}/{usage['messages_limit']}"
-                )
+        if handling_type != "quota_exceeded":
+            usage = await self.repo.check_message_usage(org_id)
+            if usage and usage["messages_limit"] is not None:
+                if usage["messages_used_this_period"] >= usage["messages_limit"]:
+                    raise self.MessageUsageExceeded(
+                        f"Message limit reached for organization {org_id}: "
+                        f"{usage['messages_used_this_period']}/{usage['messages_limit']}"
+                    )
         prefs = await self.repo.get_contact_prefs(org_id, to_number)
         if prefs and prefs.get("marketing_opt_out") and category == "marketing":
             raise self.MessageBlockedByOptOut(
@@ -160,7 +161,7 @@ class WhatsAppService:
                 meta_client=meta_client,
                 organization_id=org_id,
             )
-            if result:
+            if result and handling_type != "quota_exceeded":
                 await self.repo.increment_message_usage(org_id)
             return result
         result = await self.attempt_delivery(
@@ -171,7 +172,7 @@ class WhatsAppService:
             meta_client=meta_client,
             organization_id=org_id,
         )
-        if result:
+        if result and handling_type != "quota_exceeded":
             await self.repo.increment_message_usage(org_id)
         return result
 

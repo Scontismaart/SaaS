@@ -254,6 +254,100 @@ async def test_step1_quota_exceeded_hard_cap_bill_001(base_config, mock_deps):
 
 
 @pytest.mark.asyncio
+async def test_quota_exceeded_escalates_even_if_send_reply_fails(base_config, mock_deps):
+    """Verifica che se l'invio del messaggio di cortesia fallisce (es. errore rete/Meta),
+    l'escalation all'operatore umano avvenga comunque e il messaggio sia finalizzato come quota_exceeded.
+    """
+    mock_orchestrator = AsyncMock()
+
+    inbound_svc = InboundProcessingService(
+        app_config=base_config,
+        repo=mock_deps["repo"],
+        service=mock_deps["service"],
+        booking_service=mock_deps["booking_service"],
+        orchestrator=mock_orchestrator,
+    )
+
+    msg = {
+        "id": uuid.uuid4(),
+        "organization_id": uuid.uuid4(),
+        "conversation_id": uuid.uuid4(),
+        "content_text": "Vorrei prenotare",
+        "content": {"from": "+393401122334"},
+        "canale": "whatsapp",
+    }
+
+    mock_deps["repo"].claim_message_and_check_quota.return_value = {"status": "quota_exceeded"}
+
+    with patch("src.core.inbound.service.load_tenant_config") as mock_tc, \
+         patch.object(inbound_svc, "_send_reply", new_callable=AsyncMock) as mock_send:
+        mock_tc.return_value = MagicMock()
+        mock_send.side_effect = RuntimeError("Meta API unreachable")
+
+        res = await inbound_svc.process_message(msg)
+
+        assert res.action == "handled"
+        assert res.handling_type == "quota_exceeded"
+
+        # AI never called
+        mock_orchestrator.orchestrate.assert_not_awaited()
+
+        # Send was attempted and failed
+        mock_send.assert_awaited_once()
+
+        # Escalation and message finalization still succeeded
+        mock_deps["repo"].escalate_to_human.assert_awaited_once_with(
+            str(msg["conversation_id"]), msg["organization_id"]
+        )
+        mock_deps["repo"].try_mark_replied.assert_awaited_once_with(
+            msg["id"], handling_type="quota_exceeded", organization_id=msg["organization_id"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_quota_exceeded_marks_escalation_failed_on_escalate_error(base_config, mock_deps):
+    """Verifica che se escalate_to_human solleva eccezione, il messaggio viene finalizzato con
+    handling_type='escalation_failed' e l'action restituita e' 'error'.
+    """
+    mock_orchestrator = AsyncMock()
+
+    inbound_svc = InboundProcessingService(
+        app_config=base_config,
+        repo=mock_deps["repo"],
+        service=mock_deps["service"],
+        booking_service=mock_deps["booking_service"],
+        orchestrator=mock_orchestrator,
+    )
+
+    msg = {
+        "id": uuid.uuid4(),
+        "organization_id": uuid.uuid4(),
+        "conversation_id": uuid.uuid4(),
+        "content_text": "Vorrei info",
+        "content": {"from": "+393401122334"},
+        "canale": "whatsapp",
+    }
+
+    mock_deps["repo"].claim_message_and_check_quota.return_value = {"status": "quota_exceeded"}
+    mock_deps["repo"].escalate_to_human.side_effect = RuntimeError("DB connection timeout during escalation")
+
+    with patch("src.core.inbound.service.load_tenant_config") as mock_tc, \
+         patch.object(inbound_svc, "_send_reply", new_callable=AsyncMock) as mock_send:
+        mock_tc.return_value = MagicMock()
+        mock_send.return_value = {"wam_id": "meta-quota-888"}
+
+        res = await inbound_svc.process_message(msg)
+
+        assert res.action == "error"
+        assert res.handling_type == "escalation_failed"
+
+        # Finalized with escalation_failed so it's auditable
+        mock_deps["repo"].try_mark_replied.assert_awaited_once_with(
+            msg["id"], handling_type="escalation_failed", organization_id=msg["organization_id"]
+        )
+
+
+@pytest.mark.asyncio
 async def test_step11_heartbeat_cancelled_in_finally_scenario_5(base_config, mock_deps):
     """Verifica Scenario 5: Task zombie di heartbeat.
     Durante l'orchestrazione cognitiva (chiamata LLM potenzialmente lenta),

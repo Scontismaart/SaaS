@@ -84,3 +84,162 @@ def test_carica_documento_empty_text_400(client):
     assert res.status_code == 400
     assert "vuoto" in res.json()["detail"].lower()
     app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_carica_file_documento_success(client):
+    mock_org_id = str(uuid.uuid4())
+    mock_doc_id = str(uuid.uuid4())
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": mock_org_id,
+        "ruolo": "owner",
+        "email": "owner@example.com",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    mock_repo.create_document.return_value = {"id": mock_doc_id}
+    mock_repo.add_chunk.return_value = {"id": str(uuid.uuid4())}
+    mock_repo.faq_cache_invalidate.return_value = None
+
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True), \
+         patch("src.api.routes.knowledge.resolve_vettorizza", return_value=lambda chunks, **kw: [[0.1] * 384 for _ in chunks]):
+        res = client.post(
+            "/api/documenti/carica-file",
+            files={"file": ("listino_speciale.txt", b"Il prezzo segreto del corso VIP e' 499 euro.\nInclude tutoraggio.", "text/plain")},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert "Indicizzati" in data["detail"]
+        assert data["nome"] == "listino_speciale.txt"
+        assert data["id"] == mock_doc_id
+        mock_repo.create_document.assert_awaited_once()
+        mock_repo.add_chunk.assert_awaited()
+        mock_repo.faq_cache_invalidate.assert_awaited_once_with(mock_org_id)
+    app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_carica_file_documento_empty_file_400(client):
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": str(uuid.uuid4()),
+        "ruolo": "owner",
+        "email": "owner@example.com",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True):
+        res = client.post(
+            "/api/documenti/carica-file",
+            files={"file": ("vuoto.txt", b"", "text/plain")},
+        )
+        assert res.status_code == 400
+        assert "vuoto" in res.json()["detail"].lower()
+    app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_carica_file_documento_too_large_413(client):
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": str(uuid.uuid4()),
+        "ruolo": "owner",
+        "email": "owner@example.com",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True):
+        # 20MB + 10 bytes
+        huge_payload = b"X" * (20 * 1024 * 1024 + 10)
+        res = client.post(
+            "/api/documenti/carica-file",
+            files={"file": ("huge.txt", huge_payload, "text/plain")},
+        )
+        assert res.status_code == 413
+        assert "supera il limite" in res.json()["detail"].lower()
+    app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_chiedi_documenti_success(client):
+    mock_org_id = str(uuid.uuid4())
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": mock_org_id,
+        "ruolo": "owner",
+        "email": "owner@example.com",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    mock_repo.record_ai_usage.return_value = None
+
+    mock_qa_output = {
+        "risposta": "Il prezzo del corso VIP e' 499 euro e include tutoraggio.",
+        "fonti": [{"fonte": "listino_speciale.txt", "tipo": "documento"}],
+        "richiede_operatore": False,
+        "motivo": None,
+    }
+
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True), \
+         patch("src.api.routes.knowledge.rispondi", new_callable=AsyncMock, return_value=mock_qa_output):
+        res = client.post(
+            "/api/documenti/chiedi",
+            json={"domanda": "Quanto costa il corso VIP?", "k": 3},
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["risposta"] == "Il prezzo del corso VIP e' 499 euro e include tutoraggio."
+        assert data["fonti"][0]["fonte"] == "listino_speciale.txt"
+        assert data["fonti"][0]["tipo"] == "documento"
+    app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_elimina_documento_api_success(client):
+    mock_org_id = str(uuid.uuid4())
+    mock_doc_id = str(uuid.uuid4())
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": mock_org_id,
+        "ruolo": "owner",
+        "email": "owner@example.com",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.delete_document.return_value = 3  # 3 chunks deleted
+    mock_repo.faq_cache_invalidate.return_value = None
+
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True), \
+         patch("src.api.routes.knowledge.audit_event", new_callable=AsyncMock):
+        res = client.delete(f"/api/documenti/{mock_doc_id}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "rimosso" in data["detail"].lower()
+        assert data["chunk_eliminati"] == 3
+        mock_repo.delete_document.assert_awaited_once_with(mock_org_id, mock_doc_id)
+        mock_repo.faq_cache_invalidate.assert_awaited_once_with(mock_org_id)
+    app.dependency_overrides.pop(get_organization_context, None)
+
+
+def test_toggle_documento_api_success(client):
+    mock_org_id = str(uuid.uuid4())
+    mock_doc_id = str(uuid.uuid4())
+    mock_user = {
+        "user_id": str(uuid.uuid4()),
+        "organization_id": mock_org_id,
+        "ruolo": "owner",
+        "email": "owner@example.com",
+    }
+    mock_repo = AsyncMock()
+    mock_repo.toggle_document_active.return_value = {"id": mock_doc_id, "is_active": False}
+    mock_repo.faq_cache_invalidate.return_value = None
+
+    app.dependency_overrides[get_organization_context] = lambda: mock_user
+    with patch.object(app.state, "repo", mock_repo, create=True):
+        res = client.patch(f"/api/documenti/{mock_doc_id}/toggle")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["documento"]["is_active"] is False
+        mock_repo.toggle_document_active.assert_awaited_once_with(mock_org_id, mock_doc_id)
+    app.dependency_overrides.pop(get_organization_context, None)
+

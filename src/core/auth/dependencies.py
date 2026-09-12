@@ -226,6 +226,39 @@ async def get_organization_context(
     raise HTTPException(403, "Non sei membro di questa organizzazione")
 
 
+async def get_optional_organization_context(request: Request) -> dict | None:
+    """Risolve l'organization context in modo opzionale per endpoint ad accesso ibrido (es. simulatore).
+    Supporta cookie HttpOnly BFF, Bearer token, API Key e dependency_overrides nei test.
+    Restituisce None per richieste anonime o non valide senza lanciare eccezioni."""
+    if hasattr(request, "app") and hasattr(request.app, "dependency_overrides"):
+        if get_organization_context in request.app.dependency_overrides:
+            override = request.app.dependency_overrides[get_organization_context]
+            import inspect
+            res = override()
+            if inspect.iscoroutine(res):
+                return await res
+            return res
+
+    try:
+        token = await get_token(
+            request,
+            authorization=request.headers.get("Authorization"),
+            x_api_key=request.headers.get("X-API-Key"),
+        )
+        if not token:
+            return None
+        user = await get_current_user(request, token=token)
+        if not user or user.get("source") == "anonymous":
+            return None
+        return await get_organization_context(
+            request,
+            current_user=user,
+            x_organization_id=request.headers.get("X-Organization-Id"),
+        )
+    except Exception:
+        return None
+
+
 def require_ruolo(*ruoli: str):
     invalid = set(ruoli) - VALID_RUOLI
     if invalid:

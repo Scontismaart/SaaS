@@ -1,0 +1,1666 @@
+{
+  "/::GET": {
+    "path": "/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_root",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/accedi/::GET": {
+    "path": "/accedi/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_accedi",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/accedi::GET": {
+    "path": "/accedi",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_accedi",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/audit::GET": {
+    "path": "/api/audit",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "lista_audit",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/email::POST": {
+    "path": "/api/auth/email",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "change_email",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/google/callback::GET": {
+    "path": "/api/auth/google/callback",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "google_callback",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/google/start::GET": {
+    "path": "/api/auth/google/start",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "google_start",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/login::POST": {
+    "path": "/api/auth/login",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "login",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/logout::POST": {
+    "path": "/api/auth/logout",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "logout",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/me::GET": {
+    "path": "/api/auth/me",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "me",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/password::POST": {
+    "path": "/api/auth/password",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "change_password",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/recover::POST": {
+    "path": "/api/auth/recover",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "recover_password",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/refresh::POST": {
+    "path": "/api/auth/refresh",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "refresh",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/register::POST": {
+    "path": "/api/auth/register",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "register",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/reset::POST": {
+    "path": "/api/auth/reset",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "reset_password",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/auth/send-password-reset::POST": {
+    "path": "/api/auth/send-password-reset",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "send_password_reset",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/billing/create-checkout-session::POST": {
+    "path": "/api/billing/create-checkout-session",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "create_checkout_session",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/billing/create-portal-session::POST": {
+    "path": "/api/billing/create-portal-session",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "create_portal_session",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/billing/subscription::GET": {
+    "path": "/api/billing/subscription",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_subscription",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/billing/usage::GET": {
+    "path": "/api/billing/usage",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_usage",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/billing/webhook::POST": {
+    "path": "/api/billing/webhook",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "billing_webhook",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/semaforo::GET": {
+    "path": "/api/bookings/semaforo",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "semaforo",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "list[src.models.schemas.DisponibilitaSlot]",
+    "is_llm_route": false
+  },
+  "/api/bookings/settings::GET": {
+    "path": "/api/bookings/settings",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_settings",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/settings::PUT": {
+    "path": "/api/bookings/settings",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint_name": "update_settings",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}/cancel::POST": {
+    "path": "/api/bookings/{booking_id}/cancel",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "cancel_booking",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}/confirm::POST": {
+    "path": "/api/bookings/{booking_id}/confirm",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "confirm_booking",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}/mark-completed::POST": {
+    "path": "/api/bookings/{booking_id}/mark-completed",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "mark_completed",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}/mark-no-show::POST": {
+    "path": "/api/bookings/{booking_id}/mark-no-show",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "mark_no_show",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}/reject::POST": {
+    "path": "/api/bookings/{booking_id}/reject",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "reject_booking",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}::GET": {
+    "path": "/api/bookings/{booking_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_booking",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings/{booking_id}::PUT": {
+    "path": "/api/bookings/{booking_id}",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint_name": "update_booking",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings::GET": {
+    "path": "/api/bookings",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "list_bookings",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/bookings::POST": {
+    "path": "/api/bookings",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "create_booking",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/calendar/auth::GET": {
+    "path": "/api/calendar/auth",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "calendar_auth",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/calendar/disconnect::DELETE": {
+    "path": "/api/calendar/disconnect",
+    "methods": [
+      "DELETE"
+    ],
+    "endpoint_name": "calendar_disconnect",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/calendar/oauth2callback::GET": {
+    "path": "/api/calendar/oauth2callback",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "calendar_oauth2callback",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/calendar/settings::PATCH": {
+    "path": "/api/calendar/settings",
+    "methods": [
+      "PATCH"
+    ],
+    "endpoint_name": "calendar_settings",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/calendar/status::GET": {
+    "path": "/api/calendar/status",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "calendar_status",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/conflitti::GET": {
+    "path": "/api/conoscenza/conflitti",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "verifica_conflitti_api",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/dati-struttura::GET": {
+    "path": "/api/conoscenza/dati-struttura",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_dati_struttura",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/dati-struttura::PUT": {
+    "path": "/api/conoscenza/dati-struttura",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint_name": "salva_dati_struttura",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/faq/{faq_id}::DELETE": {
+    "path": "/api/conoscenza/faq/{faq_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "endpoint_name": "elimina_faq",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/faq/{faq_id}::PUT": {
+    "path": "/api/conoscenza/faq/{faq_id}",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint_name": "aggiorna_faq",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/faq::POST": {
+    "path": "/api/conoscenza/faq",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "crea_faq",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/summary::GET": {
+    "path": "/api/conoscenza/summary",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "knowledge_summary",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/conoscenza/web::POST": {
+    "path": "/api/conoscenza/web",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "importa_pagina_web",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/dashboard/prioritari::GET": {
+    "path": "/api/dashboard/prioritari",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "ottieni_eventi_prioritari",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "list[src.models.schemas.EventoDashboard]",
+    "is_llm_route": false
+  },
+  "/api/dashboard::GET": {
+    "path": "/api/dashboard",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "ottieni_dashboard",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "list[src.models.schemas.EventoDashboard]",
+    "is_llm_route": false
+  },
+  "/api/documenti/carica-file::POST": {
+    "path": "/api/documenti/carica-file",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "carica_file_documento",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/documenti/carica::POST": {
+    "path": "/api/documenti/carica",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "carica_documento",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/documenti/chiedi::POST": {
+    "path": "/api/documenti/chiedi",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "chiedi_documenti",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.models.schemas.RispostaDocumento'>",
+    "is_llm_route": true
+  },
+  "/api/documenti/conteggio::GET": {
+    "path": "/api/documenti/conteggio",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "conteggio_documenti",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/documenti/elenco::GET": {
+    "path": "/api/documenti/elenco",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "elenco_documenti",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/documenti/{documento_id}/toggle::PATCH": {
+    "path": "/api/documenti/{documento_id}/toggle",
+    "methods": [
+      "PATCH"
+    ],
+    "endpoint_name": "toggle_documento_api",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/documenti/{documento_id}::DELETE": {
+    "path": "/api/documenti/{documento_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "endpoint_name": "elimina_documento_api",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/consent-prefs::GET": {
+    "path": "/api/gdpr/consent-prefs",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_consent_prefs",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/consent-prefs::PUT": {
+    "path": "/api/gdpr/consent-prefs",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint_name": "update_consent_prefs",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/delete::POST": {
+    "path": "/api/gdpr/delete",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "gdpr_delete",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/download/{token}::GET": {
+    "path": "/api/gdpr/download/{token}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "gdpr_download",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/dpa::GET": {
+    "path": "/api/gdpr/dpa",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_dpa",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/export::GET": {
+    "path": "/api/gdpr/export",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "gdpr_export",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/gdpr/retention-policy::GET": {
+    "path": "/api/gdpr/retention-policy",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "retention_policy",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/health::GET": {
+    "path": "/api/health",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "health_check",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/impostazioni/organizzazione::GET": {
+    "path": "/api/impostazioni/organizzazione",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_impostazioni_organizzazione",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/impostazioni/organizzazione::PUT": {
+    "path": "/api/impostazioni/organizzazione",
+    "methods": [
+      "PUT"
+    ],
+    "endpoint_name": "put_impostazioni_organizzazione",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/inbox/assign/{conversation_id}::POST": {
+    "path": "/api/inbox/assign/{conversation_id}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "assign_ticket",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.AssignResponse'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/claim/{conversation_id}::POST": {
+    "path": "/api/inbox/claim/{conversation_id}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "claim_ticket",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.ClaimResponse'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/messages/{message_id}/feedback::POST": {
+    "path": "/api/inbox/messages/{message_id}/feedback",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "feedback_message",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.FeedbackResponse'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/release/{conversation_id}::POST": {
+    "path": "/api/inbox/release/{conversation_id}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "release_ticket",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/inbox/reply/{conversation_id}::POST": {
+    "path": "/api/inbox/reply/{conversation_id}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "reply_to_ticket",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.ReplyResponse'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/resolve/{conversation_id}::POST": {
+    "path": "/api/inbox/resolve/{conversation_id}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "resolve_ticket",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/inbox/team::GET": {
+    "path": "/api/inbox/team",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "list_team",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.TeamListResponse'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/tickets/{conversation_id}/messages::GET": {
+    "path": "/api/inbox/tickets/{conversation_id}/messages",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_ticket_messages",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.MessageListResponse'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/tickets/{conversation_id}::GET": {
+    "path": "/api/inbox/tickets/{conversation_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_ticket",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.TicketListItem'>",
+    "is_llm_route": false
+  },
+  "/api/inbox/tickets::GET": {
+    "path": "/api/inbox/tickets",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "list_tickets",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.inbox.schemas.TicketListResponse'>",
+    "is_llm_route": false
+  },
+  "/api/instagram/account::DELETE": {
+    "path": "/api/instagram/account",
+    "methods": [
+      "DELETE"
+    ],
+    "endpoint_name": "delete_account",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/instagram/account::GET": {
+    "path": "/api/instagram/account",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_account",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.instagram.routes.InstagramAccountResponse'>",
+    "is_llm_route": false
+  },
+  "/api/instagram/account::POST": {
+    "path": "/api/instagram/account",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "save_account",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.instagram.routes.InstagramAccountResponse'>",
+    "is_llm_route": false
+  },
+  "/api/integrazioni/stato::GET": {
+    "path": "/api/integrazioni/stato",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "stato_integrazioni",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/integrazioni/test/{canale}::POST": {
+    "path": "/api/integrazioni/test/{canale}",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "test_integrazione",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/messaggio::POST": {
+    "path": "/api/messaggio",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "ricevi_messaggio",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": "<class 'src.models.schemas.RispostaOutput'>",
+    "is_llm_route": true
+  },
+  "/api/onboarding/preview::POST": {
+    "path": "/api/onboarding/preview",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "onboarding_preview",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.models.schemas.RispostaOutput'>",
+    "is_llm_route": false
+  },
+  "/api/onboarding/profilo::GET": {
+    "path": "/api/onboarding/profilo",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "onboarding_profilo",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/onboarding/profilo::POST": {
+    "path": "/api/onboarding/profilo",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "onboarding_salva_profilo",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/onboarding/verticali::GET": {
+    "path": "/api/onboarding/verticali",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "onboarding_verticali",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/recensione::POST": {
+    "path": "/api/recensione",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "ricevi_recensione",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.models.schemas.RispostaRecensioneOutput'>",
+    "is_llm_route": true
+  },
+  "/api/recensioni/analytics::GET": {
+    "path": "/api/recensioni/analytics",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "review_analytics",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/recensioni/{review_id}/approva::POST": {
+    "path": "/api/recensioni/{review_id}/approva",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "approve_review",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.reviews.schemas.ReviewApproveResponse'>",
+    "is_llm_route": false
+  },
+  "/api/recensioni/{review_id}::GET": {
+    "path": "/api/recensioni/{review_id}",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_review",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.reviews.schemas.ReviewItem'>",
+    "is_llm_route": false
+  },
+  "/api/recensioni::GET": {
+    "path": "/api/recensioni",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "list_reviews",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.core.reviews.schemas.ReviewListResponse'>",
+    "is_llm_route": false
+  },
+  "/api/report/csv::GET": {
+    "path": "/api/report/csv",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "export_csv_prenotazioni",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/report/settimanale::GET": {
+    "path": "/api/report/settimanale",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "report_settimanale",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/report/stato::GET": {
+    "path": "/api/report/stato",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "stato_report",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/report::GET": {
+    "path": "/api/report",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "ottieni_report",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": "<class 'src.models.schemas.ReportOutput'>",
+    "is_llm_route": false
+  },
+  "/api/reviews/google/auth::GET": {
+    "path": "/api/reviews/google/auth",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "google_reviews_auth",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/reviews/google/disconnect::DELETE": {
+    "path": "/api/reviews/google/disconnect",
+    "methods": [
+      "DELETE"
+    ],
+    "endpoint_name": "google_reviews_disconnect",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/reviews/google/oauth2callback::GET": {
+    "path": "/api/reviews/google/oauth2callback",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "google_reviews_oauth2callback",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/reviews/google/settings::PATCH": {
+    "path": "/api/reviews/google/settings",
+    "methods": [
+      "PATCH"
+    ],
+    "endpoint_name": "google_reviews_settings",
+    "required_roles": [
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/reviews/google/status::GET": {
+    "path": "/api/reviews/google/status",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "google_reviews_status",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/reviews/google/sync::POST": {
+    "path": "/api/reviews/google/sync",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "google_reviews_sync",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/ui/summary::GET": {
+    "path": "/api/ui/summary",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "ui_summary",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/account::DELETE": {
+    "path": "/api/whatsapp/account",
+    "methods": [
+      "DELETE"
+    ],
+    "endpoint_name": "disconnect_whatsapp_account",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/account::GET": {
+    "path": "/api/whatsapp/account",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_whatsapp_settings",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/account::POST": {
+    "path": "/api/whatsapp/account",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "connect_whatsapp_account",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/connect::POST": {
+    "path": "/api/whatsapp/connect",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "connect_whatsapp_account",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/disconnect::POST": {
+    "path": "/api/whatsapp/disconnect",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "disconnect_whatsapp_account",
+    "required_roles": [
+      "manager",
+      "owner"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/send-test::POST": {
+    "path": "/api/whatsapp/send-test",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "send_test_message",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/api/whatsapp/settings::GET": {
+    "path": "/api/whatsapp/settings",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "get_whatsapp_settings",
+    "required_roles": [
+      "manager",
+      "owner",
+      "staff"
+    ],
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/app/::GET": {
+    "path": "/app/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_app_index",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/app::GET": {
+    "path": "/app",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_app_redirect",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/cookie/::GET": {
+    "path": "/cookie/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_cookie",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/cookie::GET": {
+    "path": "/cookie",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_cookie",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/docs::GET": {
+    "path": "/docs",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "protected_docs",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/login.html::GET": {
+    "path": "/login.html",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_login_html",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/openapi.json::GET": {
+    "path": "/openapi.json",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "protected_openapi",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/privacy/::GET": {
+    "path": "/privacy/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_privacy",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/privacy::GET": {
+    "path": "/privacy",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_privacy",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/redoc::GET": {
+    "path": "/redoc",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "protected_redoc",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/register.html::GET": {
+    "path": "/register.html",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_register_html",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/registrati/::GET": {
+    "path": "/registrati/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_registrati",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/registrati::GET": {
+    "path": "/registrati",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_registrati",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/termini/::GET": {
+    "path": "/termini/",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_termini",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/termini::GET": {
+    "path": "/termini",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "serve_termini",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/webhooks/whatsapp::GET": {
+    "path": "/webhooks/whatsapp",
+    "methods": [
+      "GET"
+    ],
+    "endpoint_name": "verify_webhook",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  },
+  "/webhooks/whatsapp::POST": {
+    "path": "/webhooks/whatsapp",
+    "methods": [
+      "POST"
+    ],
+    "endpoint_name": "receive_webhook",
+    "required_roles": null,
+    "has_org_context": false,
+    "response_model": null,
+    "is_llm_route": false
+  }
+}

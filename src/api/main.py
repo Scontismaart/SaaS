@@ -344,6 +344,8 @@ from src.api.routes.knowledge import router as knowledge_router
 app.include_router(knowledge_router)
 from src.api.routes.simulator import router as simulator_router
 app.include_router(simulator_router)
+from src.api.routes.team import router as team_router
+app.include_router(team_router)
 
 cors_str = os.getenv("CORS_ORIGINS", "http://localhost:5173")
 allow_origins = [o.strip() for o in cors_str.split(",") if o.strip()]

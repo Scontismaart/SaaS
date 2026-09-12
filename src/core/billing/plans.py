@@ -20,7 +20,7 @@ PLANS: dict[str, Plan] = {
     "starter": Plan(
         name="Essenziale",
         stripe_price_id=os.getenv("STRIPE_PRICE_STARTER", ""),
-        messages_limit=300,
+        messages_limit=500,
         users_limit=1,
         whatsapp_numbers_limit=1,
         has_reviews=False,
@@ -32,7 +32,7 @@ PLANS: dict[str, Plan] = {
     "pro": Plan(
         name="Crescita",
         stripe_price_id=os.getenv("STRIPE_PRICE_PRO", ""),
-        messages_limit=1200,
+        messages_limit=2000,
         users_limit=3,
         whatsapp_numbers_limit=1,
         has_reviews=True,
@@ -44,7 +44,7 @@ PLANS: dict[str, Plan] = {
     "business": Plan(
         name="Scala",
         stripe_price_id=os.getenv("STRIPE_PRICE_BUSINESS", ""),
-        messages_limit=5000,
+        messages_limit=10000,
         users_limit=None,
         whatsapp_numbers_limit=None,
         has_reviews=True,

@@ -191,7 +191,6 @@ async def _handle_inbound_message(repo, org_id, msg, contacts, trace_id=None):
                 status="received_pending_ai",
                 conn=conn,
             )
-            await repo.increment_message_usage(org_id, conn=conn)
 
 
 async def _handle_template_status_update(repo, value, entry_id=None):

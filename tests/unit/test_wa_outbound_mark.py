@@ -372,3 +372,34 @@ class TestAdapterKeyThreading:
         msg = {"id": "inb-42", "organization_id": ORG, "canale": "whatsapp"}
         await svc._send_reply(ORG, msg, {"from": "+390"}, MagicMock(), "ciao")
         assert seen["idempotency_key"] == "reply:inb-42"
+
+
+class TestQuotaExceededBehavior:
+    @pytest.mark.asyncio
+    async def test_quota_exceeded_bypasses_limit_and_does_not_increment_usage(self):
+        repo = FakeMsgRepo()
+        # Mock usage as maxed out
+        repo.check_message_usage = AsyncMock(return_value={
+            "messages_limit": 100,
+            "messages_used_this_period": 100,
+        })
+        svc, meta = _service(repo), FakeMetaClient()
+
+        # Normal message must raise MessageUsageExceeded
+        with pytest.raises(WhatsAppService.MessageUsageExceeded):
+            await svc.send_whatsapp_message(
+                org_id=ORG, to_number="+390",
+                payload={"to": "+390", "type": "text", "text": {"body": "normal msg"}},
+                category="service", meta_client=meta, tenant_config=_tenant(),
+            )
+
+        # But handling_type="quota_exceeded" bypasses the limit check AND does not increment usage
+        res = await svc.send_whatsapp_message(
+            org_id=ORG, to_number="+390",
+            payload={"to": "+390", "type": "text", "text": {"body": "troppe richieste"}},
+            category="service", meta_client=meta, tenant_config=_tenant(),
+            handling_type="quota_exceeded",
+        )
+        assert res["status"] == "sent"
+        assert res["wam_id"] == "wamid.out.1"
+        assert repo.usage_increments == 0  # No usage increment for quota fallback!

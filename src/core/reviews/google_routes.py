@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from google_auth_oauthlib.flow import Flow
 
+from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.reviews.google_service import GoogleBusinessService
 
@@ -67,6 +68,11 @@ async def google_reviews_auth(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+
+    repo = getattr(request.app.state, "repo", None)
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
 
     nonce = uuid.uuid4().hex
     pool = request.app.state.pool
@@ -164,6 +170,10 @@ async def google_reviews_status(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    repo = getattr(request.app.state, "repo", None)
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     pool = request.app.state.pool
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -188,6 +198,10 @@ async def google_reviews_sync(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    repo = getattr(request.app.state, "repo", None)
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     service = _get_service(request)
     try:
         nuove = await service.fetch_reviews(org_id)
@@ -207,6 +221,10 @@ async def google_reviews_settings(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    repo = getattr(request.app.state, "repo", None)
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     pool = request.app.state.pool
     sets = []
     vals = []
@@ -237,6 +255,10 @@ async def google_reviews_disconnect(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    repo = getattr(request.app.state, "repo", None)
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     pool = request.app.state.pool
     async with pool.acquire() as conn:
         await conn.execute(

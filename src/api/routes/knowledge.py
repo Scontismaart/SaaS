@@ -176,6 +176,9 @@ async def aggiorna_faq(
     """Aggiorna il contenuto e i vettori di una FAQ esistente."""
     repo = get_repo(request)
     org_id = user["organization_id"]
+    blocco = await check_feature_blocked_by_plan(repo, org_id, "rag")
+    if blocco:
+        raise HTTPException(status_code=403, detail=blocco)
     esistente = await repo.get_document(org_id, faq_id)
     if not esistente or esistente.get("tipo") != "faq":
         raise HTTPException(status_code=404, detail="FAQ non trovata.")

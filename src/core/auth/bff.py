@@ -70,8 +70,11 @@ async def _client() -> httpx.AsyncClient:
 async def _token_request(payload: dict) -> dict:
     """POST /auth/v1/token verso Supabase Auth (grant_type password/refresh)."""
     client = await _client()
+    grant_type = payload.get("grant_type")
+    params = {"grant_type": grant_type} if grant_type else None
     resp = await client.post(
         f"{_supabase_url()}/auth/v1/token",
+        params=params,
         json=payload,
         headers={"apikey": _anon_key(), "Content-Type": "application/json"},
     )

@@ -220,6 +220,7 @@ class InboundProcessingService:
         if status == "quota_exceeded":
             cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
             tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
+            meta_id = f"meta-{msg['id']}"
             try:
                 res = await self._send_reply(
                     org_id,
@@ -229,11 +230,17 @@ class InboundProcessingService:
                     "Stiamo ricevendo troppe richieste, attendi l'operatore.",
                     handling_type="quota_exceeded",
                 )
-                meta_id = (
-                    (res.get("wam_id") or f"meta-{msg['id']}")
-                    if isinstance(res, dict)
-                    else f"meta-{msg['id']}"
+                if isinstance(res, dict) and res.get("wam_id"):
+                    meta_id = res["wam_id"]
+            except Exception as e:
+                logger.warning(
+                    "Quota exceeded courtesy message delivery failed for %s: %s",
+                    msg["id"],
+                    e,
                 )
+
+            escalation_ok = False
+            try:
                 conv = await self.repo.escalate_to_human(
                     str(msg["conversation_id"]), org_id
                 )
@@ -244,15 +251,34 @@ class InboundProcessingService:
                         contact_name=content.get("from", "cliente"),
                         pool=getattr(self.repo, "pool", None),
                     )
+                escalation_ok = True
+            except Exception as e:
+                logger.critical(
+                    "CRITICAL: Failed to escalate conversation %s to human staff for org %s on quota_exceeded: %s",
+                    msg.get("conversation_id"),
+                    org_id,
+                    e,
+                    exc_info=True,
+                )
+
+            final_handling = "quota_exceeded" if escalation_ok else "escalation_failed"
+            try:
                 await self._finalize_message(
                     msg["id"],
-                    handling_type="quota_exceeded",
+                    handling_type=final_handling,
                     meta_message_id=meta_id,
                     organization_id=org_id,
                 )
             except Exception as e:
-                logger.error("Quota exceeded notification send failed for %s: %s", msg["id"], e)
-            return ProcessingOutcome(action="handled", handling_type="quota_exceeded")
+                logger.error(
+                    "Failed to finalize message %s with handling %s: %s",
+                    msg["id"],
+                    final_handling,
+                    e,
+                )
+
+            outcome_action = "handled" if escalation_ok else "error"
+            return ProcessingOutcome(action=outcome_action, handling_type=final_handling)
 
         # ── STEP 2: Fail-Closed Opt-Out (Invariante 6) ─────────────────────────
         if self.service:

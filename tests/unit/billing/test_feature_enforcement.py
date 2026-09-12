@@ -105,3 +105,20 @@ async def test_active_trial_allows_pro_features():
     repo = FakeRepo({"plan": None, "subscription_status": "trialing", "trial_end": future})
     assert await api_main._piano_blocca_feature(repo, "org-1", "recensioni") is None
 
+
+@pytest.mark.asyncio
+async def test_new_registration_null_status_not_blocked():
+    # Scenario: appena creata o snapshot con campi billing nulli (plan=None, status=None, trial_end=None)
+    # Deve operare con le feature del piano Pro (recensioni concesse, RAG bloccata che richiede Scala)
+    # e non deve mai lanciare erroneamente "Abbonamento sospeso o scaduto".
+    repo = FakeRepo({"plan": None, "subscription_status": None, "trial_end": None})
+    rag_msg = await api_main._piano_blocca_feature(repo, "org-1", "rag")
+    assert rag_msg is not None
+    assert "Knowledge Base AI" in rag_msg
+    assert "sospeso" not in rag_msg.lower()
+
+    # Recensioni devono essere permesse (Pro feature)
+    reviews_msg = await api_main._piano_blocca_feature(repo, "org-1", "recensioni")
+    assert reviews_msg is None
+
+

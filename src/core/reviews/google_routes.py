@@ -13,6 +13,7 @@ from google_auth_oauthlib.flow import Flow
 from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.oauth_callback import safe_oauth_callback
+from src.core.google_feature_flags import google_business_enabled
 from src.core.reviews.google_service import GoogleBusinessService
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ def _get_client_config():
 
 
 def _make_flow():
+    if not google_business_enabled():
+        raise RuntimeError("Google Business disabled")
     redirect_uri = os.environ["GOOGLE_REVIEWS_REDIRECT_URI"]
     return Flow.from_client_config(
         _get_client_config(),
@@ -45,6 +48,7 @@ def _make_flow():
 
 
 def _get_service(request: Request) -> GoogleBusinessService:
+    _require_business_enabled()
     svc = getattr(request.app.state, "reviews_service", None)
     if svc is None:
         svc = GoogleBusinessService(
@@ -60,6 +64,11 @@ class GoogleReviewsSettingsInput(BaseModel):
     location_name: str | None = None
 
 
+def _require_business_enabled() -> None:
+    if not google_business_enabled():
+        raise HTTPException(status_code=503, detail="Google Business disabled")
+
+
 @router.get("/auth")
 async def google_reviews_auth(
     request: Request,
@@ -69,6 +78,7 @@ async def google_reviews_auth(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
 
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
@@ -96,6 +106,10 @@ async def google_reviews_auth(
 @router.get("/oauth2callback")
 @safe_oauth_callback("reviews_google")
 async def google_reviews_oauth2callback(request: Request):
+    if not google_business_enabled():
+        return RedirectResponse(
+            url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=disabled"
+        )
     state = request.query_params.get("state", "")
     code = request.query_params.get("code")
     error = request.query_params.get("error")
@@ -176,6 +190,7 @@ async def google_reviews_status(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:
@@ -204,6 +219,7 @@ async def google_reviews_sync(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:
@@ -227,6 +243,7 @@ async def google_reviews_settings(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:

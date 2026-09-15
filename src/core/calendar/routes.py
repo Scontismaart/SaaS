@@ -11,6 +11,7 @@ from google_auth_oauthlib.flow import Flow
 
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.oauth_callback import safe_oauth_callback
+from src.core.google_feature_flags import google_calendar_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ def _get_client_config():
 
 
 def _make_flow():
+    if not google_calendar_enabled():
+        raise RuntimeError("Google Calendar disabled")
     redirect_uri = os.environ["GOOGLE_REDIRECT_URI"]
     return Flow.from_client_config(
         _get_client_config(),
@@ -46,6 +49,11 @@ class CalendarSettingsInput(BaseModel):
     calendar_id: str | None = None
 
 
+def _require_calendar_enabled() -> None:
+    if not google_calendar_enabled():
+        raise HTTPException(status_code=503, detail="Google Calendar disabled")
+
+
 @router.get("/auth")
 async def calendar_auth(
     request: Request,
@@ -55,6 +63,7 @@ async def calendar_auth(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_calendar_enabled()
 
     nonce = uuid.uuid4().hex
     pool = request.app.state.pool
@@ -77,6 +86,10 @@ async def calendar_auth(
 @router.get("/oauth2callback")
 @safe_oauth_callback("calendar")
 async def calendar_oauth2callback(request: Request):
+    if not google_calendar_enabled():
+        return RedirectResponse(
+            url=f"{FRONTEND_REDIRECT}?calendar=error&reason=disabled"
+        )
     state = request.query_params.get("state", "")
     code = request.query_params.get("code")
     error = request.query_params.get("error")
@@ -173,6 +186,7 @@ async def calendar_status(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_calendar_enabled()
     pool = request.app.state.pool
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -222,6 +236,7 @@ async def calendar_settings(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_calendar_enabled()
     pool = request.app.state.pool
     sets = []
     vals = []

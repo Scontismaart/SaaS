@@ -8,6 +8,11 @@ from src.core.calendar.service import GoogleCalendarService
 FERNET_KEY = "GT4pFJ9wm5vlxRS2MSmSF3tjbThnKnon-sgG5TVYILE="
 
 
+@pytest.fixture(autouse=True)
+def enable_calendar(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CALENDAR_ENABLED", "true")
+
+
 def _svc():
     return GoogleCalendarService(repo=MagicMock(), encryption_key=FERNET_KEY)
 

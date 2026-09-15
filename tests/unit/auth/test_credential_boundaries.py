@@ -10,6 +10,12 @@ from fastapi.testclient import TestClient
 from src.core.auth.dependencies import get_current_user, get_organization_context
 
 
+@pytest.fixture(autouse=True)
+def enable_google_integrations(monkeypatch):
+    monkeypatch.setenv("GOOGLE_CALENDAR_ENABLED", "true")
+    monkeypatch.setenv("GOOGLE_BUSINESS_ENABLED", "true")
+
+
 @pytest.mark.parametrize("role,aal", [("manager", "aal2"), ("staff", "aal2"), ("owner", "aal1")])
 @pytest.mark.parametrize("channel", ["whatsapp", "instagram"])
 def test_channel_credentials_require_owner_mfa(role, aal, channel):

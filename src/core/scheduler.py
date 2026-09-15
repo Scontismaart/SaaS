@@ -9,6 +9,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from src.core.db.scoping import system_scope
+from src.core.google_feature_flags import google_calendar_enabled
 from src.models.schemas import ReportOutput
 
 logger = logging.getLogger(__name__)
@@ -182,14 +183,19 @@ async def _no_show_check_job(pool):
 
 
 def _run_calendar_sync():
+    if not google_calendar_enabled():
+        logger.info("calendar=sync_skipped reason=feature_disabled")
+        return
     asyncio.run(_con_pool_esimero(_calendar_sync_job))
 
 
 @system_scope("worker queue: enumerazione org con sync calendar abilitata")
 async def _calendar_sync_job(pool):
+    if not google_calendar_enabled():
+        logger.info("calendar=sync_skipped reason=feature_disabled")
+        return
     encryption_key = os.getenv("ENCRYPTION_KEY", "")
     if not encryption_key:
-        logger = __import__("logging").getLogger(__name__)
         logger.warning("calendar=sync_skipped reason=no_encryption_key")
         return
     from src.core.db.repositories.organization_repo import OrganizationRepository
@@ -218,7 +224,6 @@ async def _calendar_sync_job(pool):
             org_id,
         )
     if created:
-        logger = __import__("logging").getLogger(__name__)
         logger.info("calendar=sync_complete created=%d", created)
 
 

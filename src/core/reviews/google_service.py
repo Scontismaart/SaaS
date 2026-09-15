@@ -9,6 +9,8 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from googleapiclient.discovery import build
 from google.auth.exceptions import RefreshError
 
+from src.core.google_feature_flags import google_business_enabled
+
 logger = logging.getLogger(__name__)
 
 # Scope per gestire recensioni e dati del profilo Business.
@@ -55,6 +57,8 @@ class GoogleBusinessService:
         return self._encrypt(value)
 
     def _get_client_config(self):
+        if not google_business_enabled():
+            raise RuntimeError("Google Business disabled")
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
         if not client_id or not client_secret:
@@ -68,6 +72,8 @@ class GoogleBusinessService:
         }
 
     async def _get_credentials(self, org_id):
+        if not google_business_enabled():
+            return None
         async with await self._get_org_lock(org_id):
             async with self.repo.pool.acquire() as conn:
                 row = await conn.fetchrow(
@@ -114,6 +120,8 @@ class GoogleBusinessService:
             return creds
 
     async def _build_service(self, org_id):
+        if not google_business_enabled():
+            return None
         creds = await self._get_credentials(org_id)
         if not creds:
             return None
@@ -132,6 +140,8 @@ class GoogleBusinessService:
         prende service + identificativi cosi' i test costruiscono un fake
         senza passare per build().
         """
+        if not google_business_enabled():
+            return []
         result = await asyncio.to_thread(
             service.accounts().locations().reviews()
             .list(accountsId=account_name, locationsId=location_name, pageSize=page_size)
@@ -169,6 +179,8 @@ class GoogleBusinessService:
         Ritorna il numero di review nuove inserite (0 se non connessi o se
         account/location non ancora configurati).
         """
+        if not google_business_enabled():
+            return 0
         async with self.repo.pool.acquire() as conn:
             row = await conn.fetchrow(
                 f"SELECT account_name, location_name FROM {REVIEWS_TABLE} WHERE organization_id = $1",

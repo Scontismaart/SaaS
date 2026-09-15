@@ -8,7 +8,14 @@ async def test_webhook_payment_mode_updates_booking(repo, sample_org):
     b = await repo.create_booking(organization_id=sample_org["id"], nome_cliente="Mario",
         data=date(2026, 8, 1), ora=time(20, 0), coperti=4, richiede_deposito=True)
     await repo.update_booking_payment(sample_org["id"], b["id"], "pending")
+    await repo.pool.execute("""
+        UPDATE bookings SET deposit_amount_minor = 1000, deposit_currency = 'eur',
+            deposit_session_id = 'cs_test_abc123'
+        WHERE id = $1 AND organization_id = $2
+    """, b["id"], sample_org["id"])
     event = {
+        "id": "evt_deposit_001",
+        "created": 100,
         "type": "checkout.session.completed",
         "data": {
             "object": {
@@ -18,6 +25,9 @@ async def test_webhook_payment_mode_updates_booking(repo, sample_org):
                     "organization_id": str(sample_org["id"]),
                 },
                 "id": "cs_test_abc123",
+                "payment_status": "paid",
+                "amount_total": 1000,
+                "currency": "eur",
             }
         }
     }
@@ -36,6 +46,7 @@ async def test_webhook_payment_mode_fail_closed_without_org(repo, sample_org):
     event = {
         "type": "checkout.session.completed",
         "id": "evt_noorg_001",
+        "created": 100,
         "data": {
             "object": {
                 "mode": "payment",
@@ -59,6 +70,7 @@ async def test_webhook_payment_mode_fail_closed_malformed_org(repo, sample_org):
     event = {
         "type": "checkout.session.completed",
         "id": "evt_badorg_001",
+        "created": 100,
         "data": {
             "object": {
                 "mode": "payment",
@@ -77,6 +89,8 @@ async def test_webhook_payment_mode_fail_closed_malformed_org(repo, sample_org):
 async def test_webhook_subscription_mode_unaffected(repo, sample_org):
     """Subscription mode logic is not touched."""
     event = {
+        "id": "evt_subscription_001",
+        "created": 100,
         "type": "checkout.session.completed",
         "data": {
             "object": {

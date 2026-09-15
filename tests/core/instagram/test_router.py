@@ -81,6 +81,13 @@ async def _create_org_with_ig_account(pg_pool, ig_user_id="17841400000000000"):
     return org
 
 
+async def _drain_webhook_inbox(pg_pool):
+    from src.core.workers.webhook_inbox_worker import WebhookInboxWorker
+    from src.whatsapp.repository import Repository as WRepo
+
+    return await WebhookInboxWorker(WRepo(pool=pg_pool)).process_next_batch()
+
+
 class TestInstagramWebhookVerify:
     async def test_verify_ok(self, ig_app):
         from httpx import AsyncClient, ASGITransport
@@ -121,6 +128,7 @@ class TestInstagramWebhookReceive:
             res = await client.post("/webhooks/instagram", content=json.dumps(payload),
                                     headers=_signed_headers(payload))
         assert res.status_code == 200
+        assert await _drain_webhook_inbox(pg_pool) == 1
 
         async with pg_pool.acquire() as conn:
             msg = await conn.fetchrow(
@@ -150,6 +158,7 @@ class TestInstagramWebhookReceive:
                                        headers=_signed_headers(payload))
         assert first.status_code == 200
         assert second.status_code == 200
+        assert await _drain_webhook_inbox(pg_pool) == 1
 
         async with pg_pool.acquire() as conn:
             count = await conn.fetchval(
@@ -164,6 +173,7 @@ class TestInstagramWebhookReceive:
             res = await client.post("/webhooks/instagram", content=json.dumps(payload),
                                     headers=_signed_headers(payload))
         assert res.status_code == 200
+        assert await _drain_webhook_inbox(pg_pool) == 0
 
         async with pg_pool.acquire() as conn:
             count = await conn.fetchval("SELECT COUNT(*) FROM messages")
@@ -180,6 +190,7 @@ class TestInstagramWebhookReceive:
             res = await client.post("/webhooks/instagram", content=json.dumps(payload),
                                     headers=_signed_headers(payload))
         assert res.status_code == 200
+        assert await _drain_webhook_inbox(pg_pool) == 0
         async with pg_pool.acquire() as conn:
             count = await conn.fetchval("SELECT COUNT(*) FROM messages")
         assert count == 0

@@ -26,6 +26,7 @@ def clean_env(monkeypatch):
 def mock_auth():
     org_id = str(uuid.uuid4())
     user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": org_id,
         "ruolo": "owner",
@@ -47,7 +48,7 @@ def test_carica_testo_intercepts_main_vettorizza(client, mock_auth, clean_env):
     fake_vectors = [[0.1] * 384]
 
     mock_repo = MagicMock()
-    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "scala", "status": "active"})
+    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "business", "subscription_status": "active"})
     mock_repo.create_document = AsyncMock(return_value={"id": str(uuid.uuid4())})
     mock_repo.add_chunk = AsyncMock()
 
@@ -68,7 +69,7 @@ def test_importa_url_intercepts_main_estrai_e_vettorizza(client, mock_auth, clea
     fake_vectors = [[0.2] * 384]
 
     mock_repo = MagicMock()
-    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "scala", "status": "active"})
+    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "business", "subscription_status": "active"})
     mock_repo.create_document = AsyncMock(return_value={"id": str(uuid.uuid4())})
     mock_repo.add_chunk = AsyncMock()
 
@@ -97,13 +98,14 @@ def test_simulatore_recensione_intercepts_genera_risposta(client, mock_auth, cle
     )
 
     mock_repo = MagicMock()
-    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "scala", "status": "active"})
+    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "business", "subscription_status": "active"})
     mock_repo.get_onboarding_profile = AsyncMock(return_value={})
     mock_repo.create_review = AsyncMock(return_value={"id": str(uuid.uuid4())})
     mock_repo.record_usage = AsyncMock()
 
     with patch.object(app.state, "repo", mock_repo, create=True), \
-         patch("src.api.main.genera_risposta_recensione", return_value=fake_review) as mock_gen:
+         patch("src.api.main.genera_risposta_recensione", return_value=fake_review) as mock_gen, \
+         patch("src.api.routes.simulator.record_ai_usage", new_callable=AsyncMock):
         res = client.post("/api/recensione", json={
             "testo": "Personale gentilissimo e cibo squisito.",
             "valutazione_stelle": 5,
@@ -129,7 +131,8 @@ def test_onboarding_profilo_indicizza_dati_struttura_intercepts_vettorizza(clien
     mock_repo.update_org_business_profile = AsyncMock()
 
     with patch.object(app.state, "repo", mock_repo, create=True), \
-         patch("src.api.main.vettorizza", return_value=fake_vectors) as mock_vett:
+         patch("src.api.main.vettorizza", return_value=fake_vectors) as mock_vett, \
+         patch("src.api.routes.organization.audit_event", new_callable=AsyncMock):
         res = client.post("/api/onboarding/profilo", json={
             "verticale": "ristorante",
             "nome_attivita": "Ristorante Da Mario",

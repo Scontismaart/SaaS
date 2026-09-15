@@ -90,7 +90,11 @@ class MultiChannelRetryWorker:
                     or payload.get("content", {}).get("text", {}).get("body", "")
                     or payload.get("content_text", "")
                 )
-                result = await adapter.send_reply(org_id=org_id, to_destination=to_dest, text=text)
+                key = payload.get("idempotency_key")
+                if not key:
+                    raise RuntimeError("Legacy Instagram outbound requires manual reconciliation")
+                result = await adapter.send_reply(org_id=org_id, to_destination=to_dest, text=text,
+                                                  idempotency_key=key)
                 if not result.success:
                     raise RuntimeError(result.error or "Instagram delivery failed")
             else:
@@ -100,14 +104,19 @@ class MultiChannelRetryWorker:
                     tenant = await wa_config.load_tenant_config(org_id, self.app_config, self.repo)
                     from src.whatsapp.client import MetaClient
                     client = MetaClient(tenant)
-                    await self.service.attempt_delivery(
-                        message_id=message_id,
-                        phone_number_id=tenant.phone_number_id,
-                        access_token=tenant.access_token,
-                        payload=payload.get("content", {}),
-                        meta_client=client,
-                        organization_id=org_id,
-                    )
+                    try:
+                        result = await self.service.attempt_delivery(
+                            message_id=message_id,
+                            phone_number_id=tenant.phone_number_id,
+                            access_token=tenant.access_token,
+                            payload=payload.get("content", {}),
+                            meta_client=client,
+                            organization_id=org_id,
+                        )
+                        from src.core.channels.delivery import provider_message_id
+                        provider_message_id(result)
+                    finally:
+                        await client.close()
                 elif self.channel_router:
                     adapter = self.channel_router.get_adapter("whatsapp")
                     to_dest = (
@@ -123,7 +132,8 @@ class MultiChannelRetryWorker:
                     import src.whatsapp.config as wa_config
                     tenant = await wa_config.load_tenant_config(org_id, self.app_config, self.repo)
                     result = await adapter.send_reply(
-                        org_id=org_id, to_destination=to_dest, text=text, tenant_config=tenant
+                        org_id=org_id, to_destination=to_dest, text=text, tenant_config=tenant,
+                        idempotency_key=payload.get("idempotency_key") or f"retry:{message_id}"
                     )
                     if not result.success:
                         raise RuntimeError(result.error or "WhatsApp delivery failed")
@@ -132,6 +142,13 @@ class MultiChannelRetryWorker:
 
             await self.repo.update_delivery_attempt(attempt["id"], "succeeded")
         except Exception as e:
+            # A network exception can follow provider acceptance. Never turn its
+            # durable ambiguous marker into a retryable failure at exhaustion.
+            latest = await self.repo.reconstruct_payload_for_retry(message_id)
+            if latest and (_row_awaiting_webhook(latest) or _row_is_delivered(latest)):
+                await self.repo.update_delivery_attempt(attempt["id"], "failed",
+                                                        {"error": "requires_reconciliation"})
+                return
             logger.warning("Delivery attempt %d failed for %s: %s", attempt_num, message_id, e)
             if attempt_num >= self.max_retries:
                 await self.repo.update_delivery_attempt(attempt["id"], "failed", {"error": str(e)})

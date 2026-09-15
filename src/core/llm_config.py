@@ -2,11 +2,11 @@
 llm_config.py
 -------------
 Punto unico dove configuriamo quale modello LLM usare e con quale
-provider. Oggi supportiamo tre provider, TUTTI con policy no-training
-sui dati (requisito per la privacy dei clienti):
+provider. I connettori disponibili non certificano le condizioni commerciali
+o privacy del singolo account. Il profilo free_only ammette solo Groq verificato:
   - openrouter:  parametro `provider.data_collection='deny'` (fail-closed)
   - groq:        via LiteLLM, chiave GROQ_API_KEY (policy: no training)
-  - cerebras:    provider nativo CrewAI, chiave CEREBRAS_API_KEY (no training)
+  - cerebras:    connettore disponibile, escluso dal profilo free_only
 
 CrewAI usa LiteLLM sotto il cofano: basta prefissare il model id con il
 provider ("openrouter/", "groq/", "cerebras/") e passare la chiave della
@@ -19,6 +19,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 from crewai import LLM
+from src.core.cost_policy import DEFAULT_FREE_MODEL, assert_model_allowed
 from src.core.llm_routing import (
     LLMRoute,
     LLMRouteRequest,
@@ -28,19 +29,18 @@ from src.core.llm_routing import (
 )
 
 # Modello di default (usato da crea_llm() quando chi chiama non passa ne'
-# model ne' route_request). NON usare endpoint ":free": i modelli gratuiti
-# possono addestrare sui dati (incluse le conversazioni reali dei clienti
-# inviate nei prompt). Il default e' un modello paid economico.
+# model ne' route_request). Il controllo costo precede la costruzione del client;
+# esaurire il tier gratuito non autorizza un fallback a pagamento.
 MODELLO_DEFAULT = os.getenv(
     "OPENROUTER_MODEL",
-    "mistral/mistral-small-latest"
+    DEFAULT_FREE_MODEL
 )
 
 # Numero di tentativi in caso di errore/rate limit del modello free.
 MAX_RETRY = int(os.getenv("LLM_MAX_RETRY", "3"))
 
 # Audit 3.3: senza un limite di concorrenza, un tenant (o piu' tenant
-# insieme) puo' saturare il budget/rate-limit condiviso su OpenRouter.
+# insieme) puo' saturare il budget/rate-limit condiviso del provider LLM.
 # Semaforo globale asyncio: usato solo nel percorso async reale
 # (genera_risposta_async, il flusso WhatsApp che scala col volume di
 # messaggi). I percorsi sync (crew_runner_review.py, crew_runner_report.py)
@@ -78,6 +78,7 @@ def crea_llm(
     if selected_model is None and route_request is not None:
         selected_model = route_llm(route_request).model
     selected_model = selected_model or MODELLO_DEFAULT
+    assert_model_allowed(selected_model)
 
     provider = _provider_of(selected_model)
     key_env = _KEY_ENV_BY_PROVIDER[provider]

@@ -38,6 +38,7 @@ class TicketListItem(BaseModel):
     phone_number: Optional[str] = None
     last_message_preview: Optional[str] = None
     canale: str = "whatsapp"
+    escalation_failed: bool = False
 
 
 class TicketListResponse(BaseModel):

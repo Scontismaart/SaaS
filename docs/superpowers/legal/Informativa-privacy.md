@@ -65,7 +65,7 @@ generati durante l'uso del Servizio. Sono trattati per le seguenti finalità:
 
 I dati possono essere comunicati a soggetti terzi che trattano dati per conto
 del Fornitore (sub-responsabili ai sensi dell'Allegato B del DPA): Meta
-(WhatsApp Business API), OpenRouter e fornitori LLM, Google, Stripe,
+(WhatsApp Business API), Groq e fornitori LLM configurati, Google, Stripe,
 Supabase, Sentry (se configurato), provider SMTP, Airtable/Softr (solo
 propagazione cancellazione GDPR).
 

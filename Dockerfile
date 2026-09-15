@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # -- Stage 1: build dipendenze --------------------------------------
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # -- Stage 2: runtime -------------------------------------------------
-FROM python:3.11-slim AS runtime
+FROM python:3.12-slim-bookworm AS runtime
 
 # Utente non-root: uid/gid fissi per compatibilita' con volume permissions
 RUN groupadd -g 1000 appuser && \
@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf-2.0-0 \
     shared-mime-info \
     fonts-liberation \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 
@@ -56,4 +57,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/api/health || exit 1
 
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

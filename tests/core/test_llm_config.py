@@ -4,6 +4,12 @@ from src.core.llm_config import MODELLO_DEFAULT, crea_llm
 from src.core.llm_routing import LLMRouteRequest
 
 
+@pytest.fixture(autouse=True)
+def offline_client_configuration(monkeypatch):
+    # Only constructs clients with dummy keys; no inference/network is allowed.
+    monkeypatch.setenv("LLM_COST_POLICY", "standard")
+
+
 def test_crea_llm_inietta_sempre_data_collection_deny(monkeypatch):
     """Ogni chiamata deve negare l'uso dei dati per training su OpenRouter
     (extra_body provider.data_collection='deny'), incluso il futuro."""
@@ -25,9 +31,8 @@ def test_crea_llm_usa_modello_da_route_request(monkeypatch):
     assert llm.model == "premium/model"
 
 
-def test_crea_llm_senza_route_usa_default_non_free(monkeypatch):
-    # Il default di routing ora e' mistral (paid): serve la chiave del provider.
-    monkeypatch.setenv("MISTRAL_API_KEY", "sk-test")
+def test_crea_llm_senza_route_usa_default(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-test")
 
     llm = crea_llm()
 
@@ -35,10 +40,9 @@ def test_crea_llm_senza_route_usa_default_non_free(monkeypatch):
     assert not llm.model.endswith(":free")
 
 
-def test_modello_default_e_un_modello_paid():
-    """Il 'vero ultimo fallback' non deve essere un endpoint free che
-    addestra sui dati dei clienti. Il default di routing e' mistral paid."""
-    assert MODELLO_DEFAULT == "mistral/mistral-small-latest"
+def test_modello_default_e_ammesso_nel_profilo_gratuito():
+    from src.core.cost_policy import FREE_MODELS
+    assert MODELLO_DEFAULT in FREE_MODELS
     assert not MODELLO_DEFAULT.endswith(":free")
 
 

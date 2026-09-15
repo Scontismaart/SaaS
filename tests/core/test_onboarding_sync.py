@@ -14,13 +14,21 @@ def set_env():
 
 
 @pytest.fixture
-async def async_client(repo, pg_pool):
+async def async_client(repo, pg_pool, install_test_identity, sample_org):
     from src.api.main import app
+    await pg_pool.execute(
+        "UPDATE organizations SET subscription_status = 'active', plan = 'business' WHERE id = $1",
+        sample_org["id"],
+    )
+    install_test_identity(app, API_KEY, default_org_id=sample_org["id"])
     app.state.repo = repo
     app.state.pool = pg_pool
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+        try:
+            yield c
+        finally:
+            app.dependency_overrides.clear()
 
 
 def _headers(org_id):

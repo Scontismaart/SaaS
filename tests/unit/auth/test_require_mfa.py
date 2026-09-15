@@ -4,9 +4,7 @@ Cosa si testa qui:
 1. Un JWT senza claim `aal` (sessione password-only) viene rifiutato con
    403 quando colpisce un endpoint protetto da require_mfa().
 2. Un JWT con `aal="aal2"` (secondo fattore verificato) passa.
-3. La dipendenza non blocca le richieste via API_KEY_SERVICE: quelle sono
-   credenziali interne (inbound processor, webhook Stripe) e non sono una
-   sessione utente rubabile.
+3. Le chiavi di servizio non sono sessioni utente e non superano il gate.
 4. Bonus: conferma end-to-end che un token firmato da un issuer diverso
    (progetto Supabase sbagliato) viene rifiutato con 403 — questo copre
    la richiesta "test con iss sbagliato" andando oltre il solo livello
@@ -96,14 +94,12 @@ class TestRequireMfa:
         result = await check(user=user)
         assert result["aal"] == "aal2"
 
-    async def test_api_key_source_bypasses_mfa(self):
-        # Le richieste interne via API_KEY_SERVICE non sono sessioni utente:
-        # l'inbound processor e il webhook Stripe devono poter chiamare i
-        # Tier-1 senza MFA. Il bypass e' esplicito, non un caso accidentale.
+    async def test_api_key_source_cannot_bypass_mfa(self):
         user = {"source": "api_key", "ruolo": "service_role", "aal": None}
         check = require_mfa()
-        result = await check(user=user)
-        assert result["source"] == "api_key"
+        with pytest.raises(HTTPException) as exc:
+            await check(user=user)
+        assert exc.value.status_code == 403
 
 
 # ── Test 3: conferma che i Tier-1 path sono i 4 attesi ─────────────────

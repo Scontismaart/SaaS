@@ -2,6 +2,7 @@ import uuid
 from src.instagram.client import InstagramClient
 from src.instagram.config import InstagramTenantConfig
 from src.instagram.models import IgSendTextRequest
+from src.core.channels.delivery import DeliveryUnconfirmed, validate_replayed_payload
 
 
 class InstagramService:
@@ -22,10 +23,15 @@ class InstagramService:
         idempotency_key: str | None = None,
         handling_type: str | None = None,
     ) -> dict:
+        payload = {"to": to_ig_id, "type": "text", "text": {"body": text}, "channel": "instagram"}
+        from src.core.channels.sandbox_policy import assert_recipient_allowed
+        assert_recipient_allowed("instagram", to_ig_id)
         if idempotency_key:
             existing = await self.repo.check_idempotency(str(org_id), idempotency_key)
             if existing:
-                return existing
+                validate_replayed_payload(existing, payload)
+                if existing.get("wam_id") or existing.get("status") == "sending_ambiguous":
+                    return existing
 
         contact = await self.repo.get_or_create_contact(org_id, to_ig_id)
         conv = await self.repo.get_or_create_conversation(org_id, contact["id"], canale="instagram")
@@ -37,7 +43,7 @@ class InstagramService:
             wam_id=None,
             direction="outbound",
             message_type="text",
-            content={"to": to_ig_id, "type": "text", "text": {"body": text}, "channel": "instagram"},
+            content=payload,
             content_text=text,
             status="queued",
             idempotency_key=idempotency_key,
@@ -46,7 +52,11 @@ class InstagramService:
         if idempotency_key and str(msg["id"]) != str(msg_id):
             # Race genuina su idempotency_key: un'altra richiesta ha gia'
             # inserito (o sta inserendo) il messaggio: niente doppio invio.
-            return msg
+            validate_replayed_payload(msg, payload)
+        msg_id = msg["id"]
+        claimed = await self.repo.claim_outbound_delivery(msg_id, organization_id=org_id)
+        if not claimed:
+            raise DeliveryUnconfirmed("Outbound already claimed or requires reconciliation")
 
         client = InstagramClient(
             ig_user_id=ig_config.ig_user_id,
@@ -56,13 +66,13 @@ class InstagramService:
             response = await client.send_message(
                 IgSendTextRequest(recipient={"id": to_ig_id}, message={"text": text})
             )
+            if not response.message_id:
+                raise DeliveryUnconfirmed("Instagram returned no provider message ID")
             updated = await self.repo.update_message_status(
                 msg_id, "sent", wam_id=response.message_id, organization_id=org_id
             )
-            return updated or {"status": "sent", "wam_id": response.message_id}
-        except Exception as e:
-            await self.repo.update_message_status(msg_id, "failed", error_code="send_error",
-                                                  error_title=str(e), organization_id=org_id)
-            raise
+            if not updated:
+                raise DeliveryUnconfirmed("Provider accepted message but persistence failed")
+            return updated
         finally:
             await client.close()

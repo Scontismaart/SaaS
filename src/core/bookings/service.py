@@ -492,7 +492,9 @@ class BookingService:
                 updated["payment_link"] = link
                 updated["payment_status"] = "pending"
                 await self._send_whatsapp(org_id, b["telefono"],
-                    f"Per confermare, versa il deposito di {valuta} {importo:.2f}: {link}")
+                    f"Per confermare, versa il deposito di {valuta} {importo:.2f}: {link}",
+                    idempotency_key=f"booking-deposit:{org_id}:{booking_id}:{valuta.lower()}:{importo}",
+                )
             except Exception as e:
                 logger.error("Failed to generate payment link for booking %s: %s", booking_id, e)
         if self.calendar_service:
@@ -651,17 +653,43 @@ class BookingService:
         return False
 
     async def _genera_payment_link(self, org_id, booking_id, importo, valuta="EUR"):
-        import stripe
-        link = stripe.PaymentLink.create(
+        from decimal import Decimal, ROUND_HALF_UP
+        import os
+        from src.core.billing.routes import _get_stripe, _stripe_call
+        st = _get_stripe()
+        amount = int((Decimal(str(importo)) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+        currency = valuta.lower()
+        if amount <= 0 or currency != "eur":
+            raise ValueError("Invalid deposit amount or currency")
+        # Freeze server-owned payment facts before calling the provider.
+        async with self.repo.pool.acquire() as conn:
+            row = await conn.fetchrow("""
+                UPDATE bookings SET deposit_amount_minor = $3, deposit_currency = $4
+                WHERE id = $1::uuid AND organization_id = $2::uuid
+                  AND (deposit_amount_minor IS NULL OR (deposit_amount_minor = $3 AND deposit_currency = $4))
+                RETURNING id
+            """, str(booking_id), str(org_id), amount, currency)
+            if not row:
+                raise ValueError("Booking missing or deposit facts changed")
+        base = os.getenv("APP_BASE_URL", "https://app.melpis.it").rstrip("/")
+        link = await _stripe_call(st.checkout.Session.create,
+            mode="payment",
             line_items=[{
                 "price_data": {
-                    "unit_amount": int(round(importo * 100)),
-                    "currency": valuta.lower(),
+                    "unit_amount": amount,
+                    "currency": currency,
                     "product_data": {"name": "Deposito prenotazione"},
                 },
                 "quantity": 1,
             }],
             metadata={"booking_id": str(booking_id), "organization_id": str(org_id)},
-            after_completion={"type": "redirect", "redirect": {"url": ""}},
+            success_url=base + "/?deposit=success",
+            cancel_url=base + "/?deposit=cancelled",
+            idempotency_key=f"deposit:{org_id}:{booking_id}:{amount}:{currency}",
         )
+        async with self.repo.pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE bookings SET deposit_session_id = $3
+                WHERE id = $1::uuid AND organization_id = $2::uuid
+            """, str(booking_id), str(org_id), link.id)
         return link.url

@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from src.api.dependencies import get_external_booking_repo, get_repo, require_ruolo
 from src.core.bookings.router import BookingMode
+from src.core.auth.dependencies import require_mfa
 
 logger = logging.getLogger(__name__)
 
@@ -340,7 +341,8 @@ class UpdateBookingModeRequest(BaseModel):
 async def configura_integrazione_booking(
     req: ConfigureBookingIntegrationRequest,
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Configura o aggiorna le credenziali e la modalità per il gestionale di prenotazioni.
 
@@ -509,7 +511,8 @@ async def aggiorna_modalita_booking(
 @router.delete("/api/v1/integrations/booking")
 async def elimina_integrazione_booking(
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Rimuove l'integrazione di prenotazione e le credenziali cifrate per l'organizzazione corrente."""
     org_id = user.get("organization_id")

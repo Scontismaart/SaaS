@@ -111,6 +111,7 @@ async def reset_db(pg_pool):
                 google_business_credentials,
                 oauth_nonces,
                 outbound_dedup,
+                meta_webhook_inbox,
                 weekly_report_log
             CASCADE
         """)

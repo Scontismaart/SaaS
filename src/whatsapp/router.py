@@ -10,6 +10,8 @@ from src.whatsapp.config import AppConfig
 from src.whatsapp.models import IngoingWebhook
 from src.whatsapp.idempotency import dedup_check
 from src.core.channels.inbound.meta_security import MetaWebhookSecurity
+from src.core.db.repositories.webhook_inbox_repo import WebhookInboxRepository
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -67,13 +69,22 @@ def create_router(app_config: AppConfig = None, repo = None, security: MetaWebho
             )
             raise HTTPException(status_code=400, detail="Invalid JSON")
 
-        webhook = IngoingWebhook.model_validate(data)
+        try:
+            webhook = IngoingWebhook.model_validate(data)
+        except ValidationError:
+            raise HTTPException(status_code=400, detail="Invalid webhook payload")
+        if not active_repo:
+            raise HTTPException(status_code=503, detail="Webhook storage unavailable")
+        inbox = WebhookInboxRepository(active_repo.pool)
         for entry in webhook.entry:
             for change in entry.changes:
                 value = change.value
                 if change.field == "message_template_status_update":
-                    if active_repo:
-                        await _handle_template_status_update(active_repo, value, entry_id=entry.id)
+                    for org in await active_repo.get_orgs_by_waba_id(entry.id) or []:
+                        await inbox.enqueue(org["organization_id"], "whatsapp_template", {
+                            "object": webhook.object,
+                            "entry": [{"id": entry.id, "changes": [change.model_dump(by_alias=True, exclude_none=True)]}],
+                        }, trace_id)
                     continue
 
                 pid = None
@@ -89,12 +100,11 @@ def create_router(app_config: AppConfig = None, repo = None, security: MetaWebho
                     continue
                 org_id = org_data["organization_id"]
 
-                if value.statuses:
-                    for status in value.statuses:
-                        await _handle_status_update(active_repo, org_id, status)
-                if value.messages:
-                    for msg in value.messages:
-                        await _handle_inbound_message(active_repo, org_id, msg, value.contacts, trace_id=trace_id)
+                # Only durable acceptance here. Ingestion runs in the inbox worker.
+                await inbox.enqueue(org_id, "whatsapp", {
+                    "object": webhook.object,
+                    "entry": [{"id": entry.id, "changes": [change.model_dump(by_alias=True, exclude_none=True)]}],
+                }, trace_id)
 
         return Response(status_code=200)
 

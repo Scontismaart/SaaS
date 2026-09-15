@@ -166,9 +166,8 @@ class TestGoogleCallback:
             headers={"Cookie": _cookie_header(start)},
         )
         assert resp.status_code == 302
-        # Redirect assoluto verso PUBLIC_APP_URL: il round-trip Google avviene
-        # sull'host API, il browser va riportato all'origine del frontend.
-        assert resp.headers["location"] == "https://app.test/app/"
+        # BFF callbacks and frontend are same-origin; keep redirects local.
+        assert resp.headers["location"] == "/app/"
         # Il codice è stato scambiato col verifier del cookie
         assert exchanged[0][0] == "the-code"
         assert exchanged[0][1] == start.cookies["wa_oauth_verifier"]
@@ -193,7 +192,7 @@ class TestGoogleCallback:
             params={"code": "c", "state": "opaque-supabase-uuid"},
             headers={"Cookie": _cookie_header(start)},
         )
-        assert resp.headers["location"] == "https://app.test/app/?view=inbox"
+        assert resp.headers["location"] == "/app/?view=inbox"
 
     async def test_callback_without_state_still_exchanges(self, oauth_client, monkeypatch):
         called = []
@@ -211,7 +210,7 @@ class TestGoogleCallback:
             headers={"Cookie": _cookie_header(start)},
         )
         assert resp.status_code == 302
-        assert resp.headers["location"] == "https://app.test/app/"
+        assert resp.headers["location"] == "/app/"
         assert called
 
     async def test_callback_missing_code_fails_closed(self, oauth_client):
@@ -273,7 +272,7 @@ class TestGoogleCallback:
             params={"code": "c", "state": "opaque-supabase-uuid"},
             headers={"Cookie": cookie},
         )
-        assert resp.headers["location"] == "https://app.test/app/"
+        assert resp.headers["location"] == "/app/"
 
 
 class TestProvisioningPrimoAccesso:
@@ -318,7 +317,7 @@ class TestProvisioningPrimoAccesso:
         app = oauth_client._transport.app
         app.state.repo = FakeRepo(memberships=[{"organization_id": "org-1"}])
         resp = await self._do_callback(oauth_client, monkeypatch)
-        assert resp.headers["location"] == "https://app.test/app/"
+        assert resp.headers["location"] == "/app/"
         assert _get_repo(app).create_calls == []
 
     async def test_provisioning_failure_fail_closed(self, oauth_client, monkeypatch):

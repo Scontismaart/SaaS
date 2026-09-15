@@ -306,8 +306,7 @@ async def test_quota_exceeded_escalates_even_if_send_reply_fails(base_config, mo
 
 @pytest.mark.asyncio
 async def test_quota_exceeded_marks_escalation_failed_on_escalate_error(base_config, mock_deps):
-    """Verifica che se escalate_to_human solleva eccezione, il messaggio viene finalizzato con
-    handling_type='escalation_failed' e l'action restituita e' 'error'.
+    """Se la transizione staff fallisce, conserva un marker retryable e non dichiara handled.
     """
     mock_orchestrator = AsyncMock()
 
@@ -341,9 +340,9 @@ async def test_quota_exceeded_marks_escalation_failed_on_escalate_error(base_con
         assert res.action == "error"
         assert res.handling_type == "escalation_failed"
 
-        # Finalized with escalation_failed so it's auditable
-        mock_deps["repo"].try_mark_replied.assert_awaited_once_with(
-            msg["id"], handling_type="escalation_failed", organization_id=msg["organization_id"]
+        mock_deps["repo"].try_mark_replied.assert_not_awaited()
+        mock_deps["repo"].record_processing_failure.assert_awaited_once_with(
+            msg["id"], msg["organization_id"], "escalation_failed"
         )
 
 

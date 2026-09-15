@@ -8,10 +8,17 @@ except ImportError as e:
     _import_error = str(e)
 
 
+def _configure_free_llm(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-groq-free-key")
+    monkeypatch.setenv("GROQ_FREE_ACCOUNT_CONFIRMED", "true")
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("OPENROUTER_MODEL", "groq/openai/gpt-oss-20b")
+
+
 @pytest.mark.skipif(not HAS_MAIN, reason=f"Cannot import main.py: {globals().get('_import_error', 'unknown')}")
 def test_health_check(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    _configure_free_llm(monkeypatch)
     from fastapi.testclient import TestClient
     with TestClient(app) as client:
         resp = client.get("/api/health")
@@ -43,7 +50,7 @@ def test_rate_limit_llm_global(monkeypatch):
 @pytest.mark.skipif(not HAS_MAIN, reason=f"Cannot import main.py: {globals().get('_import_error', 'unknown')}")
 def test_cors_header_present(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    _configure_free_llm(monkeypatch)
     from fastapi.testclient import TestClient
     with TestClient(app) as client:
         resp = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
@@ -54,7 +61,7 @@ def test_cors_header_present(monkeypatch):
 @pytest.mark.skipif(not HAS_MAIN, reason=f"Cannot import main.py: {globals().get('_import_error', 'unknown')}")
 def test_cors_whitespace_stripped(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
+    _configure_free_llm(monkeypatch)
     monkeypatch.setenv("CORS_ORIGINS", "http://a.com , http://b.com")
     import importlib
 

@@ -25,10 +25,13 @@ ORG = uuid.uuid4()
 
 
 @pytest.fixture(autouse=True)
-def _mock_embeddings(monkeypatch):
+def _mock_embeddings(monkeypatch, tmp_path):
     monkeypatch.delenv("REDIS_URL", raising=False)
     monkeypatch.setenv("MISTRAL_API_KEY", "mock-mistral-key-for-test")
-    monkeypatch.setenv("OPENROUTER_API_KEY", "mock-openrouter-key-for-test")
+    monkeypatch.setenv("GROQ_API_KEY", "mock-groq-free-key-for-test")
+    monkeypatch.setenv("GROQ_FREE_ACCOUNT_CONFIRMED", "true")
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("CREWAI_STORAGE_DIR", str(tmp_path / "crewai"))
     try:
         from contextlib import nullcontext
         import crewai_core.lock_store

@@ -52,6 +52,7 @@ def mock_repo():
     pool.fetchrow = AsyncMock(return_value={"wam_id": "test"})
     # acquire + transaction async context manager per _handle_inbound_message
     mock_conn = MagicMock()
+    mock_conn.execute = AsyncMock(return_value="INSERT 0 1")
     mock_conn.transaction.return_value.__aenter__ = AsyncMock()
     mock_conn.transaction.return_value.__aexit__ = AsyncMock(return_value=False)
     pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -262,14 +263,13 @@ class TestRouter:
         sig = _sign_body(body, app_config.app_secret)
         resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
         assert resp.status_code == 200
-        webhook_org = mock_repo.get_org_by_phone_number_id.return_value["organization_id"]
-        mock_repo.update_message_status_by_wam_id.assert_awaited_with(
-            "wamid.bad.callback", "delivered",
-            error_code=None, error_title=None, error_details=None,
-            organization_id=webhook_org,
-        )
-        mock_repo.update_message_status.assert_awaited()
-        assert any("webhook_invalid_callback_data" in r.message for r in caplog.records)
+        # ACK path only authenticates, resolves tenant and persists the raw
+        # event. Status validation/reconciliation belongs to the inbox worker.
+        mock_repo.update_message_status_by_wam_id.assert_not_awaited()
+        mock_repo.update_message_status.assert_not_awaited()
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        assert conn.execute.await_count == 1
+        assert conn.execute.await_args.args[3] == "whatsapp"
 
     def test_post_status_idempotent_skip(self, client, app_config, mock_repo, monkeypatch):
         call_count = [0]
@@ -298,7 +298,9 @@ class TestRouter:
         assert resp1.status_code == 200
         resp2 = client.post("/webhooks/whatsapp", content=body, headers=headers)
         assert resp2.status_code == 200
-        mock_repo.update_message_status_by_wam_id.assert_awaited_once()
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        assert conn.execute.await_count == 2
+        mock_repo.update_message_status_by_wam_id.assert_not_awaited()
 
     def test_post_inbound_idempotent_skip(self, client, app_config, mock_repo, monkeypatch):
         call_count = [0]
@@ -328,11 +330,14 @@ class TestRouter:
         assert resp1.status_code == 200
         resp2 = client.post("/webhooks/whatsapp", content=body, headers=headers)
         assert resp2.status_code == 200
-        mock_repo.upsert_message.assert_awaited_once()
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        assert conn.execute.await_count == 2
+        mock_repo.upsert_message.assert_not_awaited()
 
     def test_post_batch_db_down_500(self, app, app_config, mock_repo):
         from starlette.testclient import TestClient
-        mock_repo.pool.fetchrow = AsyncMock(side_effect=asyncpg.InsufficientResourcesError("connection pool exhausted"))
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        conn.execute.side_effect = asyncpg.InsufficientResourcesError("connection pool exhausted")
         payload = {
             "object": "whatsapp_business_account",
             "entry": [{
@@ -374,8 +379,11 @@ class TestRouter:
         sig = _sign_body(body, app_config.app_secret)
         resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
         assert resp.status_code == 200
-        assert any("event=contacts_empty" in r.message for r in caplog.records)
-        mock_repo.upsert_message.assert_awaited_once()
+        # Contacts are interpreted only after durable acceptance.
+        assert not any("event=contacts_empty" in r.message for r in caplog.records)
+        mock_repo.upsert_message.assert_not_awaited()
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        assert conn.execute.await_count == 1
 
     def test_post_status_sequence_dedup_correct(self, client, app_config, mock_repo):
         payload = {
@@ -400,7 +408,9 @@ class TestRouter:
         sig = _sign_body(body, app_config.app_secret)
         resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
         assert resp.status_code == 200
-        assert mock_repo.update_message_status_by_wam_id.await_count == 3
+        mock_repo.update_message_status_by_wam_id.assert_not_awaited()
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        assert conn.execute.await_count == 1
 
     def test_post_batch_mixed_valid_invalid(self, client, app_config, mock_repo, caplog):
         caplog.set_level("WARNING")
@@ -423,8 +433,10 @@ class TestRouter:
         sig = _sign_body(body, app_config.app_secret)
         resp = client.post("/webhooks/whatsapp", content=body, headers={"Content-Type": "application/json", "X-Hub-Signature-256": sig})
         assert resp.status_code == 200
-        assert any("webhook_invalid_callback_data" in r.message for r in caplog.records)
-        mock_repo.upsert_message.assert_awaited_once()
+        assert not any("webhook_invalid_callback_data" in r.message for r in caplog.records)
+        mock_repo.upsert_message.assert_not_awaited()
+        conn = mock_repo.pool.acquire.return_value.__aenter__.return_value
+        assert conn.execute.await_count == 1
 
     def test_post_template_status(self, client, app_config):
         payload = {

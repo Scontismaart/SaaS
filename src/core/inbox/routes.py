@@ -102,6 +102,7 @@ def _to_ticket_item(t: dict) -> TicketListItem:
         phone_number=t.get("phone_number"),
         last_message_preview=t.get("last_message_preview"),
         canale=t.get("canale") or "whatsapp",
+        escalation_failed=bool(t.get("escalation_failed")),
     )
 
 

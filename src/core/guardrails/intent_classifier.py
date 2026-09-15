@@ -106,7 +106,7 @@ def _modello_intent() -> str:
     return (
         os.getenv("OPENROUTER_MODEL_INTENT", "").strip()
         or os.getenv("OPENROUTER_MODEL_CHEAP", "").strip()
-        or "openai/gpt-4o-mini"
+        or "groq/llama-3.1-8b-instant"
     )
 
 

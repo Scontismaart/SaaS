@@ -554,12 +554,17 @@ async function caricaAccount() {
   }
 }
 
+const checkoutAttempts = new Map();
 async function cambiaPiano(slug) {
   const status = document.getElementById("account-status");
+  const previous = checkoutAttempts.get(slug);
+  const attempt = previous && Date.now() - previous.created < 25 * 60 * 1000
+    ? previous : { key: crypto.randomUUID(), created: Date.now() };
+  checkoutAttempts.set(slug, attempt);
   try {
     const res = await apiFetch(`${API_BASE}/api/billing/create-checkout-session`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Idempotency-Key": attempt.key },
       body: JSON.stringify({
         plan: slug,
         interval: "monthly",
@@ -1371,7 +1376,7 @@ document.getElementById("onboarding-draft-discard")?.addEventListener("click", (
 });
 
 
-/* â”€â”€ Sicurezza account: cambio password/email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Sicurezza account: cambio password/email */
 
 const SECURITY_PASSWORD_MIN = 10;
 
@@ -3028,7 +3033,7 @@ const reportTimestamp = document.getElementById("report-timestamp");
 const reportRefresh = document.getElementById("report-refresh");
 const reportEmptyHint = document.getElementById("report-empty-hint");
 
-/* â”€â”€ Export CSV prenotazioni (endpoint /api/report/csv) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Export CSV prenotazioni (endpoint /api/report/csv) */
 
 async function scaricaCsvPrenotazioni(da, a) {
   const params = new URLSearchParams();
@@ -4847,8 +4852,8 @@ async function caricaInbox(silent = false) {
     const data = await ticketsRes.json();
     const newTickets = data.tickets || [];
 
-    const prevSig = (inboxState.tickets || []).map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
-    const newSig = newTickets.map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
+    const prevSig = (inboxState.tickets || []).map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.escalation_failed}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
+    const newSig = newTickets.map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.escalation_failed}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
 
     inboxState.tickets = newTickets;
 
@@ -4908,7 +4913,7 @@ function getFilteredTickets() {
   } else if (mf === "pending_staff") {
     list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
   } else if (mf === "escalated") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+    list = list.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
   } else if (mf === "channel_whatsapp") {
     list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
   } else if (mf === "channel_instagram") {
@@ -4932,7 +4937,7 @@ function getFilteredTickets() {
   } else if (qf === "human") {
     list = list.filter((t) => t.ticket_status === "CLAIMED");
   } else if (qf === "escalated") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+    list = list.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
   }
 
   return list;
@@ -5084,12 +5089,22 @@ function renderInboxConversazioni() {
       statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg>';
     }
 
-    statusPill.innerHTML = `${statusIcon} <span>${statusText}</span>`;
+    statusPill.innerHTML = statusIcon;
+    const statusLabel = document.createElement("span");
+    statusLabel.textContent = statusText;
+    statusPill.append(" ", statusLabel);
 
     metaLine.appendChild(channelIcon);
     metaLine.appendChild(channelName);
     metaLine.appendChild(sep);
     metaLine.appendChild(statusPill);
+    if (t.escalation_failed) {
+      const alert = document.createElement("span");
+      alert.className = "conv-status-pill status-pending_staff";
+      alert.textContent = "Escalation non riuscita: intervento richiesto";
+      alert.setAttribute("role", "alert");
+      metaLine.appendChild(alert);
+    }
 
     // Preview
     const previewEl = document.createElement("p");
@@ -5932,13 +5947,13 @@ notifBell?.addEventListener("click", () => {
   }
 
   /* Navigazione statica "Vai a": la ricerca non indicizza solo dati, deve
-     risolvere anche le destinazioni del menu (es. "audit" â†’ Impostazioni â€º
+     risolvere anche le destinazioni del menu (es. "audit" → Impostazioni ›
      Audit). DEBITO TECNICO NOTO: la lista è statica — se aggiungi un tab o
      una vista, aggiorna questa mappa (nessun modo automatico per rilevarlo). */
   const VAI_A = [
-    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni â€º Audit", view: "impostazioni", tab: "audit" },
-    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni â€º Integrazioni", view: "impostazioni", tab: "integrazioni" },
-    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione â€º Generale", view: "impostazioni", tab: "generale" },
+    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni › Audit", view: "impostazioni", tab: "audit" },
+    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni › Integrazioni", view: "impostazioni", tab: "integrazioni" },
+    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione › Generale", view: "impostazioni", tab: "generale" },
     { q: ["fattur", "abbonament", "piano", "rinnovo", "pagament", "upgrade", "downgrade", "cancellazion", "prezz"], gruppo: "Account", titolo: "Piano e abbonamento", sub: "Account", view: "account" },
     { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente › Conoscenza", view: "conoscenza" },
     { q: ["configurazione", "personalità", "regole", "tono", "lingue", "istruzioni", "identità", "orari", "escalation"], gruppo: "Assistente", titolo: "Configurazione AI", sub: "Assistente › Configurazione AI", view: "configurazione-ai" },
@@ -5979,7 +5994,7 @@ notifBell?.addEventListener("click", () => {
       ).slice(0, 5);
       if (hits.length) {
         blocchi.push(`<span class="gs-gruppo-titolo">Prenotazioni</span>` + hits.map((p) =>
-          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} Â· ${p.stato || ""}`, "prenotazioni")
+          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} · ${p.stato || ""}`, "prenotazioni")
         ).join(""));
       }
     }
@@ -6140,7 +6155,7 @@ let caricaTimezone;
 
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
-    if (status) { status.textContent = "Salvoâ€¦"; status.style.color = ""; }
+    if (status) { status.textContent = "Salvo…"; status.style.color = ""; }
     try {
       const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`, {
         method: "PUT",
@@ -6477,7 +6492,7 @@ async function caricaAudit({ append = false } = {}) {
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
       });
       const dettagli = ev.details && Object.keys(ev.details).length
-        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" Â· ")
+        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" · ")
         : "";
       item.innerHTML = `
         <div class="audit-main">
@@ -6500,7 +6515,7 @@ async function caricaAudit({ append = false } = {}) {
       btn.textContent = "Carica altri eventi";
       btn.addEventListener("click", () => {
         btn.disabled = true;
-        btn.textContent = "Caricoâ€¦";
+        btn.textContent = "Carico…";
         caricaAudit({ append: true });
       });
       list.appendChild(btn);
@@ -6876,6 +6891,7 @@ document.getElementById("wa-connect-form")?.addEventListener("submit", async (e)
       submitBtn.disabled = false;
       submitBtn.textContent = "Verifica e Salva Collegamento";
     }
+    document.getElementById("wa-access-token").value = "";
   }
 });
 
@@ -7073,6 +7089,7 @@ document.getElementById("ig-connect-form")?.addEventListener("submit", async (e)
       submitBtn.disabled = false;
       submitBtn.textContent = "Collega Instagram Direct";
     }
+    document.getElementById("ig-token-input").value = "";
   }
 });
 
@@ -7862,6 +7879,10 @@ document.getElementById("booking-config-form")?.addEventListener("submit", async
       submitBtn.disabled = false;
       submitBtn.textContent = "Salva Configurazione";
     }
+    for (const id of ["calcom-api-key", "simplybook-api-key", "apaleo-client-secret", "beds24-invite-code", "zak-api-key"]) {
+      const input = document.getElementById(id);
+      if (input) input.value = "";
+    }
   }
 });
 
@@ -8181,6 +8202,7 @@ document.getElementById("airtable-connect-form")?.addEventListener("submit", asy
       submitBtn.disabled = false;
       submitBtn.textContent = "Verifica e Connetti Base";
     }
+    document.getElementById("airtable-token").value = "";
   }
 });
 
@@ -8357,6 +8379,7 @@ document.getElementById("airtable-webhook-sub-form")?.addEventListener("submit",
       submitBtn.disabled = false;
       submitBtn.textContent = "Registra Sottoscrizione Webhook";
     }
+    document.getElementById("airtable-sub-mac-secret").value = "";
   }
 });
 
@@ -8388,7 +8411,7 @@ document.getElementById("report-print")?.addEventListener("click", () => window.
         <h3>Scorciatoie da tastiera</h3>
         <dl>
           <dt>/</dt><dd>ricerca globale</dd>
-          <dt>1 â€“ 9</dt><dd>vai alle viste in ordine di menu</dd>
+          <dt>1 – 9</dt><dd>vai alle viste in ordine di menu</dd>
           <dt>0</dt><dd>vista Audit</dd>
           <dt>?</dt><dd>questo pannello</dd>
           <dt>Esc</dt><dd>chiudi pannelli e ricerca</dd>

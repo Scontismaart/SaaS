@@ -7,6 +7,8 @@ from src.whatsapp.config import AppConfig
 from src.whatsapp.idempotency import dedup_check
 from src.core.channels.inbound.meta_security import MetaWebhookSecurity
 from src.instagram.models import InstagramWebhook
+from src.core.db.repositories.webhook_inbox_repo import WebhookInboxRepository
+from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -53,17 +55,31 @@ def create_router(app_config: AppConfig, wrepo, igrepo, security: MetaWebhookSec
         except json.JSONDecodeError:
             raise HTTPException(status_code=400, detail="Invalid JSON")
 
-        webhook = InstagramWebhook.model_validate(data)
+        try:
+            webhook = InstagramWebhook.model_validate(data)
+        except ValidationError:
+            raise HTTPException(status_code=400, detail="Invalid webhook payload")
+        if not wrepo or not igrepo:
+            raise HTTPException(status_code=503, detail="Webhook storage unavailable")
+        inbox = WebhookInboxRepository(wrepo.pool)
         for entry in webhook.entry:
             for event in entry.messaging:
-                await _handle_dm(wrepo, igrepo, entry.id, event, trace_id=trace_id)
+                if event.message is None or event.message.is_echo or not event.message.text:
+                    continue
+                org = await igrepo.get_org_by_instagram_user_id(event.recipient.id)
+                if not org:
+                    continue
+                await inbox.enqueue(org["organization_id"], "instagram", {
+                    "object": webhook.object,
+                    "entry": [{"id": entry.id, "messaging": [event.model_dump(exclude_none=True)]}],
+                }, trace_id)
 
         return Response(status_code=200)
 
     return router
 
 
-async def _handle_dm(wrepo, igrepo, entry_id, event, trace_id=None):
+async def _handle_dm(wrepo, igrepo, entry_id, event, trace_id=None, expected_org_id=None):
     """Un DM in arrivo: dedup sul mid, lookup tenant per recipient.id (l'IG
     account del locale), contatto/conversazione canale instagram, messaggio
     inbound in coda per l'InboundProcessor (che e' channel-agnostic)."""
@@ -72,17 +88,17 @@ async def _handle_dm(wrepo, igrepo, entry_id, event, trace_id=None):
         return
 
     mid = event.message.mid
-    # Prefisso ig: i mid e i wam_id vivono nella stessa tabella/chiavi
-    if not await dedup_check(wrepo.pool, f"ig:{mid}", "message", ""):
-        logger.info("mid=%s trace_id=%s action=duplicate_skipped", mid, trace_id)
-        return
-
     ig_user_id = event.recipient.id
     org_data = await igrepo.get_org_by_instagram_user_id(ig_user_id)
     if not org_data:
         logger.warning("Unknown instagram account id: %s", ig_user_id)
         return
     org_id = org_data["organization_id"]
+    if expected_org_id is not None and str(org_id) != str(expected_org_id):
+        raise ValueError("Instagram tenant binding changed; manual reconciliation required")
+    # Worker binds this dedup write and ingestion to the same DB transaction.
+    if not await dedup_check(wrepo.pool, f"ig:{mid}", "message", ""):
+        return
 
     sender_ig_id = event.sender.id
     contact = await wrepo.get_or_create_contact(org_id, sender_ig_id)
@@ -106,4 +122,3 @@ async def _handle_dm(wrepo, igrepo, entry_id, event, trace_id=None):
                 status="received_pending_ai",
                 conn=conn,
             )
-            await wrepo.increment_message_usage(org_id, conn=conn)

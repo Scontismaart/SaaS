@@ -143,6 +143,27 @@ class MessageRepository(TenantScopedRepository):
 
     # ── Claim Atomici & Concorrenza P0 ────────────────────────────
 
+    async def record_processing_failure(self, message_id, organization_id, handling_type):
+        async with self.scoped_conn(organization_id) as conn:
+            await conn.execute("""
+                UPDATE messages SET handling_type = $3, status = 'received_pending_ai',
+                    processing_at = NULL, claimed_at = NULL, heartbeat_at = NULL, updated_at = NOW()
+                WHERE id = $1 AND organization_id = $2 AND direction = 'inbound'
+                  AND replied_at IS NULL
+            """, message_id, organization_id, handling_type)
+
+    async def claim_outbound_delivery(self, message_id, *, organization_id):
+        """One sender only. An ambiguous request is NEVER reclaimed by a timer."""
+        async with self.scoped_conn(organization_id) as conn:
+            row = await conn.fetchrow("""
+                UPDATE messages SET status = 'sending_ambiguous', updated_at = NOW()
+                WHERE id = $1 AND organization_id = $2::uuid
+                  AND direction = 'outbound' AND status IN ('queued', 'failed')
+                  AND wam_id IS NULL AND deleted_at IS NULL
+                RETURNING *
+            """, message_id, organization_id)
+            return dict(row) if row else None
+
     @system_scope("worker queue: claim globale SKIP LOCKED, solo background job fidati")
     async def claim_inbound_messages(self, limit=10):
         async with self.pool.acquire() as conn:
@@ -168,13 +189,13 @@ class MessageRepository(TenantScopedRepository):
         async with self.scoped_conn(org_id) as conn:
             async with conn.transaction():
                 row = await conn.fetchrow(
-                    "SELECT id, billed_at, ai_reply_cache, sent_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE",
+                    "SELECT id, billed_at, ai_reply_cache, sent_at, replied_at, quota_exceeded_at, processing_at FROM messages WHERE id = $1::uuid AND organization_id = $2::uuid FOR UPDATE",
                     msg_id, org_id
                 )
                 if not row:
                     return {"status": "not_found"}
 
-                if row["sent_at"] is not None:
+                if row["sent_at"] is not None or row["replied_at"] is not None:
                     return {"status": "already_sent"}
 
                 if row["quota_exceeded_at"] is not None:

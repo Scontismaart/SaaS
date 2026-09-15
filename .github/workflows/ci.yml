@@ -50,8 +50,18 @@ jobs:
         run: pip install ruff
 
       - name: Lint with ruff
-        continue-on-error: true  # TODO: 98 errori preesistenti in tutto il repo, fuori scope task9
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ scripts/ --select E9,F63,F7,F82
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Frontend lint and DOM tests
+        run: |
+          npm ci --ignore-scripts
+          npm run lint:web
+          npm run test:web
 
       - name: Syntax check (py_compile)
         run: python -m py_compile $(git ls-files 'src/*.py' 'tests/*.py' 'scripts/*.py' '*.py' ':!:scratch/*')

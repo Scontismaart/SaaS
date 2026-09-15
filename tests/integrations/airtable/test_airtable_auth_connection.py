@@ -392,7 +392,7 @@ async def test_connect_allowed_for_non_medical_verticale(monkeypatch):
 
 def test_api_routes_airtable_connect_and_status(monkeypatch):
     """Verifica degli endpoint FastAPI /api/v1/integrations/airtable/* con TestClient."""
-    from src.core.auth.dependencies import get_organization_context
+    from src.core.auth.dependencies import get_current_user, get_organization_context
     from src.api.routes.airtable import router
 
     app = FastAPI()
@@ -410,6 +410,9 @@ def test_api_routes_airtable_connect_and_status(monkeypatch):
         "source": "jwt",
     }
 
+    app.dependency_overrides[get_current_user] = lambda: {
+        "source": "jwt", "aal": "aal2", "auth_user_id": "test-owner",
+    }
     client = TestClient(app)
 
     # 1. POST /connect con esito positivo

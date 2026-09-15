@@ -107,7 +107,7 @@ async def test_instagram_adapter_success():
          patch("src.instagram.service.InstagramService.send_instagram_message", new_callable=AsyncMock) as mock_send:
 
         mock_load.return_value = MagicMock()
-        mock_send.return_value = {"message_id": "ig-msg-777"}
+        mock_send.return_value = {"wam_id": "ig-msg-777", "status": "sent"}
 
         org_id = uuid.uuid4()
         res = await adapter.send_reply(org_id, "ig_user_123", "Risposta IG")
@@ -121,6 +121,7 @@ async def test_instagram_adapter_success():
             text="Risposta IG",
             ig_config=mock_load.return_value,
             handling_type="ai_handled",
+            idempotency_key=None,
         )
 
 

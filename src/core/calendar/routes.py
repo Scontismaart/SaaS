@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from google_auth_oauthlib.flow import Flow
 
 from src.core.auth.dependencies import require_ruolo, require_mfa
+from src.core.auth.oauth_callback import safe_oauth_callback
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 NONCE_TTL_MINUTES = 10
-FRONTEND_REDIRECT = os.getenv("FRONTEND_URL", "/settings")
+FRONTEND_REDIRECT = "/app/"
 
 
 def _get_client_config():
@@ -74,37 +75,42 @@ async def calendar_auth(
 
 
 @router.get("/oauth2callback")
+@safe_oauth_callback("calendar")
 async def calendar_oauth2callback(request: Request):
     state = request.query_params.get("state", "")
     code = request.query_params.get("code")
     error = request.query_params.get("error")
 
-    if error:
-        logger.warning("calendar=oauth_error error=%s", error)
-        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason={error}")
-
     if not state or ":" not in state:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_state")
 
     org_id, nonce = state.split(":", 1)
+    try:
+        uuid.UUID(org_id)
+    except ValueError:
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_state")
+    if len(nonce) != 32 or any(c not in "0123456789abcdef" for c in nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_state")
     pool = request.app.state.pool
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM oauth_nonces WHERE nonce = $1 AND organization_id = $2",
+            "DELETE FROM oauth_nonces WHERE nonce = $1 AND organization_id = $2 RETURNING *",
             nonce, org_id,
         )
         if not row:
-            logger.warning("calendar=nonce_not_found org_id=%s nonce=%s", org_id, nonce)
+            logger.warning("calendar=nonce_not_found org_id=%s", org_id)
             return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_nonce")
 
         created_at = row["created_at"]
         if created_at and datetime.now(timezone.utc) - created_at > timedelta(minutes=NONCE_TTL_MINUTES):
-            await conn.execute("DELETE FROM oauth_nonces WHERE nonce = $1", nonce)
             logger.warning("calendar=nonce_expired org_id=%s", org_id)
             return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=nonce_expired")
 
-        await conn.execute("DELETE FROM oauth_nonces WHERE nonce = $1", nonce)
+    # A valid callback consumes state even when the provider denied access.
+    if error:
+        logger.warning("calendar=oauth_error org_id=%s", org_id)
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=provider_denied")
 
     if not code:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=missing_code")

@@ -12,6 +12,7 @@ from google_auth_oauthlib.flow import Flow
 
 from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo, require_mfa
+from src.core.auth.oauth_callback import safe_oauth_callback
 from src.core.reviews.google_service import GoogleBusinessService
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/api/reviews/google", tags=["reviews-google"])
 
 SCOPES = ["https://www.googleapis.com/auth/business.manage"]
 NONCE_TTL_MINUTES = 10
-FRONTEND_REDIRECT = os.getenv("FRONTEND_URL", "/settings")
+FRONTEND_REDIRECT = "/app/"
 
 
 def _get_client_config():
@@ -93,24 +94,27 @@ async def google_reviews_auth(
 
 
 @router.get("/oauth2callback")
+@safe_oauth_callback("reviews_google")
 async def google_reviews_oauth2callback(request: Request):
     state = request.query_params.get("state", "")
     code = request.query_params.get("code")
     error = request.query_params.get("error")
 
-    if error:
-        logger.warning("business=oauth_error error=%s", error)
-        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason={error}")
-
     if not state or ":" not in state:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
 
     org_id, nonce = state.split(":", 1)
+    try:
+        uuid.UUID(org_id)
+    except ValueError:
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
+    if len(nonce) != 32 or any(c not in "0123456789abcdef" for c in nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
     pool = request.app.state.pool
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM oauth_nonces WHERE nonce = $1 AND organization_id = $2",
+            "DELETE FROM oauth_nonces WHERE nonce = $1 AND organization_id = $2 RETURNING *",
             nonce, org_id,
         )
         if not row:
@@ -119,11 +123,13 @@ async def google_reviews_oauth2callback(request: Request):
 
         created_at = row["created_at"]
         if created_at and datetime.now(timezone.utc) - created_at > timedelta(minutes=NONCE_TTL_MINUTES):
-            await conn.execute("DELETE FROM oauth_nonces WHERE nonce = $1", nonce)
             logger.warning("business=nonce_expired org_id=%s", org_id)
             return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=nonce_expired")
 
-        await conn.execute("DELETE FROM oauth_nonces WHERE nonce = $1", nonce)
+    # A provider denial still consumes state: callback nonces are one-shot.
+    if error:
+        logger.warning("business=oauth_error org_id=%s", org_id)
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=provider_denied")
 
     if not code:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=missing_code")

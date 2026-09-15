@@ -6,13 +6,6 @@
     // così il contenuto resta visibile se app.js non si carica o JS è disabilitato.
     document.documentElement.classList.add('js');
 
-    /* ---------- Plausible Analytics ---------- */
-    function trackEvent(name, props) {
-        if (typeof window.plausible === 'function') {
-            window.plausible(name, { props: props || {} });
-        }
-    }
-
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* ---------- Unified Navbar Controller (Sticky, Dropdown & Mobile Accordion) ---------- */
@@ -686,7 +679,6 @@
             }
         });
 
-        trackEvent('Billing_Toggle_Click', { period: period });
     }
 
     var btnMonthlyEl = document.getElementById('btnMonthly');
@@ -725,7 +717,6 @@
         btn.addEventListener('click', function () {
             var location = btn.getAttribute('data-track-location') || 'general';
             var plan = btn.getAttribute('data-plan') || '';
-            trackEvent('Signup_Button_Click', { location: location, plan: plan });
             openModal();
         });
     });
@@ -736,7 +727,6 @@
         if (!form) return;
         var email = form.email.value.trim();
         var vertical = form.vertical.value;
-        trackEvent('Signup_Form_Submit', { vertical: vertical });
 
         // Redirect to onboarding with parameters
         window.location.href = '/registrati/?email=' + encodeURIComponent(email) + '&settore=' + encodeURIComponent(vertical);

@@ -181,7 +181,7 @@ class TestApiFeedback:
         assert r2.status_code == 200
         assert r2.json()["value"] == "down"
 
-    async def test_api_key_senza_user_id_403(self, async_client):
+    async def test_api_key_senza_user_id_non_autorizzata(self, async_client):
         repo, pg_pool, app = async_client
         org, profile, conv = await _setup_org_conv(pg_pool)
         msg_id = await _insert_outbound(pg_pool, org, conv, "AI", "ai_handled")
@@ -199,7 +199,9 @@ class TestApiFeedback:
             r = await client.post(
                 f"/api/inbox/messages/{msg_id}/feedback", json={"value": "up"}
             )
-        assert r.status_code == 403
+        # Una service API key non rappresenta una sessione utente e viene
+        # respinta prima ancora dell'autorizzazione applicativa sul feedback.
+        assert r.status_code == 401
 
     async def test_cross_tenant_404(self, async_client):
         repo, pg_pool, app = async_client

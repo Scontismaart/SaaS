@@ -54,7 +54,7 @@ obbligo giuridico (art. 28 GDPR, AI Act) è indeterminato.
   e/o EU-U.S. Data Privacy Framework, e le region/data-residency reali.
 - **Elementi noti (da codice/credenziali, non da documentazione dei fornitori):**
   - Meta (WhatsApp Cloud API) — USA; strumento da confermare.
-  - OpenRouter e LLM sottostanti — USA/variabile; data residency non
+  - Groq e LLM configurati — ubicazione/trasferimenti e data residency non
     documentata; valutare se il traffico a determinati provider sia
     configurabile/impedibile dal cliente.
   - Google (Business Profile/Calendar) — USA.

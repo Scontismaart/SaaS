@@ -19,14 +19,13 @@ from src.models.schemas import OnboardingProfileInput
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 
-API_KEY = "test-reviews-lingue-api-key-12345"
+TEST_SESSION = "test-reviews-lingue-jwt-session"
 ENCRYPTION_KEY = "Y2xvbmUtZmVybmV0LWtleS0zMi1ieXRlcy1sb25nISE="
 
 
 @pytest.fixture(autouse=True)
 def set_env(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "")
-    monkeypatch.setenv("API_KEY_SERVICE", API_KEY)
     monkeypatch.setenv("ENCRYPTION_KEY", ENCRYPTION_KEY)
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "client-test.apps.googleusercontent.com")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "secret-test")
@@ -35,23 +34,44 @@ def set_env(monkeypatch):
 
 
 @pytest.fixture
-async def async_client(repo, pg_pool):
+async def async_client(repo, pg_pool, sample_org):
+    from fastapi import Depends, HTTPException
     from src.api.main import app
+    from src.core.auth.dependencies import get_current_user, get_organization_context, get_token
     from src.core.reviews.google_service import GoogleBusinessService
     app.state.repo = repo
     app.state.pool = pg_pool
     service = GoogleBusinessService(repo=repo, encryption_key=ENCRYPTION_KEY)
     app.state.reviews_service = service
+    await pg_pool.execute(
+        "UPDATE organizations SET subscription_status = 'active', plan = 'business' WHERE id = $1",
+        sample_org["id"],
+    )
+
+    async def fixed_test_identity(token=Depends(get_token)):
+        if token != TEST_SESSION:
+            raise HTTPException(401, "Test session required")
+        return {
+            "source": "jwt",
+            "aal": "aal2",
+            "organization_id": str(sample_org["id"]),
+            "ruolo": "owner",
+            "auth_user_id": "00000000-0000-0000-0000-000000000001",
+            "user_id": "00000000-0000-0000-0000-000000000001",
+        }
+
+    app.dependency_overrides[get_current_user] = fixed_test_identity
+    app.dependency_overrides[get_organization_context] = fixed_test_identity
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c, service
+        try:
+            yield c, service
+        finally:
+            app.dependency_overrides.clear()
 
 
 def _headers(org_id):
-    return {
-        "X-API-Key": API_KEY,
-        "X-Organization-Id": str(org_id),
-    }
+    return {"Authorization": f"Bearer {TEST_SESSION}"}
 
 
 def _profilo_onboarding(**overrides):

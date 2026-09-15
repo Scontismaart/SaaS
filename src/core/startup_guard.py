@@ -6,10 +6,10 @@ def assert_production_safe() -> None:
     from src.core.security.docs import is_production
 
     stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
-    if stripe_key.startswith("sk_live") and not is_production():
+    zero_cost = os.getenv("ZERO_COST_RELEASE", "true").strip().lower() != "false"
+    if stripe_key.startswith("sk_live") and (not is_production() or zero_cost):
         raise RuntimeError(
-            "AVVIO BLOCCATO: STRIPE_SECRET_KEY live (sk_live_...) con APP_ENV diverso "
-            "da production. Imposta APP_ENV=production o usa chiavi di test."
+            "AVVIO BLOCCATO: STRIPE_SECRET_KEY live non autorizzata nel profilo a costo zero."
         )
     if not is_production():
         return
@@ -19,6 +19,15 @@ def assert_production_safe() -> None:
             "AVVIO BLOCCATO: DEMO_MODE attivo con APP_ENV=production (B1). "
             "Rimuovi DEMO_MODE dalla configurazione di produzione."
         )
+    if zero_cost:
+        if os.getenv("LLM_COST_POLICY", "free_only") != "free_only":
+            raise RuntimeError("AVVIO BLOCCATO: il rilascio EUR 0 richiede LLM_COST_POLICY=free_only")
+        if os.getenv("GROQ_FREE_ACCOUNT_CONFIRMED", "").lower() != "true":
+            raise RuntimeError("AVVIO BLOCCATO: account Groq FREE non confermato")
+        if os.getenv("SANDBOX_ONLY", "true").lower() != "true":
+            raise RuntimeError("AVVIO BLOCCATO: SANDBOX_ONLY deve restare true nel pre-lancio")
+        if stripe_key and not stripe_key.startswith("sk_test_"):
+            raise RuntimeError("AVVIO BLOCCATO: Stripe deve usare una chiave sk_test_ nel pre-lancio")
     key = os.getenv("ENCRYPTION_KEY", "").strip()
     if not key:
         raise RuntimeError(

@@ -60,7 +60,15 @@ class ConversationRepository(TenantScopedRepository):
                               COALESCE(el.priorita,
                                        CASE WHEN c.ticket_status IN ('PENDING_STAFF', 'CLAIMED') THEN 'alta'
                                             ELSE 'media' END) AS priorita,
-                              lm.content_text AS last_message_preview
+                              lm.content_text AS last_message_preview,
+                              (c.ticket_status <> 'RESOLVED' AND EXISTS (
+                                  SELECT 1 FROM messages failed
+                                  WHERE failed.organization_id = c.organization_id
+                                    AND failed.conversation_id = c.id
+                                    AND failed.deleted_at IS NULL
+                                    AND failed.handling_type = 'escalation_failed'
+                                    AND (c.resolved_at IS NULL OR failed.created_at > c.resolved_at)
+                              )) AS escalation_failed
                        FROM conversations c
                        LEFT JOIN user_profiles u ON u.id = c.assigned_to
                        LEFT JOIN contacts ct ON ct.id = c.contact_id
@@ -106,7 +114,15 @@ class ConversationRepository(TenantScopedRepository):
                               COALESCE(el.priorita,
                                        CASE WHEN c.ticket_status IN ('PENDING_STAFF', 'CLAIMED') THEN 'alta'
                                             ELSE 'media' END) AS priorita,
-                              lm.content_text AS last_message_preview
+                              lm.content_text AS last_message_preview,
+                              (c.ticket_status <> 'RESOLVED' AND EXISTS (
+                                  SELECT 1 FROM messages failed
+                                  WHERE failed.organization_id = c.organization_id
+                                    AND failed.conversation_id = c.id
+                                    AND failed.deleted_at IS NULL
+                                    AND failed.handling_type = 'escalation_failed'
+                                    AND (c.resolved_at IS NULL OR failed.created_at > c.resolved_at)
+                              )) AS escalation_failed
                        FROM conversations c
                        LEFT JOIN user_profiles u ON u.id = c.assigned_to
                        LEFT JOIN contacts ct ON ct.id = c.contact_id

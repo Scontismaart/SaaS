@@ -30,6 +30,9 @@ def _get_stripe():
     key = os.getenv("STRIPE_SECRET_KEY")
     if not key:
         raise HTTPException(status_code=503, detail="Stripe not configured")
+    from src.core.cost_policy import free_only
+    if free_only() and not key.startswith("sk_test_"):
+        raise HTTPException(status_code=503, detail="Budget EUR 0 requires Stripe test mode")
     stripe.api_key = key
     return stripe
 
@@ -55,16 +58,6 @@ async def create_checkout_session(
     org_id = user["organization_id"]
     org = await repo.get_organization_billing(org_id)
 
-    st = _get_stripe()
-    customer_id = org.get("stripe_customer_id")
-
-    if not customer_id:
-        customer = await _stripe_call(st.Customer.create)
-        customer_id = customer.id
-        await repo.update_organization_billing(org_id, {
-            "stripe_customer_id": customer_id,
-        })
-
     plan = PLANS[req.plan]
     try:
         price_id = _resolve_price_id(plan, req.interval)
@@ -76,34 +69,13 @@ async def create_checkout_session(
             detail=f"Stripe price ID ({req.interval}) non configurato per: {req.plan}",
         )
 
-    # Un solo trial: il checkout eredita i giorni rimanenti del trial del
-    # signup invece di regalarne un secondo periodo (audit billing #3).
-    from src.core.billing.suspension import giorni_trial_rimanenti
-    trial_rimanenti = giorni_trial_rimanenti(org.get("trial_end"))
-    subscription_data = {"trial_period_days": trial_rimanenti} if trial_rimanenti > 0 else None
-    session = await _stripe_call(
-        st.checkout.Session.create,
-        customer=customer_id,
-        line_items=[{"price": price_id, "quantity": 1}],
-        mode="subscription",
-        success_url=req.success_url,
-        cancel_url=req.cancel_url,
-        client_reference_id=str(org_id),
-        metadata={"trial_days_remaining": str(trial_rimanenti)},
-        subscription_data=subscription_data,
-        payment_method_collection="required",
-    )
-
-    try:
-        await audit_log(repo, organization_id=org_id,
-                        action="billing.checkout_session_created",
-                        auth_user_id=user.get("auth_user_id"),
-                        target_table="organizations", target_id=str(org_id),
-                        details={"plan": req.plan, "interval": req.interval, "session_id": session.id})
-    except Exception as e:
-        logger.warning("Audit log failed: %s", e)
-
-    return {"url": session.url}
+    from src.core.billing.checkout import create_durable_checkout, validate_redirect_url
+    base = os.getenv("APP_BASE_URL", "https://app.melpis.it")
+    return await create_durable_checkout(repo, org_id, request.headers.get("Idempotency-Key"), {
+        "price_id": price_id, "plan": req.plan, "interval": req.interval,
+        "success_url": validate_redirect_url(req.success_url, base),
+        "cancel_url": validate_redirect_url(req.cancel_url, base),
+    }, _get_stripe(), _stripe_call)
 
 
 @router.post("/create-portal-session")
@@ -130,13 +102,8 @@ async def create_portal_session(
         return_url=return_url,
     )
 
-    try:
-        await audit_log(repo, organization_id=org_id,
-                        action="billing.portal_session_created",
-                        auth_user_id=user.get("auth_user_id"),
-                        target_table="organizations", target_id=str(org_id))
-    except Exception as e:
-        logger.warning("Audit log failed: %s", e)
+    from src.api.routes.common import audit_event
+    await audit_event(request, user, "billing.portal_session_created", "organizations", str(org_id))
 
     return {"url": session.url}
 
@@ -221,13 +188,5 @@ async def billing_webhook(request: Request):
     result = await handle_stripe_webhook(event.to_dict_recursive(), repo, trial_days)
     if result is None:
         return {"status": "ignored"}
-    if result.get("action"):
-        try:
-            await audit_log(repo,
-                            organization_id=result.get("organization_id"),
-                            action=f"billing.webhook.{result['action']}",
-                            details={"stripe_event_id": event.get("id"),
-                                     "stripe_event_type": event.get("type")})
-        except Exception as e:
-            logger.warning("Audit log failed: %s", e)
+    # Audit is committed atomically by the handler, not duplicated here.
     return result

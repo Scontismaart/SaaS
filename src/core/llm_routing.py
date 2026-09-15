@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from src.core.cost_policy import DEFAULT_FREE_MODEL
 from dataclasses import dataclass
 from typing import Literal
 
@@ -15,11 +16,10 @@ LLMTaskType = Literal[
 
 LLMTier = Literal["cheap", "premium"]
 
-_DEFAULT_CHEAP_MODEL = "mistral/mistral-small-latest"
-_DEFAULT_PREMIUM_MODEL = "mistral/mistral-medium-2508"
+_DEFAULT_CHEAP_MODEL = "groq/llama-3.1-8b-instant"
+_DEFAULT_PREMIUM_MODEL = DEFAULT_FREE_MODEL
 _DEFAULT_FALLBACK_MODELS = (
-    "mistral/mistral-medium-2508,"
-    "mistral/mistral-small-latest,"
+    "groq/llama-3.1-8b-instant,"
     "groq/openai/gpt-oss-120b"
 )
 
@@ -153,6 +153,10 @@ def budget_ratio_from_billing(billing: dict | None) -> float | None:
 # Chiavi: nome modello senza prefisso provider, incluse le varianti dei
 # default di routing (mistral-small-latest, mistral-medium-2508).
 _TOKEN_PRICES_EUR_PER_1M: dict[str, tuple[float, float]] = {
+    # The launch policy permits these models only on a user-confirmed Groq
+    # free account, therefore their application-side estimated spend is zero.
+    "llama-3.1-8b-instant": (0.0, 0.0),
+    "gpt-oss-20b": (0.0, 0.0),
     "mistral-small": (0.2, 0.6),
     "mistral-small-latest": (0.2, 0.6),
     "mistral-medium": (2.7, 8.1),

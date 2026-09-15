@@ -28,8 +28,8 @@ class TestIsOrgSuspended:
         past = datetime.now(timezone.utc) - timedelta(days=1)
         assert is_org_suspended("incomplete", past) is True
 
-    def test_no_trial_not_suspended(self):
-        assert is_org_suspended("trialing", None) is False
+    def test_no_trial_is_suspended(self):
+        assert is_org_suspended("trialing", None) is True
 
     def test_naive_datetime_treated_as_utc(self):
         past = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=1)

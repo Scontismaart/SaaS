@@ -26,7 +26,7 @@ async def async_client(repo, pg_pool):
 
 
 async def _make_client(app, org_id, user_id, ruolo="owner"):
-    from src.core.auth.dependencies import get_organization_context
+    from src.core.auth.dependencies import get_current_user, get_organization_context
 
     async def fake_get_organization_context():
         return {
@@ -34,10 +34,12 @@ async def _make_client(app, org_id, user_id, ruolo="owner"):
             "organization_id": str(org_id),
             "ruolo": ruolo,
             "source": "jwt",
+            "aal": "aal2",
             "user_id": str(user_id),
         }
 
     app.dependency_overrides[get_organization_context] = fake_get_organization_context
+    app.dependency_overrides[get_current_user] = fake_get_organization_context
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 

@@ -45,7 +45,7 @@ DPA_HTML = """<!DOCTYPE html>
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%">
 <tr><th>Sub-processor</th><th>Service</th><th>Data Location</th></tr>
 <tr><td>Meta Platforms (WhatsApp Business API)</td><td>Message delivery</td><td>USA — verify transfer mechanism</td></tr>
-<tr><td>OpenRouter / underlying LLM providers</td><td>AI response generation</td><td>USA/variable — verify transfer mechanism</td></tr>
+<tr><td>Groq / provider LLM configurato</td><td>Generazione risposte AI</td><td>Ubicazione e meccanismo di trasferimento da verificare contrattualmente</td></tr>
 <tr><td>Google (Business Profile, Calendar)</td><td>Reviews, calendar sync</td><td>USA — verify transfer mechanism</td></tr>
 <tr><td>Stripe</td><td>Payment processing, subscriptions, booking deposits</td><td>USA/EU per Stripe configuration</td></tr>
 <tr><td>Supabase</td><td>Authentication, database hosting</td><td>Depends on the Supabase project region</td></tr>

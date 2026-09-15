@@ -5,6 +5,14 @@ from src.core.auth import dependencies
 from src.core.startup_guard import assert_production_safe
 
 
+@pytest.fixture(autouse=True)
+def zero_cost_production_baseline(monkeypatch):
+    monkeypatch.setenv("ZERO_COST_RELEASE", "true")
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("GROQ_FREE_ACCOUNT_CONFIRMED", "true")
+    monkeypatch.setenv("SANDBOX_ONLY", "true")
+
+
 def test_demo_mode_ignorato_in_produzione(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("DEMO_MODE", "true")
@@ -70,3 +78,19 @@ def test_startup_ok_stripe_test_in_dev(monkeypatch):
     monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_abc123")
     assert_production_safe()  # non alza
+
+
+def test_zero_cost_production_rejects_paid_llm_policy(monkeypatch):
+    from cryptography.fernet import Fernet
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("ENCRYPTION_KEY", Fernet.generate_key().decode())
+    monkeypatch.setenv("LLM_COST_POLICY", "standard")
+    with pytest.raises(RuntimeError, match="EUR 0"):
+        assert_production_safe()
+
+
+def test_zero_cost_production_rejects_stripe_live(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_not_authorized")
+    with pytest.raises(RuntimeError, match="costo zero"):
+        assert_production_safe()

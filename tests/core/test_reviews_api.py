@@ -4,7 +4,6 @@ Il CRUD e la lock "FOR UPDATE" esistono gia' nel repository; qui si testa
 che siano esposti via HTTP in modo multi-tenant sicuro (org scoping su ogni
 endpoint) e che il flusso one-click di approvazione funzioni end-to-end.
 """
-import os
 import uuid
 
 import pytest
@@ -13,30 +12,46 @@ from unittest.mock import MagicMock
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 
-API_KEY = "test-reviews-api-key-12345"
-
-
-@pytest.fixture(autouse=True)
-def set_env():
-    os.environ["DATABASE_URL"] = ""
-    os.environ["API_KEY_SERVICE"] = API_KEY
+TEST_SESSION = "test-reviews-jwt-session"
 
 
 @pytest.fixture
-async def async_client(repo):
+async def async_client(repo, sample_org):
+    from fastapi import Depends, HTTPException
     from src.api.main import app
+    from src.core.auth.dependencies import get_current_user, get_organization_context, get_token
+
     app.state.repo = repo
     app.state.pool = MagicMock()
+    await repo.pool.execute(
+        "UPDATE organizations SET subscription_status = 'active', plan = 'business' WHERE id = $1",
+        sample_org["id"],
+    )
+
+    async def fixed_test_identity(token=Depends(get_token)):
+        if token != TEST_SESSION:
+            raise HTTPException(401, "Test session required")
+        return {
+            "source": "jwt",
+            "aal": "aal2",
+            "organization_id": str(sample_org["id"]),
+            "ruolo": "owner",
+            "auth_user_id": "00000000-0000-0000-0000-000000000001",
+            "user_id": "00000000-0000-0000-0000-000000000001",
+        }
+
+    app.dependency_overrides[get_current_user] = fixed_test_identity
+    app.dependency_overrides[get_organization_context] = fixed_test_identity
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+        try:
+            yield c
+        finally:
+            app.dependency_overrides.clear()
 
 
 def _headers(org_id):
-    return {
-        "X-API-Key": API_KEY,
-        "X-Organization-Id": str(org_id),
-    }
+    return {"Authorization": f"Bearer {TEST_SESSION}"}
 
 
 async def _crea_recensione(repo, org_id, *, testo="Bella recensione",

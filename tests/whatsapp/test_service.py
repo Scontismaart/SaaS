@@ -12,6 +12,12 @@ OPT_OUT_KEYWORDS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def sandbox_recipient(monkeypatch):
+    monkeypatch.setenv("SANDBOX_ONLY", "true")
+    monkeypatch.setenv("WHATSAPP_TEST_RECIPIENTS", "391234567890")
+
+
 @pytest.fixture
 def app_config():
     return AppConfig(
@@ -25,10 +31,21 @@ def app_config():
 @pytest.fixture
 def mock_repo():
     repo = AsyncMock()
+    messages = {}
+
+    async def upsert_message(**values):
+        row = {**values}
+        messages[values["id"]] = row
+        return row
+
+    async def claim_outbound_delivery(message_id, **_kwargs):
+        return messages.get(message_id)
+
     repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4(), "marketing_opt_out": False})
     repo.get_or_create_conversation = AsyncMock(return_value={"id": uuid.uuid4()})
     repo.get_contact_prefs = AsyncMock(return_value={"id": uuid.uuid4(), "marketing_opt_out": False})
-    repo.upsert_message = AsyncMock(return_value={"id": uuid.uuid4(), "status": "queued"})
+    repo.upsert_message = AsyncMock(side_effect=upsert_message)
+    repo.claim_outbound_delivery = AsyncMock(side_effect=claim_outbound_delivery)
     repo.update_message_status = AsyncMock(return_value={"id": uuid.uuid4(), "status": "sent"})
     repo.check_message_usage = AsyncMock(return_value={"messages_used_this_period": 0, "messages_limit": 100})
     repo.increment_message_usage = AsyncMock(return_value=1)
@@ -87,12 +104,16 @@ class TestWhatsAppService:
 
     async def test_attempt_delivery_updates_existing_message(self, app_config, mock_repo, mock_meta_client):
         mock_repo.upsert_message.reset_mock()
+        payload = {"type": "text", "text": {"body": "Test"}, "to": "391234567890"}
+        mock_repo.claim_outbound_delivery = AsyncMock(
+            return_value={"id": uuid.uuid4(), "content": payload, "status": "sending_ambiguous"}
+        )
         service = WhatsAppService(app_config, mock_repo)
         await service.attempt_delivery(
             message_id=uuid.uuid4(),
             phone_number_id="12345",
             access_token="tok",
-            payload={"type": "text", "text": {"body": "Test"}},
+            payload=payload,
             meta_client=mock_meta_client,
             organization_id=uuid.uuid4(),
         )
@@ -191,7 +212,10 @@ class TestWhatsAppService:
     async def test_idempotency_key_precheck_skips_send(self, app_config, mock_repo, mock_meta_client):
         """Task 6: se l'idempotency_key esiste gia', non si tenta un secondo
         invio (niente chiamata a Meta), si ritorna il messaggio esistente."""
-        existing = {"id": uuid.uuid4(), "status": "sent"}
+        existing = {
+            "id": uuid.uuid4(), "status": "sent",
+            "content": {"type": "text", "text": {"body": "Ciao!"}, "to": "391234567890", "_delivery_category": "service"},
+        }
         mock_repo.check_idempotency = AsyncMock(return_value=existing)
         service = WhatsAppService(app_config, mock_repo)
         result = await service.send_whatsapp_message(
@@ -212,7 +236,10 @@ class TestWhatsAppService:
         ritorna una riga con id diverso da quello appena generato (un'altra
         richiesta ha vinto l'insert nel frattempo) -> niente doppio invio."""
         mock_repo.check_idempotency = AsyncMock(return_value=None)
-        winner_row = {"id": uuid.uuid4(), "status": "sent"}
+        winner_row = {
+            "id": uuid.uuid4(), "status": "sent",
+            "content": {"type": "text", "text": {"body": "Ciao!"}, "to": "391234567890", "_delivery_category": "service"},
+        }
         mock_repo.upsert_message = AsyncMock(return_value=winner_row)
         service = WhatsAppService(app_config, mock_repo)
         result = await service.send_whatsapp_message(

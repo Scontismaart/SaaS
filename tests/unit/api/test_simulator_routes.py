@@ -59,6 +59,7 @@ def test_messaggio_demo_simulation(client):
 def test_recensione_feature_blocked_by_plan(client):
     mock_org_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "owner",
@@ -66,7 +67,9 @@ def test_recensione_feature_blocked_by_plan(client):
     }
     mock_repo = AsyncMock()
     # Assume plan 'starter' does not have review feature
-    mock_repo.get_organization_billing.return_value = {"plan": "starter"}
+    mock_repo.get_organization_billing.return_value = {
+        "plan": "starter", "subscription_status": "active"
+    }
 
     app.dependency_overrides[get_organization_context] = lambda: mock_user
     with patch.object(app.state, "repo", mock_repo, create=True):

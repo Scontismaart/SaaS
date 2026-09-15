@@ -3,6 +3,7 @@ import uuid
 import pytest
 import pytest_asyncio
 import httpx
+from fastapi import Depends, HTTPException
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 from unittest.mock import MagicMock
@@ -21,13 +22,30 @@ def set_env():
 
 
 @pytest.fixture
-async def async_client(repo):
+async def async_client(repo, org_id):
     from src.api.main import app
+    from src.core.auth.dependencies import get_current_user, get_organization_context, get_token
+
+    async def fixed_test_identity(token=Depends(get_token)):
+        if token is None:
+            raise HTTPException(401, "Test session required")
+        if token != f"apikey:{API_KEY}":
+            raise HTTPException(403, "Invalid test session")
+        return {
+            "source": "jwt", "aal": "aal2", "organization_id": str(org_id),
+            "ruolo": "owner", "auth_user_id": "gdpr-test-owner", "user_id": None,
+        }
+
+    app.dependency_overrides[get_current_user] = fixed_test_identity
+    app.dependency_overrides[get_organization_context] = fixed_test_identity
     app.state.repo = repo
     app.state.pool = MagicMock()
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c
+        try:
+            yield c
+        finally:
+            app.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture

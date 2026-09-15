@@ -46,7 +46,11 @@ def mock_repo(sample_msg):
     repo.reap_stale_claims = AsyncMock(return_value=[])
     repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
     repo.update_heartbeat = AsyncMock()
-    repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.get_org_subscription_state = AsyncMock(return_value={
+        "subscription_status": "active",
+        "trial_end": None,
+        "ai_accounting_blocked": False,
+    })
     repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
     repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
     # Cache FAQ: default NESSUN hit (AsyncMock nudo restituirebbe un oggetto
@@ -82,6 +86,9 @@ def mock_repo(sample_msg):
 @pytest.fixture
 def mock_service():
     service = AsyncMock()
+    service.send_whatsapp_message = AsyncMock(return_value={
+        "wam_id": "wamid.test-confirmed", "status": "sent"
+    })
     service.check_opt_out = AsyncMock(return_value={"is_opt_out": False, "confidence": "low"})
     service.fast_path_match = AsyncMock(return_value=None)
     service.check_human_request = AsyncMock(return_value=False)
@@ -478,8 +485,8 @@ class TestInstagramDispatch:
     async def test_missing_ig_account_does_not_crash(
         self, app_config, mock_repo, mock_service, fake_tenant_config
     ):
-        """Org senza account Instagram collegato: warning e nessun invio, ma
-        il messaggio resta processato senza eccezioni."""
+        """Org senza account Instagram: nessun cross-channel fallback e il
+        messaggio resta pendente per riconciliazione/retry esplicito."""
         ig_msg = self._ig_msg()
         mock_repo.claim_inbound_messages = AsyncMock(return_value=[ig_msg])
 
@@ -494,7 +501,7 @@ class TestInstagramDispatch:
 
         mock_ig_cls.assert_not_called()
         mock_service.send_whatsapp_message.assert_not_called()
-        mock_repo.try_mark_replied.assert_awaited_with(ig_msg["id"], handling_type="ai_handled", organization_id=ig_msg["organization_id"])
+        mock_repo.try_mark_replied.assert_not_awaited()
 
 
 class TestGuardrailsProcessor:

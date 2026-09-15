@@ -47,11 +47,13 @@ def test_health_live_probe_unhealthy_on_worker_crash(client):
     assert resp.status_code == 503
     data = resp.json()
     assert data["status"] == "unhealthy"
-    assert "Fatal loop crash" in data["workers"]["inbound_task"]
+    assert data["workers"]["inbound_task"] == "stopped: worker failure"
+    assert "Fatal loop crash" not in resp.text
 
 
 def test_health_ready_probe_ok(client, monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test_key_ok")
+    monkeypatch.setenv("GROQ_API_KEY", "test_key_ok")
+    monkeypatch.setenv("GROQ_FREE_ACCOUNT_CONFIRMED", "true")
     mock_pool = MagicMock()
     mock_conn = MagicMock()
     mock_conn.fetchval = AsyncMock(return_value=1)
@@ -70,7 +72,8 @@ def test_health_ready_probe_ok(client, monkeypatch):
 
 
 def test_health_ready_probe_db_down(client, monkeypatch):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test_key_ok")
+    monkeypatch.setenv("GROQ_API_KEY", "test_key_ok")
+    monkeypatch.setenv("GROQ_FREE_ACCOUNT_CONFIRMED", "true")
     mock_pool = MagicMock()
     mock_pool.acquire.side_effect = ConnectionRefusedError("DB connection refused")
 
@@ -80,4 +83,5 @@ def test_health_ready_probe_db_down(client, monkeypatch):
     assert resp.status_code == 503
     data = resp.json()
     assert data["status"] == "degraded"
-    assert "DB connection refused" in data["checks"]["database"]
+    assert data["checks"]["database"] == "errore di connessione"
+    assert "DB connection refused" not in resp.text

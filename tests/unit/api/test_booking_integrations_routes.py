@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
 from src.api.main import app
-from src.core.auth.dependencies import get_organization_context
+from src.core.auth.dependencies import get_current_user, get_organization_context
 
 
 ORG_ID_1 = "11111111-1111-1111-1111-111111111111"
@@ -46,7 +46,16 @@ def client(monkeypatch):
     if hasattr(app.state, "external_booking_repo"):
         delattr(app.state, "external_booking_repo")
 
-    return TestClient(app)
+    async def verified_mfa_identity():
+        from fastapi import HTTPException
+        context = app.dependency_overrides.get(get_organization_context)
+        if context is None:
+            raise HTTPException(401, "Test session absent")
+        return {**context(), "aal": "aal2"}
+
+    app.dependency_overrides[get_current_user] = verified_mfa_identity
+    yield TestClient(app)
+    app.dependency_overrides.clear()
 
 
 # ── 1. Autenticazione e Autorizzazione (RBAC) ─────────────────
@@ -150,7 +159,7 @@ def test_post_booking_integration_wubook_alias_refuses_mirror_mode(client):
     """Anche usando l'alias 'wubook' o 'wubook_zak', la modalità mirror deve essere rifiutata."""
     app.dependency_overrides[get_organization_context] = lambda: {
         "organization_id": ORG_ID_1,
-        "ruolo": "manager",
+        "ruolo": "owner",
         "source": "jwt",
     }
     try:

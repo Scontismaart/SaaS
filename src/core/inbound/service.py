@@ -11,6 +11,7 @@ from typing import Any, Callable
 from src.core.security_logger import security_audit
 from src.core.billing.suspension import is_org_suspended
 from src.core.channels.base import ChannelOutboundPort
+from src.core.channels.delivery import DeliveryUnconfirmed, provider_message_id
 from src.core.channels.instagram_adapter import InstagramOutboundAdapter
 from src.core.channels.router import OutboundChannelRouter
 from src.core.channels.whatsapp_adapter import WhatsAppOutboundAdapter
@@ -165,9 +166,11 @@ class InboundProcessingService:
         handling_type: str = "ai_handled",
     ) -> dict:
         if self._send_reply_fn:
-            return await self._send_reply_fn(
+            result = await self._send_reply_fn(
                 org_id, msg, content, tenant_config, testo_risposta, handling_type
             )
+            provider_message_id(result)
+            return result
         canale = msg.get("canale") or "whatsapp"
         to_dest = _extract_from(content)
         adapter = self.channel_router.get_adapter(canale)
@@ -183,14 +186,55 @@ class InboundProcessingService:
             handling_type=handling_type,
             idempotency_key=reply_key,
         )
-        if not res.success and res.error != "missing_recipient_or_tenant_config":
-            logger.warning(
-                "Invio risposta canale %s non riuscito per msg %s: %s",
-                canale,
+        if not res.success:
+            raise DeliveryUnconfirmed(res.error or "Outbound delivery failed")
+        result = res.raw_response or {"wam_id": res.wam_id}
+        provider_message_id(result)
+        return result
+
+    async def _escalate(self, org_id, msg, content, tenant_config, text, handling_type="escalated"):
+        """Create the staff ticket regardless of courtesy-message delivery."""
+        try:
+            conv = await self.repo.escalate_to_human(str(msg["conversation_id"]), org_id)
+            if conv:
+                _get_proc_symbol("enqueue_escalation", enqueue_escalation)(
+                    org_id=str(org_id), conversation_id=str(msg["conversation_id"]),
+                    contact_name=_extract_from(content) or "cliente",
+                    pool=getattr(self.repo, "pool", None),
+                )
+        except Exception:
+            logger.exception("Escalation failed org_id=%s message_id=%s", org_id, msg["id"])
+            await self.repo.record_processing_failure(msg["id"], org_id, "escalation_failed")
+            return ProcessingOutcome(action="error", handling_type="escalation_failed")
+
+        meta_id = None
+        try:
+            if text:
+                res = await self._send_reply(org_id, msg, content, tenant_config, text, handling_type)
+                meta_id = provider_message_id(res)
+        except Exception:
+            # The deterministic staff transition already succeeded. Retrying
+            # the inbound message could invoke the LLM or the courtesy send a
+            # second time, so keep the human escalation authoritative. The
+            # outbound row (when created) remains queued/ambiguous for explicit
+            # reconciliation and this structured error is observable without
+            # logging message content or credentials.
+            logger.exception(
+                "escalation_notice_delivery_failed organization_id=%s "
+                "conversation_id=%s message_id=%s trace_id=%s",
+                org_id,
+                msg.get("conversation_id"),
                 msg.get("id"),
-                res.error,
+                msg.get("trace_id", "unavailable"),
             )
-        return res.raw_response or ({"wam_id": res.wam_id} if res.wam_id else {})
+
+        await self._finalize_message(
+            msg["id"],
+            handling_type=handling_type,
+            meta_message_id=meta_id,
+            organization_id=org_id,
+        )
+        return ProcessingOutcome(action="handled", handling_type=handling_type, richiede_umano=True)
 
     async def process_message(self, msg: dict) -> ProcessingOutcome:
         org_id = msg["organization_id"]
@@ -220,65 +264,8 @@ class InboundProcessingService:
         if status == "quota_exceeded":
             cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
             tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
-            meta_id = f"meta-{msg['id']}"
-            try:
-                res = await self._send_reply(
-                    org_id,
-                    msg,
-                    content,
-                    tenant_config,
-                    "Stiamo ricevendo troppe richieste, attendi l'operatore.",
-                    handling_type="quota_exceeded",
-                )
-                if isinstance(res, dict) and res.get("wam_id"):
-                    meta_id = res["wam_id"]
-            except Exception as e:
-                logger.warning(
-                    "Quota exceeded courtesy message delivery failed for %s: %s",
-                    msg["id"],
-                    e,
-                )
-
-            escalation_ok = False
-            try:
-                conv = await self.repo.escalate_to_human(
-                    str(msg["conversation_id"]), org_id
-                )
-                if conv:
-                    _get_proc_symbol("enqueue_escalation", enqueue_escalation)(
-                        org_id=str(org_id),
-                        conversation_id=str(msg["conversation_id"]),
-                        contact_name=content.get("from", "cliente"),
-                        pool=getattr(self.repo, "pool", None),
-                    )
-                escalation_ok = True
-            except Exception as e:
-                logger.critical(
-                    "CRITICAL: Failed to escalate conversation %s to human staff for org %s on quota_exceeded: %s",
-                    msg.get("conversation_id"),
-                    org_id,
-                    e,
-                    exc_info=True,
-                )
-
-            final_handling = "quota_exceeded" if escalation_ok else "escalation_failed"
-            try:
-                await self._finalize_message(
-                    msg["id"],
-                    handling_type=final_handling,
-                    meta_message_id=meta_id,
-                    organization_id=org_id,
-                )
-            except Exception as e:
-                logger.error(
-                    "Failed to finalize message %s with handling %s: %s",
-                    msg["id"],
-                    final_handling,
-                    e,
-                )
-
-            outcome_action = "handled" if escalation_ok else "error"
-            return ProcessingOutcome(action=outcome_action, handling_type=final_handling)
+            return await self._escalate(org_id, msg, content, tenant_config,
+                "Stiamo ricevendo troppe richieste, attendi l'operatore.", "quota_exceeded")
 
         # ── STEP 2: Fail-Closed Opt-Out (Invariante 6) ─────────────────────────
         if self.service:
@@ -308,44 +295,9 @@ class InboundProcessingService:
         if self.service:
             wants_human = await self.service.check_human_request(text)
             if wants_human:
-                from_number = _extract_from(content)
                 cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
-                tenant_config = await cfg_loader(
-                    org_id, self.app_config, self.repo
-                )
-                try:
-                    res = await self._send_reply(
-                        org_id,
-                        msg,
-                        content,
-                        tenant_config,
-                        HUMAN_WAIT_REPLY,
-                        handling_type="automation",
-                    )
-                    meta_id = (
-                        (res.get("wam_id") or f"meta-{msg['id']}")
-                        if isinstance(res, dict)
-                        else f"meta-{msg['id']}"
-                    )
-                    conv = await self.repo.escalate_to_human(
-                        str(msg["conversation_id"]), org_id
-                    )
-                    if conv:
-                        _get_proc_symbol("enqueue_escalation", enqueue_escalation)(
-                            org_id=str(org_id),
-                            conversation_id=str(msg["conversation_id"]),
-                            contact_name=from_number or "cliente",
-                            pool=getattr(self.repo, "pool", None),
-                        )
-                    await self._finalize_message(
-                        msg["id"],
-                        handling_type="escalated",
-                        meta_message_id=meta_id,
-                        organization_id=org_id,
-                    )
-                except Exception as e:
-                    logger.error("Human request notification send failed for %s: %s", msg["id"], e)
-                return ProcessingOutcome(action="handled", handling_type="escalated")
+                tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
+                return await self._escalate(org_id, msg, content, tenant_config, HUMAN_WAIT_REPLY)
 
         # ── STEP 4: Feedback Emoji Customer (👍 / 👎) ──────────────────────────
         feedback_emoji = rileva_feedback_emoji(text)
@@ -366,7 +318,7 @@ class InboundProcessingService:
 
         # ── STEP 6: Sospensione Tenant (Invariante 8) ──────────────────────────
         state = await self.repo.get_org_subscription_state(org_id)
-        if state and is_org_suspended(
+        if not state or state.get("ai_accounting_blocked") or is_org_suspended(
             state.get("subscription_status"), state.get("trial_end")
         ):
             logger.warning(
@@ -385,11 +337,7 @@ class InboundProcessingService:
                     ORG_SUSPENDED_REPLY,
                     handling_type="automation",
                 )
-                meta_id = (
-                    (res.get("wam_id") or f"meta-{msg['id']}")
-                    if isinstance(res, dict)
-                    else f"meta-{msg['id']}"
-                )
+                meta_id = provider_message_id(res)
                 await self._finalize_message(
                     msg["id"],
                     handling_type="suspended",
@@ -398,6 +346,7 @@ class InboundProcessingService:
                 )
             except Exception as e:
                 logger.error("Org suspended message send failed for %s: %s", msg["id"], e)
+                return ProcessingOutcome(action="error", handling_type="delivery_failed", error=str(e))
             return ProcessingOutcome(action="handled", handling_type="suspended")
 
         # ── STEP 7: Ticket Claimed da Operatore Staff ──────────────────────────
@@ -451,11 +400,7 @@ class InboundProcessingService:
                     res = await self._send_reply(
                         org_id, msg, content, tenant_config, decorated
                     )
-                    meta_id = (
-                        (res.get("wam_id") or f"meta-{msg['id']}")
-                        if isinstance(res, dict)
-                        else f"meta-{msg['id']}"
-                    )
+                    meta_id = provider_message_id(res)
                     await self._finalize_message(
                         msg["id"],
                         handling_type="ai_handled",
@@ -464,6 +409,7 @@ class InboundProcessingService:
                     )
                 except Exception as e:
                     logger.error("Fast reply send failed for %s: %s", msg["id"], e)
+                    return ProcessingOutcome(action="error", handling_type="delivery_failed", error=str(e))
                 return ProcessingOutcome(action="handled", handling_type="ai_handled")
 
         # ── STEP 10: Outbound Dedup Check (SEC-002 / P0-2) ─────────────────────
@@ -473,11 +419,7 @@ class InboundProcessingService:
                 res = await self._send_reply(
                     org_id, msg, content, tenant_config, dedup["response_text"]
                 )
-                meta_id = (
-                    (res.get("wam_id") or f"meta-{msg['id']}")
-                    if isinstance(res, dict)
-                    else f"meta-{msg['id']}"
-                )
+                meta_id = provider_message_id(res)
                 await self._finalize_message(
                     msg["id"],
                     handling_type="ai_handled",
@@ -486,6 +428,7 @@ class InboundProcessingService:
                 )
             except Exception as e:
                 logger.error("Dedup send failed for %s: %s", msg["id"], e)
+                return ProcessingOutcome(action="error", handling_type="delivery_failed", error=str(e))
             return ProcessingOutcome(action="handled", handling_type="ai_handled")
 
         # ── STEP 11: Cognitive Orchestration ──────────────────────────────────
@@ -582,11 +525,7 @@ class InboundProcessingService:
                     res = await self._send_reply(
                         org_id, msg, content, tenant_config, decorated
                     )
-                    meta_id = (
-                        (res.get("wam_id") or f"meta-{msg['id']}")
-                        if isinstance(res, dict)
-                        else f"meta-{msg['id']}"
-                    )
+                    meta_id = provider_message_id(res)
                     await self._finalize_message(
                         msg["id"],
                         handling_type="ai_handled",
@@ -595,6 +534,7 @@ class InboundProcessingService:
                     )
                 except Exception as e:
                     logger.error("Legacy reply send failed for %s: %s", msg["id"], e)
+                    return ProcessingOutcome(action="error", handling_type="delivery_failed", error=str(e))
                 return ProcessingOutcome(action="handled", handling_type="ai_handled")
 
             risposta_text = legacy_res.response_text
@@ -635,46 +575,7 @@ class InboundProcessingService:
         nome_attivita = (business_profile_raw or {}).get("nome") or "Attivita"
 
         if richiede_umano:
-            try:
-                meta_id = None
-                if risposta_text:
-                    from_number = _extract_from(content)
-                    dec_fn = _get_proc_symbol("decorate_with_disclosure", decorate_with_disclosure)
-                    decorated = await dec_fn(
-                        org_id, from_number, risposta_text, self.repo, nome_attivita
-                    )
-                    res = await self._send_reply(
-                        org_id, msg, content, tenant_config, decorated
-                    )
-                    meta_id = (
-                        (res.get("wam_id") or f"meta-{msg['id']}")
-                        if isinstance(res, dict)
-                        else f"meta-{msg['id']}"
-                    )
-                conv = await self.repo.escalate_to_human(
-                    str(msg["conversation_id"]), org_id
-                )
-                if conv:
-                    _get_proc_symbol("enqueue_escalation", enqueue_escalation)(
-                        org_id=str(org_id),
-                        conversation_id=str(msg["conversation_id"]),
-                        contact_name=_extract_from(content) or "cliente",
-                        pool=getattr(self.repo, "pool", None),
-                    )
-                await self._finalize_message(
-                    msg["id"],
-                    handling_type="escalated",
-                    meta_message_id=meta_id,
-                    organization_id=org_id,
-                )
-            except Exception as e:
-                logger.error("Human escalation reply send failed for %s: %s", msg["id"], e)
-            return ProcessingOutcome(
-                action="handled",
-                handling_type="escalated",
-                richiede_umano=True,
-                response_text=risposta_text,
-            )
+            return await self._escalate(org_id, msg, content, tenant_config, risposta_text)
 
         from_number = _extract_from(content)
         dec_fn = _get_proc_symbol("decorate_with_disclosure", decorate_with_disclosure)
@@ -686,11 +587,7 @@ class InboundProcessingService:
 
         try:
             res = await self._send_reply(org_id, msg, content, tenant_config, decorated)
-            meta_message_id = (
-                (res.get("wam_id") or f"meta-{msg['id']}")
-                if isinstance(res, dict)
-                else f"meta-{msg['id']}"
-            )
+            meta_message_id = provider_message_id(res)
             await self._finalize_message(
                 msg["id"],
                 handling_type="ai_handled",

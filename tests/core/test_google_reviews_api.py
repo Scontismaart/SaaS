@@ -29,21 +29,29 @@ def set_env(monkeypatch):
 
 
 @pytest.fixture
-async def async_client(repo, pg_pool, monkeypatch):
+async def async_client(repo, pg_pool, monkeypatch, sample_org, other_org, install_test_identity):
     from src.api.main import app
     from src.core.reviews.google_service import GoogleBusinessService
+    await pg_pool.execute(
+        "UPDATE organizations SET subscription_status = 'active', plan = 'business' WHERE id = ANY($1::uuid[])",
+        [sample_org["id"], other_org["id"]],
+    )
     app.state.repo = repo
     app.state.pool = pg_pool
     service = GoogleBusinessService(repo=repo, encryption_key=ENCRYPTION_KEY)
     app.state.reviews_service = service
+    install_test_identity(app, API_KEY, default_org_id=sample_org["id"])
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c, service
+        try:
+            yield c, service
+        finally:
+            app.dependency_overrides.clear()
 
 
 def _headers(org_id):
     return {
-        "X-API-Key": API_KEY,
+        "Authorization": f"Bearer {API_KEY}",
         "X-Organization-Id": str(org_id),
     }
 
@@ -109,11 +117,10 @@ async def test_auth_redirect(async_client, pg_pool, sample_org):
 
 
 async def test_auth_richiede_mfa_owner(async_client, sample_org):
-    # source api_key e' esente da MFA (require_mfa la salta), quindi
-    # l'endpoint richiede solo X-Organization-Id valido: senza header -> 400.
     client, _ = async_client
-    resp = await client.get("/api/reviews/google/auth", headers={"X-API-Key": API_KEY})
-    assert resp.status_code == 400
+    resp = await client.get("/api/reviews/google/auth", headers={"Authorization": f"Bearer {API_KEY}-aal1"})
+    assert resp.status_code == 403
+    assert resp.headers["x-mfa-required"] == "true"
 
 
 # ── Settings ──────────────────────────────────────────────────

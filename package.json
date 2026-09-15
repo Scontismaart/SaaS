@@ -1,0 +1,13 @@
+{
+  "name": "melpis-web-checks",
+  "private": true,
+  "scripts": {
+    "lint:web": "eslint web/*.js web/landing/app.js",
+    "test:web": "node --test tests/frontend/*.test.cjs"
+  },
+  "devDependencies": {
+    "eslint": "9.39.1",
+    "globals": "16.5.0",
+    "jsdom": "26.1.0"
+  }
+}

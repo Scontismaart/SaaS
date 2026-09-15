@@ -138,7 +138,7 @@ Framework), come disponibili pro-tempore per ciascun fornitore. **Questa
 sezione richiede verifica legale puntuale** per confermare lo strumento di
 trasferimento effettivamente in essere con ciascun Sub-responsabile alla
 data di sottoscrizione, e per valutare l'esposizione una volta note le
-region/data-residency reali di OpenRouter, Meta, Sentry e Supabase.
+region/data-residency reali di Groq, Meta, Sentry e Supabase.
 
 ## 7. Violazioni di Dati Personali (Data Breach)
 
@@ -287,7 +287,7 @@ necessario e di informarne gli interessati.
 | Fornitore | Funzione | Dati trattati | Sede / trasferimento extra-UE |
 |---|---|---|---|
 | Meta Platforms (WhatsApp Business API) | Invio/ricezione messaggi WhatsApp | Numero telefono, testo messaggio, identificativi messaggio, nome profilo, stato consegna | USA — verificare strumento di trasferimento |
-| OpenRouter (e provider LLM sottostanti) | Generazione risposte automatiche, bozze recensioni, report, Q&A documenti | Profilo attività, testo messaggio cliente, estratti di documenti (RAG), testo recensione | USA/variabile — verificare strumento di trasferimento |
+| Groq (e modelli LLM configurati) | Generazione risposte automatiche, bozze recensioni, report, Q&A documenti | Profilo attività, testo messaggio cliente, estratti di documenti (RAG), testo recensione | Ubicazione e strumento di trasferimento da verificare contrattualmente prima del go-live |
 | Google (Business Profile, Calendar) | Recensioni, sincronizzazione calendario | Testo/autore recensione; eventi calendario con nome/telefono/note cliente | USA — verificare strumento di trasferimento |
 | Stripe | Pagamenti, abbonamento, depositi prenotazione | Solo identificativi Stripe e importi; **nessun dato di pagamento (numero carta) transita o è conservato dal Fornitore** | USA/UE secondo configurazione Stripe |
 | Supabase | Autenticazione, hosting del database | Chiavi pubbliche di verifica token; di fatto ospita l'intero database del Servizio | Da verificare in base alla region del progetto Supabase |

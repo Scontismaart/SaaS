@@ -152,12 +152,22 @@ def test_checkout_redirect_is_restricted_to_configured_origin():
     assert exc.value.status_code == 400
 
 
-def test_free_only_rejects_live_stripe_key(monkeypatch):
+def test_live_stripe_requires_explicit_commercial_profile(monkeypatch):
     monkeypatch.setenv("LLM_COST_POLICY", "free_only")
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_forbidden")
     with pytest.raises(HTTPException) as exc:
         _get_stripe()
     assert exc.value.status_code == 503
+
+
+def test_commercial_profile_accepts_live_stripe_with_free_only_ai(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("LAUNCH_PROFILE", "commercial_bootstrap")
+    monkeypatch.setenv("SANDBOX_ONLY", "false")
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_live_unit_safe_value")
+    stripe = _get_stripe()
+    assert stripe.api_key == "sk_live_unit_safe_value"
 
 
 @pytest.mark.asyncio

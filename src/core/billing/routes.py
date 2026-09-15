@@ -27,12 +27,33 @@ def _resolve_price_id(plan, interval: str) -> str:
 
 def _get_stripe():
     import stripe
+
     key = os.getenv("STRIPE_SECRET_KEY")
     if not key:
         raise HTTPException(status_code=503, detail="Stripe not configured")
-    from src.core.cost_policy import free_only
-    if free_only() and not key.startswith("sk_test_"):
-        raise HTTPException(status_code=503, detail="Budget EUR 0 requires Stripe test mode")
+    profile = os.getenv("LAUNCH_PROFILE", "").strip().lower()
+    sandbox_only = os.getenv("SANDBOX_ONLY", "true").strip().lower()
+    app_env = os.getenv("APP_ENV", os.getenv("ENVIRONMENT", "development")).lower()
+    if profile == "commercial_bootstrap":
+        if (
+            app_env != "production"
+            or sandbox_only != "false"
+            or not key.startswith("sk_live_")
+        ):
+            raise HTTPException(
+                status_code=503,
+                detail="Commercial bootstrap requires production Stripe live mode",
+            )
+    elif profile == "sandbox":
+        if sandbox_only != "true" or not key.startswith("sk_test_"):
+            raise HTTPException(
+                status_code=503, detail="Sandbox requires Stripe test mode"
+            )
+    elif not key.startswith("sk_test_"):
+        raise HTTPException(
+            status_code=503,
+            detail="Stripe live mode requires the explicit commercial_bootstrap profile",
+        )
     stripe.api_key = key
     return stripe
 

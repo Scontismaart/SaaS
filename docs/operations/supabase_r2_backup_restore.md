@@ -2,7 +2,7 @@
 
 `scripts/backup_supabase_r2.sh` creates a PostgreSQL custom-format dump over TLS, encrypts it locally with [age](https://age-encryption.org/) authenticated encryption, verifies the decrypted archive, and uploads the encrypted artifact plus SHA-256 manifest to Cloudflare R2. It never accepts `sslmode=require`: database TLS must use `verify-full`.
 
-Install on Ubuntu 24.04: `sudo apt-get install postgresql-client age awscli coreutils`. Use a dedicated R2 API token scoped only to the backup bucket (read/write/list/delete); do not use an account-wide token. Inject all values with the host or CI secret manager, never a committed `.env` file.
+Install on Ubuntu 24.04: `sudo apt-get install postgresql-client age awscli coreutils`. The scripts execute fixed `/usr/bin` utilities under `/bin/bash`, rather than resolving provider or trust-check commands through caller `PATH`; run them only on managed Ubuntu hosts with those administrator-maintained binaries. Use a dedicated R2 API token scoped only to the backup bucket (read/write/list/delete); do not use an account-wide token. Inject all values with the host or CI secret manager, never a committed `.env` file.
 
 Required backup variables: `BACKUP_PGHOST`, `BACKUP_PGPORT`, `BACKUP_PGDATABASE`, `BACKUP_PGUSER`, `BACKUP_PGPASSWORD`, `BACKUP_AGE_RECIPIENT`, `BACKUP_AGE_IDENTITY_FILE`, `R2_ENDPOINT`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`. `BACKUP_PGSSLROOTCERT` is optional when the system trust store cannot validate the Supabase certificate. `R2_PREFIX` defaults to `supabase-backups`; `R2_AWS_REGION` defaults to R2's `auto`.
 

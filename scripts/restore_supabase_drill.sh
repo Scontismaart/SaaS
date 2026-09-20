@@ -1,8 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Restore only into a root-managed, explicitly allowlisted non-production target.
 set -euo pipefail
 IFS=$'\n\t'
 umask 077
+export PATH=/usr/bin:/bin
 
 readonly TARGET_CONFIG_ROOT="/etc/whatsapp-ai-responder/backup-drill-targets"
 readonly TARGET_CONFIG_OWNER_UID=0
@@ -10,14 +11,14 @@ work_dir=""
 
 die() { printf 'restore-drill: %s\n' "$*" >&2; exit 1; }
 require_env() { [[ -n "${!1:-}" ]] || die "$1 is required"; }
-require_command() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"; }
-cleanup() { [[ -z "$work_dir" ]] || rm -rf -- "$work_dir"; }
+require_binary() { [[ -x "$1" ]] || die "required trusted binary not found: $1"; }
+cleanup() { [[ -z "$work_dir" ]] || /usr/bin/rm -rf -- "$work_dir"; }
 trap cleanup EXIT HUP INT TERM
 
 secure_directory() {
   local path=$1 mode owner
   [[ -d "$path" && ! -L "$path" ]] || die "trusted configuration directory is missing or is a symlink"
-  owner=$(stat -c '%u' "$path"); mode=$(stat -c '%a' "$path")
+  owner=$(/usr/bin/stat -c '%u' "$path"); mode=$(/usr/bin/stat -c '%a' "$path")
   [[ "$owner" == "$TARGET_CONFIG_OWNER_UID" ]] || die "trusted configuration directory is not admin-owned"
   (( (8#$mode & 022) == 0 )) || die "trusted configuration directory is group/world writable"
 }
@@ -25,7 +26,7 @@ secure_directory() {
 secure_secret_file() {
   local path=$1 description=$2 mode owner
   [[ -f "$path" && ! -L "$path" ]] || die "$description is missing or is a symlink"
-  owner=$(stat -c '%u' "$path"); mode=$(stat -c '%a' "$path")
+  owner=$(/usr/bin/stat -c '%u' "$path"); mode=$(/usr/bin/stat -c '%a' "$path")
   [[ "$owner" == "$TARGET_CONFIG_OWNER_UID" ]] || die "$description is not admin-owned"
   (( (8#$mode & 077) == 0 )) || die "$description must be owner-only"
 }
@@ -69,14 +70,14 @@ target_id="$2"; artifact_key="$4"
 [[ "${RESTORE_NON_PRODUCTION_CONFIRMATION:-}" == "RESTORE_${target_id}" ]] \
   || die "set RESTORE_NON_PRODUCTION_CONFIRMATION=RESTORE_${target_id}"
 
-require_command stat; require_command readlink
-config_root=$(readlink -f -- "$TARGET_CONFIG_ROOT") || die "trusted configuration directory is missing"
+require_binary /usr/bin/stat; require_binary /usr/bin/readlink
+config_root=$(/usr/bin/readlink -f -- "$TARGET_CONFIG_ROOT") || die "trusted configuration directory is missing"
 [[ "$config_root" == "$TARGET_CONFIG_ROOT" ]] || die "trusted configuration directory must not be redirected"
 secure_directory "${TARGET_CONFIG_ROOT%/*}"
 secure_directory "$config_root"
 target_config="$config_root/$target_id.conf"
 [[ -e "$target_config" ]] || die "requested target is not allowlisted"
-canonical_config=$(readlink -f -- "$target_config") || die "requested target is not allowlisted"
+canonical_config=$(/usr/bin/readlink -f -- "$target_config") || die "requested target is not allowlisted"
 [[ "$canonical_config" == "$target_config" ]] || die "target configuration must not be redirected"
 secure_secret_file "$target_config" "target configuration"
 load_target_config
@@ -85,7 +86,7 @@ require_env BACKUP_AGE_IDENTITY_FILE; require_env R2_ENDPOINT; require_env R2_BU
 require_env R2_ACCESS_KEY_ID; require_env R2_SECRET_ACCESS_KEY
 [[ "$R2_ENDPOINT" =~ ^https:// ]] || die "R2_ENDPOINT must be an HTTPS URL"
 [[ -r "$BACKUP_AGE_IDENTITY_FILE" ]] || die "BACKUP_AGE_IDENTITY_FILE is not readable"
-identity_mode=$(stat -c '%a' "$BACKUP_AGE_IDENTITY_FILE")
+identity_mode=$(/usr/bin/stat -c '%a' "$BACKUP_AGE_IDENTITY_FILE")
 (( (8#$identity_mode & 077) == 0 )) || die "BACKUP_AGE_IDENTITY_FILE must not be group/world readable"
 [[ -z "${config_pgsslrootcert:-}" ]] || secure_secret_file "$config_pgsslrootcert" "target TLS root certificate"
 
@@ -96,7 +97,9 @@ artifact_base=${artifact_key##*/}
   || die "artifact key is outside the backup prefix or has an invalid name"
 [[ "$artifact_key" != *$'\n'* && "$artifact_key" != *$'\r'* ]] || die "invalid artifact key"
 
-require_command aws; require_command age; require_command pg_restore; require_command psql; require_command sha256sum
+require_binary /usr/bin/aws; require_binary /usr/bin/age; require_binary /usr/bin/pg_restore
+require_binary /usr/bin/psql; require_binary /usr/bin/sha256sum; require_binary /usr/bin/awk
+require_binary /usr/bin/mktemp; require_binary /usr/bin/chmod
 export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" AWS_EC2_METADATA_DISABLED=true
 export AWS_DEFAULT_REGION="${R2_AWS_REGION:-auto}"
 # Ignore every caller-controlled libpq target setting; only the root-owned file
@@ -107,24 +110,24 @@ export PGHOST="$config_pghost" PGPORT="$config_pgport" PGDATABASE="$config_pgdat
 export PGUSER="$config_pguser" PGPASSWORD="$config_pgpassword" PGSSLMODE=verify-full
 [[ -z "${config_pgsslrootcert:-}" ]] || export PGSSLROOTCERT="$config_pgsslrootcert"
 
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/supabase-r2-restore.XXXXXX"); chmod 700 "$work_dir"
+work_dir=$(/usr/bin/mktemp -d "/var/tmp/supabase-r2-restore.XXXXXX"); /usr/bin/chmod 700 "$work_dir"
 encrypted="$work_dir/$artifact_base"; manifest="$work_dir/manifest.sha256"; dump_file="$work_dir/database.dump"
-aws --endpoint-url "$R2_ENDPOINT" s3 cp "s3://$R2_BUCKET/$artifact_key" "$encrypted" --no-progress >/dev/null
-aws --endpoint-url "$R2_ENDPOINT" s3 cp "s3://$R2_BUCKET/$artifact_key.sha256" "$manifest" --no-progress >/dev/null
+/usr/bin/aws --endpoint-url "$R2_ENDPOINT" s3 cp "s3://$R2_BUCKET/$artifact_key" "$encrypted" --no-progress >/dev/null
+/usr/bin/aws --endpoint-url "$R2_ENDPOINT" s3 cp "s3://$R2_BUCKET/$artifact_key.sha256" "$manifest" --no-progress >/dev/null
 
 expected_line=$(<"$manifest")
 [[ "$expected_line" =~ ^[a-fA-F0-9]{64}\ \ "$artifact_base"$ ]] || die "manifest format or artifact binding is invalid"
-actual_sha=$(sha256sum "$encrypted" | awk '{print $1}')
+actual_sha=$(/usr/bin/sha256sum "$encrypted" | /usr/bin/awk '{print $1}')
 [[ "$actual_sha" == "${expected_line%% *}" ]] || die "artifact checksum does not match manifest"
-age --decrypt --identity "$BACKUP_AGE_IDENTITY_FILE" --output "$dump_file" "$encrypted"
-pg_restore --list "$dump_file" >/dev/null
+/usr/bin/age --decrypt --identity "$BACKUP_AGE_IDENTITY_FILE" --output "$dump_file" "$encrypted"
+/usr/bin/pg_restore --list "$dump_file" >/dev/null
 
-pg_restore --dbname "$PGDATABASE" --clean --if-exists --no-owner --no-privileges --exit-on-error --single-transaction "$dump_file"
-table_count=$(psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public';")
-constraint_count=$(psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_constraint WHERE contype IN ('p', 'f', 'u', 'c');")
+/usr/bin/pg_restore --dbname "$PGDATABASE" --clean --if-exists --no-owner --no-privileges --exit-on-error --single-transaction "$dump_file"
+table_count=$(/usr/bin/psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname = 'public';")
+constraint_count=$(/usr/bin/psql -X -v ON_ERROR_STOP=1 -Atqc "SELECT count(*) FROM pg_constraint WHERE contype IN ('p', 'f', 'u', 'c');")
 minimum_rows="${RESTORE_MINIMUM_ROWS:-1}"
 [[ "$minimum_rows" =~ ^[0-9]+$ ]] || die "RESTORE_MINIMUM_ROWS must be a non-negative integer"
-data_rows=$(psql -X -v ON_ERROR_STOP=1 -Atqc "ANALYZE; SELECT COALESCE(sum(n_live_tup), 0)::bigint FROM pg_stat_user_tables;")
+data_rows=$(/usr/bin/psql -X -v ON_ERROR_STOP=1 -Atqc "ANALYZE; SELECT COALESCE(sum(n_live_tup), 0)::bigint FROM pg_stat_user_tables;")
 [[ "$table_count" =~ ^[1-9][0-9]*$ ]] || die "integrity check failed: no public tables restored"
 [[ "$constraint_count" =~ ^[1-9][0-9]*$ ]] || die "integrity check failed: no constraints restored"
 [[ "$data_rows" =~ ^[0-9]+$ && "$data_rows" -ge "$minimum_rows" ]] \

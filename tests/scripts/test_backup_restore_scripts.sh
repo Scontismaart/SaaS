@@ -54,9 +54,16 @@ fake_bin="$tmp/fake-bin"
   'if [[ "$1" == "-c" && "$2" == "%a" && "$3" == *drill-safe.conf ]]; then printf "644\\n"; else exec /usr/bin/stat "$@"; fi' \
   > "$fake_bin/stat"
 /usr/bin/chmod 700 "$fake_bin/stat"
-expect_fail 'target configuration must be owner-only' /usr/bin/env -i PATH="$fake_bin:$clean_path" HOME="${HOME:-/tmp}" \
+test_restore_insecure="$tmp/restore-insecure.sh"
+/usr/bin/sed \
+  -e "s|^readonly TARGET_CONFIG_ROOT=.*|readonly TARGET_CONFIG_ROOT=\"$config_root\"|" \
+  -e "s|^readonly TARGET_CONFIG_OWNER_UID=.*|readonly TARGET_CONFIG_OWNER_UID=$(/usr/bin/id -u)|" \
+  -e "s|/usr/bin/stat|$fake_bin/stat|g" \
+  "$root/scripts/restore_supabase_drill.sh" > "$test_restore_insecure"
+/usr/bin/chmod 700 "$test_restore_insecure"
+expect_fail 'target configuration must be owner-only' /usr/bin/env -i PATH="$clean_path" HOME="${HOME:-/tmp}" \
   RESTORE_NON_PRODUCTION_CONFIRMATION=RESTORE_drill-safe \
-  /usr/bin/bash "$test_restore" --target drill-safe --artifact-key supabase-backups/supabase-20260920T010203Z-1.dump.age
+  /usr/bin/bash "$test_restore_insecure" --target drill-safe --artifact-key supabase-backups/supabase-20260920T010203Z-1.dump.age
 
 write_config
 /usr/bin/sed -i 's/^TARGET_ENV=drill$/TARGET_ENV=production/' "$config_root/drill-safe.conf"

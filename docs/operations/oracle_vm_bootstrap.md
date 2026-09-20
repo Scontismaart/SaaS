@@ -105,18 +105,20 @@ ssh melpis@VM_PUBLIC_IP
 reviewed repository checkout/release bundle there as `melpis`; do not build an
 unreviewed branch directly on the production VM. Ensure it contains the reviewed
 `compose.production.yml`, `Caddyfile`, and `scripts/backup_supabase_r2.sh`.
-Validate architecture and immutable image tags before a pull:
+Validate architecture and immutable image references before a pull:
 
 ```bash
 sudo -iu melpis
 cd /srv/melpis/app
-docker buildx imagetools inspect "$MELPIS_API_IMAGE:$MELPIS_IMAGE_TAG"
-docker buildx imagetools inspect "$MELPIS_WEB_IMAGE:$MELPIS_IMAGE_TAG"
+docker buildx imagetools inspect "$MELPIS_API_IMAGE_REF"
+docker buildx imagetools inspect "$MELPIS_WEB_IMAGE_REF"
 exit
 ```
 
-The values above are intentionally not supplied by this document. Use an image
-digest or the immutable release tag produced by CI; never use `latest`.
+The values above are intentionally not supplied by this document. Copy the two
+complete `repository@sha256:<64 lowercase hex>` values recorded in the GitHub
+Actions summary for the approved commit. Tag-only values (including SHA tags)
+and `latest` are rejected by the release preflight.
 
 Create production configuration directly on the VM from the reviewed example.
 It contains production credentials and must never be copied back to a workstation
@@ -145,9 +147,11 @@ group as a secrets boundary.
 
 ## 3. Temporary-host deployment and health gate
 
-Set `PUBLIC_HOST=melpis-vm.example.net` in the root-managed `.env.production`.
-The reviewed Caddy configuration must use this setting and must publish only
-ports 80/443. Pull and start it as the deployment user:
+Set `CADDY_SITE_MODE=temporary` and `PUBLIC_HOST=melpis-vm.example.net` in the
+root-managed `.env.production`. Compose then mounts only `Caddyfile.temporary`:
+it registers only that temporary DNS hostname and cannot request final-domain
+certificates. The reviewed configuration must publish only ports 80/443. Pull
+and start it as the deployment user:
 
 ```bash
 sudo -iu melpis
@@ -190,7 +194,10 @@ and ensure its host matcher redirects `app.melpis.it` with HTTP 308 to
 `/app/` is the application path. Do not remove the temporary DNS record until
 final TLS and webhook checks pass.
 
-Apply the reviewed Caddy/compose release and verify:
+Set `CADDY_SITE_MODE=final` only after authoritative DNS resolves to this VM for
+both names. Compose then mounts `Caddyfile.final`, which serves `melpis.it`,
+redirects `app.melpis.it`, and can obtain final-domain TLS. Apply the reviewed
+Caddy/compose release and verify:
 
 ```bash
 sudo -iu melpis docker compose --env-file /srv/melpis/app/.env.production \
@@ -232,9 +239,10 @@ monitor for `https://melpis.it/api/health/ready` (and alert delivery), with no
 credentials in the monitor URL. Uptime checks do not replace Sentry, logs, or
 the end-to-end webhook/worker checks.
 
-For an application rollback, retain the prior immutable image tag and a private
-copy of the prior root-managed env file. Change only `MELPIS_IMAGE_TAG` back to
-the prior tag and rerun `docker compose ... up -d`; inspect `ps`, logs and both
+For an application rollback, retain the prior immutable image digest references
+and a private copy of the prior root-managed env file. Change only
+`MELPIS_API_IMAGE_REF` and `MELPIS_WEB_IMAGE_REF` back to the prior digest
+references and rerun `docker compose ... up -d`; inspect `ps`, logs and both
 health endpoints. Do not delete volumes or roll back additive database migrations
 as part of image rollback. If data recovery is required, stop and use a verified
 encrypted backup plus the non-production restore drill procedure; production

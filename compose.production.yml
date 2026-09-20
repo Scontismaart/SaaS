@@ -1,5 +1,5 @@
 x-api: &api
-  image: ${MELPIS_API_IMAGE_REF:-${MELPIS_API_IMAGE:?set MELPIS_API_IMAGE}:${MELPIS_IMAGE_TAG:?set CI SHA tag (sha-<40 hex>)}}
+  image: ${MELPIS_API_IMAGE_REF:?set MELPIS_API_IMAGE_REF to repository@sha256:<64 lowercase hex>}
   env_file: ${MELPIS_ENV_FILE:-.env.production}
   restart: unless-stopped
   networks: [app_internal]
@@ -16,9 +16,9 @@ services:
     image: caddy:2.10.2-alpine
     restart: unless-stopped
     ports: ["80:80", "443:443"]
-    environment: [PUBLIC_HOST]
+    environment: [PUBLIC_HOST, CADDY_SITE_MODE]
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile.${CADDY_SITE_MODE:?set CADDY_SITE_MODE to temporary or final}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks: [app_internal]
@@ -30,7 +30,7 @@ services:
       web: {condition: service_started}
 
   web:
-    image: ${MELPIS_WEB_IMAGE_REF:-${MELPIS_WEB_IMAGE:?set MELPIS_WEB_IMAGE}:${MELPIS_IMAGE_TAG:?set CI SHA tag (sha-<40 hex>)}}
+    image: ${MELPIS_WEB_IMAGE_REF:?set MELPIS_WEB_IMAGE_REF to repository@sha256:<64 lowercase hex>}
     restart: unless-stopped
     networks: [app_internal]
     read_only: true

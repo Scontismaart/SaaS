@@ -75,17 +75,21 @@ jobs:
 
       - name: Deployment checks
         env:
-          MELPIS_API_IMAGE: ghcr.io/example/melpis-api
-          MELPIS_WEB_IMAGE: ghcr.io/example/melpis-web
-          MELPIS_IMAGE_TAG: sha-0000000000000000000000000000000000000000
+          MELPIS_API_IMAGE_REF: ghcr.io/example/melpis-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          MELPIS_WEB_IMAGE_REF: ghcr.io/example/melpis-web@sha256:0000000000000000000000000000000000000000000000000000000000000000
           MELPIS_ENV_FILE: /dev/null
+          CADDY_SITE_MODE: temporary
           PUBLIC_HOST: temporary.example.test
         run: |
           bash tests/scripts/test_oracle_vm_bootstrap.sh
           docker compose -f compose.production.yml config --quiet
           docker run --rm \
             --env PUBLIC_HOST \
-            --volume "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            --volume "$PWD/Caddyfile.temporary:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker run --rm \
+            --volume "$PWD/Caddyfile.final:/etc/caddy/Caddyfile:ro" \
             caddy:2.10.2-alpine \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
@@ -187,6 +191,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and publish immutable release image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: ${{ matrix.context }}
@@ -200,3 +205,18 @@ jobs:
             org.opencontainers.image.revision=${{ github.sha }}
           provenance: mode=max
           sbom: true
+
+      - name: Record immutable deployment reference
+        shell: bash
+        env:
+          IMAGE_SUFFIX: ${{ matrix.image }}
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          test -n "$IMAGE_DIGEST"
+          case "$IMAGE_SUFFIX" in
+            api) image_env=MELPIS_API_IMAGE_REF ;;
+            web) image_env=MELPIS_WEB_IMAGE_REF ;;
+            *) exit 1 ;;
+          esac
+          printf '%s=%s@%s\n' "$image_env" "$IMAGE_NAME" "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"

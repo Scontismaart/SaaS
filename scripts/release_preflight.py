@@ -6,6 +6,7 @@ Passing this check is not evidence that a cloud account or free quota exists.
 
 import argparse
 import ipaddress
+import re
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -35,6 +36,11 @@ FREE_MODELS = frozenset(
         "groq/openai/gpt-oss-20b",
         "groq/openai/gpt-oss-120b",
     }
+)
+IMAGE_REFERENCE_ENV_NAMES = ("MELPIS_API_IMAGE_REF", "MELPIS_WEB_IMAGE_REF")
+_DIGEST_IMAGE_REFERENCE = re.compile(
+    r"^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?"
+    r"(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
 )
 _PLACEHOLDER_MARKERS = (
     "<",
@@ -71,6 +77,12 @@ def _require(config, errors, name, *, prefix=None, min_length=1):
         errors.append(f"{name}: invalid format")
 
 
+def _require_digest_image_reference(config, errors, name):
+    value = str(config.get(name) or "").strip()
+    if _is_placeholder(value) or not _DIGEST_IMAGE_REFERENCE.fullmatch(value):
+        errors.append(f"{name}: must be repository@sha256:<64 lowercase hex>")
+
+
 def validate(config):
     errors = []
     profile = str(config.get("LAUNCH_PROFILE") or "").strip().lower()
@@ -87,6 +99,14 @@ def validate(config):
     for name in required:
         _require(config, errors, name)
     _require(config, errors, "GROQ_API_KEY", prefix="gsk_", min_length=16)
+    for name in IMAGE_REFERENCE_ENV_NAMES:
+        _require_digest_image_reference(config, errors, name)
+
+    caddy_site_mode = str(config.get("CADDY_SITE_MODE") or "").strip()
+    if caddy_site_mode not in {"temporary", "final"}:
+        errors.append("CADDY_SITE_MODE: must be temporary or final")
+    elif caddy_site_mode == "temporary":
+        _require(config, errors, "PUBLIC_HOST")
 
     expected = {
         "APP_ENV": "production",

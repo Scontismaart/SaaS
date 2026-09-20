@@ -13,6 +13,7 @@ _MODULE = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_MODULE)
 validate = _MODULE.validate
 STRIPE_PRICE_ENV_NAMES = _MODULE.STRIPE_PRICE_ENV_NAMES
+IMAGE_REFERENCE_ENV_NAMES = _MODULE.IMAGE_REFERENCE_ENV_NAMES
 
 
 def test_production_example_declares_safe_commercial_defaults():
@@ -52,6 +53,10 @@ def common_config():
         "META_APP_SECRET": "meta-unit-safe-value",
         "META_VERIFY_TOKEN": "verify-unit-safe-value",
         "GROQ_API_KEY": "gsk_unit_safe_value",
+        "MELPIS_API_IMAGE_REF": "ghcr.io/melpis/api@sha256:" + "a" * 64,
+        "MELPIS_WEB_IMAGE_REF": "ghcr.io/melpis/web@sha256:" + "b" * 64,
+        "CADDY_SITE_MODE": "temporary",
+        "PUBLIC_HOST": "temporary.melpis.test",
         "STRIPE_WEBHOOK_SECRET": "whsec_unit_safe_value",
         "TRUSTED_PROXY_CIDRS": "172.30.0.0/24",
         "OPENROUTER_MODEL": "groq/openai/gpt-oss-20b",
@@ -189,3 +194,30 @@ def test_unbounded_proxy_configuration_is_blocked():
     config = commercial_config()
     config["TRUSTED_PROXY_CIDRS"] = "0.0.0.0/0"
     assert any("bounded proxy" in finding for finding in validate(config))
+
+
+@pytest.mark.parametrize("name", IMAGE_REFERENCE_ENV_NAMES)
+@pytest.mark.parametrize(
+    "value",
+    (
+        "ghcr.io/melpis/api:sha-0123456789abcdef0123456789abcdef01234567",
+        "ghcr.io/melpis/api@sha256:" + "A" * 64,
+        "ghcr.io/melpis/api@sha256:" + "a" * 63,
+    ),
+)
+def test_release_preflight_requires_digest_only_image_references(name, value):
+    config = commercial_config()
+    config[name] = value
+    assert f"{name}: must be repository@sha256:<64 lowercase hex>" in validate(config)
+
+
+def test_temporary_caddy_mode_requires_a_real_temporary_host():
+    config = commercial_config()
+    config["PUBLIC_HOST"] = ""
+    assert "PUBLIC_HOST: missing or placeholder" in validate(config)
+
+
+def test_release_preflight_blocks_unknown_caddy_site_mode():
+    config = commercial_config()
+    config["CADDY_SITE_MODE"] = "temporary-and-final"
+    assert "CADDY_SITE_MODE: must be temporary or final" in validate(config)

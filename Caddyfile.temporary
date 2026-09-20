@@ -1,0 +1,17 @@
+# Used only with CADDY_SITE_MODE=temporary. It registers only the operator's
+# temporary DNS hostname, so Caddy never requests final-domain certificates early.
+{$PUBLIC_HOST} {
+	encode zstd gzip
+	@backend path /api/* /webhooks/* /docs* /redoc* /openapi.json
+	reverse_proxy @backend api:8000
+	reverse_proxy web:80
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,3 +1,5 @@
+# Used only with CADDY_SITE_MODE=final after melpis.it and app.melpis.it DNS
+# resolve to this VM. Keeping it separate prevents premature final-domain TLS.
 (melpis_app) {
 	encode zstd gzip
 	@backend path /api/* /webhooks/* /docs* /redoc* /openapi.json
@@ -14,9 +16,7 @@
 	}
 }
 
-# PUBLIC_HOST is the temporary DNS hostname used for TLS smoke tests. The
-# localhost default keeps static/local validation independent from final DNS.
-{$PUBLIC_HOST:localhost}, melpis.it {
+melpis.it {
 	import melpis_app
 }
 

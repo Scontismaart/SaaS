@@ -64,7 +64,7 @@ def test_validation_gates_all_image_builds_and_prs_never_publish() -> None:
     assert "push: true" in publish
 
 
-def test_buildx_builds_api_and_web_for_amd64_and_arm64_with_sha_only_tags() -> None:
+def test_buildx_builds_api_and_web_for_amd64_and_arm64_and_records_digests() -> None:
     workflow = _read(".github/workflows/ci.yml")
 
     for job_name in ("build_images", "publish_images"):
@@ -80,17 +80,25 @@ def test_buildx_builds_api_and_web_for_amd64_and_arm64_with_sha_only_tags() -> N
 
     publish = _job(workflow, "publish_images")
     assert ":sha-${{ github.sha }}" in publish
+    assert "id: build" in publish
+    assert "steps.build.outputs.digest" in publish
+    assert "Record immutable deployment reference" in publish
+    assert "MELPIS_API_IMAGE_REF" in publish
+    assert "MELPIS_WEB_IMAGE_REF" in publish
+    assert "GITHUB_STEP_SUMMARY" in publish
     assert ":latest" not in workflow
     assert "type=ref" not in publish
 
 
 def test_production_compose_uses_release_images_and_only_caddy_publishes() -> None:
     compose = _read("compose.production.yml")
-    assert "${MELPIS_API_IMAGE_REF:-" in compose
-    assert "${MELPIS_WEB_IMAGE_REF:-" in compose
-    assert "${MELPIS_API_IMAGE:?" in compose
-    assert "${MELPIS_WEB_IMAGE:?" in compose
-    assert compose.count("${MELPIS_IMAGE_TAG:?") == 2
+    assert "${MELPIS_API_IMAGE_REF:?" in compose
+    assert "${MELPIS_WEB_IMAGE_REF:?" in compose
+    assert "MELPIS_IMAGE_TAG" not in compose
+    assert "MELPIS_API_IMAGE:?" not in compose
+    assert "MELPIS_WEB_IMAGE:?" not in compose
+    assert "CADDY_SITE_MODE:?" in compose
+    assert "./Caddyfile.${CADDY_SITE_MODE" in compose
     assert ":latest" not in compose
     assert "build:" not in compose
 
@@ -100,17 +108,22 @@ def test_production_compose_uses_release_images_and_only_caddy_publishes() -> No
         assert "ports:" not in _compose_service(compose, service)
 
 
-def test_caddy_supports_temporary_tls_and_final_canonical_hosts() -> None:
-    caddyfile = _read("Caddyfile")
-    assert "{$PUBLIC_HOST:localhost}" in caddyfile
-    assert "melpis.it" in caddyfile
+def test_caddy_keeps_temporary_tls_separate_from_final_canonical_hosts() -> None:
+    temporary = _read("Caddyfile.temporary")
+    final = _read("Caddyfile.final")
+    assert "{$PUBLIC_HOST}" in temporary
+    assert "melpis.it" not in temporary
+    assert "app.melpis.it" not in temporary
+    assert "PUBLIC_HOST" not in final
+    assert "melpis.it" in final
     assert re.search(
         r"app\.melpis\.it\s*\{.*?redir\s+https://melpis\.it/app/\s+308.*?\}",
-        caddyfile,
+        final,
         flags=re.DOTALL,
     )
-    assert "reverse_proxy @backend api:8000" in caddyfile
-    assert "reverse_proxy web:80" in caddyfile
+    for caddyfile in (temporary, final):
+        assert "reverse_proxy @backend api:8000" in caddyfile
+        assert "reverse_proxy web:80" in caddyfile
 
 
 def test_application_dockerfiles_are_architecture_neutral() -> None:

@@ -13,8 +13,9 @@ quote dell'account vanno verificate nel portale prima del GO.
 - Valkey mantiene rate limiting con AOF.
 - Supabase Free fornisce PostgreSQL/pgvector via TLS.
 
-Il manifest `compose.production.yml` non monta il sorgente, richiede immagini
-con tag immutabile, usa processi non privilegiati, limiti risorse e rotazione
+Il manifest `compose.production.yml` non monta il sorgente, richiede riferimenti
+OCI `repository@sha256:<64-hex>` emessi dal workflow (i tag, inclusi i tag SHA,
+sono rifiutati dal preflight), usa processi non privilegiati, limiti risorse e rotazione
 log. Solo Caddy pubblica 80/443.
 
 ## Preparazione
@@ -34,8 +35,11 @@ log. Solo Caddy pubblica 80/443.
    python scripts/release_preflight.py --env-file .env.production
    ```
 
-7. Imposta `PUBLIC_HOST`, `MELPIS_API_IMAGE`, `MELPIS_WEB_IMAGE` e un
-   `MELPIS_IMAGE_TAG` immutabile, poi valida e avvia:
+7. Copia dal GitHub Actions summary i due riferimenti digest completi in
+   `MELPIS_API_IMAGE_REF` e `MELPIS_WEB_IMAGE_REF`. Imposta inoltre
+   `CADDY_SITE_MODE=temporary` e `PUBLIC_HOST` sul DNS temporaneo. Il compose
+   carica solo `Caddyfile.temporary`, quindi non richiede certificati per
+   `melpis.it` o `app.melpis.it` prima del DNS finale. Poi valida e avvia:
 
    ```powershell
    docker compose -f compose.production.yml config
@@ -58,7 +62,8 @@ log. Solo Caddy pubblica 80/443.
 
 ## Rollback
 
-Mantieni il tag precedente: ripristina `MELPIS_IMAGE_TAG` e rilancia il compose.
+Mantieni i due riferimenti digest precedenti: ripristina
+`MELPIS_API_IMAGE_REF` e `MELPIS_WEB_IMAGE_REF` e rilancia il compose.
 Le migrazioni 052/053/054 sono additive e non vanno eliminate nel rollback. Se una
 migrazione fallisce, ferma il traffico e ripristina un dump verificato.
 

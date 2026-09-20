@@ -45,3 +45,30 @@ image availability, production secrets, external webhooks, R2 billing/quota,
 backup restore drill, Sentry, and uptime alerts must be verified by the operator.
 The existing production Caddy/compose configuration is intentionally consumed by
 the runbook but was left to Task 3, which owns release-container routing changes.
+
+## Round 1/5 remediation
+
+- Active UFW now fails closed unless its default incoming policy is `deny` and
+  its complete inbound rule set is exactly the requested SSH CIDR plus public
+  TCP 80/443 (with public IPv6 rules when UFW IPv6 is enabled). An inactive UFW
+  policy with saved rules is also rejected rather than enabled. The runbook
+  documents the reviewed, access-validated migration required for an existing
+  firewall; it still never uses `ufw reset`.
+- Deployment public keys append only when absent and preserve recovery/admin
+  keys. The destructive replacement path is an explicit
+  `--replace-authorized-keys` rotation and requires the tested-login
+  confirmation.
+- The release gate now requires local and GitHub Actions evidence, task/final
+  code and security review approval, release-tree/image secret and production
+  data scanning, Caddy/compose validation, provider/operator evidence, and a
+  tag only after approved/merged PR plus green post-merge CI.
+
+Exact offline verification after this remediation:
+
+```text
+C:\Program Files\Git\bin\bash.exe tests/scripts/test_oracle_vm_bootstrap.sh
+oracle VM bootstrap static tests passed
+
+git diff --check -- scripts/bootstrap_oracle_vm.sh docs/operations/oracle_vm_bootstrap.md tests/scripts/test_oracle_vm_bootstrap.sh
+passed
+```

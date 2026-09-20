@@ -39,6 +39,9 @@ not `0.0.0.0/0` or a guessed address.
 
 Copy a **public** SSH key to the VM or make it readable by root. Never put a
 private key in this repository, a command line, a shell history, or an env file.
+The bootstrap appends this key only if it is not already present, preserving
+existing recovery/admin keys. `--replace-authorized-keys` is an explicit key
+rotation operation and additionally requires the tested-login confirmation.
 From the VM console, run the initial non-destructive hardening stage:
 
 ```bash
@@ -73,12 +76,22 @@ sudo bash scripts/bootstrap_oracle_vm.sh \
   --apply-firewall --apply-ssh-hardening --confirm-ssh-access
 ```
 
-The script rejects absent CIDR/temporary hostname, any pre-existing UFW SSH
-allow rule outside the requested CIDR, an untested hardening request, unsupported
-OS/architecture, or an invalid public key. It does not reset UFW or delete
-unrelated firewall rules. Re-run is
-safe: packages, account, directories, swap, cron wrapper and restrictive SSH
-configuration converge to the same state. Verify the active rules and a fresh
+The script rejects absent CIDR/temporary hostname, an untested hardening request,
+unsupported OS/architecture, or an invalid public key. On an already active host
+it changes **nothing** unless UFW already has default incoming `deny` and exactly
+these inbound rules: SSH from the requested CIDR and public TCP 80/443 (including
+IPv6 rules when UFW IPv6 is enabled). It also refuses to enable inactive UFW if
+saved rules exist. This makes public ingress an asserted postcondition, rather
+than merely adding rules alongside an unsafe policy.
+
+For a pre-existing firewall, use a reviewed migration: retain the console and
+the tested second SSH session, record `sudo ufw status numbered` and
+`sudo ufw show added`, remove non-approved inbound rules deliberately in reverse
+number order, set default incoming deny, add only the approved SSH CIDR and
+80/443 rules, then rerun the bootstrap with `--apply-firewall` to validate the
+result. Do not use `ufw reset` on a live host. Re-run is safe: packages, account,
+directories, swap, cron wrapper, non-destructive key installation and restrictive
+SSH configuration converge to the same state. Verify active rules and a fresh
 login before closing either existing session:
 
 ```bash
@@ -226,3 +239,32 @@ health endpoints. Do not delete volumes or roll back additive database migration
 as part of image rollback. If data recovery is required, stop and use a verified
 encrypted backup plus the non-production restore drill procedure; production
 restore requires an explicit incident decision and a separate approved runbook.
+
+## 6. Final release evidence gate — every item is mandatory
+
+Do not tag, merge, or activate production providers merely because the VM is
+running. Retain linked evidence for all of the following:
+
+- All local checks required by the release plan and every GitHub Actions check
+  are green for the exact immutable release commit.
+- Task-scoped code and security reviews, plus the final branch code/security
+  review, are approved. Scan the exact release tree and image/config artifacts
+  for committed secrets or production data; resolve any finding before release.
+- `docker compose ... config --quiet`, image architecture inspection, and the
+  Caddy/compose port audit passed. The reviewed configuration publishes only
+  Caddy 80/443, uses the temporary host before cutover, serves `melpis.it`, and
+  redirects `app.melpis.it` to `https://melpis.it/app/` after final DNS.
+- Oracle shape/network rules, DNS/TLS, R2 checkout/billing safeguards and quota,
+  Resend domain authentication, Sentry delivery, uptime alert delivery, Stripe
+  Live products/prices and signed webhook, Meta signed webhook, and Groq
+  free-account/ZDR confirmations have operator evidence. These are not inferred
+  from the repository or bootstrap script.
+- The temporary-host end-to-end smoke test, final health checks, email
+  authentication, backup upload plus non-production restore drill, tenant
+  isolation, consent/STOP behavior, guardrails, worker/webhook idempotency and
+  human escalation all passed for the release candidate.
+
+Create a release tag only **after** the pull request is approved and merged and
+the post-merge GitHub Actions run is green. This runbook does not authorize an
+automatic merge, tag, domain purchase, paid-provider activation, or paid AI
+upgrade.

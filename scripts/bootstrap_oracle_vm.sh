@@ -9,6 +9,8 @@ readonly APP_ROOT=/srv/melpis
 readonly SECRET_ROOT=/etc/whatsapp-ai-responder
 readonly DOCKER_KEYRING=/etc/apt/keyrings/docker.asc
 readonly DOCKER_SOURCE=/etc/apt/sources.list.d/docker.list
+readonly DEPLOY_HOME_ROOT=/home
+readonly UFW_DEFAULTS=/etc/default/ufw
 
 die() { printf 'bootstrap: %s\n' "$*" >&2; exit 1; }
 note() { printf 'bootstrap: %s\n' "$*"; }
@@ -28,6 +30,7 @@ Options:
   --swap-gib N                   /swapfile size in GiB, 1..16 (default: 2).
   --apply-firewall               Apply UFW rules (requires the confirmation below).
   --apply-ssh-hardening          Disable root/password SSH (requires confirmation).
+  --replace-authorized-keys      Replace, rather than append to, deployment keys.
   --confirm-ssh-access           Attest a second SSH login as the deployment user works.
   --help                         Show this help.
 
@@ -45,6 +48,7 @@ deploy_user=melpis
 swap_gib=2
 apply_firewall=false
 apply_ssh_hardening=false
+replace_authorized_keys=false
 confirm_ssh_access=false
 
 while [[ $# -gt 0 ]]; do
@@ -56,6 +60,7 @@ while [[ $# -gt 0 ]]; do
     --swap-gib) [[ $# -ge 2 ]] || die '--swap-gib needs a value'; swap_gib=$2; shift 2 ;;
     --apply-firewall) apply_firewall=true; shift ;;
     --apply-ssh-hardening) apply_ssh_hardening=true; shift ;;
+    --replace-authorized-keys) replace_authorized_keys=true; shift ;;
     --confirm-ssh-access) confirm_ssh_access=true; shift ;;
     --help) usage; exit 0 ;;
     *) die "unknown argument: $1" ;;
@@ -96,7 +101,7 @@ architecture=$(dpkg --print-architecture)
 grep -Eq '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp(256|384|521)) [^[:space:]]+' "$authorized_key_file" \
   || die 'SSH public-key file does not contain a supported OpenSSH public key'
 
-if [[ "$apply_firewall" == true || "$apply_ssh_hardening" == true ]]; then
+if [[ "$apply_firewall" == true || "$apply_ssh_hardening" == true || "$replace_authorized_keys" == true ]]; then
   [[ "$confirm_ssh_access" == true ]] || die 'hardening requires --confirm-ssh-access after a tested second deployment-user SSH login'
 fi
 
@@ -116,13 +121,31 @@ install_docker() {
   systemctl enable --now docker
 }
 
+install_deploy_authorized_key() {
+  local authorized_keys new_key
+  authorized_keys="$DEPLOY_HOME_ROOT/$deploy_user/.ssh/authorized_keys"
+  install -d -m 0700 -o "$deploy_user" -g "$deploy_user" "${authorized_keys%/*}"
+  [[ ! -L "$authorized_keys" ]] || die 'deployment authorized_keys must not be a symlink'
+  [[ -e "$authorized_keys" ]] || touch "$authorized_keys"
+  chown "$deploy_user:$deploy_user" "$authorized_keys"
+  chmod 0600 "$authorized_keys"
+
+  if [[ "$replace_authorized_keys" == true ]]; then
+    # Explicit rotation only: default behavior preserves break-glass/admin keys.
+    install -m 0600 -o "$deploy_user" -g "$deploy_user" "$authorized_key_file" "$authorized_keys"
+    return
+  fi
+
+  new_key=$(<"$authorized_key_file")
+  grep -Fxq -- "$new_key" "$authorized_keys" || printf '%s\n' "$new_key" >> "$authorized_keys"
+}
+
 install_deploy_user() {
   if ! id "$deploy_user" >/dev/null 2>&1; then
-    useradd --create-home --shell /bin/bash "$deploy_user"
+    useradd --home-dir "$DEPLOY_HOME_ROOT/$deploy_user" --create-home --shell /bin/bash "$deploy_user"
   fi
   usermod -aG docker "$deploy_user"
-  install -d -m 0700 -o "$deploy_user" -g "$deploy_user" "/home/$deploy_user/.ssh"
-  install -m 0600 -o "$deploy_user" -g "$deploy_user" "$authorized_key_file" "/home/$deploy_user/.ssh/authorized_keys"
+  install_deploy_authorized_key
 }
 
 install_persistent_layout() {
@@ -175,27 +198,62 @@ CRON
   chmod 0644 /etc/cron.d/melpis-backup
 }
 
-firewall_has_unexpected_ssh_rule() {
-  # A narrower-but-different source would also broaden the declared
-  # administration boundary. Refuse to silently retain it.
-  LC_ALL=C ufw status | grep -E '^22(/|[[:space:]])' | grep -Fv "$admin_cidr" | grep -q 'ALLOW IN'
+firewall_status() {
+  LC_ALL=C ufw status "$@"
+}
+
+firewall_ipv6_enabled() {
+  [[ -r "$UFW_DEFAULTS" ]] && grep -Fxq 'IPV6=yes' "$UFW_DEFAULTS"
+}
+
+firewall_inbound_rules() {
+  firewall_status | awk '
+    /^[0-9]+(\/(tcp|udp))?( \(v6\))?[[:space:]]+(ALLOW|DENY|REJECT|LIMIT)[[:space:]]+IN[[:space:]]+/ {
+      gsub(/[[:space:]]+/, " "); sub(/^ /, ""); sub(/ $/, ""); print
+    }' | LC_ALL=C sort
+}
+
+firewall_expected_inbound_rules() {
+  local ssh_suffix=""
+  [[ "$admin_cidr" != *:* ]] || ssh_suffix=' (v6)'
+  {
+    printf '22/tcp%s ALLOW IN %s%s\n' "$ssh_suffix" "$admin_cidr" "$ssh_suffix"
+    printf '%s\n' '80/tcp ALLOW IN Anywhere' '443/tcp ALLOW IN Anywhere'
+    if firewall_ipv6_enabled; then
+      printf '%s\n' '80/tcp (v6) ALLOW IN Anywhere (v6)' '443/tcp (v6) ALLOW IN Anywhere (v6)'
+    fi
+  } | LC_ALL=C sort
+}
+
+firewall_is_exact() {
+  local actual expected
+  firewall_status | grep -Fq 'Status: active' || return 1
+  firewall_status verbose | grep -Eq '^Default: deny \(incoming\),' || return 1
+  actual=$(firewall_inbound_rules)
+  expected=$(firewall_expected_inbound_rules)
+  [[ "$actual" == "$expected" ]]
+}
+
+firewall_has_saved_rules() {
+  # Inactive UFW can retain rules which would become live on enable. Never
+  # activate an unknown saved policy; have an operator review it first.
+  LC_ALL=C ufw show added | grep -Eq '^ufw (allow|deny|reject|limit) '
 }
 
 configure_firewall() {
-  if firewall_has_unexpected_ssh_rule; then
-    die 'UFW has an SSH allow rule outside --admin-cidr; review/remove it manually after validating access, then rerun'
+  if firewall_status | grep -Fq 'Status: active'; then
+    firewall_is_exact || die 'active UFW is not default-deny with exactly the approved SSH CIDR and public 80/443 rules; reconcile it manually after validating access, then rerun'
+    note 'UFW already enforces the reviewed default-deny ingress policy'
+    return
   fi
-  if ! LC_ALL=C ufw status | grep -Fq 'Status: active'; then
-    ufw default deny incoming
-    ufw default allow outgoing
-  fi
-  # Additive rules avoid resetting or deleting any unrelated operator firewall policy.
+  firewall_has_saved_rules && die 'inactive UFW has saved rules; review/reconcile them manually before enabling the firewall'
+  ufw default deny incoming
+  ufw default allow outgoing
   ufw allow from "$admin_cidr" to any port 22 proto tcp
   ufw allow 80/tcp
   ufw allow 443/tcp
-  if ! LC_ALL=C ufw status | grep -Fq 'Status: active'; then
-    ufw --force enable
-  fi
+  ufw --force enable
+  firewall_is_exact || die 'UFW did not converge to default-deny with exactly approved inbound rules; inspect rules before proceeding'
   note "UFW permits SSH only from $admin_cidr and HTTP/HTTPS publicly; mirror these rules in Oracle NSGs/security lists"
 }
 

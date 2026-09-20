@@ -64,6 +64,38 @@
             });
         }
 
+        /* 2b. Language Dropdown Controller */
+        var langTrigger = document.getElementById('langDropdownTrigger');
+        var langMenu = document.getElementById('langDropdownMenu');
+        if (langTrigger && langMenu && !langTrigger.dataset.langInit) {
+            langTrigger.dataset.langInit = 'true';
+            var setLangDropdown = function (open) {
+                langMenu.hidden = !open;
+                langMenu.classList.toggle('is-open', open);
+                langTrigger.setAttribute('aria-expanded', String(open));
+            };
+
+            langTrigger.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var isOpen = langTrigger.getAttribute('aria-expanded') === 'true';
+                setLangDropdown(!isOpen);
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!langMenu.contains(e.target) && !langTrigger.contains(e.target)) {
+                    setLangDropdown(false);
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && langTrigger.getAttribute('aria-expanded') === 'true') {
+                    setLangDropdown(false);
+                    langTrigger.focus();
+                }
+            });
+        }
+
         /* 3. Mobile Navigation Overlay */
         if (hamburger && overlay) {
             var setNav = function (open) {

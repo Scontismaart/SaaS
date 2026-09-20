@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prezzi e Piani · Melpis Assistente AI | Prova 7 Giorni Senza Carta</title>
-    <meta name="description" content="Scopri i piani e i prezzi di Melpis. Da 29€ al mese con 7 giorni di prova gratuita, nessuna carta di credito e nessun rinnovo automatico. Calcola il tuo ritorno sull'investimento.">
+    <title>Piani e Prezzi · Assistente WhatsApp AI | Melpis</title>
+    <meta name="description" content="Piani e prezzi trasparenti per attivare l'assistente WhatsApp AI nella tua attività. Prova gratuita di 7 giorni senza carta di credito, disdici quando vuoi.">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://melpis.it/prezzi/">
 
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Melpis">
     <meta property="og:url" content="https://melpis.it/prezzi/">
-    <meta property="og:title" content="Prezzi e Piani · Melpis Assistente AI">
-    <meta property="og:description" content="Piani trasparenti a partire da 29€/mese con 7 giorni di prova gratuita senza carta. Calcolatore ROI e tabella comparativa.">
+    <meta property="og:title" content="Piani e Prezzi · Assistente WhatsApp AI | Melpis">
+    <meta property="og:description" content="Piani e prezzi trasparenti per attivare l'assistente WhatsApp AI nella tua attività. Prova gratuita di 7 giorni senza carta di credito, disdici quando vuoi.">
     <meta property="og:image" content="https://melpis.it/og-image.jpg">
     <meta property="og:locale" content="it_IT">
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Prezzi e Piani · Melpis">
-    <meta name="twitter:description" content="Tariffe chiare e 7 giorni di prova gratuita senza carta di credito. Scegli il piano ideale per la tua attività.">
+    <meta name="twitter:title" content="Piani e Prezzi · Assistente WhatsApp AI | Melpis">
+    <meta name="twitter:description" content="Piani e prezzi trasparenti per attivare l'assistente WhatsApp AI nella tua attività. Prova gratuita di 7 giorni senza carta di credito, disdici quando vuoi.">
     <meta name="twitter:image" content="https://melpis.it/og-image.jpg">
     <meta name="theme-color" content="#08090c">
 
@@ -81,10 +80,10 @@
             },
             {
               "@type": "Question",
-              "name": "Cosa succede se supero il limite di conversazioni incluse nel mio piano?",
+              "name": "Cosa succede se supero il limite di conversazioni gestite nel mio piano?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Il servizio non si interrompe all'improvviso: ricevi una notifica nella dashboard quando raggiungi l'80% e il 100% della soglia mensile, con la possibilità di effettuare l'upgrade al piano superiore con un click."
+                "text": "Il servizio non si interrompe all'improvviso: ricevi una notifica nella dashboard quando raggiungi l'80% e il 100% della soglia mensile di conversazioni gestite da Melpis, con la possibilità di effettuare l'upgrade al piano superiore con un click."
               }
             },
             {
@@ -100,15 +99,15 @@
               "name": "Come viene emessa la fattura e include la fatturazione elettronica italiana?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "I pagamenti sono gestiti tramite Stripe. Inserendo la Partita IVA e il codice SDI (o PEC) nella dashboard, la fattura viene regolarmente registrata e recapitata tramite il Sistema di Interscambio (SDI) per le aziende italiane."
+                "text": "Ricevuta Stripe immediata; fattura fiscale su richiesta."
               }
             },
             {
               "@type": "Question",
-              "name": "Ci sono costi aggiuntivi per l'infrastruttura ufficiale Meta Cloud API?",
+              "name": "Come funzionano i costi della WhatsApp Business Platform di Meta?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Melpis utilizza la Meta Cloud API ufficiale. Meta prevede un volume gratuito mensile di conversazioni per ogni account business (tipicamente 1.000 conversazioni di servizio al mese offerte da Meta). Eventuali consumi eccedenti le soglie gratuite di Meta seguono i prezzi ufficiali comunicati da Meta."
+                "text": "Il prezzo del piano Melpis è un canone software fisso e non include le tariffe messaggio applicate da Meta alla WhatsApp Business Platform. Questi costi variano in base al tipo di messaggio (utility, marketing, servizio) e al Paese del destinatario, e vengono conteggiati separatamente con la massima trasparenza."
               }
             },
             {
@@ -125,1071 +124,14 @@
     }
     </script>
 
-    <style>
-        /* ============================================================
-           Melpis Design System — Scoped Pricing Page (#08090c Canvas)
-           Allineamento totale con la Hero Homepage Reference
-           ============================================================ */
-
-        :root {
-            --canvas-bg: #08090c;
-            --surface-glass: rgba(255, 255, 255, 0.04);
-            --surface-glass-hover: rgba(255, 255, 255, 0.07);
-            --surface-gradient: linear-gradient(160deg, #1d1f2b 0%, #141620 100%);
-            --border-main: rgba(255, 255, 255, 0.12);
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --text-heading: #FFFFFF;
-            --text-body: rgba(240, 244, 255, 0.70);
-            --text-muted: rgba(255, 255, 255, 0.55);
-            --text-dim: rgba(255, 255, 255, 0.40);
-            --semantic-active: #10b981;
-            --card-radius: 24px;
-            --subcard-radius: 14px;
-            --card-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.5), 0 4px 10px -2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-            --ease-melpis: cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        html {
-            scroll-behavior: smooth;
-            background-color: var(--canvas-bg);
-        }
-
-        body {
-            background-color: var(--canvas-bg) !important;
-            color: var(--text-body);
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 16px;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            overflow-x: clip;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        /* Strict Focus Visibility (No Neon Green) */
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible,
-        select:focus-visible,
-        summary:focus-visible {
-            outline: 2px solid #FFFFFF !important;
-            outline-offset: 3px !important;
-        }
-
-        /* Scroll Margins for Fixed Navbar Offset */
-        #calcolatore,
-        #confronto,
-        #faq {
-            scroll-margin-top: 110px;
-        }
-
-        /* Contour Topographic Background */
-        .hero-contour-bg {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-        .contour-svg {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.32;
-        }
-        .hero-vignette-overlay {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse at 50% 30%, rgba(8, 9, 12, 0.10) 0%, rgba(8, 9, 12, 0.65) 60%, #08090c 100%);
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        /* Floating Pill Navbar */
-        .navbar-wrapper {
-            position: fixed;
-            top: 20px;
-            left: 0;
-            right: 0;
-            z-index: 50;
-            display: flex;
-            justify-content: center;
-            padding-inline: 20px;
-            pointer-events: none;
-        }
-        .nav-pill {
-            pointer-events: auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 28px;
-            background: rgba(12, 12, 17, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-main);
-            padding: 6px 8px 6px 18px;
-            border-radius: 9999px;
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
-            transition: border-color 0.3s ease, background-color 0.3s ease;
-        }
-        .nav-pill:hover {
-            border-color: rgba(255, 255, 255, 0.20);
-        }
-        .nav-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Inter', sans-serif;
-            font-weight: 700;
-            font-size: 1.05rem;
-            letter-spacing: -0.025em;
-            color: #FFFFFF;
-            text-decoration: none;
-        }
-        .nav-logo {
-            border-radius: 6px;
-        }
-        .nav-menu {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .nav-link {
-            font-size: 0.88rem;
-            font-weight: 500;
-            color: var(--text-body);
-            text-decoration: none;
-            transition: color 0.18s ease;
-        }
-        .nav-link:hover,
-        .nav-link.active {
-            color: #FFFFFF;
-        }
-        .nav-actions {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .btn-nav-ghost {
-            font-size: 0.86rem;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.85);
-            padding: 7px 14px;
-            border-radius: 9999px;
-            text-decoration: none;
-            transition: color 0.15s ease, background-color 0.15s ease;
-        }
-        .btn-nav-ghost:hover {
-            color: #FFFFFF;
-            background: rgba(255, 255, 255, 0.07);
-        }
-        .btn-nav-cta {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #FFFFFF;
-            color: #000000;
-            font-weight: 600;
-            font-size: 0.84rem;
-            padding: 8px 18px;
-            border-radius: 9999px;
-            text-decoration: none;
-            box-shadow: 0 4px 18px rgba(255, 255, 255, 0.16);
-            transition: transform 0.2s var(--ease-melpis), background 0.2s ease, box-shadow 0.2s ease;
-        }
-        .btn-nav-cta:hover {
-            background: #f1f5f9;
-            transform: scale(1.02);
-            box-shadow: 0 6px 26px rgba(255, 255, 255, 0.26);
-        }
-        .nav-hamburger {
-            display: none;
-            flex-direction: column;
-            gap: 5px;
-            padding: 8px;
-            cursor: pointer;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            border-radius: 8px;
-        }
-        .nav-hamburger span {
-            display: block;
-            width: 18px;
-            height: 2px;
-            background: #FFFFFF;
-            border-radius: 2px;
-            transition: transform 0.3s ease, opacity 0.3s ease;
-        }
-
-        /* Mobile Overlay */
-        .mobile-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 45;
-            background: rgba(8, 9, 12, 0.95);
-            backdrop-filter: blur(28px);
-            -webkit-backdrop-filter: blur(28px);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 30px;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transition: opacity 0.28s var(--ease-melpis), visibility 0.28s ease;
-        }
-        .mobile-overlay.open {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-        }
-        .mobile-menu-inner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            text-align: center;
-            width: 100%;
-            max-width: 320px;
-        }
-        .mobile-link {
-            font-size: 1.18rem;
-            font-weight: 600;
-            color: rgba(240, 244, 255, 0.85);
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-        .mobile-link:hover {
-            color: #FFFFFF;
-        }
-
-        /* Breadcrumb Navigation */
-        .breadcrumb-section {
-            padding: 108px 0 10px;
-            font-size: 0.86rem;
-            color: var(--text-muted);
-            position: relative;
-            z-index: 2;
-        }
-        .breadcrumb-list {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            flex-wrap: wrap;
-        }
-        .breadcrumb-list a {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-        .breadcrumb-list a:hover {
-            color: #FFFFFF;
-        }
-        .breadcrumb-list .sep {
-            color: rgba(255, 255, 255, 0.25);
-            user-select: none;
-        }
-        .breadcrumb-list [aria-current="page"] {
-            color: #FFFFFF;
-            font-weight: 500;
-        }
-
-        /* Pricing Hero */
-        .pricing-hero {
-            position: relative;
-            padding: 24px 0 70px;
-            text-align: center;
-            overflow: hidden;
-        }
-        .pricing-hero .container {
-            position: relative;
-            z-index: 2;
-        }
-        .eyebrow-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-main);
-            border-radius: 9999px;
-            padding: 6px 16px;
-            font-size: 0.80rem;
-            font-weight: 600;
-            color: rgba(240, 244, 255, 0.88);
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            margin-bottom: 18px;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-        }
-        .pricing-hero h1 {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: clamp(2.2rem, 5vw, 3.4rem);
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            line-height: 1.18;
-            margin: 0 0 16px;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .pricing-hero h1 {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .pricing-hero-p {
-            font-size: 1.12rem;
-            color: var(--text-body);
-            max-width: 660px;
-            margin: 0 auto 26px;
-            line-height: 1.62;
-        }
-        .hero-trust-chips {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            flex-wrap: wrap;
-            font-size: 0.86rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-        }
-        .hero-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .hero-chip svg {
-            color: rgba(255, 255, 255, 0.60);
-        }
-        .chip-dot-green {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--semantic-active);
-            box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
-            display: inline-block;
-        }
-        .hero-chip-sep {
-            color: rgba(255, 255, 255, 0.20);
-        }
-
-        /* Pricing Grid & Cards */
-        .pricing-grid-standalone {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 28px;
-            margin-top: 48px;
-            align-items: stretch;
-            text-align: left;
-        }
-        .price-card {
-            background: var(--surface-glass);
-            border: 1px solid var(--border-main);
-            border-radius: var(--card-radius);
-            padding: 38px 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            position: relative;
-            box-shadow: var(--card-shadow);
-            transition: transform 0.3s var(--ease-melpis), box-shadow 0.3s var(--ease-melpis), border-color 0.3s ease, background 0.3s ease;
-        }
-        .price-card:hover {
-            transform: translateY(-4px) scale(1.01);
-            background: var(--surface-glass-hover);
-            border-color: rgba(255, 255, 255, 0.22);
-            box-shadow: 0 20px 42px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.20);
-        }
-        .price-card.popular {
-            background: linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(20, 22, 32, 0.96) 100%);
-            border-color: rgba(255, 255, 255, 0.24);
-            box-shadow: 0 20px 44px -4px rgba(0, 0, 0, 0.65), 0 6px 14px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.26);
-        }
-        .price-card.popular:hover {
-            transform: translateY(-5px) scale(1.02);
-            border-color: rgba(255, 255, 255, 0.36);
-            box-shadow: 0 26px 54px -6px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.36);
-        }
-        .popular-badge {
-            position: absolute;
-            top: -12px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #FFFFFF;
-            color: #000000;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            padding: 4px 14px;
-            border-radius: 9999px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-            z-index: 2;
-        }
-
-        .price-card-header {
-            margin-bottom: 22px;
-        }
-        .price-plan-name {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 1.48rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            color: #FFFFFF;
-            margin: 0 0 8px;
-        }
-        .price-plan-desc {
-            font-size: 0.90rem;
-            line-height: 1.55;
-            color: var(--text-body);
-            margin: 0;
-            min-height: 44px;
-        }
-        .price-figure {
-            display: flex;
-            align-items: baseline;
-            gap: 2px;
-            margin-bottom: 6px;
-            font-variant-numeric: tabular-nums;
-        }
-        .price-currency {
-            font-size: 1.65rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.75);
-        }
-        .price-amount {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 3.2rem;
-            font-weight: 700;
-            letter-spacing: -0.04em;
-            line-height: 1;
-            color: #FFFFFF;
-        }
-        .price-period {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            margin-left: 4px;
-        }
-        .price-trial-note {
-            font-size: 0.82rem;
-            color: var(--text-dim);
-            margin: 0 0 24px;
-        }
-
-        /* CTAs in Cards */
-        .btn-price {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 13px 22px;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 0.94rem;
-            text-decoration: none;
-            text-align: center;
-            cursor: pointer;
-            user-select: none;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            color: #FFFFFF;
-            transition: transform 0.2s var(--ease-melpis), background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .btn-price:hover {
-            background: rgba(255, 255, 255, 0.10);
-            border-color: rgba(255, 255, 255, 0.28);
-            transform: scale(1.02);
-        }
-        .btn-price:active {
-            transform: scale(0.98);
-        }
-        .btn-price.btn-popular {
-            background: #FFFFFF;
-            color: #000000;
-            border: 1px solid transparent;
-            box-shadow: 0 4px 24px rgba(255, 255, 255, 0.16);
-        }
-        .btn-price.btn-popular:hover {
-            background: #f1f5f9;
-            color: #000000;
-            transform: scale(1.02);
-            box-shadow: 0 6px 32px rgba(255, 255, 255, 0.26);
-        }
-
-        /* Features List in Cards */
-        .price-features {
-            list-style: none;
-            padding: 24px 0 0;
-            margin: 28px 0 0;
-            border-top: 1px solid var(--border-subtle);
-            display: flex;
-            flex-direction: column;
-            gap: 13px;
-        }
-        .price-features li {
-            display: flex;
-            align-items: flex-start;
-            gap: 11px;
-            font-size: 0.89rem;
-            line-height: 1.5;
-            color: rgba(240, 244, 255, 0.85);
-        }
-        .chk {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-            color: #FFFFFF;
-            font-size: 0.70rem;
-            font-weight: 700;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        /* ROI Calculator Section */
-        .roi-calculator-section {
-            padding: 90px 0;
-            background: transparent;
-            border-top: 1px solid var(--border-subtle);
-            border-bottom: 1px solid var(--border-subtle);
-            position: relative;
-        }
-        .roi-calculator-section h2 {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: clamp(1.8rem, 3.8vw, 2.5rem);
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            line-height: 1.2;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 12px 0 10px;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .roi-calculator-section h2 {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .roi-box {
-            background: var(--surface-gradient);
-            border: 1px solid var(--border-main);
-            border-radius: var(--card-radius);
-            padding: 42px;
-            margin-top: 40px;
-            display: grid;
-            grid-template-columns: 1.15fr 0.85fr;
-            gap: 40px;
-            box-shadow: var(--card-shadow);
-        }
-        .roi-slider-group {
-            margin-bottom: 26px;
-        }
-        .roi-slider-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: rgba(240, 244, 255, 0.90);
-            margin-bottom: 12px;
-        }
-        .roi-slider-label label {
-            cursor: pointer;
-        }
-        .roi-slider-val {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            color: #FFFFFF;
-            font-weight: 700;
-            font-size: 1.05rem;
-            font-variant-numeric: tabular-nums;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid var(--border-main);
-            border-radius: 6px;
-            padding: 2px 10px;
-        }
-        .roi-range-input {
-            width: 100%;
-            -webkit-appearance: none;
-            appearance: none;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.12);
-            border-radius: 9999px;
-            outline: none;
-            cursor: pointer;
-            transition: background 0.2s ease;
-        }
-        .roi-range-input:focus-visible {
-            outline: 2px solid #FFFFFF;
-            outline-offset: 3px;
-        }
-        .roi-range-input::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #FFFFFF;
-            border: 2px solid #08090c;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        .roi-range-input::-webkit-slider-thumb:hover {
-            transform: scale(1.15);
-            box-shadow: 0 4px 16px rgba(255, 255, 255, 0.35);
-        }
-        .roi-range-input::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #FFFFFF;
-            border: 2px solid #08090c;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-            cursor: pointer;
-            transition: transform 0.15s ease;
-        }
-        .roi-formula-note {
-            font-size: 0.78rem;
-            color: var(--text-dim);
-            margin-top: 18px;
-            line-height: 1.5;
-        }
-        .roi-results-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-main);
-            border-radius: 18px;
-            padding: 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 20px;
-        }
-        .roi-metric-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .roi-metric-label {
-            font-size: 0.76rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 600;
-        }
-        .roi-metric-num {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 1.85rem;
-            font-weight: 700;
-            color: #FFFFFF;
-            line-height: 1.2;
-            letter-spacing: -0.02em;
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* Comparison Table Section */
-        .comparison-table-section {
-            padding: 90px 0;
-            position: relative;
-        }
-        .comparison-table-section h2 {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: clamp(1.8rem, 3.8vw, 2.5rem);
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            line-height: 1.2;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 12px 0 0;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .comparison-table-section h2 {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .table-responsive {
-            overflow-x: auto;
-            margin-top: 44px;
-            border: 1px solid var(--border-main);
-            border-radius: var(--card-radius);
-            background: rgba(255, 255, 255, 0.02);
-            box-shadow: var(--card-shadow);
-        }
-        .pricing-comp-table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-            font-size: 0.92rem;
-            min-width: 680px;
-        }
-        .pricing-comp-table th, .pricing-comp-table td {
-            padding: 18px 22px;
-            border-bottom: 1px solid var(--border-subtle);
-        }
-        .pricing-comp-table th {
-            color: #FFFFFF;
-            font-weight: 600;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: rgba(255, 255, 255, 0.05);
-            letter-spacing: -0.01em;
-            border-bottom: 1px solid var(--border-main);
-        }
-        .pricing-comp-table td {
-            color: var(--text-body);
-        }
-        .pricing-comp-table tr:last-child td {
-            border-bottom: none;
-        }
-        .pricing-comp-table tr:hover td {
-            background: rgba(255, 255, 255, 0.04);
-        }
-        .pricing-comp-table .feat-col {
-            font-weight: 500;
-            color: #FFFFFF;
-            width: 34%;
-        }
-        .table-check {
-            color: #FFFFFF;
-            font-weight: 600;
-        }
-        .table-cross {
-            color: var(--text-dim);
-        }
-
-        /* FAQ Section (Strict Override of style.css slide-over & white theme) */
-        .faq-section {
-            background: transparent !important;
-            color: var(--text-body) !important;
-            padding: 90px 0 !important;
-            position: relative !important;
-            top: auto !important;
-            margin: 0 !important;
-        }
-        .faq-section h2 {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: clamp(1.8rem, 3.8vw, 2.5rem);
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            line-height: 1.2;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 12px 0 0;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .faq-section h2 {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .faq-list {
-            max-width: 820px;
-            margin: 44px auto 0;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-        .faq-item {
-            background: var(--surface-glass) !important;
-            border: 1px solid var(--border-subtle) !important;
-            border-radius: 14px !important;
-            overflow: hidden !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            transition: background 0.2s ease, border-color 0.2s ease !important;
-        }
-        .faq-item:hover {
-            background: var(--surface-glass-hover) !important;
-            border-color: rgba(255, 255, 255, 0.16) !important;
-            box-shadow: none !important;
-        }
-        .faq-item[open] {
-            background: var(--surface-glass-hover) !important;
-            border-color: var(--border-main) !important;
-        }
-        .faq-quest {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            padding: 20px 24px !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-            font-size: 1.02rem !important;
-            font-weight: 600 !important;
-            color: #FFFFFF !important;
-            cursor: pointer !important;
-            list-style: none !important;
-            user-select: none !important;
-        }
-        .faq-quest::-webkit-details-marker { display: none !important; }
-        .faq-icon {
-            font-size: 1.25rem !important;
-            width: auto !important;
-            height: auto !important;
-            border-radius: 0 !important;
-            background: transparent !important;
-            color: var(--text-muted) !important;
-            transition: transform 0.25s var(--ease-melpis), color 0.2s ease !important;
-            line-height: 1 !important;
-        }
-        .faq-item[open] .faq-icon {
-            transform: rotate(45deg) !important;
-            background: transparent !important;
-            color: #FFFFFF !important;
-        }
-        .faq-ans {
-            display: block !important;
-            padding: 0 24px 22px !important;
-            color: var(--text-body) !important;
-            font-size: 0.94rem !important;
-            line-height: 1.65 !important;
-        }
-        .faq-ans p {
-            margin: 0;
-        }
-
-        /* Final CTA Section (Strict Override of style.css slide-over & green glow) */
-        .final-cta-section {
-            background: transparent !important;
-            margin-top: 0 !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            padding: 70px 0 100px !important;
-            position: relative !important;
-            z-index: 2 !important;
-        }
-        .final-cta-container {
-            position: relative !important;
-        }
-        .final-cta-glow {
-            position: absolute !important;
-            inset: -30px -20px !important;
-            background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 65%) !important;
-            filter: blur(40px) !important;
-            pointer-events: none !important;
-            opacity: 1 !important;
-            transform: none !important;
-            z-index: 0 !important;
-        }
-        .final-cta-box {
-            position: relative !important;
-            z-index: 1 !important;
-            background: var(--surface-gradient) !important;
-            border: 1px solid var(--border-main) !important;
-            border-radius: var(--card-radius) !important;
-            padding: 70px 36px !important;
-            text-align: center !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            transform: none !important;
-            opacity: 1 !important;
-            box-shadow: 0 18px 36px -4px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
-        }
-        .final-cta-title {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 700;
-            line-height: 1.18;
-            letter-spacing: -0.025em;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 0 0 16px;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .final-cta-title {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .final-cta-sub {
-            font-size: 1.1rem;
-            color: var(--text-body);
-            max-width: 580px;
-            margin: 0 auto 32px;
-            line-height: 1.6;
-        }
-        .btn-hero-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            background: #FFFFFF;
-            color: #000000;
-            font-weight: 600;
-            font-size: 0.98rem;
-            padding: 14px 30px;
-            border-radius: 9999px;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 24px rgba(255, 255, 255, 0.16);
-            transition: transform 0.2s var(--ease-melpis), background 0.2s ease, box-shadow 0.2s ease;
-            text-decoration: none;
-        }
-        .btn-hero-primary:hover {
-            background: #f1f5f9;
-            transform: scale(1.02);
-            box-shadow: 0 6px 32px rgba(255, 255, 255, 0.26);
-        }
-        .btn-arrow-circle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: rgba(0, 0, 0, 0.10);
-            font-size: 0.85rem;
-            transition: transform 0.2s ease;
-        }
-        .btn-hero-primary:hover .btn-arrow-circle {
-            transform: translateX(3px);
-        }
-
-        /* Footer */
-        .footer-section {
-            background: #08090c;
-            border-top: 1px solid var(--border-subtle);
-            padding: 70px 0 36px;
-            color: var(--text-muted);
-            font-size: 0.88rem;
-        }
-        .footer-top-grid {
-            display: flex;
-            justify-content: space-between;
-            gap: 40px;
-            margin-bottom: 50px;
-            flex-wrap: wrap;
-        }
-        .footer-brand-col {
-            max-width: 300px;
-        }
-        .footer-brand {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Inter', sans-serif;
-            font-weight: 700;
-            font-size: 1.15rem;
-            color: #FFFFFF;
-            text-decoration: none;
-            letter-spacing: -0.02em;
-        }
-        .footer-tagline {
-            margin-top: 12px;
-            color: var(--text-muted);
-            line-height: 1.55;
-            font-size: 0.86rem;
-        }
-        .footer-nav-cols {
-            display: flex;
-            gap: 50px;
-            flex-wrap: wrap;
-        }
-        .footer-col {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            min-width: 140px;
-        }
-        .footer-col h4 {
-            color: #FFFFFF;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.88rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-            letter-spacing: -0.01em;
-        }
-        .footer-col a {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.15s ease;
-            font-size: 0.86rem;
-        }
-        .footer-col a:hover {
-            color: #FFFFFF;
-        }
-        .footer-bottom-row {
-            padding-top: 28px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            color: var(--text-dim);
-            font-size: 0.80rem;
-        }
-
-        /* Entrance Animations */
-        @keyframes heroFadeUp {
-            0% { opacity: 0; transform: translateY(22px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-        .anim-hero-1 { animation: heroFadeUp 0.65s var(--ease-melpis) 0.05s both; }
-        .anim-hero-2 { animation: heroFadeUp 0.65s var(--ease-melpis) 0.15s both; }
-        .anim-hero-3 { animation: heroFadeUp 0.65s var(--ease-melpis) 0.25s both; }
-        .anim-hero-4 { animation: heroFadeUp 0.65s var(--ease-melpis) 0.35s both; }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-                scroll-behavior: auto !important;
-            }
-            .anim-hero-1, .anim-hero-2, .anim-hero-3, .anim-hero-4 {
-                animation: none !important;
-                opacity: 1 !important;
-                transform: none !important;
-            }
-            .price-card, .price-card.popular, .btn-price, .btn-nav-cta, .btn-hero-primary {
-                transition: none !important;
-                transform: none !important;
-            }
-        }
-
-        /* Responsive Breakpoints */
-        @media (max-width: 960px) {
-            .nav-menu { display: none; }
-            .nav-hamburger { display: flex; }
-            .pricing-grid-standalone {
-                grid-template-columns: 1fr;
-                max-width: 460px;
-                margin-inline: auto;
-            }
-            .roi-box {
-                grid-template-columns: 1fr;
-                padding: 30px 22px;
-                gap: 30px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .breadcrumb-section { padding-top: 96px; }
-            .pricing-hero { padding: 18px 0 50px; }
-            .pricing-hero h1 { font-size: 2.1rem; }
-            .price-card { padding: 30px 20px; }
-            .final-cta-box { padding: 50px 20px; }
-            .footer-top-grid { flex-direction: column; gap: 36px; }
-            .footer-nav-cols { gap: 32px; }
-        }
-    </style>
+    <link rel="stylesheet" href="/inline-assets/style-e5f01afad4eeff468aede43ee5cd5906089807b316f950b82fe9d3dc763bf75a.css">
+    <link rel="canonical" href="https://melpis.it/prezzi/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/prezzi/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/pricing/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/precios/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/tarifs/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/preise/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/pricing/">
 </head>
 <body>
 
@@ -1291,6 +233,20 @@
                     <span>Inizia gratis</span>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                 </a>
+                
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">IT</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/prezzi/" class="lang-option-link is-active" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/pricing/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/precios/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/tarifs/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/preise/" class="lang-option-link" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
                 <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
                     <span></span><span></span>
                 </button>
@@ -1347,6 +303,17 @@
         <a href="/registrati/" class="btn-cta-primary w-full is-5313025c2edb">
             <span>Inizia la prova di 7 giorni</span>
         </a>
+
+            <div class="mobile-lang-section">
+                <span class="mobile-lang-title">Lingua / Language</span>
+                <div class="mobile-lang-grid">
+                <a href="/prezzi/" class="mobile-lang-chip is-active" hreflang="it">Italiano</a>
+                <a href="/en/pricing/" class="mobile-lang-chip" hreflang="en">English</a>
+                <a href="/es/precios/" class="mobile-lang-chip" hreflang="es">Español</a>
+                <a href="/fr/tarifs/" class="mobile-lang-chip" hreflang="fr">Français</a>
+                <a href="/de/preise/" class="mobile-lang-chip" hreflang="de">Deutsch</a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1416,225 +383,414 @@
                     </span>
                 </div>
 
-                <!-- Cards Pricing Standalone -->
+                <!-- Cards Pricing Standalone (Decision-Oriented) -->
                 <div class="pricing-grid-standalone anim-hero-4">
                     
                     <!-- Card Essenziale -->
                     <div class="price-card">
-                        <div class="price-card-header">
-                            <h3 class="price-plan-name">Essenziale</h3>
-                            <p class="price-plan-desc">Per attività individuali o professionisti che vogliono automatizzare WhatsApp.</p>
-                        </div>
                         <div>
-                            <div class="price-figure">
-                                <span class="price-currency">€</span>
-                                <span class="price-amount">29</span>
-                                <span class="price-period">/mese</span>
+                            <div class="price-card-header">
+                                <h3 class="price-plan-name">Essenziale</h3>
+                                <p class="price-plan-desc">Per professionisti e piccole attività che vogliono automatizzare WhatsApp.</p>
                             </div>
-                            <p class="price-trial-note">7 giorni gratuiti · Nessuna carta richiesta</p>
+                            <div class="price-figure-wrap">
+                                <div class="price-figure">
+                                    <span class="price-currency">€</span>
+                                    <span class="price-amount">29</span>
+                                    <span class="price-period">/mese</span>
+                                </div>
+                                <p class="price-trial-note">7 giorni gratuiti · Nessuna carta richiesta</p>
+                            </div>
+                            <a href="/registrati/?piano=essential" class="btn-price">Inizia gratis</a>
+
+                            <div class="price-volume-box">
+                                <span class="volume-label">Volume mensile</span>
+                                <span class="volume-value">Fino a 500 conversazioni gestite / mese</span>
+                            </div>
+
+                            <ul class="price-features">
+                                <li><span class="chk">✓</span> 1 numero WhatsApp Business</li>
+                                <li><span class="chk">✓</span> Conoscenza base</li>
+                                <li><span class="chk">✓</span> Google Calendar</li>
+                                <li><span class="chk">✓</span> Presa in carico manuale dallo staff</li>
+                                <li><span class="chk">✓</span> Supporto via email</li>
+                            </ul>
                         </div>
-                        <a href="/registrati/?piano=essenziale" class="btn-price">Inizia la prova gratuita</a>
-                        <ul class="price-features">
-                            <li><span class="chk">✓</span> 1 Numero WhatsApp Business ufficiale</li>
-                            <li><span class="chk">✓</span> Fino a 500 conversazioni / mese</li>
-                            <li><span class="chk">✓</span> Conoscenza base (orari, listino, regole)</li>
-                            <li><span class="chk">✓</span> Sincronizzazione Google Calendar</li>
-                            <li><span class="chk">✓</span> Presa in carico manuale dallo staff</li>
-                            <li><span class="chk">✓</span> Supporto via email</li>
-                        </ul>
                     </div>
 
-                    <!-- Card Crescita (Consigliato) -->
+                    <!-- Card Crescita (Più scelto & sollevata) -->
                     <div class="price-card popular">
                         <div class="popular-badge">Più Scelto</div>
-                        <div class="price-card-header">
-                            <h3 class="price-plan-name">Crescita</h3>
-                            <p class="price-plan-desc">Per locali, saloni e studi che vogliono zero no-show e sincronizzazione avanzata.</p>
-                        </div>
                         <div>
-                            <div class="price-figure">
-                                <span class="price-currency">€</span>
-                                <span class="price-amount">69</span>
-                                <span class="price-period">/mese</span>
+                            <div class="popular-lead-line">Il miglior equilibrio per la maggior parte delle attività</div>
+                            <div class="price-card-header">
+                                <h3 class="price-plan-name">Crescita</h3>
+                                <p class="price-plan-desc">Per locali, saloni e studi con più richieste e prenotazioni.</p>
                             </div>
-                            <p class="price-trial-note">7 giorni gratuiti · Nessuna carta richiesta</p>
+                            <div class="price-figure-wrap">
+                                <div class="price-figure">
+                                    <span class="price-currency">€</span>
+                                    <span class="price-amount">69</span>
+                                    <span class="price-period">/mese</span>
+                                </div>
+                                <p class="price-trial-note">7 giorni gratuiti · Nessuna carta richiesta</p>
+                            </div>
+                            <a href="/registrati/?piano=growth" class="btn-price btn-popular">Prova Crescita gratis</a>
+
+                            <div class="price-volume-box popular-volume">
+                                <span class="volume-label">Volume mensile</span>
+                                <span class="volume-value">Fino a 2.000 conversazioni gestite / mese</span>
+                            </div>
+
+                            <ul class="price-features">
+                                <li><span class="chk">✓</span> WhatsApp + Instagram</li>
+                                <li><span class="chk">✓</span> Conoscenza estesa</li>
+                                <li><span class="chk">✓</span> Reminder anti no-show</li>
+                                <li><span class="chk">✓</span> Recensioni Google</li>
+                                <li><span class="chk">✓</span> Fino a 3 operatori staff</li>
+                                <li><span class="chk">✓</span> Supporto prioritario WhatsApp</li>
+                            </ul>
                         </div>
-                        <a href="/registrati/?piano=crescita" class="btn-price btn-popular">Inizia la prova gratuita</a>
-                        <ul class="price-features">
-                            <li><span class="chk">✓</span> WhatsApp Business + Instagram Direct</li>
-                            <li><span class="chk">✓</span> Fino a 2.000 conversazioni / mese</li>
-                            <li><span class="chk">✓</span> Conoscenza aziendale estesa (menu, cataloghi)</li>
-                            <li><span class="chk">✓</span> Gestione turni e promemoria anti no-show</li>
-                            <li><span class="chk">✓</span> Assistente risposte recensioni Google</li>
-                            <li><span class="chk">✓</span> Supporto prioritario WhatsApp</li>
-                        </ul>
                     </div>
 
                     <!-- Card Scala -->
                     <div class="price-card">
-                        <div class="price-card-header">
-                            <h3 class="price-plan-name">Scala</h3>
-                            <p class="price-plan-desc">Per strutture con volumi elevati, più sedi o flussi di prenotazione dedicati.</p>
-                        </div>
                         <div>
-                            <div class="price-figure">
-                                <span class="price-currency">€</span>
-                                <span class="price-amount">149</span>
-                                <span class="price-period">/mese</span>
+                            <div class="price-card-header">
+                                <h3 class="price-plan-name">Scala</h3>
+                                <p class="price-plan-desc">Per attività multi-sede o con volumi elevati.</p>
                             </div>
-                            <p class="price-trial-note">7 giorni gratuiti · Nessuna carta richiesta</p>
+                            <div class="price-figure-wrap">
+                                <div class="price-figure">
+                                    <span class="price-currency">€</span>
+                                    <span class="price-amount">149</span>
+                                    <span class="price-period">/mese</span>
+                                </div>
+                                <p class="price-trial-note">7 giorni gratuiti · Nessuna carta richiesta</p>
+                            </div>
+                            <a href="/registrati/?piano=scale" class="btn-price">Inizia gratis</a>
+
+                            <div class="price-volume-box">
+                                <span class="volume-label">Volume mensile</span>
+                                <span class="volume-value">Fino a 10.000 conversazioni gestite / mese</span>
+                            </div>
+
+                            <ul class="price-features">
+                                <li><span class="chk">✓</span> Multi-canale</li>
+                                <li><span class="chk">✓</span> Multi-sede</li>
+                                <li><span class="chk">✓</span> Regole per sede</li>
+                                <li><span class="chk">✓</span> Flussi personalizzati</li>
+                                <li><span class="chk">✓</span> Account staff illimitati</li>
+                                <li><span class="chk">✓</span> Supporto telefonico dedicato</li>
+                            </ul>
                         </div>
-                        <a href="/registrati/?piano=scala" class="btn-price">Inizia la prova gratuita</a>
-                        <ul class="price-features">
-                            <li><span class="chk">✓</span> Multi-canale completo &amp; sedi multiple</li>
-                            <li><span class="chk">✓</span> Fino a 10.000 conversazioni / mese</li>
-                            <li><span class="chk">✓</span> Regole personalizzate avanzate per sede</li>
-                            <li><span class="chk">✓</span> Flussi di prenotazione su misura</li>
-                            <li><span class="chk">✓</span> Onboarding dedicato 1-to-1</li>
-                            <li><span class="chk">✓</span> Supporto telefonico diretto</li>
-                        </ul>
+                        <div class="price-card-footer-note">
+                            <span>Esigenze su misura? <a href="mailto:info@melpis.it">Parla con noi</a></span>
+                        </div>
                     </div>
 
                 </div>
-            </div>
-        </section>
 
-        <!-- ==================== 3. CALCOLATORE ROI INTERATTIVO ==================== -->
-        <section class="roi-calculator-section" id="calcolatore">
-            <div class="container">
-                <div class="center">
-                    <span class="eyebrow-pill">Calcolatore di Risparmio &amp; Valore</span>
-                    <h2>Quanto tempo e fatturato puoi recuperare?</h2>
-                    <p class="is-718340dcdea7">Inserisci i dati medi della tua attività per scoprire la stima prudente del valore generato da Melpis.</p>
-                </div>
-
-                <div class="roi-box">
-                    <div class="roi-inputs-col">
-                        <div class="roi-slider-group">
-                            <div class="roi-slider-label">
-                                <label for="sliderChats">Messaggi / richieste al giorno</label>
-                                <span class="roi-slider-val" id="valChats">30</span>
-                            </div>
-                            <input type="range" min="10" max="150" value="30" step="5" class="roi-range-input" id="sliderChats" aria-label="Messaggi e richieste al giorno">
+                <!-- Nota Costi WhatsApp Meta Sotto i Prezzi -->
+                <div class="pricing-meta-disclaimer anim-hero-4">
+                    <div class="meta-disclaimer-left">
+                        <div class="disclaimer-pill-icon" aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         </div>
-
-                        <div class="roi-slider-group">
-                            <div class="roi-slider-label">
-                                <label for="sliderTicket">Valore medio prenotazione / cliente</label>
-                                <span class="roi-slider-val" id="valTicket">40 €</span>
-                            </div>
-                            <input type="range" min="15" max="150" value="40" step="5" class="roi-range-input" id="sliderTicket" aria-label="Valore medio prenotazione per cliente">
-                        </div>
-
-                        <p class="roi-formula-note">
-                            * Euristiche di calcolo prudenti: stima di 2,5 minuti risparmiati per ogni conversazione gestita; stima conservativa del 12% di richieste fuori orario recuperate che altrimenti avrebbero cercato un concorrente.
+                        <p class="disclaimer-main">
+                            <strong>Costi WhatsApp Meta esclusi.</strong>
+                            Eventuali costi applicati da Meta per l’invio dei messaggi WhatsApp Business vengono addebitati separatamente in base al tipo di messaggio e al Paese del destinatario.
                         </p>
                     </div>
+                    <a href="#costi-meta" class="disclaimer-anchor">
+                        Come funzionano i costi WhatsApp? <span aria-hidden="true">↓</span>
+                    </a>
+                </div>
 
-                    <div class="roi-results-card">
-                        <div class="roi-metric-item">
-                            <span class="roi-metric-label">Tempo manuale risparmiato</span>
-                            <div class="roi-metric-num" id="resHours">37 ore / mese</div>
+            </div>
+        </section>
+
+        <!-- ==================== 3. QUANTO TI COSTA OGGI GESTIRE TUTTO A MANO? ==================== -->
+        <section class="manual-cost-section" id="costo-manuale">
+            <div class="container">
+                <div class="center">
+                    <span class="eyebrow-pill">Il Valore dell'Automazione</span>
+                    <h2>Quanto ti costa oggi gestire tutto a mano?</h2>
+                    <p class="section-lead-p">Nessuna formula ipotetica o stima arbitraria: ecco i tre problemi reali che assorbono tempo ed energie ogni giorno nella tua attività.</p>
+                </div>
+
+                <div class="manual-cost-grid">
+                    <div class="manual-cost-card">
+                        <div class="manual-cost-icon-wrap" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         </div>
-                        <div class="roi-metric-item">
-                            <span class="roi-metric-label">Clienti recuperati fuori orario (stima)</span>
-                            <div class="roi-metric-num" id="resSaved">108 clienti / mese</div>
+                        <h3>Messaggi ripetitivi</h3>
+                        <p>Richieste continue su orari, prezzi, disponibilità e servizi che interrompono continuamente il tuo lavoro.</p>
+                    </div>
+
+                    <div class="manual-cost-card">
+                        <div class="manual-cost-icon-wrap" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         </div>
-                        <div class="roi-metric-item">
-                            <span class="roi-metric-label">Piano consigliato</span>
-                            <div class="roi-metric-num is-25b2ab642b97" id="resPlan">Crescita (69 €/m)</div>
+                        <h3>Prenotazioni perse</h3>
+                        <p>Richieste fuori orario o risposte che arrivano troppo tardi, quando il potenziale cliente ha già contattato un altro locale o studio.</p>
+                    </div>
+
+                    <div class="manual-cost-card">
+                        <div class="manual-cost-icon-wrap" aria-hidden="true">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         </div>
+                        <h3>Tempo del personale</h3>
+                        <p>Ore spese ogni settimana dallo staff su attività di segreteria e risposte di routine che Melpis può gestire automaticamente.</p>
+                    </div>
+                </div>
+
+                <div class="manual-cost-conclusion">
+                    <p>Con Melpis automatizzi le richieste ripetitive e lasci allo staff solo ciò che richiede davvero una persona.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 4. PREZZO MELPIS + COSTI WHATSAPP ==================== -->
+        <section class="meta-pricing-explainer-section" id="costi-meta">
+            <div class="container">
+                <div class="center">
+                    <span class="eyebrow-pill">Trasparenza Tariffe</span>
+                    <h2>Prezzo Melpis + costi WhatsApp</h2>
+                    <p class="section-lead-p">Una distinzione chiara e corretta tra la piattaforma software e i costi vivi dei provider di messaggistica.</p>
+                </div>
+
+                <div class="meta-pricing-grid">
+                    <div class="meta-pricing-card">
+                        <div class="meta-pricing-badge">Canone Software</div>
+                        <h3>Melpis</h3>
+                        <div class="meta-pricing-highlight">Abbonamento mensile fisso in base al piano.</div>
+                        <p>Include l'assistente AI dedicato, l'integrazione con agende e canali, la knowledge base aziendale, il pannello operativo per lo staff e la gestione delle conversazioni fino al limite del tuo piano.</p>
+                    </div>
+
+                    <div class="meta-pricing-card">
+                        <div class="meta-pricing-badge">Infrastruttura Ufficiale</div>
+                        <h3>Meta WhatsApp Business Platform</h3>
+                        <div class="meta-pricing-highlight">Costi messaggio variabili applicati da Meta.</div>
+                        <p>I costi per i messaggi inviati tramite l'API ufficiale WhatsApp Business vengono conteggiati da Meta in base alla categoria del messaggio (utility, marketing, servizio) e al Paese del destinatario.</p>
+                    </div>
+
+                    <div class="meta-pricing-card">
+                        <div class="meta-pricing-badge">Nessuna Sorpresa</div>
+                        <h3>Nessun costo nascosto Melpis</h3>
+                        <div class="meta-pricing-highlight">Sai sempre quanto paghi per il software; le tariffe Meta sono separate e trasparenti.</div>
+                        <p>Melpis non applica alcuna maggiorazione o ricarico percentuale sui tuoi messaggi WhatsApp: paghi il tuo abbonamento SaaS chiaro a noi e le sole tariffe ufficiali direttamente a Meta.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- ==================== 4. TABELLA COMPARATIVA DETTAGLIATA ==================== -->
+        <!-- ==================== 5. TABELLA COMPARATIVA SINTETICA ==================== -->
         <section class="comparison-table-section" id="confronto">
             <div class="container">
                 <div class="center">
-                    <span class="eyebrow-pill">Confronto Funzionalità</span>
+                    <span class="eyebrow-pill">CONFRONTO PIANI</span>
                     <h2>Tutti i dettagli a confronto</h2>
+                    <p class="section-lead-p">Confronta canali, volumi, automazioni e supporto per scegliere il piano più adatto alla tua attività.</p>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="pricing-comp-table" aria-label="Tabella comparativa dei piani di abbonamento">
+                <div class="comp-table-card">
+                    <table class="pricing-comp-table" aria-label="Confronto dettagliato delle funzionalità dei piani Melpis">
+                        <colgroup>
+                            <col class="col-feature-w">
+                            <col class="col-plan-w">
+                            <col class="col-crescita-w">
+                            <col class="col-scala-w">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th class="feat-col">Caratteristica</th>
-                                <th>Essenziale (29 €)</th>
-                                <th>Crescita (69 €)</th>
-                                <th>Scala (149 €)</th>
+                                <th class="col-feat-th">Caratteristica</th>
+                                <th>
+                                    <div class="plan-th-title">Essenziale (29 €)</div>
+                                    <div class="plan-th-sub">L'essenziale per iniziare</div>
+                                </th>
+                                <th class="col-crescita col-crescita-top">
+                                    <span class="badge-piu-scelto">Più scelto</span>
+                                    <div class="plan-th-title">Crescita (69 €)</div>
+                                    <div class="plan-th-sub">Più possibilità, più risultati</div>
+                                </th>
+                                <th>
+                                    <div class="plan-th-title">Scala (149 €)</div>
+                                    <div class="plan-th-sub">Massima potenza per il tuo business</div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td class="feat-col">Canali supportati</td>
-                                <td>WhatsApp Business</td>
-                                <td>WhatsApp + Instagram</td>
-                                <td>WhatsApp + Instagram + Multi-sede</td>
+                            <!-- Categoria 1: CANALI -->
+                            <tr class="comp-cat-row">
+                                <td class="comp-cat-label">CANALI</td>
+                                <td class="comp-cat-empty"></td>
+                                <td class="col-crescita comp-cat-crescita"></td>
+                                <td class="comp-cat-empty"></td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Conversazioni mensili incluse</td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                        </span>
+                                        <span class="feat-name">Canali supportati</span>
+                                    </div>
+                                </td>
+                                <td>WhatsApp Business</td>
+                                <td class="col-crescita">WhatsApp + Instagram Direct</td>
+                                <td>WhatsApp + Instagram + Multi-canale</td>
+                            </tr>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                                        </span>
+                                        <span class="feat-name">Numeri WhatsApp collegabili</span>
+                                    </div>
+                                </td>
+                                <td>1 numero ufficiale</td>
+                                <td class="col-crescita">1 numero ufficiale</td>
+                                <td>Numeri multipli dedicati</td>
+                            </tr>
+
+                            <!-- Categoria 2: VOLUME -->
+                            <tr class="comp-cat-row">
+                                <td class="comp-cat-label">VOLUME</td>
+                                <td class="comp-cat-empty"></td>
+                                <td class="col-crescita comp-cat-crescita"></td>
+                                <td class="comp-cat-empty"></td>
+                            </tr>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                                        </span>
+                                        <span class="feat-name">Conversazioni gestite da Melpis / mese</span>
+                                    </div>
+                                </td>
                                 <td>Fino a 500</td>
-                                <td>Fino a 2.000</td>
+                                <td class="col-crescita">Fino a 2.000</td>
                                 <td>Fino a 10.000</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Infrastruttura Meta Cloud API</td>
-                                <td><span class="table-check">✓ Ufficiale</span></td>
-                                <td><span class="table-check">✓ Ufficiale</span></td>
-                                <td><span class="table-check">✓ Ufficiale</span></td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                        </span>
+                                        <span class="feat-name">Collaboratori staff abilitati (HITL)</span>
+                                    </div>
+                                </td>
+                                <td>1 account (solo titolare)</td>
+                                <td class="col-crescita">Fino a 3 account (Titolare + 2)</td>
+                                <td>Account illimitati con ruoli e permessi</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Conoscenza aziendale &amp; Regole</td>
-                                <td>Base (1 documento)</td>
-                                <td>Estesa (documenti illimitati)</td>
-                                <td>Personalizzata per sede</td>
+
+                            <!-- Categoria 3: AUTOMAZIONI -->
+                            <tr class="comp-cat-row">
+                                <td class="comp-cat-label">AUTOMAZIONI</td>
+                                <td class="comp-cat-empty"></td>
+                                <td class="col-crescita comp-cat-crescita"></td>
+                                <td class="comp-cat-empty"></td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Sincronizzazione Google Calendar</td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
-                                <td><span class="table-check">✓ Agende multiple</span></td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                                        </span>
+                                        <span class="feat-name">Conoscenza aziendale (Knowledge Base)</span>
+                                    </div>
+                                </td>
+                                <td>Base (orari, listino, servizi)</td>
+                                <td class="col-crescita">Estesa (cataloghi, listini complessi, FAQ)</td>
+                                <td>Personalizzata per sede e flussi complessi</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Gestione turni &amp; Promemoria no-show</td>
-                                <td><span class="table-cross">—</span></td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                        </span>
+                                        <span class="feat-name">Sincronizzazione Google Calendar</span>
+                                    </div>
+                                </td>
+                                <td><span class="chk-green">✓</span> Inclusa</td>
+                                <td class="col-crescita"><span class="chk-green">✓</span> Inclusa con turni</td>
+                                <td><span class="chk-green">✓</span> Agende multiple per sede</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Presa in carico manuale dallo staff (HITL)</td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
-                                <td><span class="table-check">✓ Con ruoli staff</span></td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                                        </span>
+                                        <span class="feat-name">Reminder anti no-show automatici</span>
+                                    </div>
+                                </td>
+                                <td><span class="dash-dim">—</span></td>
+                                <td class="col-crescita"><span class="chk-green">✓</span> Inclusi</td>
+                                <td><span class="chk-green">✓</span> Inclusi avanzati</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Assistente recensioni Google</td>
-                                <td><span class="table-cross">—</span></td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
-                                <td><span class="table-check">✓ Inclusa</span></td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        </span>
+                                        <span class="feat-name">Assistente risposte recensioni Google</span>
+                                    </div>
+                                </td>
+                                <td><span class="dash-dim">—</span></td>
+                                <td class="col-crescita"><span class="chk-green">✓</span> Incluso</td>
+                                <td><span class="chk-green">✓</span> Multi-sede incluso</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Livello di assistenza</td>
+
+                            <!-- Categoria 4: SUPPORTO -->
+                            <tr class="comp-cat-row">
+                                <td class="comp-cat-label">SUPPORTO</td>
+                                <td class="comp-cat-empty"></td>
+                                <td class="col-crescita comp-cat-crescita"></td>
+                                <td class="comp-cat-empty"></td>
+                            </tr>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+                                        </span>
+                                        <span class="feat-name">Canale di assistenza</span>
+                                    </div>
+                                </td>
                                 <td>Email entro 24h</td>
-                                <td>WhatsApp prioritario</td>
-                                <td>Onboarding 1-to-1 + Telefono</td>
+                                <td class="col-crescita">WhatsApp prioritario</td>
+                                <td>WhatsApp prioritario + Telefono</td>
                             </tr>
-                            <tr>
-                                <td class="feat-col">Prova gratuita</td>
-                                <td>7 giorni senza carta</td>
-                                <td>7 giorni senza carta</td>
-                                <td>7 giorni senza carta</td>
+                            <tr class="comp-data-row">
+                                <td class="col-feat">
+                                    <div class="feat-wrapper">
+                                        <span class="feat-icon" aria-hidden="true">
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>
+                                        </span>
+                                        <span class="feat-name">Attivazione e Onboarding</span>
+                                    </div>
+                                </td>
+                                <td>Self-service con guida</td>
+                                <td class="col-crescita col-crescita-bottom">Setup assistito e test prompt</td>
+                                <td>Onboarding 1-to-1 dedicato</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <p class="comp-footnote">* I costi Meta WhatsApp Business Platform sono separati dal piano Melpis.</p>
             </div>
         </section>
 
-        <!-- ==================== 5. FAQ COMMERCIALI ==================== -->
+        <!-- ==================== 6. FAQ COMMERCIALI ==================== -->
         <section class="faq-section" id="faq">
             <div class="container">
                 <div class="center">
@@ -1648,8 +804,12 @@
                         <div class="faq-ans"><p>No. Per avviare la prova di 7 giorni servono solo nome dell'attività, email e password. Nessuna carta di credito viene richiesta alla registrazione e non c'è alcun addebito a sorpresa né rinnovo automatico.</p></div>
                     </details>
                     <details class="faq-item">
-                        <summary class="faq-quest"><span>Cosa succede se supero il limite di conversazioni incluse nel mio piano?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
-                        <div class="faq-ans"><p>Il servizio non si interrompe all'improvviso: ricevi una notifica nella dashboard quando raggiungi l'80% e il 100% della soglia mensile, con la possibilità di effettuare l'upgrade al piano superiore con un click.</p></div>
+                        <summary class="faq-quest"><span>Cosa si intende per "conversazioni gestite da Melpis al mese"?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                        <div class="faq-ans"><p>È la soglia massima mensile di conversazioni cliente elaborate dall'assistente AI di Melpis inclusa nel canone del tuo abbonamento. Il servizio non si blocca all'improvviso: ricevi avvisi tempestivi al raggiungimento dell'80% e del 100% della soglia con possibilità di upgrade immediato.</p></div>
+                    </details>
+                    <details class="faq-item">
+                        <summary class="faq-quest"><span>Come funzionano le tariffe della WhatsApp Business Platform di Meta?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                        <div class="faq-ans"><p>Il prezzo del piano Melpis è un canone software fisso e non include le tariffe messaggio applicate da Meta alla WhatsApp Business Platform. Questi costi variano in base alla tipologia di messaggio (servizio, utility, marketing) e al Paese del destinatario, e vengono addebitati separatamente con totale trasparenza e senza commissioni Melpis.</p></div>
                     </details>
                     <details class="faq-item">
                         <summary class="faq-quest"><span>Posso modificare il piano o disdire l'abbonamento in qualsiasi momento?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
@@ -1657,15 +817,11 @@
                     </details>
                     <details class="faq-item">
                         <summary class="faq-quest"><span>Come viene emessa la fattura e include la fatturazione elettronica italiana?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
-                        <div class="faq-ans"><p>I pagamenti sono gestiti tramite Stripe. Inserendo la Partita IVA e il codice SDI (o PEC) nella dashboard, la fattura viene regolarmente registrata e recapitata tramite il Sistema di Interscambio (SDI) per le aziende italiane.</p></div>
-                    </details>
-                    <details class="faq-item">
-                        <summary class="faq-quest"><span>Ci sono costi aggiuntivi per l'infrastruttura ufficiale Meta Cloud API?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
-                        <div class="faq-ans"><p>Melpis utilizza la Meta Cloud API ufficiale. Meta prevede un volume gratuito mensile di conversazioni per ogni account business (tipicamente 1.000 conversazioni di servizio al mese offerte da Meta). Eventuali consumi eccedenti le soglie gratuite di Meta seguono i prezzi ufficiali comunicati da Meta.</p></div>
+                        <div class="faq-ans"><p>Ricevuta Stripe immediata; fattura fiscale su richiesta.</p></div>
                     </details>
                     <details class="faq-item">
                         <summary class="faq-quest"><span>Posso gestire più punti vendita o sedi con lo stesso account?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
-                        <div class="faq-ans"><p>Il piano Scala include il supporto per multi-sede e numeri multipli, consentendo di configurare orari, calendari e regole specifiche per ogni singola sede da un'unica schermata di controllo.</p></div>
+                        <div class="faq-ans"><p>Il piano Scala include il supporto nativo multi-sede e per numeri multipli, consentendo di configurare orari, calendari e regole specifiche per ogni singola sede da un'unica schermata di controllo.</p></div>
                     </details>
                 </div>
             </div>
@@ -1722,162 +878,13 @@
                 </div>
             </div>
             <div class="footer-bottom-row">
-                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+                <p>© 2026 Melpis. Tutti i diritti riservati. API Meta Cloud ufficiale &amp; Sicurezza dei dati.</p>
             </div>
         </div>
     </footer>
 
-    <!-- Script del Calcolatore ROI & Navbar Controller Unificato -->
-    <script>
-        (function() {
-            // Calcolatore ROI
-            var sliderChats = document.getElementById('sliderChats');
-            var sliderTicket = document.getElementById('sliderTicket');
-            var valChats = document.getElementById('valChats');
-            var valTicket = document.getElementById('valTicket');
-            var resHours = document.getElementById('resHours');
-            var resSaved = document.getElementById('resSaved');
-            var resPlan = document.getElementById('resPlan');
-
-            function updateRoi() {
-                if (!sliderChats || !sliderTicket) return;
-                var chatsPerDay = parseInt(sliderChats.value, 10);
-                var ticketVal = parseInt(sliderTicket.value, 10);
-
-                if (valChats) valChats.textContent = chatsPerDay;
-                if (valTicket) valTicket.textContent = ticketVal + ' €';
-
-                var monthlyChats = chatsPerDay * 30;
-                var hoursSaved = Math.round((monthlyChats * 2.5) / 60);
-                var savedCustomers = Math.round(monthlyChats * 0.12);
-
-                if (resHours) resHours.textContent = hoursSaved + ' ore / mese';
-                if (resSaved) resSaved.textContent = savedCustomers + ' clienti / mese';
-
-                if (resPlan) {
-                    if (monthlyChats <= 500) {
-                        resPlan.textContent = 'Essenziale (29 €/m)';
-                    } else if (monthlyChats <= 2500) {
-                        resPlan.textContent = 'Crescita (69 €/m)';
-                    } else {
-                        resPlan.textContent = 'Scala (149 €/m)';
-                    }
-                }
-            }
-
-            if (sliderChats && sliderTicket) {
-                sliderChats.addEventListener('input', updateRoi);
-                sliderTicket.addEventListener('input', updateRoi);
-                updateRoi();
-            }
-
-                        // Unified Navbar Controller with Adaptive Theme & Sticky Scroll
-            var header = document.getElementById('mainHeader');
-            var dropdown = document.getElementById('navDropdownSettori');
-            var trigger = document.getElementById('settoriDropdownTrigger');
-            var hamburger = document.getElementById('navHamburger');
-            var overlay = document.getElementById('mobileOverlay');
-            var accordionBtn = document.getElementById('mobileSettoriBtn');
-            var accordionWrap = document.getElementById('mobileSettoriAccordion');
-            var lightSections = document.querySelectorAll('[data-navbar-theme="light"]');
-
-            if (header) {
-                var updateNavbarState = function() {
-                    var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
-                    header.classList.toggle('is-scrolled', scrollY > 15);
-
-                    if (lightSections.length > 0) {
-                        var headerRect = header.getBoundingClientRect();
-                        var headerMidY = headerRect.top + (headerRect.height / 2);
-                        var isOverLight = false;
-
-                        for (var i = 0; i < lightSections.length; i++) {
-                            var secRect = lightSections[i].getBoundingClientRect();
-                            if (secRect.top <= headerMidY && secRect.bottom >= headerMidY) {
-                                isOverLight = true;
-                                break;
-                            }
-                        }
-                        header.classList.toggle('nav-theme-light', isOverLight);
-                    }
-                };
-
-                window.addEventListener('scroll', updateNavbarState, { passive: true });
-                window.addEventListener('resize', updateNavbarState, { passive: true });
-                updateNavbarState();
-            }
-
-            if (dropdown && trigger) {
-                var setDropdown = function(open) {
-                    dropdown.classList.toggle('is-open', open);
-                    trigger.setAttribute('aria-expanded', String(open));
-                };
-
-                trigger.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDropdown(!dropdown.classList.contains('is-open'));
-                });
-
-                document.addEventListener('click', function(e) {
-                    if (!dropdown.contains(e.target)) {
-                        setDropdown(false);
-                    }
-                });
-
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
-                        setDropdown(false);
-                        trigger.focus();
-                    }
-                });
-
-                dropdown.addEventListener('focusout', function() {
-                    setTimeout(function() {
-                        if (!dropdown.contains(document.activeElement)) {
-                            setDropdown(false);
-                        }
-                    }, 10);
-                });
-            }
-
-            if (hamburger && overlay) {
-                var setNav = function(open) {
-                    overlay.classList.toggle('open', open);
-                    overlay.setAttribute('aria-hidden', String(!open));
-                    hamburger.setAttribute('aria-expanded', String(open));
-                    document.body.style.overflow = open ? 'hidden' : '';
-                };
-
-                hamburger.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    setNav(!overlay.classList.contains('open'));
-                });
-
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && overlay.classList.contains('open')) {
-                        setNav(false);
-                    }
-                });
-
-                overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-cta-primary, .btn-pill-cta').forEach(function(link) {
-                    link.addEventListener('click', function() {
-                        setNav(false);
-                    });
-                });
-            }
-
-            if (accordionBtn && accordionWrap) {
-                accordionBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var isExpanded = accordionWrap.classList.toggle('is-expanded');
-                    accordionBtn.setAttribute('aria-expanded', String(isExpanded));
-                });
-            }
-
-        })();
-    </script>
+    <!-- Script Navbar Controller Unificato & Smooth Navigation -->
+    <script src="/inline-assets/script-9edfbef822c9c5d26747bf83a235257a520324777d84f636dbc6b1b570aebe74.js" defer></script>
     <script src="/app.js" defer></script>
 </body>
 </html>

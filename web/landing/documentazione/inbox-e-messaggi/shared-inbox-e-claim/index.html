@@ -1,0 +1,329 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Inbox e Presa in Carico (Claim) — Documentazione Melpis</title>
+    <meta name="description" content="Guida all'uso della Shared Inbox di Melpis: monitoraggio chat in tempo reale, assegnazione operatore (claim), invio manuale e rilascio all'AI.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/inbox-e-messaggi/shared-inbox-e-claim/">
+    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link is-active">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Shared Inbox &amp; Umano</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Shared Inbox e Claim</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Shared Inbox e Presa in Carico (Claim)</h1>
+                    <p class="docs-article-subtitle">Come supervisionare le conversazioni WhatsApp e Instagram, subentrare manualmente e rilasciare la chat all'assistente AI.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>La <strong>Shared Inbox</strong> è il cuore operativo Human-in-the-Loop (HITL) di Melpis. Riunisce in un'unica interfaccia tutte le conversazioni in arrivo da WhatsApp e Instagram Direct. Permette al titolare e allo staff di monitorare le risposte fornite dall'AI, intervenire manualmente in qualsiasi momento ("claim") per gestire richieste speciali o clienti delicati, inviare messaggi ufficiali ed eventualmente riattivare l'AI al termine dell'assistenza.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Tutti i ruoli (<strong>Owner</strong>, <strong>Manager</strong> e <strong>Staff</strong>) possono accedere alla Shared Inbox e inviare messaggi.</li>
+                        <li>Avere almeno un canale attivo (WhatsApp Business o Instagram Direct collegato).</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Apri la sezione Inbox nella Dashboard</h3>
+                                <p class="docs-step-text">Clicca su <strong>Messaggi / Inbox</strong> nella barra di navigazione. La schermata è divisa in due colonne: la lista delle conversazioni a sinistra e la cronologia della chat selezionata a destra.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Filtra per stato conversazione</h3>
+                                <p class="docs-step-text">In alto a sinistra puoi filtrare i thread in base allo stato:
+                                <ul>
+                                    <li><strong>Richiede attenzione</strong>: conversazioni in cui l'utente ha chiesto un operatore o il sistema ha rilevato un dubbio/conflitto.</li>
+                                    <li><strong>In gestione</strong>: chat attualmente assegnate a un membro del tuo staff.</li>
+                                    <li><strong>Gestite da AI</strong>: conversazioni che stanno procedendo in piena autonomia.</li>
+                                    <li><strong>Tutte</strong>: cronologia completa.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Prendi in carico (Claim)</h3>
+                                <p class="docs-step-text">Quando desideri intervenire personalmente, clicca sul pulsante verde <strong>Prendi in carico</strong> posizionato in alto a destra nella chat:
+                                <ul>
+                                    <li>La conversazione viene assegnata al tuo profilo operatore.</li>
+                                    <li><strong>L'AI viene istantaneamente sospesa su quella conversazione</strong>: non invierà messaggi automatici finché la chat è nelle tue mani.</li>
+                                    <li>Gli altri membri del team vedranno il tuo avatar e sapranno che la conversazione è già seguita.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Invia messaggi manuali</h3>
+                                <p class="docs-step-text">Digita il testo nel box inferiore e premi <em>Invia</em>. Il messaggio viene recapitato istantaneamente al cliente su WhatsApp o Instagram attraverso le API ufficiali di Meta, come se stessi usando l'applicazione ufficiale.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">5</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Rilascia all'AI o Chiudi la conversazione</h3>
+                                <p class="docs-step-text">Al termine dell'interazione puoi scegliere:
+                                <ul>
+                                    <li><strong>Rilascia all'AI</strong>: se il cliente scriverà di nuovo, l'assistente automatico riprenderà la gestione normale.</li>
+                                    <li><strong>Chiudi conversazione</strong>: archivia il thread come risolto. Se il cliente riscrive in futuro, verrà aperto un nuovo ciclo.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-info">
+                        <div class="docs-callout-title">ℹ️ Prevenzione delle collisioni operatore-AI</div>
+                        <p class="docs-callout-text">Durante il claim, il blocco dell'AI è deterministico a livello di database (campo <code>ai_sospesa = true</code>). Questo impedisce la classica situazione imbarazzante in cui l'assistente automatico e il dipendente rispondono contemporaneamente alla stessa domanda del cliente.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>Tutti i messaggi scambiati manualmente vengono archiviati nella cronologia con il nome dell'operatore che li ha inviati.</li>
+                        <li>Il tempo trascorso tra la richiesta di supporto del cliente e il claim dell'operatore viene registrato per il calcolo dell'SLA medio di risposta.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Finestra di servizio Meta (24 ore)</strong>: Su WhatsApp e Instagram, puoi inviare messaggi liberi solo entro 24 ore dall'ultimo messaggio inviato dall'utente. Trascorsa questa finestra temporale, WhatsApp richiede l'uso di un Template registrato e approvato da Meta.</li>
+                        <li><strong>Note vocali in uscita</strong>: Dalla Shared Inbox puoi inviare messaggi di testo ed emoji; la registrazione di messaggi vocali dal pannello web non è al momento supportata.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'invio del messaggio fallisce con "Finestra 24h scaduta"</summary>
+                            <div class="docs-accordion-content">
+                                <p>Il cliente ha scritto più di 24 ore fa e la policy di Meta vieta l'invio di messaggi promozionali o liberi per tutelare gli utenti da spam. Per riattivare la finestra, il cliente deve inviare un nuovo messaggio oppure devi utilizzare un messaggio template autorizzato.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Due operatori hanno cliccato su Prendi in carico insieme</summary>
+                            <div class="docs-accordion-content">
+                                <p>Melpis applica una transazione atomica sul database: il primo clic assegna il thread e il secondo operatore riceve una notifica a schermo con il nome del collega che ha già effettuato il claim.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>L'operazione di claim e rilascio è gestita tramite le API in <code>src/api/routes_conversations.py</code>:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/api/routes_conversations.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>@router.post("/conversations/{conversation_id}/claim")
+async def claim_conversation(
+    conversation_id: str,
+    current_user: User = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    query = """
+        UPDATE conversations
+        SET assigned_to = $1,
+            ai_sospesa = true,
+            status = 'in_gestione',
+            claimed_at = NOW()
+        WHERE id = $2 AND organization_id = $3
+        RETURNING id, assigned_to, status;
+    """
+    row = await db.fetchrow(query, current_user.id, conversation_id, current_user.organization_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Conversazione non trovata")
+    return {"status": "claimed", "assigned_to": current_user.name}</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-related-card">
+                            <div class="docs-related-tag">Escalation</div>
+                            <div class="docs-related-title">Regole di Escalation e SLA</div>
+                        </a>
+                        <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-related-card">
+                            <div class="docs-related-tag">Team</div>
+                            <div class="docs-related-title">Team e Permessi Operatori</div>
+                        </a>
+                        <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-related-card">
+                            <div class="docs-related-tag">Canale</div>
+                            <div class="docs-related-title">Collegare WhatsApp Business</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

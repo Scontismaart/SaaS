@@ -1,0 +1,36 @@
+{
+  "filters": {
+    "all": "Alle",
+    "open": "Offen",
+    "mine": "Meine Tickets",
+    "ai_handling": "KI aktiv",
+    "human_needed": "Mitarbeiter nötig",
+    "closed": "Geschlossen",
+    "search_chats": "Konversation suchen..."
+  },
+  "chat": {
+    "claim_btn": "Ticket übernehmen",
+    "claimed_by_you": "Ihnen zugewiesen",
+    "claimed_by_other": "Zugewiesen an {{name}}",
+    "release_btn": "An KI zurückgeben",
+    "close_ticket": "Konversation schließen",
+    "reopen_ticket": "Konversation wiedereröffnen",
+    "channel_whatsapp": "WhatsApp",
+    "channel_instagram": "Instagram Direct",
+    "type_message": "Antwort verfassen...",
+    "send_btn": "Senden",
+    "customer_info": "Kontaktdetails",
+    "phone": "Telefonnummer",
+    "last_seen": "Zuletzt aktiv: {{time}}",
+    "notes": "Interne Teamnotizen",
+    "add_note_placeholder": "Interne Notiz hinzufügen (nur für Ihr Team sichtbar)...",
+    "opt_out_badge": "Marketing-Opt-out aktiv",
+    "ai_paused": "KI-Assistent für diesen Chat pausiert"
+  },
+  "status_labels": {
+    "active": "Aktiv",
+    "waiting_reply": "Wartet auf Antwort",
+    "resolved": "Gelöst",
+    "archived": "Archiviert"
+  }
+}

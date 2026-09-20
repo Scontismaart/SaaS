@@ -14,6 +14,7 @@ _SPEC.loader.exec_module(_MODULE)
 validate = _MODULE.validate
 STRIPE_PRICE_ENV_NAMES = _MODULE.STRIPE_PRICE_ENV_NAMES
 IMAGE_REFERENCE_ENV_NAMES = _MODULE.IMAGE_REFERENCE_ENV_NAMES
+LEGAL_IDENTITY_ENV_NAMES = _MODULE.LEGAL_IDENTITY_ENV_NAMES
 
 
 def test_production_example_declares_safe_commercial_defaults():
@@ -57,6 +58,12 @@ def common_config():
         "MELPIS_WEB_IMAGE_REF": "ghcr.io/melpis/web@sha256:" + "b" * 64,
         "CADDY_SITE_MODE": "temporary",
         "PUBLIC_HOST": "temporary.melpis.test",
+        "LEGAL_ENTITY_NAME": "Melpis S.r.l.",
+        "LEGAL_ENTITY_REGISTERED_OFFICE": "Via Roma 1, Roma",
+        "LEGAL_ENTITY_VAT_NUMBER": "IT12345678901",
+        "LEGAL_PRIVACY_CONTACT_EMAIL": "privacy@melpis.invalid",
+        "LEGAL_FORUM": "Roma",
+        "LEGAL_DOCUMENT_EFFECTIVE_DATE": "2026-09-21",
         "STRIPE_WEBHOOK_SECRET": "whsec_unit_safe_value",
         "TRUSTED_PROXY_CIDRS": "172.30.0.0/24",
         "OPENROUTER_MODEL": "groq/openai/gpt-oss-20b",
@@ -104,6 +111,13 @@ def test_valid_commercial_bootstrap_configuration_passes():
 
 def test_valid_sandbox_configuration_passes():
     assert validate(sandbox_config()) == []
+
+
+@pytest.mark.parametrize("name", LEGAL_IDENTITY_ENV_NAMES)
+def test_production_preflight_blocks_unresolved_legal_identity_tokens(name):
+    config = commercial_config()
+    config[name] = "<replace-me>"
+    assert f"{name}: missing or placeholder" in validate(config)
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,64 @@
+{
+  "brand": "Melpis",
+  "tagline": "AI WhatsApp Assistant for Your Business",
+  "nav": {
+    "home": "Home",
+    "sectors": "Industries",
+    "pricing": "Pricing",
+    "documentation": "Documentation",
+    "login": "Log in",
+    "signup": "Start free trial",
+    "open_menu": "Open menu",
+    "close_menu": "Close menu"
+  },
+  "sectors": {
+    "restaurants": "Restaurants & Pizzerias",
+    "beauty": "Salons & Spas",
+    "medical": "Medical & Dental Clinics",
+    "hotels": "Hotels & Hospitality"
+  },
+  "actions": {
+    "save": "Save",
+    "save_changes": "Save changes",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "continue": "Continue",
+    "loading": "Loading...",
+    "search": "Search...",
+    "filter": "Filter",
+    "export": "Export",
+    "copy": "Copy",
+    "copied": "Copied to clipboard"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "error": "Error",
+    "online": "Online",
+    "offline": "Offline"
+  },
+  "footer": {
+    "rights": "All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cookies": "Cookie Policy",
+    "legal_note": "Melpis uses the official Meta Cloud API. We are not affiliated with WhatsApp LLC or Meta Platforms Inc."
+  },
+  "languages": {
+    "it": "Italiano",
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "select_language": "Select language"
+  }
+}

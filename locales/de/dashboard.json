@@ -1,0 +1,68 @@
+{
+  "sidebar": {
+    "brand_eyebrow": "Dashboard",
+    "business_default": "Ihr Betrieb",
+    "group_main": "Hauptbereich",
+    "group_assistant": "Assistent",
+    "nav_panoramica": "Übersicht",
+    "nav_inbox": "Posteingang",
+    "nav_prenotazioni": "Buchungen",
+    "nav_recensioni": "Bewertungen",
+    "nav_team": "Team & Mitarbeiter",
+    "nav_assistente": "KI-Simulator",
+    "nav_conoscenza": "Wissensdatenbank",
+    "nav_configurazione_ai": "KI-Konfiguration",
+    "menu_impostazioni": "Einstellungen",
+    "menu_piano": "Tarif & Abrechnung",
+    "menu_logout": "Abmelden"
+  },
+  "topbar": {
+    "title_panoramica": "Übersicht",
+    "title_inbox": "Posteingang & Dialoge",
+    "title_prenotazioni": "Buchungen & Kalender",
+    "title_recensioni": "Bewertungen & Feedback",
+    "title_team": "Team & Mitarbeiter",
+    "title_assistente": "Simulator für KI-Assistenten",
+    "title_conoscenza": "Dokumente & Wissensbasis",
+    "title_configurazione_ai": "KI-Konfiguration & Regeln",
+    "title_impostazioni": "Allgemeine Einstellungen",
+    "title_account": "Konto & Abrechnung",
+    "search_placeholder": "Tickets, Buchungen, Dokumente durchsuchen…",
+    "search_aria": "Globale Suche",
+    "notifications": "Benachrichtigungen",
+    "notifications_title": "Benachrichtigungen",
+    "notifications_empty": "Keine neuen Mitteilungen.",
+    "login_btn": "Anmelden"
+  },
+  "kpi": {
+    "total_received": "heute empfangene Nachrichten",
+    "handled_by_ai": "durch KI-Assistent bearbeitet",
+    "escalated_human": "an Mitarbeiter übergeben",
+    "bookings_created": "bestätigte Buchungen",
+    "trend_neutral": "Auf Vortagesniveau",
+    "trend_positive": "Höher als gestern",
+    "trend_negative": "Niedriger als gestern",
+    "sparkline_caption": "Letzte 7 Tage",
+    "sparkline_unit": "Wo."
+  },
+  "modals": {
+    "confirm_action": "Aktion bestätigen",
+    "confirm_btn": "Bestätigen",
+    "cancel_btn": "Abbrechen",
+    "delete_item_title": "Löschung bestätigen",
+    "delete_item_desc": "Sind Sie sicher, dass Sie diesen Eintrag löschen möchten? Dieser Vorgang kann nicht rückgängig gemacht werden."
+  },
+  "empty_states": {
+    "no_data": "Keine Daten vorhanden.",
+    "no_notifications": "Keine ungelesenen Benachrichtigungen.",
+    "no_bookings": "Keine Buchungen für die gewählten Kriterien gefunden.",
+    "no_messages": "Keine Nachrichten in dieser Konversation.",
+    "search_no_results": "Keine Ergebnisse gefunden."
+  },
+  "toast": {
+    "saved": "Änderungen erfolgreich gespeichert.",
+    "error": "Ein unerwarteter Fehler ist aufgetreten.",
+    "network_error": "Verbindungsfehler zum Server. Bitte versuchen Sie es in Kürze erneut.",
+    "session_expired": "Sitzung abgelaufen. Bitte melden Sie sich erneut an."
+  }
+}

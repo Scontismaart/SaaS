@@ -11,20 +11,28 @@
 
 FROM nginx:1.27-alpine AS runtime
 
-# ── Landing (root del docroot) ──────────────────────────────
-COPY landing/index.html landing/style.css landing/app.js /usr/share/nginx/html/
+# ── Landing e pagine pubbliche multilingua (root del docroot) ─
+COPY landing/index.html landing/style.css landing/app.js landing/navbar.js /usr/share/nginx/html/
 COPY landing/privacy.html landing/termini.html landing/cookie.html landing/404.html /usr/share/nginx/html/
-COPY landing/robots.txt landing/sitemap.xml landing/og-image.jpg /usr/share/nginx/html/
+COPY landing/robots.txt landing/sitemap.xml landing/*.jpg /usr/share/nginx/html/
 COPY landing/*.webp landing/*.svg /usr/share/nginx/html/
+COPY inline-assets/ /usr/share/nginx/html/inline-assets/
 COPY landing/fonts/ /usr/share/nginx/html/fonts/
 COPY landing/settori/ /usr/share/nginx/html/settori/
 COPY landing/prezzi/ /usr/share/nginx/html/prezzi/
+COPY landing/documentazione/ /usr/share/nginx/html/documentazione/
+COPY landing/en/ /usr/share/nginx/html/en/
+COPY landing/es/ /usr/share/nginx/html/es/
+COPY landing/fr/ /usr/share/nginx/html/fr/
+COPY landing/de/ /usr/share/nginx/html/de/
+COPY locales/ /usr/share/nginx/html/locales/
+COPY i18n-client.js /usr/share/nginx/html/
 
 # ── Pagine di accesso e registrazione dedicate (/accedi/, /registrati/) ──
 COPY login.html login.js register.html register.js auth.js auth.css /usr/share/nginx/html/
 
 # ── Dashboard (sotto /app/) ─────────────────────────────────
-COPY index.html style.css app.js logo.webp /usr/share/nginx/html/app/
+COPY index.html style.css app.js logo.webp i18n-client.js /usr/share/nginx/html/app/
 COPY fonts/ /usr/share/nginx/html/app/fonts/
 COPY vendor/ /usr/share/nginx/html/app/vendor/
 COPY config.template.js /usr/share/nginx/html/config.template.js

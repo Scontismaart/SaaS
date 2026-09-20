@@ -1,0 +1,105 @@
+{
+  "page_title": "Planes y Precios · Asistente de WhatsApp con IA | Melpis",
+  "meta_description": "Planes y precios claros para activar tu asistente de WhatsApp con IA. Prueba gratuita de 7 días sin tarjeta de crédito, sin permanencia y cancela cuando quieras.",
+  "hero": {
+    "badge": "Precios transparentes",
+    "title": "Un plan diseñado para cada etapa de tu negocio",
+    "subtitle": "Activa tu asistente de WhatsApp con IA en pocos minutos. Prueba gratis durante 7 días, sin tarjeta y sin permanencia.",
+    "monthly_toggle": "Mensual",
+    "annual_toggle": "Anual",
+    "annual_discount": "2 meses gratis"
+  },
+  "plans": {
+    "essential": {
+      "name": "Esencial",
+      "badge": "",
+      "tagline": "Para profesionales independientes y pequeños negocios que buscan automatizar preguntas frecuentes y horarios.",
+      "price_monthly": 29,
+      "price_annual": 24,
+      "period": "/mes",
+      "cta": "Empezar con Esencial",
+      "features": [
+        "1 número oficial de WhatsApp Business",
+        "Hasta 300 conversaciones con IA/mes",
+        "Horarios, tarifas y respuestas automáticas 24/7",
+        "Bandeja de entrada web desde cualquier dispositivo",
+        "Notificaciones de escalado por correo",
+        "Soporte estándar por ticket en 24h"
+      ]
+    },
+    "growth": {
+      "name": "Crecimiento",
+      "badge": "Más elegido",
+      "tagline": "Para restaurantes, salones y clínicas que gestionan reservas y citas de forma constante.",
+      "price_monthly": 69,
+      "price_annual": 57,
+      "period": "/mes",
+      "cta": "Probar Crecimiento gratis",
+      "features": [
+        "Todo lo incluido en Esencial",
+        "Hasta 1.200 conversaciones con IA/mes",
+        "Sincronización bidireccional con Google Calendar",
+        "Gestión de reservas y recordatorios anti-ausencias",
+        "Hasta 3 operadores simultáneos en la bandeja",
+        "Entrenamiento con documentos PDF y listas de precios",
+        "Soporte prioritario por WhatsApp y correo"
+      ]
+    },
+    "scale": {
+      "name": "Escala",
+      "badge": "Máxima potencia",
+      "tagline": "Para hoteles, clínicas con múltiples sedes y negocios con alto volumen de consultas.",
+      "price_monthly": 149,
+      "price_annual": 124,
+      "period": "/mes",
+      "cta": "Pasar a Escala",
+      "features": [
+        "Todo lo incluido en Crecimiento",
+        "Conversaciones con IA ilimitadas (uso razonable)",
+        "Operadores ilimitados con permisos dedicados",
+        "Integración con Instagram Direct incluida",
+        "Webhooks personalizados e integración PMS/Airtable",
+        "Registro de auditoría de seguridad y acuerdo de tratamiento (DPA)",
+        "Gestor de cuenta dedicado y bienvenida guiada"
+      ]
+    }
+  },
+  "guarantee": {
+    "title": "Nuestra garantía de transparencia",
+    "items": [
+      {
+        "title": "Sin tarjeta para la prueba",
+        "desc": "Empieza en 60 segundos con tu correo y nombre de negocio. Sin cobros sorpresa."
+      },
+      {
+        "title": "Cancela en un clic cuando quieras",
+        "desc": "Sin contratos de permanencia. Puedes cancelar directamente desde tu panel de ajustes."
+      },
+      {
+        "title": "API oficial Meta Cloud incluida",
+        "desc": "Conexión oficial mediante la API Meta Cloud: minimiza el riesgo de bloqueos frente a herramientas no oficiales."
+      }
+    ]
+  },
+  "faq": {
+    "title": "Preguntas frecuentes sobre precios",
+    "items": [
+      {
+        "q": "¿Qué se considera una 'conversación con IA'?",
+        "a": "Una conversación es una sesión de intercambio continuo con un cliente dentro de una ventana de 24 horas. El envío de múltiples mensajes durante la misma consulta cuenta como una sola conversación."
+      },
+      {
+        "q": "¿Qué ocurre si supero el límite de conversaciones de mi plan?",
+        "a": "Nunca bloqueamos el servicio: te avisamos de inmediato por correo. Puedes subir de plan en cualquier momento o añadir un paquete adicional."
+      },
+      {
+        "q": "¿Puedo cambiar de plan o cancelar después?",
+        "a": "Por supuesto. Puedes actualizar, reducir o cancelar tu suscripción en cualquier momento desde el portal de Stripe integrado en ajustes."
+      },
+      {
+        "q": "¿Están incluidos los costes de mensajes de Meta?",
+        "a": "Sí, para todas las conversaciones de servicio iniciadas por los clientes (Customer-Initiated) no hay costes adicionales de entrega."
+      }
+    ]
+  }
+}

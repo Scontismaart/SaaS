@@ -1,0 +1,68 @@
+{
+  "sidebar": {
+    "brand_eyebrow": "Pannello",
+    "business_default": "La tua attività",
+    "group_main": "Principale",
+    "group_assistant": "Assistente",
+    "nav_panoramica": "Panoramica",
+    "nav_inbox": "Inbox",
+    "nav_prenotazioni": "Prenotazioni",
+    "nav_recensioni": "Recensioni",
+    "nav_team": "Team & Collaboratori",
+    "nav_assistente": "Simulatore AI",
+    "nav_conoscenza": "Conoscenza",
+    "nav_configurazione_ai": "Configurazione AI",
+    "menu_impostazioni": "Impostazioni",
+    "menu_piano": "Piano e abbonamento",
+    "menu_logout": "Esci"
+  },
+  "topbar": {
+    "title_panoramica": "Panoramica",
+    "title_inbox": "Inbox & Conversazioni",
+    "title_prenotazioni": "Prenotazioni & Calendario",
+    "title_recensioni": "Recensioni & Feedback",
+    "title_team": "Team & Collaboratori",
+    "title_assistente": "Simulatore Assistente AI",
+    "title_conoscenza": "Documenti & Conoscenza",
+    "title_configurazione_ai": "Configurazione AI & Regole",
+    "title_impostazioni": "Impostazioni Generali",
+    "title_account": "Account & Abbonamento",
+    "search_placeholder": "Cerca ticket, prenotazioni, documenti…",
+    "search_aria": "Ricerca globale",
+    "notifications": "Centro notifiche",
+    "notifications_title": "Notifiche",
+    "notifications_empty": "Nessuna nuova notifica.",
+    "login_btn": "Accedi"
+  },
+  "kpi": {
+    "total_received": "messaggi ricevuti oggi",
+    "handled_by_ai": "gestiti dall'assistente",
+    "escalated_human": "girati allo staff",
+    "bookings_created": "prenotazioni fissate",
+    "trend_neutral": "In linea con ieri",
+    "trend_positive": "In aumento rispetto a ieri",
+    "trend_negative": "In calo rispetto a ieri",
+    "sparkline_caption": "Ultimi 7 giorni",
+    "sparkline_unit": "sett."
+  },
+  "modals": {
+    "confirm_action": "Conferma azione",
+    "confirm_btn": "Conferma",
+    "cancel_btn": "Annulla",
+    "delete_item_title": "Conferma eliminazione",
+    "delete_item_desc": "Sei sicuro di voler eliminare questo elemento? L'operazione non è reversibile."
+  },
+  "empty_states": {
+    "no_data": "Nessun dato disponibile.",
+    "no_notifications": "Nessuna notifica non letta.",
+    "no_bookings": "Nessuna prenotazione trovata per i criteri selezionati.",
+    "no_messages": "Nessun messaggio presente nella conversazione.",
+    "search_no_results": "Nessun risultato trovato."
+  },
+  "toast": {
+    "saved": "Modifiche salvate con successo.",
+    "error": "Si è verificato un errore imprevisto.",
+    "network_error": "Problema di connessione alla rete. Riprova tra poco.",
+    "session_expired": "Sessione scaduta. Effettua nuovamente il login."
+  }
+}

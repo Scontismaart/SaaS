@@ -1,0 +1,68 @@
+{
+  "sidebar": {
+    "brand_eyebrow": "Control Panel",
+    "business_default": "Your Business",
+    "group_main": "Main",
+    "group_assistant": "Assistant",
+    "nav_panoramica": "Overview",
+    "nav_inbox": "Inbox",
+    "nav_prenotazioni": "Bookings",
+    "nav_recensioni": "Reviews",
+    "nav_team": "Team & Members",
+    "nav_assistente": "AI Simulator",
+    "nav_conoscenza": "Knowledge Base",
+    "nav_configurazione_ai": "AI Configuration",
+    "menu_impostazioni": "Settings",
+    "menu_piano": "Plan & Billing",
+    "menu_logout": "Log out"
+  },
+  "topbar": {
+    "title_panoramica": "Overview",
+    "title_inbox": "Inbox & Conversations",
+    "title_prenotazioni": "Bookings & Calendar",
+    "title_recensioni": "Reviews & Feedback",
+    "title_team": "Team & Members",
+    "title_assistente": "AI Assistant Simulator",
+    "title_conoscenza": "Documents & Knowledge Base",
+    "title_configurazione_ai": "AI Configuration & Rules",
+    "title_impostazioni": "General Settings",
+    "title_account": "Account & Billing",
+    "search_placeholder": "Search tickets, bookings, documents…",
+    "search_aria": "Global search",
+    "notifications": "Notification Center",
+    "notifications_title": "Notifications",
+    "notifications_empty": "No new notifications.",
+    "login_btn": "Log in"
+  },
+  "kpi": {
+    "total_received": "messages received today",
+    "handled_by_ai": "handled by AI assistant",
+    "escalated_human": "routed to team",
+    "bookings_created": "confirmed bookings",
+    "trend_neutral": "On par with yesterday",
+    "trend_positive": "Up compared to yesterday",
+    "trend_negative": "Down compared to yesterday",
+    "sparkline_caption": "Last 7 days",
+    "sparkline_unit": "wk."
+  },
+  "modals": {
+    "confirm_action": "Confirm Action",
+    "confirm_btn": "Confirm",
+    "cancel_btn": "Cancel",
+    "delete_item_title": "Confirm Deletion",
+    "delete_item_desc": "Are you sure you want to delete this item? This action cannot be undone."
+  },
+  "empty_states": {
+    "no_data": "No data available.",
+    "no_notifications": "No unread notifications.",
+    "no_bookings": "No bookings found matching selected filters.",
+    "no_messages": "No messages in this conversation.",
+    "search_no_results": "No results found."
+  },
+  "toast": {
+    "saved": "Changes saved successfully.",
+    "error": "An unexpected error occurred.",
+    "network_error": "Network connectivity issue. Please try again shortly.",
+    "session_expired": "Session expired. Please log in again."
+  }
+}

@@ -1,21 +1,884 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://melpis.it/</loc>
-    <lastmod>2026-09-02</lastmod>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/" />
+    <lastmod>2026-09-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://melpis.it/settori/ristoranti/</loc>
-    <lastmod>2026-09-02</lastmod>
+    <loc>https://melpis.it/en/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/" />
+    <lastmod>2026-09-15</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
   </url>
   <url>
     <loc>https://melpis.it/prezzi/</loc>
-    <lastmod>2026-09-02</lastmod>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/prezzi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/precios/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/tarifs/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/preise/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/pricing/" />
+    <lastmod>2026-09-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/pricing/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/prezzi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/precios/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/tarifs/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/preise/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/pricing/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/precios/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/prezzi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/precios/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/tarifs/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/preise/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/pricing/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/tarifs/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/prezzi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/precios/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/tarifs/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/preise/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/pricing/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/preise/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/prezzi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/pricing/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/precios/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/tarifs/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/preise/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/pricing/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/settori/ristoranti/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/industries/restaurants/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/sectores/restaurantes/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/secteurs/restaurants/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/branchen/restaurants/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/settori/saloni-bellezza/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/saloni-bellezza/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/beauty-salons/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/salones-belleza/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/salons-beaute/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/kosmetik-friseure/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/beauty-salons/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/industries/beauty-salons/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/saloni-bellezza/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/beauty-salons/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/salones-belleza/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/salons-beaute/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/kosmetik-friseure/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/beauty-salons/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/sectores/salones-belleza/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/saloni-bellezza/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/beauty-salons/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/salones-belleza/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/salons-beaute/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/kosmetik-friseure/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/beauty-salons/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/secteurs/salons-beaute/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/saloni-bellezza/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/beauty-salons/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/salones-belleza/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/salons-beaute/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/kosmetik-friseure/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/beauty-salons/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/branchen/kosmetik-friseure/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/saloni-bellezza/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/beauty-salons/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/salones-belleza/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/salons-beaute/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/kosmetik-friseure/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/beauty-salons/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/settori/studi-medici/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/studi-medici/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/medical-clinics/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/clinicas-medicas/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/cabinets-medicaux/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/arztpraxen/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/medical-clinics/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/industries/medical-clinics/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/studi-medici/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/medical-clinics/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/clinicas-medicas/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/cabinets-medicaux/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/arztpraxen/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/medical-clinics/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/sectores/clinicas-medicas/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/studi-medici/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/medical-clinics/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/clinicas-medicas/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/cabinets-medicaux/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/arztpraxen/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/medical-clinics/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/secteurs/cabinets-medicaux/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/studi-medici/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/medical-clinics/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/clinicas-medicas/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/cabinets-medicaux/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/arztpraxen/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/medical-clinics/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/branchen/arztpraxen/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/studi-medici/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/medical-clinics/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/clinicas-medicas/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/cabinets-medicaux/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/arztpraxen/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/medical-clinics/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/settori/hotel/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/hotel/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/hotels/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/hoteles/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/hotels/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/hotels/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/hotels/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/industries/hotels/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/hotel/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/hotels/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/hoteles/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/hotels/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/hotels/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/hotels/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/sectores/hoteles/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/hotel/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/hotels/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/hoteles/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/hotels/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/hotels/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/hotels/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/secteurs/hotels/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/hotel/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/hotels/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/hoteles/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/hotels/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/hotels/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/hotels/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/branchen/hotels/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/settori/hotel/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/hotels/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/hoteles/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/hotels/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/hotels/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/hotels/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/documentation/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/documentacion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/documentation/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/dokumentation/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/documentation/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/documentation/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/documentation/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/documentacion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/documentation/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/dokumentation/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/documentation/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/documentacion/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/documentation/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/documentacion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/documentation/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/dokumentation/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/documentation/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/documentation/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/documentation/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/documentacion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/documentation/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/dokumentation/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/documentation/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/dokumentation/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/documentation/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/documentacion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/documentation/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/dokumentation/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/documentation/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/accedi/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/accedi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/login/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/login/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/accedi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/login/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/iniciar-sesion/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/accedi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/login/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/connexion/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/accedi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/login/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/anmelden/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/accedi/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/login/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/registrati/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/registrati/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/signup/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/registro/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/inscription/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/registrieren/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/signup/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/signup/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/registrati/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/signup/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/registro/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/inscription/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/registrieren/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/signup/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/registro/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/registrati/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/signup/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/registro/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/inscription/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/registrieren/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/signup/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/inscription/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/registrati/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/signup/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/registro/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/inscription/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/registrieren/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/signup/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/registrieren/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/registrati/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/signup/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/registro/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/inscription/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/registrieren/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/signup/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/privacy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/privacy/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/privacy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/privacidad/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/privacy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/confidentialite/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/privacy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/datenschutz/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/privacy/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/termini/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/termini/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/terminos/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/conditions/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/agb/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/terms/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/terms/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/termini/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/terminos/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/conditions/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/agb/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/terms/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/terminos/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/termini/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/terminos/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/conditions/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/agb/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/terms/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/conditions/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/termini/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/terminos/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/conditions/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/agb/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/terms/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/agb/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/termini/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/terms/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/terminos/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/conditions/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/agb/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/terms/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/cookie/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/cookie/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/cookies/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/cookies/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/cookies/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/cookies/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/cookies/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/en/cookies/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/cookie/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/cookies/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/cookies/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/cookies/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/cookies/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/cookies/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/es/cookies/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/cookie/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/cookies/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/cookies/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/cookies/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/cookies/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/cookies/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/fr/cookies/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/cookie/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/cookies/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/cookies/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/cookies/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/cookies/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/cookies/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/de/cookies/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/cookie/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://melpis.it/en/cookies/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://melpis.it/es/cookies/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://melpis.it/fr/cookies/" />
+    <xhtml:link rel="alternate" hreflang="de" href="https://melpis.it/de/cookies/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/en/cookies/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/account-e-piani/piani-e-fatturazione/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/account-e-piani/piani-e-fatturazione/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/account-e-piani/piani-e-fatturazione/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/account-e-piani/team-e-ruoli/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/account-e-piani/team-e-ruoli/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/account-e-piani/team-e-ruoli/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/configurazione-ai/documenti-e-conoscenza/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/configurazione-ai/documenti-e-conoscenza/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/configurazione-ai/documenti-e-conoscenza/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/configurazione-ai/faq-e-cache-semantica/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/configurazione-ai/faq-e-cache-semantica/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/configurazione-ai/faq-e-cache-semantica/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/configurazione-ai/listino-servizi-e-prezzi/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/configurazione-ai/listino-servizi-e-prezzi/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/configurazione-ai/listino-servizi-e-prezzi/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/configurazione-ai/personalizzazione-assistente/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/configurazione-ai/personalizzazione-assistente/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/configurazione-ai/personalizzazione-assistente/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/inbox-e-messaggi/regole-escalation-e-sla/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/inbox-e-messaggi/shared-inbox-e-claim/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/inizia-da-qui/checklist-pre-lancio/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/inizia-da-qui/checklist-pre-lancio/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/inizia-da-qui/checklist-pre-lancio/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/inizia-da-qui/guida-onboarding/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/inizia-da-qui/guida-onboarding/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/inizia-da-qui/guida-onboarding/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/integrazioni/collegare-google-calendar/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/integrazioni/collegare-google-calendar/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/integrazioni/collegare-google-calendar/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/integrazioni/collegare-google-recensioni/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/integrazioni/collegare-google-recensioni/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/integrazioni/collegare-google-recensioni/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/integrazioni/collegare-instagram/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/integrazioni/collegare-instagram/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/integrazioni/collegare-instagram/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/integrazioni/collegare-whatsapp/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/integrazioni/collegare-whatsapp/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/integrazioni/collegare-whatsapp/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/integrazioni/gestionali-e-pms/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/integrazioni/gestionali-e-pms/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/integrazioni/gestionali-e-pms/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/integrazioni/integrazione-airtable/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/integrazioni/integrazione-airtable/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/integrazioni/integrazione-airtable/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/prenotazioni/gestione-prenotazioni/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/prenotazioni/gestione-prenotazioni/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/prenotazioni/gestione-prenotazioni/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/risoluzione-problemi/architettura-tecnica/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/risoluzione-problemi/architettura-tecnica/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/risoluzione-problemi/architettura-tecnica/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/risoluzione-problemi/guida-troubleshooting/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/risoluzione-problemi/guida-troubleshooting/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/risoluzione-problemi/guida-troubleshooting/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://melpis.it/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/</loc>
+    <xhtml:link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://melpis.it/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" />
+    <lastmod>2026-09-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>

@@ -16,13 +16,17 @@
     var overlay = document.getElementById('mobileOverlay');
     var accordionBtn = document.getElementById('mobileSettoriBtn');
     var accordionWrap = document.getElementById('mobileSettoriAccordion');
+    var langTrigger = document.getElementById('langDropdownTrigger');
+    var langMenu = document.getElementById('langDropdownMenu');
 
     /* 1. Persistent Sticky Scroll Blur & Padding */
     if (header) {
         var lightSections = document.querySelectorAll('[data-navbar-theme="light"]');
         var updateScrollState = function () {
             var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
-            header.classList.toggle('is-scrolled', scrollY > 15);
+            var isCurrentlyScrolled = header.classList.contains('is-scrolled');
+            var shouldBeScrolled = isCurrentlyScrolled ? scrollY > 10 : scrollY > 20;
+            header.classList.toggle('is-scrolled', shouldBeScrolled);
 
             if (lightSections.length > 0) {
                 var headerRect = header.getBoundingClientRect();
@@ -91,6 +95,36 @@
                     setDropdown(false);
                 }
             }, 10);
+        });
+    }
+ 
+    /* 2b. Language Dropdown Controller */
+    if (langTrigger && langMenu && !langTrigger.dataset.langInit) {
+        langTrigger.dataset.langInit = 'true';
+        var setLangDropdown = function (open) {
+            langMenu.hidden = !open;
+            langMenu.classList.toggle('is-open', open);
+            langTrigger.setAttribute('aria-expanded', String(open));
+        };
+
+        langTrigger.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var isOpen = langTrigger.getAttribute('aria-expanded') === 'true';
+            setLangDropdown(!isOpen);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!langMenu.contains(e.target) && !langTrigger.contains(e.target)) {
+                setLangDropdown(false);
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && langTrigger.getAttribute('aria-expanded') === 'true') {
+                setLangDropdown(false);
+                langTrigger.focus();
+            }
         });
     }
 
@@ -521,20 +555,22 @@
     /* ---------- High-Performance Progressive Narrative Spine Drawing ---------- */
     (function initNarrativeSpine() {
         var section = document.querySelector('.narrative-journey-section');
+        var container = document.querySelector('.narrative-container');
         var activePath = document.querySelector('.narrative-path-active');
         var glowPath = document.querySelector('.narrative-path-glow');
+        var terminalDot = document.querySelector('.narrative-terminal-dot');
         var nodes = document.querySelectorAll('.narrative-node');
-        if (!section || !activePath) return;
+        if (!section || !container || !activePath) return;
 
         // 1. Calculate path length dynamically
         var pathLength = 0;
         try {
             pathLength = activePath.getTotalLength();
         } catch (e) {
-            pathLength = 1750;
+            pathLength = 1435;
         }
         if (!pathLength || isNaN(pathLength) || pathLength <= 0) {
-            pathLength = 1750;
+            pathLength = 1435;
         }
 
         // Set initial stroke-dasharray and stroke-dashoffset (unvisited / invisible)
@@ -544,54 +580,80 @@
             glowPath.style.strokeDasharray = pathLength;
             glowPath.style.strokeDashoffset = pathLength;
         }
+        if (terminalDot) {
+            terminalDot.style.opacity = '0';
+            terminalDot.style.transition = 'opacity 0.4s ease';
+        }
 
         if (reduceMotion) {
             activePath.style.strokeDashoffset = '0';
             if (glowPath) glowPath.style.strokeDashoffset = '0';
+            if (terminalDot) terminalDot.style.opacity = '1';
             nodes.forEach(function (n) { n.classList.add('node-active'); });
             return;
         }
 
-        var maxProgress = 0;
+        var currentProgress = 0;
+        var targetProgress = 0;
+        var rafId = null;
 
-        function setPathProgress(progress) {
-            if (progress < 0) progress = 0;
-            if (progress > 1) progress = 1;
-            var offset = pathLength * (1 - progress);
+        function tick() {
+            var diff = targetProgress - currentProgress;
+            if (Math.abs(diff) < 0.001) {
+                currentProgress = targetProgress;
+                rafId = null;
+            } else {
+                currentProgress += diff * 0.18;
+                rafId = requestAnimationFrame(tick);
+            }
+            var offset = pathLength * (1 - currentProgress);
             activePath.style.strokeDashoffset = offset;
             if (glowPath) glowPath.style.strokeDashoffset = offset;
+
+            if (terminalDot) {
+                terminalDot.style.opacity = currentProgress >= 0.96 ? '1' : '0';
+            }
+
+            nodes.forEach(function (n, idx) {
+                var thresh = [0.06, 0.28, 0.52, 0.75, 0.94][idx] || 0.5;
+                if (currentProgress >= thresh) {
+                    n.classList.add('node-active');
+                }
+            });
         }
 
-        function advancePath(node) {
-            var wp = parseFloat(node.getAttribute('data-waypoint') || '0');
-            if (isNaN(wp)) wp = 0;
-            if (wp > maxProgress) {
-                maxProgress = wp;
-                setPathProgress(maxProgress);
+        function onScroll() {
+            var cRect = container.getBoundingClientRect();
+            var vhMid = window.innerHeight * 0.5;
+            var start = vhMid;
+            var end = vhMid - 1435;
+            var p = (start - cRect.top) / (start - end);
+            if (p < 0) p = 0;
+            if (p > 1) p = 1;
+            targetProgress = p;
+
+            if (!rafId) {
+                rafId = requestAnimationFrame(tick);
             }
         }
 
-        // Node activation + path draw via IntersectionObserver (no scroll listener)
+        // Keep IntersectionObserver for reliable fallback activation of nodes
         if ('IntersectionObserver' in window) {
             var nodeObs = new IntersectionObserver(function (entries) {
                 entries.forEach(function (entry) {
                     if (entry.isIntersecting) {
                         entry.target.classList.add('node-active');
-                        advancePath(entry.target);
-                        nodeObs.unobserve(entry.target);
                     }
                 });
-            }, { threshold: 0.18, rootMargin: '0px 0px -20px 0px' });
+            }, { threshold: 0.15, rootMargin: '0px 0px -20px 0px' });
 
             nodes.forEach(function (node) {
                 nodeObs.observe(node);
             });
-        } else {
-            nodes.forEach(function (n) {
-                n.classList.add('node-active');
-                advancePath(n);
-            });
         }
+
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
 
         window.addEventListener('resize', function () {
             try {
@@ -600,7 +662,7 @@
                     pathLength = len;
                     activePath.style.strokeDasharray = pathLength;
                     if (glowPath) glowPath.style.strokeDasharray = pathLength;
-                    setPathProgress(maxProgress);
+                    onScroll();
                 }
             } catch (e) {}
         }, { passive: true });

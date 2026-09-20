@@ -1,0 +1,98 @@
+{
+  "restaurants": {
+    "page_title": "Melpis para Restaurantes · Reservas por WhatsApp sin interrupciones",
+    "meta_description": "Automatiza las reservas de mesas en WhatsApp 24/7. Gestión de turnos, recordatorios anti-no-show y sincronización con Google Calendar para hostelería.",
+    "hero": {
+      "badge": "Sector Restauración",
+      "title": "Llena las mesas de tu restaurante sin interrupciones durante el servicio",
+      "subtitle": "Tus clientes escriben por WhatsApp a cualquier hora para reservar mesa. Melpis responde al instante, comprueba la disponibilidad y agenda en tu calendario.",
+      "cta": "Empieza la prueba gratis de 7 días"
+    },
+    "features": [
+      {
+        "title": "Gestión de turnos y aforo de mesas",
+        "desc": "Configura el límite por turno (ej. 20:00 y 21:30) y evita reservas duplicadas o comedores saturados."
+      },
+      {
+        "title": "Recordatorios automáticos que reducen ausencias",
+        "desc": "Envía un recordatorio educado unas horas antes: el cliente confirma con un toque o libera la mesa para otros comensales."
+      },
+      {
+        "title": "Menús, alérgenos y horarios al día",
+        "desc": "Respuestas precisas sobre platos sin gluten, menús degustación y festivos consultando directamente tu carta."
+      }
+    ]
+  },
+  "beauty": {
+    "page_title": "Melpis para Salones y Barberías · Citas por WhatsApp en piloto automático",
+    "meta_description": "Automatiza las citas de tu salón en WhatsApp. Elección de estilista, tratamientos combinados y recordatorios sin interrumpir tu trabajo.",
+    "hero": {
+      "badge": "Sector Belleza y Bienestar",
+      "title": "Mantén tu salón con la agenda completa sin interrumpir el trabajo con tus clientes",
+      "subtitle": "Deja de interrumpir cortes o tratamientos para atender el teléfono. Melpis agenda citas, comprueba huecos libres y propone horarios alternativos.",
+      "cta": "Activa tu salón en 5 minutos"
+    },
+    "features": [
+      {
+        "title": "Citas con tu estilista de confianza",
+        "desc": "El cliente puede solicitar a su profesional preferido consultando la disponibilidad individual en tiempo real."
+      },
+      {
+        "title": "Tratamientos combinados con duración exacta",
+        "desc": "Calcula el tiempo necesario para servicios conjuntos como tinte + corte o manicura + pedicura."
+      },
+      {
+        "title": "Fidelización y vuelta de clientes",
+        "desc": "Envía recordatorios cordiales para citas periódicas respetando las preferencias de contacto y privacidad de cada cliente."
+      }
+    ]
+  },
+  "medical": {
+    "page_title": "Melpis para Clínicas Médicas y Dentales · Recepción de Pacientes en WhatsApp",
+    "meta_description": "Atención continua para consultas médicas y odontológicas. Triaje previo, horarios, citas y gestión confidencial de la información del paciente.",
+    "hero": {
+      "badge": "Sector Médico y Sanitario",
+      "title": "Gestiona las citas de tus pacientes sin sobrecargar la recepción de la clínica",
+      "subtitle": "Facilita a tus pacientes información clara sobre horarios, preparación para pruebas y huecos disponibles sin saturar a recepción.",
+      "cta": "Descubre la solución clínica"
+    },
+    "features": [
+      {
+        "title": "Triaje previo e instrucciones para la cita",
+        "desc": "Facilita al instante pautas previas (como ayuno o documentación requerida) y alerta al equipo ante urgencias."
+      },
+      {
+        "title": "Tratamiento confidencial y protegido de datos sanitarios",
+        "desc": "Ningún dato de salud sensible se emplea para entrenar modelos externos. Cifrado integral en reposo y en tránsito."
+      },
+      {
+        "title": "Derivación prioritaria al personal de clínica",
+        "desc": "Las consultas complejas o delicadas se transfieren al instante a secretaría con un resumen ordenado en la bandeja."
+      }
+    ]
+  },
+  "hotels": {
+    "page_title": "Melpis para Hoteles y Alojamientos · Conserje Virtual en WhatsApp 24/7",
+    "meta_description": "Conserjería en WhatsApp para hoteles boutique y alojamientos turísticos. Respuestas 24/7 sobre check-in, servicios y actividades locales.",
+    "hero": {
+      "badge": "Sector Hotelero y Turístico",
+      "title": "Ofrece una atención impecable a tus huéspedes con respuestas inmediatas 24/7",
+      "subtitle": "Recibe a tus huéspedes antes incluso de su llegada. Proporciona indicaciones de llegada, horarios y recomendaciones sin colas en recepción.",
+      "cta": "Mejora la estancia de tus huéspedes"
+    },
+    "features": [
+      {
+        "title": "Check-in ágil e información de llegada",
+        "desc": "Envía códigos de acceso, ubicación GPS de aparcamiento y horarios de entrada nada más confirmarse la reserva."
+      },
+      {
+        "title": "Servicios del alojamiento siempre a mano",
+        "desc": "Horarios de spa, alquiler de bicicletas, reservas de mesa en el restaurante y peticiones de late check-out al momento."
+      },
+      {
+        "title": "Atención coordinada de todo el equipo",
+        "desc": "Los recepcionistas pueden incorporarse a cualquier conversación con un solo clic desde cualquier dispositivo."
+      }
+    ]
+  }
+}

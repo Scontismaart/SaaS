@@ -1,0 +1,59 @@
+{
+  "tabs": {
+    "general": "Generale",
+    "assistant": "Assistente e Regole",
+    "channels": "Canali & WhatsApp",
+    "calendar": "Calendario & Slot",
+    "team": "Team & Permessi",
+    "billing": "Abbonamento & Piano",
+    "language": "Lingua & Regione"
+  },
+  "general_section": {
+    "subtitle": "Localizzazione, fuso orario e preferenze operative del pannello."
+  },
+  "timezone_section": {
+    "title": "Localizzazione e Fuso orario",
+    "description": "Il fuso orario è usato per reminder prenotazioni, report di fine giornata e calcolo degli SLA.",
+    "label": "Fuso orario dell'attività",
+    "save_btn": "Salva fuso orario"
+  },
+  "language_section": {
+    "title": "Lingua del pannello",
+    "description": "Seleziona la lingua con cui desideri visualizzare l'interfaccia di Melpis.",
+    "select_label": "Lingua attiva",
+    "note": "La preferenza viene salvata per il tuo profilo."
+  },
+  "assistant_rules": {
+    "title": "Istruzioni e Comportamento AI",
+    "personality_label": "Tono di voce e personalità",
+    "formality_label": "Livello di formalità",
+    "formality_tu": "Informale (dare del tu)",
+    "formality_lei": "Formale (dare del lei)",
+    "business_hours_title": "Orari di apertura e risposta",
+    "outside_hours_title": "Comportamento fuori orario",
+    "auto_reply_outside": "Invia messaggio automatico fuori orario",
+    "save_rules_btn": "Salva regole assistente"
+  },
+  "channels": {
+    "whatsapp_title": "Connessione WhatsApp Business",
+    "phone_number": "Numero di telefono connesso",
+    "meta_status": "Stato Meta Cloud API",
+    "reconnect_btn": "Riconnetti canale",
+    "disconnect_btn": "Disconnetti"
+  },
+  "calendar": {
+    "title": "Sincronizzazione Google Calendar",
+    "status_connected": "Google Calendar connesso",
+    "sync_calendar_name": "Calendario principale",
+    "slot_duration": "Durata predefinita slot (minuti)",
+    "buffer_time": "Pausa tra appuntamenti (minuti)",
+    "save_calendar_btn": "Salva impostazioni calendario"
+  },
+  "billing": {
+    "current_plan": "Piano attuale",
+    "status": "Stato abbonamento",
+    "manage_stripe_btn": "Gestisci fatturazione e carte su Stripe",
+    "upgrade_btn": "Passa al piano superiore",
+    "cancel_btn": "Disdici abbonamento"
+  }
+}

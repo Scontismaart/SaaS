@@ -7,13 +7,14 @@
 
 # Termini di Servizio — WhatsApp AI Responder
 
-**Versione bozza 0.1 — ultimo aggiornamento [DATA]**
+**Versione bozza 0.1 — ultimo aggiornamento {{LEGAL_DOCUMENT_EFFECTIVE_DATE}}**
 
 ## 1. Definizioni e ambito
 
 1.1 Il presente documento disciplina l'utilizzo della piattaforma SaaS
-"WhatsApp AI Responder" (il "Servizio"), erogata da [RAGIONE SOCIALE
-FORNITORE] ("Fornitore", "noi"), con sede in [INDIRIZZO], P.IVA [P.IVA].
+"WhatsApp AI Responder" (il "Servizio"), erogata da
+{{LEGAL_ENTITY_NAME}} ("Fornitore", "noi"), con sede in
+{{LEGAL_ENTITY_REGISTERED_OFFICE}}, P.IVA {{LEGAL_ENTITY_VAT_NUMBER}}.
 
 1.2 Il Servizio consente al cliente (il "Cliente") di: (a) collegare un
 numero WhatsApp Business; (b) ricevere e gestire i messaggi ricevuti dai
@@ -134,16 +135,15 @@ l'aggiornamento costituisce accettazione delle nuove condizioni.
 ## 12. Legge applicabile e foro
 
 12.1 I presenti Termini sono disciplinati dalla legge italiana. Per qualsiasi
-controversia è competente in via esclusiva il Foro di [CITTÀ], salve le
+controversia è competente in via esclusiva il Foro di {{LEGAL_FORUM}}, salve le
 disposizioni inderogabili in materia di protezione dei consumatori ove
 applicabili.
 
 ## 13. Contatti
 
 13.1 Per ogni comunicazione relativa ai presenti Termini, al trattamento dei
-dati o all'esercizio dei diritti, è possibile contattarci tramite i canali
-di supporto del Servizio all'indirizzo segnalato in sede di sottoscrizione.
-[REV]
+dati o all'esercizio dei diritti, è possibile contattarci a
+{{LEGAL_PRIVACY_CONTACT_EMAIL}}.
 
 ---
 

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion au Tableau de Bord · Melpis</title>
+<meta name="description" content="Accédez à votre tableau de bord Melpis pour piloter votre assistant WhatsApp IA, vos réservations et la boîte de réception partagée.">
+<meta name="theme-color" content="#08090c">
+<link rel="icon" href="/logo.webp" type="image/webp">
+<link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/auth.css?v=dark-luxury-v1">
+    <script id="auth-translations" type="application/json">{"empty_fields":"Veuillez remplir les deux champs.","google_error":"La connexion avec Google a échoué ou a été annulée. Réessayez ou utilisez vos identifiants.","invalid_credentials":"Email ou mot de passe incorrect.","enter_business_name":"Veuillez saisir le nom de votre entreprise.","invalid_email":"Veuillez saisir une adresse email valide.","password_too_short":"Le mot de passe doit comporter au moins 10 caractères.","password_special":"Le mot de passe doit inclure au moins un symbole spécial (ex. ! @ # $ %).","accept_terms":"Vous devez accepter la Politique de confidentialité et les Conditions d'utilisation.","register_failed":"Inscription non aboutie. Veuillez réessayer dans un instant.","new_password_title":"Nouveau mot de passe","new_password_help":"Choisissez un nouveau mot de passe pour votre compte.","enter_new_password":"Veuillez saisir votre nouveau mot de passe.","password_updated":"Mot de passe mis à jour. Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.","login_title":"Connexion à Melpis","login_help":"Gérez votre assistant, vos réservations et vos documents depuis un tableau de bord unique.","forgot_password_title":"Réinitialiser le mot de passe","forgot_password_help":"Nous vous enverrons un lien pour réinitialiser votre mot de passe.","enter_email":"Veuillez saisir votre adresse e-mail.","recovery_sent":"Si l'adresse est enregistrée, vous recevrez un lien de réinitialisation.","update_failed":"Échec de la mise à jour. Veuillez réessayer."}</script>
+    <link rel="canonical" href="https://melpis.it/fr/connexion/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/accedi/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/login/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/">
+</head>
+<body>
+
+<main class="accedi-page">
+  <div class="accedi-card">
+    <div class="accedi-brand">
+      <img src="/logo.webp" alt="Melpis Logo" width="28" height="28" class="is-1a7584936aed">
+      <span class="accedi-brand-name">Melpis</span>
+    </div>
+
+    <h1 id="accesso-title">Connectez-vous à Melpis</h1>
+    <p class="accesso-help" id="accesso-help">Gérez votre assistant, vos réservations et vos documents depuis une interface sécurisée. Aucun identifiant exposé dans le navigateur.</p>
+
+    <p class="accedi-error" id="accedi-error" role="alert"></p>
+
+    <a class="google-btn" id="google-btn" href="#">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+      Continuer avec Google
+    </a>
+
+    <div class="accedi-divider">ou avec votre e-mail</div>
+
+    <form id="form-login" novalidate>
+      <label for="accesso-email">Adresse e-mail</label>
+      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" placeholder="nom@entreprise.fr">
+      <label for="accesso-password">Mot de passe</label>
+      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" placeholder="••••••••">
+      <p class="doc-config-status" id="accesso-error" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="accesso-save">Se connecter</button>
+      </div>
+    </form>
+
+    <!-- Recupero password: visibile dal link "Password dimenticata?" -->
+    <form id="form-recover" hidden novalidate>
+      <p class="doc-config-status">Saisissez l'e-mail associé à votre compte : si un compte existe, vous recevrez un lien pour réinitialiser votre mot de passe.</p>
+      <label for="recover-email">Email</label>
+      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" placeholder="nom@entreprise.fr">
+      <p class="doc-config-status" id="recover-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="recover-save">Envoyer le lien de réinitialisation</button>
+      </div>
+      <p class="accedi-foot"><a href="#" id="recover-back">← Retour à la connexion</a></p>
+    </form>
+
+    <!-- Nuova password: visibile solo con link di recovery (#access_token=...&type=recovery) -->
+    <form id="form-reset" hidden novalidate>
+      <p class="doc-config-status">Définissez un nouveau mot de passe : au moins 10 caractères avec un caractère spécial.</p>
+      <label for="reset-password">Nouveau mot de passe</label>
+      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" placeholder="••••••••">
+      <p class="doc-config-status" id="reset-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="reset-save">Mettre à jour le mot de passe</button>
+      </div>
+    </form>
+
+    <p class="accedi-foot" id="forgot-link-row"><a href="#" id="forgot-link">Mot de passe oublié ?</a></p>
+
+    <p class="accedi-foot">Vous n'avez pas de compte ? <a id="link-registrati" href="/fr/inscription/">Inscrivez-vous</a></p>
+    <p class="accedi-foot"><a href="/fr/">← Retour à l'accueil</a></p>
+  </div>
+</main>
+
+<script src="/config.js"></script>
+<script src="/auth.js?v=2"></script>
+<script src="/login.js?v=2"></script>
+</body>
+</html>

@@ -45,3 +45,64 @@ function collegaGoogle(elementId = "google-btn") {
     btn.href = `${AUTH_API_BASE}/api/auth/google/start?next=${encodeURIComponent(NEXT_PATH)}`;
   }
 }
+
+/* Localized auth messages loaded dynamically from central i18n bundle */
+let _authMessagesCache = null;
+
+function getAuthMessagesBundle() {
+  if (_authMessagesCache) return _authMessagesCache;
+
+  // 1. Check for pre-rendered inline JSON bundle injected at build time
+  if (typeof document !== 'undefined') {
+    const el = document.getElementById('auth-translations');
+    if (el && el.textContent) {
+      try {
+        _authMessagesCache = JSON.parse(el.textContent);
+        return _authMessagesCache;
+      } catch (e) {
+        console.warn('[Auth] Failed to parse #auth-translations', e);
+      }
+    }
+  }
+
+  // 2. Global window object fallback if exposed
+  if (typeof window !== 'undefined' && window.__MELPIS_AUTH_MESSAGES__) {
+    _authMessagesCache = window.__MELPIS_AUTH_MESSAGES__;
+    return _authMessagesCache;
+  }
+
+  return null;
+}
+
+function getAuthMessage(key) {
+  const bundle = getAuthMessagesBundle();
+  if (bundle && bundle[key]) {
+    return bundle[key];
+  }
+  return key;
+}
+
+// Background prefetch if not inlined
+(function prefetchAuthMessages() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (document.getElementById('auth-translations')) return;
+  const currentLang = document.documentElement.lang || 'it';
+  fetch(`/locales/${encodeURIComponent(currentLang)}/auth.json`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((data) => {
+      if (data && data.messages) {
+        _authMessagesCache = data.messages;
+      }
+    })
+    .catch(() => {});
+})();
+
+/* Sync language preference to localStorage and cookie for dashboard continuity */
+(function syncAuthLang() {
+  if (typeof document === 'undefined') return;
+  const currentLang = document.documentElement.lang || 'it';
+  if (currentLang && ['it', 'en', 'es', 'fr', 'de'].includes(currentLang)) {
+    try { localStorage.setItem('melpis_lang', currentLang); } catch (e) {}
+    document.cookie = `melpis_lang=${currentLang}; path=/; max-age=31536000; SameSite=Lax`;
+  }
+})();

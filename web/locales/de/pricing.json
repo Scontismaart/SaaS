@@ -1,0 +1,105 @@
+{
+  "page_title": "Preise & Tarife · KI-WhatsApp-Assistent für Unternehmen | Melpis",
+  "meta_description": "Transparente Preise für Ihren KI-WhatsApp-Assistenten. 7 Tage kostenlos testen ohne Kreditkarte, Google Calendar Kalendersynchronisation, jederzeit kündbar.",
+  "hero": {
+    "badge": "Transparente Tarife",
+    "title": "Der passende Plan für jede Phase Ihres Wachstums",
+    "subtitle": "Aktivieren Sie Ihren KI-WhatsApp-Assistenten in wenigen Minuten. 7 Tage kostenlos testen, ohne Kreditkarte und ohne Vertragslaufzeit.",
+    "monthly_toggle": "Monatlich",
+    "annual_toggle": "Jährlich",
+    "annual_discount": "2 Monate geschenkt"
+  },
+  "plans": {
+    "essential": {
+      "name": "Basis",
+      "badge": "",
+      "tagline": "Für Einzelunternehmer und kleinere Betriebe zur Automatisierung von Öffnungszeiten und Standardfragen.",
+      "price_monthly": 29,
+      "price_annual": 24,
+      "period": "/Monat",
+      "cta": "Mit Basis starten",
+      "features": [
+        "1 offizielle WhatsApp Business Rufnummer",
+        "Bis zu 300 KI-Konversationen/Monat",
+        "Öffnungszeiten, Preislisten & automatische 24/7-Antworten",
+        "Webbasierter Posteingang auf allen Endgeräten",
+        "E-Mail-Benachrichtigungen bei Weiterleitungen",
+        "Standard-Ticketsupport innerhalb von 24 Stunden"
+      ]
+    },
+    "growth": {
+      "name": "Wachstum",
+      "badge": "Beliebteste Wahl",
+      "tagline": "Für Restaurants, Salons und Praxen mit regelmäßigem Buchungsaufkommen und Terminanfragen.",
+      "price_monthly": 69,
+      "price_annual": 57,
+      "period": "/Monat",
+      "cta": "Wachstum kostenlos testen",
+      "features": [
+        "Alle Funktionen aus dem Basis-Tarif",
+        "Bis zu 1.200 KI-Konversationen/Monat",
+        "Zweiseitige Google Calendar Synchronisierung",
+        "Terminverwaltung & automatische No-Show-Erinnerungen",
+        "Bis zu 3 parallele Mitarbeiter im Posteingang",
+        "KI-Training mit eigenen PDF-Dokumenten und Preislisten",
+        "Prioritäts-Support via WhatsApp und E-Mail"
+      ]
+    },
+    "scale": {
+      "name": "Skalierung",
+      "badge": "Maximale Leistung",
+      "tagline": "Für Hotels, Praxiskliniken und Unternehmen mit hohem Anfragevolumen und mehreren Standorten.",
+      "price_monthly": 149,
+      "price_annual": 124,
+      "period": "/Monat",
+      "cta": "Zu Skalierung wechseln",
+      "features": [
+        "Alle Funktionen aus dem Wachstum-Tarif",
+        "Unbegrenzte KI-Konversationen (Fair-Use-Policy)",
+        "Unbegrenzte Teammitglieder mit differenzierten Rechten",
+        "Instagram Direct Anbindung inklusive",
+        "Individuelle Webhooks und PMS/Airtable-Schnittstellen",
+        "Sicherheits-Auditprotokoll & Auftragsverarbeitungsvertrag (AVV/DPA)",
+        "Persönlicher Account Manager & betreutes Onboarding"
+      ]
+    }
+  },
+  "guarantee": {
+    "title": "Unser Transparenzversprechen",
+    "items": [
+      {
+        "title": "Keine Kreditkarte für den Test erforderlich",
+        "desc": "In 60 Sekunden mit E-Mail und Firmenname startklar. Keine automatischen Abbuchungen."
+      },
+      {
+        "title": "Jederzeit mit einem Klick kündbar",
+        "desc": "Keine langfristigen Knebelverträge. Die Kündigung erfolgt direkt in Ihren Einstellungen."
+      },
+      {
+        "title": "Offizielle Meta Cloud API inklusive",
+        "desc": "Offizielle Anbindung über die Meta Cloud API: minimiert das Risiko von Sperren im Vergleich zu inoffiziellen Tools."
+      }
+    ]
+  },
+  "faq": {
+    "title": "Häufig gestellte Fragen zu den Preisen",
+    "items": [
+      {
+        "q": "Was versteht man unter einer 'KI-Konversation'?",
+        "a": "Eine Konversation ist ein zusammenhängender Kundendialog innerhalb eines 24-Stunden-Fensters. Mehrere Nachrichten während einer Anfrage zählen als eine einzige Konversation."
+      },
+      {
+        "q": "Was geschieht bei Überschreitung des monatlichen Konversationslimits?",
+        "a": "Ihr Service wird keinesfalls unterbrochen: Wir benachrichtigen Sie rechtzeitig per E-Mail. Sie können jederzeit upgraden oder ein Zusatzpaket buchen."
+      },
+      {
+        "q": "Kann ich den Plan nachträglich wechseln oder kündigen?",
+        "a": "Selbstverständlich. Über das integrierte Stripe-Kundenportal in Ihren Einstellungen können Sie Ihren Tarif jederzeit flexibel anpassen oder beenden."
+      },
+      {
+        "q": "Sind die Gebühren für Meta-Nachrichten enthalten?",
+        "a": "Ja, für alle von Kunden initiierten Service-Konversationen (Customer-Initiated) fallen unsererseits keine zusätzlichen Übertragungsgebühren an."
+      }
+    ]
+  }
+}

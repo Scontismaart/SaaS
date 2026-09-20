@@ -64,8 +64,18 @@ jobs:
       - name: Frontend lint and DOM tests
         run: |
           npm ci --ignore-scripts
+          npm run build:i18n
           npm run lint:web
           npm run test:web
+          npm run test:i18n
+          npm run audit:csp
+          npm run audit:assets
+          npm run audit:links
+          npm run audit:seo
+          npm run audit:images
+          # Advisory only: see scripts/audit-hardcoded.js for documented
+          # runtime-shell false positives.
+          npm run audit:hardcoded
 
       - name: Syntax check (py_compile)
         run: python -m py_compile $(git ls-files 'src/*.py' 'tests/*.py' 'scripts/*.py' '*.py' ':!:scratch/*')

@@ -1,0 +1,36 @@
+{
+  "filters": {
+    "all": "Todos",
+    "open": "Abiertos",
+    "mine": "Mis conversaciones",
+    "ai_handling": "Atendidos por IA",
+    "human_needed": "Atención requerida",
+    "closed": "Cerrados",
+    "search_chats": "Buscar conversación..."
+  },
+  "chat": {
+    "claim_btn": "Tomar conversación",
+    "claimed_by_you": "Asignado a ti",
+    "claimed_by_other": "Asignado a {{name}}",
+    "release_btn": "Liberar a la IA",
+    "close_ticket": "Cerrar conversación",
+    "reopen_ticket": "Reabrir conversación",
+    "channel_whatsapp": "WhatsApp",
+    "channel_instagram": "Instagram Direct",
+    "type_message": "Escribe una respuesta...",
+    "send_btn": "Enviar",
+    "customer_info": "Detalles del contacto",
+    "phone": "Teléfono",
+    "last_seen": "Última actividad: {{time}}",
+    "notes": "Notas internas de equipo",
+    "add_note_placeholder": "Añade una nota visible solo para tu equipo...",
+    "opt_out_badge": "Baja voluntaria de marketing activa",
+    "ai_paused": "Asistente pausado para este chat"
+  },
+  "status_labels": {
+    "active": "Activa",
+    "waiting_reply": "En espera de respuesta",
+    "resolved": "Resuelta",
+    "archived": "Archivada"
+  }
+}

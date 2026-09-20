@@ -1,0 +1,68 @@
+{
+  "sidebar": {
+    "brand_eyebrow": "Panel",
+    "business_default": "Tu Negocio",
+    "group_main": "Principal",
+    "group_assistant": "Asistente",
+    "nav_panoramica": "Resumen",
+    "nav_inbox": "Bandeja",
+    "nav_prenotazioni": "Reservas",
+    "nav_recensioni": "Reseñas",
+    "nav_team": "Equipo y Miembros",
+    "nav_assistente": "Simulador de IA",
+    "nav_conoscenza": "Conocimiento",
+    "nav_configurazione_ai": "Configuración de IA",
+    "menu_impostazioni": "Ajustes",
+    "menu_piano": "Plan y Facturación",
+    "menu_logout": "Cerrar sesión"
+  },
+  "topbar": {
+    "title_panoramica": "Resumen",
+    "title_inbox": "Bandeja y Conversaciones",
+    "title_prenotazioni": "Reservas y Calendario",
+    "title_recensioni": "Reseñas y Opiniones",
+    "title_team": "Equipo y Miembros",
+    "title_assistente": "Simulador del Asistente",
+    "title_conoscenza": "Documentos y Conocimiento",
+    "title_configurazione_ai": "Configuración de IA y Reglas",
+    "title_impostazioni": "Ajustes Generales",
+    "title_account": "Cuenta y Facturación",
+    "search_placeholder": "Buscar conversaciones, reservas, documentos…",
+    "search_aria": "Búsqueda global",
+    "notifications": "Centro de notificaciones",
+    "notifications_title": "Notificaciones",
+    "notifications_empty": "No hay nuevas notificaciones.",
+    "login_btn": "Iniciar sesión"
+  },
+  "kpi": {
+    "total_received": "mensajes recibidos hoy",
+    "handled_by_ai": "atendidos por el asistente",
+    "escalated_human": "derivados al equipo",
+    "bookings_created": "reservas confirmadas",
+    "trend_neutral": "En línea con ayer",
+    "trend_positive": "Aumento respecto a ayer",
+    "trend_negative": "Descenso respecto a ayer",
+    "sparkline_caption": "Últimos 7 días",
+    "sparkline_unit": "sem."
+  },
+  "modals": {
+    "confirm_action": "Confirmar acción",
+    "confirm_btn": "Confirmar",
+    "cancel_btn": "Cancelar",
+    "delete_item_title": "Confirmar eliminación",
+    "delete_item_desc": "¿Estás seguro de que deseas eliminar este elemento? Esta acción no se puede deshacer."
+  },
+  "empty_states": {
+    "no_data": "No hay datos disponibles.",
+    "no_notifications": "No hay notificaciones sin leer.",
+    "no_bookings": "No se encontraron reservas con los filtros seleccionados.",
+    "no_messages": "No hay mensajes en esta conversación.",
+    "search_no_results": "No se encontraron resultados."
+  },
+  "toast": {
+    "saved": "Cambios guardados con éxito.",
+    "error": "Ocurrió un error inesperado.",
+    "network_error": "Problema de conexión con la red. Inténtalo de nuevo en unos momentos.",
+    "session_expired": "Sesión caducada. Inicia sesión de nuevo."
+  }
+}

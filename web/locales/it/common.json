@@ -1,0 +1,64 @@
+{
+  "brand": "Melpis",
+  "tagline": "Risponditore WhatsApp AI per la tua attività",
+  "nav": {
+    "home": "Home",
+    "sectors": "Settori",
+    "pricing": "Prezzi",
+    "documentation": "Documentazione",
+    "login": "Accedi",
+    "signup": "Inizia gratis",
+    "open_menu": "Apri menu",
+    "close_menu": "Chiudi menu"
+  },
+  "sectors": {
+    "restaurants": "Ristoranti e Pizzerie",
+    "beauty": "Saloni & Bellezza",
+    "medical": "Studi Medici & Dentisti",
+    "hotels": "Hotel & Ricettivo"
+  },
+  "actions": {
+    "save": "Salva",
+    "save_changes": "Salva modifiche",
+    "cancel": "Annulla",
+    "confirm": "Conferma",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "close": "Chiudi",
+    "back": "Indietro",
+    "continue": "Continua",
+    "loading": "Caricamento in corso...",
+    "search": "Cerca...",
+    "filter": "Filtra",
+    "export": "Esporta",
+    "copy": "Copia",
+    "copied": "Copiato negli appunti"
+  },
+  "status": {
+    "active": "Attivo",
+    "inactive": "Inattivo",
+    "pending": "In attesa",
+    "completed": "Completato",
+    "cancelled": "Annullato",
+    "connected": "Connesso",
+    "disconnected": "Disconnesso",
+    "error": "Errore",
+    "online": "Online",
+    "offline": "Non in linea"
+  },
+  "footer": {
+    "rights": "Tutti i diritti riservati.",
+    "privacy": "Privacy Policy",
+    "terms": "Termini di Servizio",
+    "cookies": "Cookie Policy",
+    "legal_note": "Melpis utilizza la Meta Cloud API ufficiale. Non siamo affiliati con WhatsApp LLC o Meta Platforms Inc."
+  },
+  "languages": {
+    "it": "Italiano",
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "select_language": "Seleziona lingua"
+  }
+}

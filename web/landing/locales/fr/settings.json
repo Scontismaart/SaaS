@@ -1,0 +1,59 @@
+{
+  "tabs": {
+    "general": "Général",
+    "assistant": "Assistant & Règles",
+    "channels": "Canaux & WhatsApp",
+    "calendar": "Calendrier & Créneaux",
+    "team": "Équipe & Permissions",
+    "billing": "Abonnement & Formule",
+    "language": "Langue & Région"
+  },
+  "general_section": {
+    "subtitle": "Localisation, fuseau horaire et préférences opérationnelles du panneau."
+  },
+  "timezone_section": {
+    "title": "Localisation et Fuseau Horaire",
+    "description": "Le fuseau horaire est utilisé pour les rappels de réservation, les rapports de fin de journée et le calcul des SLA.",
+    "label": "Fuseau horaire de l'activité",
+    "save_btn": "Enregistrer le fuseau horaire"
+  },
+  "language_section": {
+    "title": "Langue du tableau de bord",
+    "description": "Sélectionnez la langue d'affichage de l'interface Melpis.",
+    "select_label": "Langue active",
+    "note": "Cette préférence est enregistrée pour votre profil utilisateur."
+  },
+  "assistant_rules": {
+    "title": "Instructions & Comportement de l'IA",
+    "personality_label": "Tonalité et personnalité",
+    "formality_label": "Niveau de politesse",
+    "formality_tu": "Tutoiement (proche et informel)",
+    "formality_lei": "Vouvoiement (courtois et professionnel)",
+    "business_hours_title": "Plages horaires et réponses",
+    "outside_hours_title": "Comportement hors horaires",
+    "auto_reply_outside": "Envoyer une réponse automatique hors horaires d'ouverture",
+    "save_rules_btn": "Enregistrer les règles de l'assistant"
+  },
+  "channels": {
+    "whatsapp_title": "Connexion WhatsApp Business",
+    "phone_number": "Numéro de téléphone relié",
+    "meta_status": "État de la Meta Cloud API",
+    "reconnect_btn": "Reconnecter le canal",
+    "disconnect_btn": "Déconnecter"
+  },
+  "calendar": {
+    "title": "Synchronisation Google Calendar",
+    "status_connected": "Google Calendar connecté",
+    "sync_calendar_name": "Calendrier principal",
+    "slot_duration": "Durée par défaut des créneaux (minutes)",
+    "buffer_time": "Temps de pause entre rendez-vous (minutes)",
+    "save_calendar_btn": "Enregistrer les réglages d'agenda"
+  },
+  "billing": {
+    "current_plan": "Formule actuelle",
+    "status": "État de l'abonnement",
+    "manage_stripe_btn": "Gérer la facturation et les cartes sur Stripe",
+    "upgrade_btn": "Passer à la formule supérieure",
+    "cancel_btn": "Résilier l'abonnement"
+  }
+}

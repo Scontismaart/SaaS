@@ -1,0 +1,17 @@
+{
+  "required_field": "Ce champ est obligatoire.",
+  "invalid_email": "Veuillez renseigner une adresse e-mail valide.",
+  "password_too_short": "Le mot de passe doit comporter au moins 10 caractères.",
+  "password_missing_requirements": "Le mot de passe doit respecter tous les critères de sécurité exigés.",
+  "passwords_do_not_match": "Les mots de passe renseignés ne correspondent pas.",
+  "terms_required": "Vous devez accepter les Conditions d'Utilisation et la Politique de Confidentialité pour poursuivre.",
+  "network_error": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
+  "session_expired": "Session expirée. Veuillez vous reconnecter.",
+  "unauthorized": "Accès non autorisé. Veuillez vous connecter.",
+  "forbidden": "Vous ne disposez pas des droits nécessaires pour réaliser cette opération.",
+  "not_found": "La ressource demandée est introuvable.",
+  "rate_limit": "Trop de requêtes envoyées. Veuillez patienter un instant avant de réessayer.",
+  "server_error": "Erreur interne du serveur. Merci de réitérer ultérieurement.",
+  "invalid_credentials": "Adresse e-mail ou mot de passe incorrect.",
+  "email_already_exists": "Un compte existe déjà avec cette adresse e-mail."
+}

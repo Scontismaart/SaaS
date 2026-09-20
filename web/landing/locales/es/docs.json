@@ -1,0 +1,56 @@
+{
+  "page_title": "Documentación y Guías Oficiales · Melpis",
+  "meta_description": "Guías oficiales, listas de verificación y documentación técnica para configurar tu asistente de WhatsApp con IA, conectar Google Calendar y la bandeja de equipo.",
+  "hero": {
+    "badge": "Centro de Ayuda y Guías",
+    "title": "¿Cómo podemos ayudarte?",
+    "subtitle": "Todo lo que necesitas para configurar, integrar y sacar el máximo partido a tu asistente Melpis.",
+    "search_placeholder": "Buscar guías, integraciones, configuración (Ctrl+K)..."
+  },
+  "search": {
+    "empty": "No se encontraron artículos para esta búsqueda.",
+    "count_articles": "{{count}} artículos",
+    "shortcut_hint": "Pulsa / para buscar rápidamente"
+  },
+  "categories": {
+    "start": {
+      "title": "Empieza por aquí",
+      "desc": "Qué es Melpis, arquitectura esencial, asistente de configuración en 7 pasos y lista de verificación previa."
+    },
+    "integrations": {
+      "title": "Canales e Integraciones",
+      "desc": "WhatsApp Business, Instagram Direct, Google Calendar, Google Reseñas, PMS y Airtable."
+    },
+    "ai_config": {
+      "title": "Configuración de IA y Conocimiento",
+      "desc": "Personalidad, tono de voz, horarios, subida de documentos RAG, tarifas y caché de preguntas frecuentes."
+    },
+    "inbox": {
+      "title": "Bandeja Compartida e Intervención Humana",
+      "desc": "Asignación de conversaciones (Claim), respuesta manual en WhatsApp/Instagram, derivación y SLA."
+    },
+    "bookings": {
+      "title": "Reservas y Citas",
+      "desc": "Disponibilidad de huecos, semáforo de horarios, aforos, creación de citas y sincronización con el calendario."
+    },
+    "accounts": {
+      "title": "Cuenta, Equipo y Planes",
+      "desc": "Gestión de colaboradores (Propietario, Gestor, Empleado), planes Esencial, Crecimiento, Escala y facturación."
+    },
+    "security": {
+      "title": "Seguridad, Privacidad y RGPD",
+      "desc": "Cumplimiento del RGPD, DPA, retención de 60-90 días, gestión de bajas voluntarias y derecho al olvido."
+    },
+    "troubleshooting": {
+      "title": "Resolución de Problemas y Arquitectura",
+      "desc": "Diagnóstico de tokens caducados, errores de Meta, webhooks, límites de frecuencia y estructura técnica."
+    }
+  },
+  "ui": {
+    "back_to_docs": "← Todas las guías",
+    "table_of_contents": "En esta página",
+    "need_help": "¿No encuentras lo que buscas?",
+    "contact_support": "Contactar con soporte de Melpis",
+    "last_updated": "Última actualización: {{date}}"
+  }
+}

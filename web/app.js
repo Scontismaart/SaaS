@@ -8,6 +8,12 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
 }
 const PROFILO_ID = "trattoria_da_mario";
 
+if (typeof window !== "undefined" && typeof window.MelpisI18n !== "undefined" && typeof window.MelpisI18n.init === "function") {
+  window.MelpisI18n.init().catch(function (e) {
+    console.warn("[App] Inizializzazione i18n:", e);
+  });
+}
+
 /* ============================================================
    AUTENTICAZIONE — BFF (task18)
    ============================================================
@@ -282,11 +288,13 @@ function aggiornaBottoneAccesso() {
   const email = sessione.email || "utente";
   const iniziale = (email[0] || "U").toUpperCase();
 
-  // Sidebar account trigger
+  // Sidebar account trigger & topbar avatar
   const sbAvatar = document.getElementById("sidebar-avatar-initial");
   const sbEmail = document.getElementById("sidebar-account-email");
   const sbPlan = document.getElementById("sidebar-account-plan");
+  const tbAvatar = document.getElementById("topbar-avatar-initial");
   if (sbAvatar) sbAvatar.textContent = iniziale;
+  if (tbAvatar) tbAvatar.textContent = iniziale;
   if (sbEmail) sbEmail.textContent = email;
   if (sbPlan && sessione.ruolo) {
     const rLabel = RUOLI_LABELS[sessione.ruolo] || sessione.ruolo;
@@ -384,6 +392,8 @@ async function caricaSessione() {
       return false;
     }
     sessione = data;
+    const pbn = document.getElementById("panoramica-business-name");
+    if (pbn && sessione.org_name) pbn.textContent = sessione.org_name;
     aggiornaBottoneAccesso();
     return true;
   } catch {
@@ -488,7 +498,13 @@ async function caricaAccount() {
     if (sbPlanEl) sbPlanEl.textContent = corrente ? "Piano " + corrente.nome : "Piano e abbonamento";
 
     const rinnovo = document.getElementById("account-rinnovo");
-    const dataIt = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("it-IT"); };
+    const dataIt = (iso) => {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "";
+      return (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
+        ? MelpisI18n.formatDate(d)
+        : d.toLocaleDateString("it-IT");
+    };
     if (rinnovo) {
       if (sub.trial_end) rinnovo.textContent = `Prova gratuita attiva fino al ${dataIt(sub.trial_end)}.`;
       else if (stato === "canceled") rinnovo.textContent = "Abbonamento disattivato: il servizio resta attivo fino al termine del periodo pagato.";
@@ -872,11 +888,18 @@ async function aggiornaNotifiche() {
   }
 }
 
-topbarDate.textContent = new Date().toLocaleDateString("it-IT", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+function aggiornaDataTopbar() {
+  if (!topbarDate) return;
+  topbarDate.textContent = (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
+    ? MelpisI18n.formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })
+    : new Date().toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+  const topbarWeekday = document.getElementById("topbar-weekday");
+  if (topbarWeekday) {
+    const rawDay = new Date().toLocaleDateString("it-IT", { weekday: "long" });
+    topbarWeekday.textContent = rawDay.charAt(0).toUpperCase() + rawDay.slice(1);
+  }
+}
+aggiornaDataTopbar();
 
 navItems.forEach((btn) => {
   btn.addEventListener("click", async () => {
@@ -3249,6 +3272,11 @@ async function aggiornaPrioritari(silent = false) {
     }
     const rawEventi = await res.json().catch(() => []);
     const eventi = Array.isArray(rawEventi) ? rawEventi : [];
+    const countBadge = document.getElementById("priority-count-badge");
+    if (countBadge) {
+      countBadge.textContent = eventi.length ? `${eventi.length} elementi` : "";
+      countBadge.hidden = !eventi.length;
+    }
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
       const cfg = await caricaStatoOnboarding();
@@ -3362,55 +3390,24 @@ async function aggiornaPrioritari(silent = false) {
 function generaSparklineSvg(dataPoints, strokeColor, gradientId) {
   const pts = Array.isArray(dataPoints) && dataPoints.length === 7 ? dataPoints : [0, 0, 0, 0, 0, 0, 0];
   const maxVal = Math.max(...pts, 1);
-  const width = 120;
-  const height = 28;
-  const padX = 4;
-  const padY = 4;
-  const availW = width - padX * 2;
-  const availH = height - padY * 2;
-
+  const width = 84;
+  const height = 24;
+  const barWidth = 3;
+  const gap = 5;
   const allZero = pts.every((v) => v === 0);
 
-  if (allZero) {
-    const yBaseline = height - padY - 2;
-    return `
-      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
-        <line x1="${padX}" y1="${yBaseline}" x2="${width - padX}" y2="${yBaseline}" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="3,3" />
-      </svg>
-    `;
-  }
-
-  const coords = pts.map((val, i) => {
-    const x = padX + i * (availW / (pts.length - 1));
-    const y = height - padY - (val / maxVal) * availH;
-    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) };
+  let barsHtml = "";
+  pts.forEach((val, i) => {
+    const x = i * (barWidth + gap) + 4;
+    const h = allZero ? (3 + (i % 3) * 4) : Math.max(3, (val / maxVal) * (height - 4));
+    const y = height - h;
+    const opacity = allZero ? (0.22 + (i / 7) * 0.32) : (0.4 + (val / maxVal) * 0.6);
+    barsHtml += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="1.5" fill="${strokeColor}" fill-opacity="${opacity.toFixed(2)}" />`;
   });
 
-  let pathD = `M ${coords[0].x} ${coords[0].y}`;
-  for (let i = 1; i < coords.length; i++) {
-    const prev = coords[i - 1];
-    const curr = coords[i];
-    const cpX1 = prev.x + (curr.x - prev.x) / 2;
-    const cpY1 = prev.y;
-    const cpX2 = prev.x + (curr.x - prev.x) / 2;
-    const cpY2 = curr.y;
-    pathD += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
-  }
-
-  const fillD = `${pathD} L ${coords[coords.length - 1].x} ${height} L ${coords[0].x} ${height} Z`;
-  const lastPt = coords[coords.length - 1];
-
   return `
-    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
-      <defs>
-        <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.3" />
-          <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.0" />
-        </linearGradient>
-      </defs>
-      <path d="${fillD}" fill="url(#${gradientId})" />
-      <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="${lastPt.x}" cy="${lastPt.y}" r="2.5" fill="${strokeColor}" />
+    <svg viewBox="0 0 ${width} ${height}" class="kpi-sparkline-bars" style="width:100%;height:100%;">
+      ${barsHtml}
     </svg>
   `;
 }
@@ -3686,6 +3683,20 @@ async function aggiornaRiepilogo(silent = false) {
     }
   }
 }
+
+document.getElementById("priority-inbox-link")?.addEventListener("click", () => {
+  if (typeof apriView === "function") apriView("inbox");
+});
+document.getElementById("activity-view-all-btn")?.addEventListener("click", () => {
+  if (typeof apriView === "function") apriView("inbox");
+});
+document.querySelectorAll(".kpi-action-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const view = btn.getAttribute("data-view");
+    if (view && typeof apriView === "function") apriView(view);
+  });
+});
+
 
 /* ============================================================
    KNOWLEDGE BASE RISTRUTTURATA (4 CATEGORIE)
@@ -4675,12 +4686,13 @@ async function aggiornaConoscenzaCompleta() {
 }
 
 /* ============================================================
-   INBOX (HITL) — Layout a 3 colonne
+   INBOX (HITL) — Layout a 2 colonne
    ============================================================ */
 
 let inboxState = {
-  mainFilter: "all",
-  quickFilter: "all",
+  channelFilter: "all",
+  statusFilter: "all",
+  search: "",
   selectedTicketId: null,
   tickets: [],
   team: [],
@@ -4906,38 +4918,35 @@ async function caricaInbox(silent = false) {
 function getFilteredTickets() {
   let list = [...inboxState.tickets];
 
-  // 1. Filtro Principale (Colonna 1)
-  const mf = inboxState.mainFilter;
-  if (mf === "ai_managed") {
-    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
-  } else if (mf === "pending_staff") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
-  } else if (mf === "escalated") {
-    list = list.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
-  } else if (mf === "channel_whatsapp") {
+  // 1. Filtro Canale
+  const ch = inboxState.channelFilter;
+  if (ch === "whatsapp") {
     list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
-  } else if (mf === "channel_instagram") {
+  } else if (ch === "instagram") {
     list = list.filter((t) => (t.canale || "").toLowerCase() === "instagram");
-  } else if (mf === "status_open") {
-    list = list.filter((t) => t.ticket_status !== "RESOLVED");
-  } else if (mf === "status_pending") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
-  } else if (mf === "status_resolved") {
+  }
+
+  // 2. Filtro Stato & Gestione
+  const st = inboxState.statusFilter;
+  if (st === "ai") {
+    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
+  } else if (st === "human") {
+    list = list.filter((t) => t.ticket_status === "CLAIMED" || t.ticket_status === "PENDING_STAFF");
+  } else if (st === "escalated") {
+    list = list.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+  } else if (st === "resolved") {
     list = list.filter((t) => t.ticket_status === "RESOLVED");
   }
 
-  // 2. Quick Filter (Colonna 2 chips)
-  const qf = inboxState.quickFilter;
-  if (qf === "whatsapp") {
-    list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
-  } else if (qf === "instagram") {
-    list = list.filter((t) => (t.canale || "").toLowerCase() === "instagram");
-  } else if (qf === "ai") {
-    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
-  } else if (qf === "human") {
-    list = list.filter((t) => t.ticket_status === "CLAIMED");
-  } else if (qf === "escalated") {
-    list = list.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+  // 3. Ricerca veloce per numero, testo o operatore
+  if (inboxState.search) {
+    const q = inboxState.search.toLowerCase().trim();
+    list = list.filter((t) => {
+      const phone = (t.phone_number || "").toLowerCase();
+      const preview = (t.last_message_preview || "").toLowerCase();
+      const name = (t.assigned_nome || "").toLowerCase();
+      return phone.includes(q) || preview.includes(q) || name.includes(q);
+    });
   }
 
   return list;
@@ -4948,17 +4957,19 @@ function aggiornaContatoriFiltri() {
   const countAll = all.length;
   const countWa = all.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp").length;
   const countIg = all.filter((t) => (t.canale || "").toLowerCase() === "instagram").length;
-  const countEscalated = all.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue).length;
+  const countEscalated = all.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue).length;
 
   const elAll = document.getElementById("chip-cnt-all");
   const elWa = document.getElementById("chip-cnt-wa");
   const elIg = document.getElementById("chip-cnt-ig");
   const elEsc = document.getElementById("chip-cnt-escalated");
+  const elTotal = document.getElementById("inbox-total-count");
 
   if (elAll) elAll.textContent = countAll;
   if (elWa) elWa.textContent = countWa;
   if (elIg) elIg.textContent = countIg;
   if (elEsc) elEsc.textContent = countEscalated;
+  if (elTotal) elTotal.textContent = countAll;
 }
 
 function renderInboxConversazioni() {
@@ -5000,16 +5011,16 @@ function renderInboxConversazioni() {
           "Non ci sono conversazioni corrispondenti ai filtri attivi.",
           "Mostra tutte",
           () => {
-            inboxState.mainFilter = "all";
-            inboxState.quickFilter = "all";
+            inboxState.channelFilter = "all";
+            inboxState.statusFilter = "all";
             inboxState.search = "";
             const searchInput = document.getElementById("inbox-search-input");
             if (searchInput) searchInput.value = "";
-            document.querySelectorAll(".inbox-nav-filter").forEach((b) => {
-              b.classList.toggle("active", b.dataset.inboxMainFilter === "all");
+            document.querySelectorAll("[data-inbox-channel]").forEach((b) => {
+              b.classList.toggle("active", b.dataset.inboxChannel === "all");
             });
-            document.querySelectorAll(".inbox-quick-filter-chip").forEach((b) => {
-              b.classList.toggle("active", b.dataset.inboxQuickFilter === "all");
+            document.querySelectorAll("[data-inbox-status]").forEach((b) => {
+              b.classList.toggle("active", b.dataset.inboxStatus === "all");
             });
             renderInboxConversazioni();
           }
@@ -5488,7 +5499,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
 
         threadContainer.innerHTML = "";
         if (!messages.length) {
-          threadContainer.innerHTML = '<p class="inbox-empty" style="text-align:center; padding:30px 0;">Nessun messaggio in questa conversazione.</p>';
+          threadContainer.innerHTML = '<div class="inbox-empty-thread"><div class="inbox-empty-thread-icon"><svg viewBox="0 0 24 24" fill="none" width="28" height="28" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg></div><p class="inbox-empty-text">Nessun messaggio in questa conversazione.</p></div>';
         } else {
           messages.forEach((m) => {
             const row = _renderMsgRow(m, ticket);
@@ -5615,35 +5626,34 @@ async function inviaRispostaInbox() {
 /* ---------- Setup Event Listeners Inbox ---------- */
 
 function inizializzaEventiInbox() {
-  // 1. Filtri Principali (Colonna 1)
-  document.querySelectorAll("[data-inbox-main-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      inboxState.mainFilter = btn.dataset.inboxMainFilter;
-      document.querySelectorAll("[data-inbox-main-filter]").forEach((b) => b.classList.toggle("active", b === btn));
-
-      // Aggiorna label mobile
-      const activeLabel = document.getElementById("inbox-mobile-active-label");
-      if (activeLabel) activeLabel.textContent = btn.querySelector(".inbox-nav-text")?.textContent || "Filtri";
-
-      // Chiudi drawer mobile/tablet se aperto
-      document.getElementById("inbox-filters-panel")?.classList.remove("open");
-      const backdrop = document.getElementById("inbox-filter-backdrop");
-      if (backdrop) backdrop.hidden = true;
-
-      renderInboxConversazioni();
-    });
-  });
-
-  // 2. Quick Filters (Colonna 2 chips)
-  document.querySelectorAll("[data-quick-filter]").forEach((chip) => {
+  // 1. Filtri Canale
+  document.querySelectorAll("[data-inbox-channel]").forEach((chip) => {
     chip.addEventListener("click", () => {
-      inboxState.quickFilter = chip.dataset.quickFilter;
-      document.querySelectorAll("[data-quick-filter]").forEach((c) => c.classList.toggle("active", c === chip));
+      inboxState.channelFilter = chip.dataset.inboxChannel;
+      document.querySelectorAll("[data-inbox-channel]").forEach((c) => c.classList.toggle("active", c === chip));
       renderInboxConversazioni();
     });
   });
 
-  // 3. Form Invio Risposta
+  // 2. Filtri Stato & Gestione
+  document.querySelectorAll("[data-inbox-status]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      inboxState.statusFilter = chip.dataset.inboxStatus;
+      document.querySelectorAll("[data-inbox-status]").forEach((c) => c.classList.toggle("active", c === chip));
+      renderInboxConversazioni();
+    });
+  });
+
+  // 3. Ricerca Conversazioni
+  const searchInput = document.getElementById("inbox-search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      inboxState.search = searchInput.value;
+      renderInboxConversazioni();
+    });
+  }
+
+  // 4. Form Invio Risposta
   const replyForm = document.getElementById("inbox-reply-form");
   if (replyForm) {
     replyForm.addEventListener("submit", (e) => {
@@ -5670,37 +5680,11 @@ function inizializzaEventiInbox() {
     });
   }
 
-  // 4. Mobile Controls (Back button & Filter drawer toggle)
+  // 5. Mobile Controls (Torna alla lista dalla chat)
   const backBtn = document.getElementById("inbox-back-to-list");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
       document.querySelector(".inbox-view")?.classList.remove("show-detail");
-    });
-  }
-
-  const filterToggle = document.getElementById("inbox-filter-toggle");
-  const filterClose = document.getElementById("inbox-filters-close");
-  const filterBackdrop = document.getElementById("inbox-filter-backdrop");
-  const filterPanel = document.getElementById("inbox-filters-panel");
-
-  if (filterToggle && filterPanel) {
-    filterToggle.addEventListener("click", () => {
-      filterPanel.classList.add("open");
-      if (filterBackdrop) filterBackdrop.hidden = false;
-    });
-  }
-
-  if (filterClose && filterPanel) {
-    filterClose.addEventListener("click", () => {
-      filterPanel.classList.remove("open");
-      if (filterBackdrop) filterBackdrop.hidden = true;
-    });
-  }
-
-  if (filterBackdrop && filterPanel) {
-    filterBackdrop.addEventListener("click", () => {
-      filterPanel.classList.remove("open");
-      filterBackdrop.hidden = true;
     });
   }
 }
@@ -6075,9 +6059,9 @@ notifBell?.addEventListener("click", () => {
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   function risolviTema(preferenza) {
-    if (preferenza === "dark") return "dark";
     if (preferenza === "light") return "light";
-    return mediaQuery.matches ? "dark" : "light";
+    if (preferenza === "dark") return "dark";
+    return "dark";
   }
 
   function applica(preferenza) {
@@ -6098,11 +6082,11 @@ notifBell?.addEventListener("click", () => {
     applica(nuovaPreferenza);
   }
 
-  const salvato = localStorage.getItem(KEY) || "system";
+  const salvato = localStorage.getItem(KEY) || "dark";
   applica(salvato);
 
   mediaQuery.addEventListener("change", () => {
-    if ((localStorage.getItem(KEY) || "system") === "system") {
+    if ((localStorage.getItem(KEY) || "dark") === "system") {
       applica("system");
     }
   });
@@ -6176,6 +6160,52 @@ let caricaTimezone;
   });
 
   caricaTimezone = carica;
+})();
+
+/* ============================================================
+   INTERNAZIONALIZZAZIONE — Selettori lingua Dashboard
+   ============================================================ */
+
+(function inizializzaLinguaDashboard() {
+  const sidebarSelect = document.getElementById("sidebar-lang-select");
+  const settingsSelect = document.getElementById("settings-lang-select");
+
+  function syncSelects(lang) {
+    if (sidebarSelect && sidebarSelect.value !== lang) sidebarSelect.value = lang;
+    if (settingsSelect && settingsSelect.value !== lang) settingsSelect.value = lang;
+  }
+
+  async function onLangChange(e) {
+    const newLang = e.target.value;
+    if (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.setLanguage === "function") {
+      syncSelects(newLang);
+      try {
+        await MelpisI18n.setLanguage(newLang);
+        if (typeof toast === "function") {
+          toast(typeof t === "function" ? t("dashboard.toast.saved") : "Lingua aggiornata", "success");
+        }
+      } catch (err) {
+        console.error("Errore cambio lingua:", err);
+      }
+    }
+  }
+
+  if (sidebarSelect) sidebarSelect.addEventListener("change", onLangChange);
+  if (settingsSelect) settingsSelect.addEventListener("change", onLangChange);
+
+  // Inizializza lingua corrente
+  if (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.getLanguage === "function") {
+    syncSelects(MelpisI18n.getLanguage());
+  }
+
+  window.addEventListener("melpis:lang-changed", (e) => {
+    if (e && e.detail && e.detail.language) {
+      syncSelects(e.detail.language);
+    }
+    if (typeof aggiornaDataTopbar === "function") {
+      aggiornaDataTopbar();
+    }
+  });
 })();
 
 /* ============================================================

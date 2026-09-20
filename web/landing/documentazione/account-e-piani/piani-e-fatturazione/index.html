@@ -1,0 +1,306 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piani, Limiti di Utilizzo e Stripe Customer Portal — Documentazione Melpis</title>
+    <meta name="description" content="Dettaglio dei piani Starter, Pro e Business di Melpis, monitoraggio dei messaggi mensili, gestione fatture e disdetta tramite Stripe Portal.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/account-e-piani/piani-e-fatturazione/">
+    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link is-active">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Account e Piani</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Piani e Fatturazione</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Piani, Limiti di Utilizzo e Stripe Customer Portal</h1>
+                    <p class="docs-article-subtitle">Confronto dettagliato dei piani di abbonamento, monitoraggio del monte messaggi mensile e gestione autonoma della fatturazione.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>La sezione <strong>Piani &amp; Fatturazione</strong> offre la massima trasparenza sull'utilizzo del servizio. Permette di consultare in tempo reale il numero di risposte generate rispetto alla quota mensile, passare a un piano superiore con calcolo immediato del pro-rata e aggiornare il metodo di pagamento tramite il portale certificato <strong>Stripe</strong>. Ricevuta Stripe immediata; fattura fiscale su richiesta.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Solo l'utente con ruolo di <strong>Owner</strong> può accedere alla sezione fatturazione e al portale Stripe.</li>
+                        <li>I pagamenti sono gestiti tramite carte di credito, debito o prepagate (circuiti Visa, Mastercard, Maestro, American Express).</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Confronto Funzionale dei Piani</h3>
+                                <p class="docs-step-text">I piani Melpis sono calibrati sul volume di clientela della tua attività:
+                                <ul>
+                                    <li><strong>Starter (€ 29 / mese)</strong>: 500 messaggi AI inclusi, 1 postazione utente (Owner), canale WhatsApp Business, calendario e prenotazioni. Ideale per piccoli artigiani o professionisti singoli.</li>
+                                    <li><strong>Pro (€ 69 / mese)</strong>: 2.000 messaggi AI inclusi, fino a 3 utenti di team, WhatsApp + Instagram Direct, automazione Google Recensioni, FAQ con cache semantica. Il piano più scelto da saloni, centri estetici e studi medici.</li>
+                                    <li><strong>Business (€ 149 / mese)</strong>: 10.000 messaggi AI inclusi, collaboratori illimitati, tutti i canali, motore RAG per documenti PDF e menu con OCR RapidOCR, integrazioni PMS (SimplyBook, Apaleo) e priorità di elaborazione.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Monitoraggio dei Consumi Mensili</h3>
+                                <p class="docs-step-text">Nella schermata <strong>Fatturazione</strong> trovi una barra di avanzamento che indica i messaggi consumati nel ciclo di fatturazione corrente.
+                                <ul>
+                                    <li>Vengono conteggiati unicamente i messaggi in cui l'AI formula una risposta testuale.</li>
+                                    <li>I messaggi gestiti a zero token dalla <strong>Cache Semantica FAQ</strong> non intaccano il monte messaggi.</li>
+                                    <li>I messaggi digitati a mano dallo staff nella Shared Inbox sono gratuiti e illimitati.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Accesso al Portale Clienti Stripe</h3>
+                                <p class="docs-step-text">Cliccando su <strong>Gestisci Abbonamento (Stripe Portal)</strong> verrai reindirizzato al server sicuro di Stripe dove puoi:
+                                <ul>
+                                    <li>Richiedere una fattura fiscale fornendo i dati di intestazione necessari.</li>
+                                    <li>Aggiornare la carta di credito registrata.</li>
+                                    <li>Eseguire l'upgrade o il downgrade di piano (con effetto immediato e conguaglio proporzionale).</li>
+                                    <li>Scaricare tutte le fatture e ricevute di pagamento pregresse in formato PDF.</li>
+                                    <li>Disdire l'abbonamento con un solo clic, senza vincoli e senza dover contattare il supporto telefonico.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-info">
+                        <div class="docs-callout-title">ℹ️ Cosa succede se si supera il limite di messaggi?</div>
+                        <p class="docs-callout-text">Al raggiungimento dell'<strong>80%</strong> e del <strong>95%</strong> della soglia mensile, l'Owner riceve un'email di avviso. Se il limite viene raggiunto al 100%, per evitare addebiti a sorpresa non concordati, l'assistente AI sospende le generazioni automatiche e tutte le nuove conversazioni vengono instradate allo staff nella Shared Inbox. Puoi riattivare immediatamente l'AI passando al piano superiore con un clic dal portale Stripe.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>In caso di upgrade, i nuovi limiti di messaggi e le funzionalità avanzate (come RAG o account aggiuntivi) si attivano all'istante, senza riavvio dei servizi.</li>
+                        <li>In caso di cancellazione dell'abbonamento, il servizio rimane pienamente operativo fino alla data di naturale scadenza del periodo pagato; al termine non viene effettuato alcun rinnovo automatico.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Costi Meta per conversazioni marketing</strong>: L'abbonamento a Melpis include l'utilizzo della piattaforma software. Le conversazioni su WhatsApp Cloud API seguono il listino ufficiale di Meta (le prime 1.000 conversazioni di servizio al mese avviate dagli utenti verso la tua azienda sono offerte gratuitamente da Meta).</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Come richiedere una fattura fiscale</summary>
+                            <div class="docs-accordion-content">
+                                <p>Ricevi subito la ricevuta Stripe. Per una fattura fiscale, contatta il supporto con i dati di intestazione necessari: la richiesta viene gestita dal Fornitore.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Il pagamento con carta di credito è stato rifiutato</summary>
+                            <div class="docs-accordion-content">
+                                <p>Stripe tenta nuovamente l'addebito dopo 24 e 72 ore. Nel frattempo, accedi al portale Stripe per aggiornare i dettagli della carta o autorizzare l'operazione con il 3D Secure della tua app bancaria.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>La sessione del portale clienti viene generata in modo sicuro tramite l'endpoint <code>/api/billing/create-portal-session</code> in <code>src/api/routes_billing.py</code>:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/api/routes_billing.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>@router.post("/billing/create-portal-session")
+async def create_portal_session(user: User = Depends(require_role(["owner"]))):
+    org = await get_organization(user.organization_id)
+    if not org.stripe_customer_id:
+        raise HTTPException(status_code=400, detail="Nessun profilo Stripe associato")
+
+    session = stripe.billing_portal.Session.create(
+        customer=org.stripe_customer_id,
+        return_url="https://app.melpis.it/#billing"
+    )
+    return {"url": session.url}</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-related-card">
+                            <div class="docs-related-tag">Team</div>
+                            <div class="docs-related-title">Team e Limiti Utente per Piano</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-related-card">
+                            <div class="docs-related-tag">Risparmio</div>
+                            <div class="docs-related-title">FAQ e Cache a Zero Token</div>
+                        </a>
+                        <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-related-card">
+                            <div class="docs-related-tag">Legale</div>
+                            <div class="docs-related-title">Privacy, GDPR e DPA</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

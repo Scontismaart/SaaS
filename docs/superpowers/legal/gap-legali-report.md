@@ -21,13 +21,17 @@ e tre i documenti prima della sottoscrizione con clienti reali:
 
 | Segnaposto | Documenti | Note |
 |---|---|---|
-| `[RAGIONE SOCIALE FORNITORE]` | DPA, ToS, Informativa | Ragione sociale dell'eventuale società (o dati del soggetto erogatore) |
-| `[INDIRIZZO]` / `[CITTÀ]` | DPA, ToS, Informativa | Sede legale e foro competente (DPA §14, ToS §12) |
-| `[P.IVA]` | DPA, ToS, Informativa | Partita IVA del fornitore |
-| `[DATA]` | DPA, ToS, Informativa | Data di ultimo aggiornamento |
+| `{{LEGAL_ENTITY_NAME}}` | DPA, ToS, Informativa, pagine pubbliche | Ragione sociale dell'eventuale società (o dati del soggetto erogatore) |
+| `{{LEGAL_ENTITY_REGISTERED_OFFICE}}` / `{{LEGAL_FORUM}}` | DPA, ToS, Informativa, pagine pubbliche | Sede legale e foro competente (DPA §14, ToS §12) |
+| `{{LEGAL_ENTITY_VAT_NUMBER}}` | DPA, ToS, Informativa, pagine pubbliche | Partita IVA del fornitore |
+| `{{LEGAL_DOCUMENT_EFFECTIVE_DATE}}` | DPA, ToS, Informativa | Data di ultimo aggiornamento |
 | `[REV]` | ToS, Informativa | Punti markati per decisione legale (vedi sotto) |
 | `[N]`/`[M]` giorni sospensione | ToS Appendice 1 | Termini commerciali di sospensione/disattivazione |
-| contatto privacy effettivo | Informativa §7 | Sostituisce i "canali di supporto" generici; l'email `dpo@example.com` è stata rimossa |
+| `{{LEGAL_PRIVACY_CONTACT_EMAIL}}` | Informativa §7, pagine pubbliche | Contatto privacy effettivo; non inventare un indirizzo |
+
+I token e le variabili bloccanti di produzione sono centralizzati in
+`docs/superpowers/legal/legal-identity-tokens.md`; il release preflight rifiuta
+valori mancanti o segnaposto.
 
 Finché i documenti restano anonimi, il soggetto cui è imputabile ogni
 obbligo giuridico (art. 28 GDPR, AI Act) è indeterminato.

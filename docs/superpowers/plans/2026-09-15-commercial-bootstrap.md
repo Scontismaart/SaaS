@@ -38,6 +38,10 @@ Create `scripts/backup_supabase_r2.sh` and `scripts/restore_supabase_drill.sh`. 
 
 Provide an idempotent Ubuntu 24.04 bootstrap script and release runbook for ARM64 or x86: Docker Engine/Compose, non-root deployment account, SSH/UFW hardening (22 restricted to an explicit CIDR, 80/443 public), swap, persistent application directories, Caddy/container startup, temporary-host flow, final DNS flow, health checks, rollback, backup cron, Sentry/uptime setup, and secret-file permissions. The script must never embed credentials, silently weaken SSH, or claim Oracle/R2 capacity is guaranteed.
 
+## Task 6: Reconcile concurrent frontend and localization work
+
+Audit and integrate the user's current uncommitted multilingual frontend/i18n work without losing intended content. Keep product source, generated localized routes, required assets, build/audit scripts, and focused tests; exclude screenshots, browser-QA scratch scripts, prototypes, and unreferenced duplicate assets from the release commit while preserving them locally. Remove any CSP regression: production `script-src` and `style-src` must not use broad `'unsafe-inline'`; executable inline scripts and style blocks must be externalized or protected by reproducible CSP hashes, while the minimum documented `style-src-attr` compatibility exception may remain for existing dynamic geometry. Verify all referenced local assets exist, no production page depends on third-party demo imagery, no secret is present, localization generation is deterministic, and lint/i18n/link/SEO/image/frontend tests pass. This task is intentionally combined with Task 2 because the legal/pricing pages are generated into every locale.
+
 ## Release Gate
 
 - All local and GitHub Actions checks green.

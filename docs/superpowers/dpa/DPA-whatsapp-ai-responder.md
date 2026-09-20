@@ -9,11 +9,12 @@
 # Accordo sul Trattamento dei Dati (DPA)
 ## Allegato ai Termini di Servizio — WhatsApp AI Responder
 
-**Ultimo aggiornamento:** [DATA] — versione bozza 0.1
+**Ultimo aggiornamento:** {{LEGAL_DOCUMENT_EFFECTIVE_DATE}} — versione bozza 0.1
 **Titolare del trattamento (ai fini del presente Accordo):** il Cliente B2B
 che sottoscrive i Termini di Servizio ("Cliente" o "Titolare")
-**Responsabile del trattamento:** [RAGIONE SOCIALE FORNITORE] ("noi",
-"Fornitore" o "Responsabile"), con sede in [INDIRIZZO], P.IVA [P.IVA]
+**Responsabile del trattamento:** {{LEGAL_ENTITY_NAME}} ("noi",
+"Fornitore" o "Responsabile"), con sede in {{LEGAL_ENTITY_REGISTERED_OFFICE}},
+P.IVA {{LEGAL_ENTITY_VAT_NUMBER}}
 
 ---
 
@@ -244,7 +245,7 @@ fermo quanto previsto al §9.
 ## 14. Legge applicabile e foro competente
 
 Il presente Accordo è disciplinato dalla legge italiana. Per qualsiasi
-controversia è competente in via esclusiva il Foro di [CITTÀ], salve le
+controversia è competente in via esclusiva il Foro di {{LEGAL_FORUM}}, salve le
 disposizioni inderogabili in materia di protezione dei consumatori ove
 applicabili.
 

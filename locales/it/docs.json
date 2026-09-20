@@ -1,0 +1,56 @@
+{
+  "page_title": "Documentazione & Guide Ufficiali · Melpis",
+  "meta_description": "Guide, checklist di configurazione e documentazione tecnica per impostare l'assistente WhatsApp AI, collegare Google Calendar e gestire la inbox condivisa.",
+  "hero": {
+    "badge": "Help Center & Guide",
+    "title": "Come possiamo aiutarti?",
+    "subtitle": "Tutto ciò che serve per configurare, integrare e ottenere il massimo dal tuo assistente Melpis.",
+    "search_placeholder": "Cerca guide, integrazioni, configurazione (Ctrl+K)..."
+  },
+  "search": {
+    "empty": "Nessun articolo trovato per questa ricerca.",
+    "count_articles": "{{count}} articoli",
+    "shortcut_hint": "Premi / per cercare rapidamente"
+  },
+  "categories": {
+    "start": {
+      "title": "Inizia da qui",
+      "desc": "Cos'è Melpis, architettura essenziale, wizard di onboarding in 7 passi e checklist pre-lancio."
+    },
+    "integrations": {
+      "title": "Canali e Integrazioni",
+      "desc": "WhatsApp Business, Instagram Direct, Google Calendar, Google Recensioni, PMS e Airtable."
+    },
+    "ai_config": {
+      "title": "Configurazione AI e Conoscenza",
+      "desc": "Personalità, tono di voce, orari, caricamento documenti RAG, listino prezzi e cache FAQ."
+    },
+    "inbox": {
+      "title": "Shared Inbox e Intervento Umano",
+      "desc": "Presa in carico ticket (Claim), risposta manuale su WhatsApp/Instagram, escalation e SLA."
+    },
+    "bookings": {
+      "title": "Prenotazioni e Appuntamenti",
+      "desc": "Disponibilità slot, semaforo orario, capienze, creazione appuntamenti e sync calendario."
+    },
+    "accounts": {
+      "title": "Account, Team e Piani",
+      "desc": "Gestione collaboratori (Owner, Manager, Staff), piani Essenziale, Crescita, Scala e Stripe."
+    },
+    "security": {
+      "title": "Sicurezza, Privacy e GDPR",
+      "desc": "Conformità GDPR, DPA, retention 60-90 giorni, gestione opt-out e diritto all'oblio."
+    },
+    "troubleshooting": {
+      "title": "Troubleshooting e Architettura",
+      "desc": "Diagnosi token scaduti, errori Meta, webhook, rate limit e architettura tecnica a worker."
+    }
+  },
+  "ui": {
+    "back_to_docs": "← Tutte le guide",
+    "table_of_contents": "In questa pagina",
+    "need_help": "Non trovi quello che cerchi?",
+    "contact_support": "Contatta il supporto Melpis",
+    "last_updated": "Ultimo aggiornamento: {{date}}"
+  }
+}

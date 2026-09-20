@@ -7,11 +7,17 @@
     <meta name="description" content="Informativa sul trattamento dei dati personali ai sensi del Regolamento UE 2016/679 (GDPR) per il servizio Melpis.">
     <meta name="robots" content="noindex, follow">
     <meta name="theme-color" content="#08090c">
-    <link rel="canonical" href="https://melpis.it/privacy/">
     <link rel="icon" href="/logo.webp" type="image/webp">
     <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="canonical" href="https://melpis.it/privacy/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/privacy/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/">
 </head>
 <body class="legal-body">
 
@@ -110,6 +116,20 @@
                     <span>Inizia gratis</span>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                 </a>
+                
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">IT</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/privacy/" class="lang-option-link is-active" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/privacy/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/privacidad/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/confidentialite/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/datenschutz/" class="lang-option-link" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
                 <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
                     <span></span><span></span>
                 </button>
@@ -166,6 +186,17 @@
         <a href="/registrati/" class="btn-cta-primary w-full is-5313025c2edb">
             <span>Inizia la prova di 7 giorni</span>
         </a>
+
+            <div class="mobile-lang-section">
+                <span class="mobile-lang-title">Lingua / Language</span>
+                <div class="mobile-lang-grid">
+                <a href="/privacy/" class="mobile-lang-chip is-active" hreflang="it">Italiano</a>
+                <a href="/en/privacy/" class="mobile-lang-chip" hreflang="en">English</a>
+                <a href="/es/privacidad/" class="mobile-lang-chip" hreflang="es">Español</a>
+                <a href="/fr/confidentialite/" class="mobile-lang-chip" hreflang="fr">Français</a>
+                <a href="/de/datenschutz/" class="mobile-lang-chip" hreflang="de">Deutsch</a>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -179,7 +210,7 @@
 
     <section>
         <h2>1. Titolare del trattamento</h2>
-        <p>Melpis AI — <em>[ragione sociale completa, sede legale, codice fiscale/P.IVA]</em>, email: <strong>privacy@melpis.it</strong>.</p>
+        <p>{{LEGAL_ENTITY_NAME}} — sede: {{LEGAL_ENTITY_REGISTERED_OFFICE}}, P.IVA: {{LEGAL_ENTITY_VAT_NUMBER}}, email: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>.</p>
     </section>
 
     <section>
@@ -223,7 +254,7 @@
 
     <section>
         <h2>6. Diritti degli interessati</h2>
-        <p>Puoi esercitare in ogni momento i diritti di accesso, rettifica, cancellazione ("diritto all'oblio"), limitazione, portabilità e opposizione previsti dagli artt. 15–22 GDPR scrivendo a <strong>privacy@melpis.it</strong>. I titolari di account possono inoltre esportare ed eliminare autonomamente i dati dalla dashboard. Hai diritto a proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener noreferrer" target="_blank">garanteprivacy.it</a>).</p>
+        <p>Puoi esercitare in ogni momento i diritti di accesso, rettifica, cancellazione ("diritto all'oblio"), limitazione, portabilità e opposizione previsti dagli artt. 15–22 GDPR scrivendo a <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. I titolari di account possono inoltre esportare ed eliminare autonomamente i dati dalla dashboard. Hai diritto a proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener noreferrer" target="_blank">garanteprivacy.it</a>).</p>
     </section>
 
     <section>
@@ -276,95 +307,7 @@
     </div>
 </footer>
 
-<script>
-    (function() {
-        var header = document.getElementById('mainHeader');
-        var dropdown = document.getElementById('navDropdownSettori');
-        var trigger = document.getElementById('settoriDropdownTrigger');
-        var hamburger = document.getElementById('navHamburger');
-        var overlay = document.getElementById('mobileOverlay');
-        var accordionBtn = document.getElementById('mobileSettoriBtn');
-        var accordionWrap = document.getElementById('mobileSettoriAccordion');
-
-        if (header) {
-            var updateScrollState = function() {
-                var isScrolled = (window.pageYOffset || document.documentElement.scrollTop || 0) > 15;
-                header.classList.toggle('is-scrolled', isScrolled);
-            };
-            window.addEventListener('scroll', updateScrollState, { passive: true });
-            updateScrollState();
-        }
-
-        if (dropdown && trigger) {
-            var setDropdown = function(open) {
-                dropdown.classList.toggle('is-open', open);
-                trigger.setAttribute('aria-expanded', String(open));
-            };
-
-            trigger.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                setDropdown(!dropdown.classList.contains('is-open'));
-            });
-
-            document.addEventListener('click', function(e) {
-                if (!dropdown.contains(e.target)) {
-                    setDropdown(false);
-                }
-            });
-
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
-                    setDropdown(false);
-                    trigger.focus();
-                }
-            });
-
-            dropdown.addEventListener('focusout', function() {
-                setTimeout(function() {
-                    if (!dropdown.contains(document.activeElement)) {
-                        setDropdown(false);
-                    }
-                }, 10);
-            });
-        }
-
-        if (hamburger && overlay) {
-            var setNav = function(open) {
-                overlay.classList.toggle('open', open);
-                overlay.setAttribute('aria-hidden', String(!open));
-                hamburger.setAttribute('aria-expanded', String(open));
-                document.body.style.overflow = open ? 'hidden' : '';
-            };
-
-            hamburger.addEventListener('click', function(e) {
-                e.preventDefault();
-                setNav(!overlay.classList.contains('open'));
-            });
-
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && overlay.classList.contains('open')) {
-                    setNav(false);
-                }
-            });
-
-            overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-cta-primary, .btn-pill-cta').forEach(function(link) {
-                link.addEventListener('click', function() {
-                    setNav(false);
-                });
-            });
-        }
-
-        if (accordionBtn && accordionWrap) {
-            accordionBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var isExpanded = accordionWrap.classList.toggle('is-expanded');
-                accordionBtn.setAttribute('aria-expanded', String(isExpanded));
-            });
-        }
-    })();
-</script>
+<script src="/inline-assets/script-19ddd63a317f25b089a324634a1a7c0f6bb8c00f763e55253c30db76599cc844.js" defer></script>
 
     <script src="/app.js" defer></script>
 </body>

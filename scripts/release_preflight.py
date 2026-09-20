@@ -38,6 +38,14 @@ FREE_MODELS = frozenset(
     }
 )
 IMAGE_REFERENCE_ENV_NAMES = ("MELPIS_API_IMAGE_REF", "MELPIS_WEB_IMAGE_REF")
+LEGAL_IDENTITY_ENV_NAMES = (
+    "LEGAL_ENTITY_NAME",
+    "LEGAL_ENTITY_REGISTERED_OFFICE",
+    "LEGAL_ENTITY_VAT_NUMBER",
+    "LEGAL_PRIVACY_CONTACT_EMAIL",
+    "LEGAL_FORUM",
+    "LEGAL_DOCUMENT_EFFECTIVE_DATE",
+)
 _DIGEST_IMAGE_REFERENCE = re.compile(
     r"^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?"
     r"(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
@@ -116,6 +124,10 @@ def validate(config):
     _require(config, errors, "GROQ_API_KEY", prefix="gsk_", min_length=16)
     for name in IMAGE_REFERENCE_ENV_NAMES:
         _require_digest_image_reference(config, errors, name)
+    # Public legal copy is deliberately tokenized rather than fabricated. A
+    # production release must supply every reviewed identity value.
+    for name in LEGAL_IDENTITY_ENV_NAMES:
+        _require(config, errors, name)
 
     caddy_site_mode = str(config.get("CADDY_SITE_MODE") or "").strip()
     if caddy_site_mode not in {"temporary", "final"}:

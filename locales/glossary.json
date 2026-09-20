@@ -1,0 +1,93 @@
+{
+  "version": "1.0.0",
+  "terms": {
+    "Melpis": {
+      "it": "Melpis",
+      "en": "Melpis",
+      "es": "Melpis",
+      "fr": "Melpis",
+      "de": "Melpis",
+      "rules": "Nome del brand, invariato in tutte le lingue. Non tradurre né traslitterare."
+    },
+    "WhatsApp": {
+      "it": "WhatsApp",
+      "en": "WhatsApp",
+      "es": "WhatsApp",
+      "fr": "WhatsApp",
+      "de": "WhatsApp",
+      "rules": "Nome del prodotto Meta, invariato."
+    },
+    "WhatsApp Business": {
+      "it": "WhatsApp Business",
+      "en": "WhatsApp Business",
+      "es": "WhatsApp Business",
+      "fr": "WhatsApp Business",
+      "de": "WhatsApp Business",
+      "rules": "Nome del prodotto commerciale Meta, invariato."
+    },
+    "Meta Cloud API": {
+      "it": "Meta Cloud API",
+      "en": "Meta Cloud API",
+      "es": "Meta Cloud API",
+      "fr": "Meta Cloud API",
+      "de": "Meta Cloud API",
+      "rules": "Nome ufficiale dell'infrastruttura API Meta, invariato."
+    },
+    "Google Calendar": {
+      "it": "Google Calendar",
+      "en": "Google Calendar",
+      "es": "Google Calendar",
+      "fr": "Google Calendar",
+      "de": "Google Calendar",
+      "rules": "Nome del servizio Google, invariato."
+    },
+    "AI": {
+      "it": "AI",
+      "en": "AI",
+      "es": "IA",
+      "fr": "IA",
+      "de": "KI",
+      "rules": "Sigla naturale locale: IA in spagnolo/francese, KI in tedesco, AI in inglese/italiano."
+    },
+    "Inbox": {
+      "it": "Inbox",
+      "en": "Inbox",
+      "es": "Bandeja de entrada",
+      "fr": "Boîte de réception",
+      "de": "Posteingang",
+      "rules": "Traduzione coerente per UI formale; nella dashboard UI tecnica 'Inbox' o la forma localizzata approvata."
+    },
+    "Knowledge Base": {
+      "it": "Conoscenza",
+      "en": "Knowledge Base",
+      "es": "Base de conocimientos",
+      "fr": "Base de connaissances",
+      "de": "Wissensdatenbank",
+      "rules": "Nella UI italiana 'Conoscenza'; in EN 'Knowledge Base', in DE 'Wissensdatenbank'."
+    },
+    "Handoff": {
+      "it": "Intervento umano",
+      "en": "Human handoff",
+      "es": "Intervención humana",
+      "fr": "Intervention humaine",
+      "de": "Menschliche Übernahme",
+      "rules": "Passaggio della chat dall'assistente virtuale al personale aziendale."
+    },
+    "No-show": {
+      "it": "No-show (mancata presentazione)",
+      "en": "No-shows",
+      "es": "No-shows (ausencias)",
+      "fr": "No-shows (rendez-vous non honorés)",
+      "de": "Nichterscheinen (No-Shows)",
+      "rules": "Termine tecnico ampiamente usato nel settore ristorazione/hospitality, affiancato da spiegazione chiara."
+    },
+    "Staff": {
+      "it": "Collaboratori",
+      "en": "Team & Staff",
+      "es": "Equipo y Colaboradores",
+      "fr": "Équipe et Collaborateurs",
+      "de": "Team & Mitarbeiter",
+      "rules": "Uso professionale nei settori hospitality, saloni e studi medici."
+    }
+  }
+}

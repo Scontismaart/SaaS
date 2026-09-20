@@ -1,0 +1,59 @@
+{
+  "tabs": {
+    "general": "General",
+    "assistant": "Asistente y Reglas",
+    "channels": "Canales y WhatsApp",
+    "calendar": "Calendario y Citas",
+    "team": "Equipo y Permisos",
+    "billing": "Suscripción y Plan",
+    "language": "Idioma y Región"
+  },
+  "general_section": {
+    "subtitle": "Localización, zona horaria y preferencias operativas del panel."
+  },
+  "timezone_section": {
+    "title": "Localización y Zona Horaria",
+    "description": "La zona horaria se utiliza para recordatorios de reservas, informes de cierre y cálculo de SLAs.",
+    "label": "Zona horaria del negocio",
+    "save_btn": "Guardar zona horaria"
+  },
+  "language_section": {
+    "title": "Idioma del panel",
+    "description": "Selecciona el idioma que deseas utilizar en la interfaz de Melpis.",
+    "select_label": "Idioma activo",
+    "note": "Esta preferencia se guarda para tu perfil de usuario."
+  },
+  "assistant_rules": {
+    "title": "Instrucciones y Comportamiento de IA",
+    "personality_label": "Tono de voz y personalidad",
+    "formality_label": "Nivel de formalidad",
+    "formality_tu": "Informal (tratar de tú)",
+    "formality_lei": "Formal (tratar de usted)",
+    "business_hours_title": "Horarios de atención y respuestas",
+    "outside_hours_title": "Comportamiento fuera de horario",
+    "auto_reply_outside": "Enviar mensaje automático fuera de horario",
+    "save_rules_btn": "Guardar reglas del asistente"
+  },
+  "channels": {
+    "whatsapp_title": "Conexión con WhatsApp Business",
+    "phone_number": "Número de teléfono conectado",
+    "meta_status": "Estado de Meta Cloud API",
+    "reconnect_btn": "Reconectar canal",
+    "disconnect_btn": "Desconectar"
+  },
+  "calendar": {
+    "title": "Sincronización con Google Calendar",
+    "status_connected": "Google Calendar conectado",
+    "sync_calendar_name": "Calendario principal",
+    "slot_duration": "Duración predeterminada del hueco (minutos)",
+    "buffer_time": "Tiempo de pausa entre citas (minutos)",
+    "save_calendar_btn": "Guardar ajustes del calendario"
+  },
+  "billing": {
+    "current_plan": "Plan actual",
+    "status": "Estado de la suscripción",
+    "manage_stripe_btn": "Gestionar facturación y tarjetas en Stripe",
+    "upgrade_btn": "Pasar a un plan superior",
+    "cancel_btn": "Cancelar suscripción"
+  }
+}

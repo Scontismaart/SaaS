@@ -1,0 +1,312 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Prenotazioni, Semafori di Capienza e No-Show — Documentazione Melpis</title>
+    <meta name="description" content="Come gestire le prenotazioni ricevute dall'AI, creare appuntamenti manuali, leggere i semafori di capienza e gestire i no-show in Melpis.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/prenotazioni/gestione-prenotazioni/">
+    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link is-active">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Prenotazioni</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Gestione Prenotazioni</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Gestione Prenotazioni, Semafori di Capienza e No-Show</h1>
+                    <p class="docs-article-subtitle">Come supervisionare l'agenda appuntamenti di Melpis, monitorare la capienza delle fasce orarie e gestire cancellazioni e assenze.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Il modulo <strong>Prenotazioni</strong> offre una panoramica centralizzata di tutti gli appuntamenti fissati automaticamente dall'assistente su WhatsApp o Instagram, integrandosi all'istante con Google Calendar o con il tuo PMS. Puoi consultare l'agenda giornaliera e settimanale, aggiungere prenotazioni manuali prese al bancone o al telefono, contrassegnare i clienti che non si sono presentati (no-show) e monitorare visivamente il carico di lavoro tramite un sistema a semafori colorati.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Aver configurato almeno un servizio con relativa durata in <em>Catalogo &rarr; Servizi</em>.</li>
+                        <li>Aver collegato Google Calendar (consigliato per la verifica disponibilità in tempo reale).</li>
+                        <li>Tutti i membri del team (Owner, Manager, Staff) possono visualizzare e modificare lo stato delle prenotazioni.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">La vista Calendario e i Semafori di Capienza</h3>
+                                <p class="docs-step-text">Accedi a <strong>Prenotazioni</strong> nel menu. Ogni giorno presenta un indicatore visivo:
+                                <ul>
+                                    <li><strong class="color-success">Semaforo Verde</strong>: ampia disponibilità di slot liberi (meno del 50% occupato).</li>
+                                    <li><strong class="color-warning">Semaforo Giallo</strong>: capienza quasi al completo (oltre il 75% occupato), solo pochi orari rimasti.</li>
+                                    <li><strong class="color-danger">Semaforo Rosso</strong>: giornata al completo (sold-out). L'AI proporrà automaticamente date alternative ai nuovi clienti.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Creazione di una Prenotazione Manuale</h3>
+                                <p class="docs-step-text">Se un cliente prenota di persona o ti chiama al telefono fisso, clicca su <strong>Nuova Prenotazione</strong>:
+                                <ul>
+                                    <li>Seleziona il servizio dal menu a tendina (la durata viene calcolata automaticamente).</li>
+                                    <li>Scegli data e orario (il sistema ti avviserà in caso di sovrapposizione con un appuntamento esistente).</li>
+                                    <li>Inserisci nome del cliente e numero di cellulare.</li>
+                                </ul>
+                                L'appuntamento comparirà subito in agenda e verrà sincronizzato con Google Calendar.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Gestione degli Stati e No-Show</h3>
+                                <p class="docs-step-text">Cliccando su una prenotazione puoi aggiornarne lo stato:
+                                <ul>
+                                    <li><strong>Confermata</strong>: appuntamento fissato e valido.</li>
+                                    <li><strong>Completata</strong>: il cliente si è presentato ed è stato servito.</li>
+                                    <li><strong>Cancellata</strong>: il cliente ha disdetto (lo slot si libera immediatamente per altri clienti).</li>
+                                    <li><strong>No-Show</strong>: il cliente non si è presentato senza preavviso. Melpis registra lo storico sul profilo cliente per consentirti di richiedere una caparra confirmatoria in futuro.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-info">
+                        <div class="docs-callout-title">ℹ️ Come l'AI evita i doppi appuntamenti (Overbooking)</div>
+                        <p class="docs-callout-text">Prima di proporre o confermare un orario al cliente su WhatsApp, Melpis esegue un controllo atomico a due livelli: verifica sia la tabella interna delle prenotazioni, sia lo stato del calendario Google collegato. Se un membro dello staff inserisce un impegno personale su Google Calendar, Melpis considera quello slot occupato al 100%.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>Al momento della conferma della prenotazione, il cliente riceve su WhatsApp un riepilogo formattato con giorno, orario e indirizzo dell'attività.</li>
+                        <li>Se il cliente scrive <em>"devo spostare il mio appuntamento di domani"</em>, l'AI rintraccia la prenotazione attiva e lo guida nella scelta di un nuovo orario disponibile senza intervento umano.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Anticipo minimo prenotazione</strong>: Per evitare che un cliente prenoti con 10 minuti di anticipo mentre lo staff è impegnato, è impostato un anticipo minimo predefinito di 2 ore (configurabile nelle impostazioni del calendario).</li>
+                        <li><strong>Pagamento anticipato online</strong>: Al momento la prenotazione riserva lo slot orario. La richiesta di acconti con carta di credito via WhatsApp richiede l'integrazione Stripe personalizzata.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Un appuntamento inserito su Google Calendar non blocca l'orario su Melpis</summary>
+                            <div class="docs-accordion-content">
+                                <p>Assicurati di aver inserito l'evento nel calendario primario dell'account Google collegato, e verifica che lo stato dell'evento sia impostato su "Occupato" (e non "Disponibile"). Controlla inoltre che la sincronizzazione Google Calendar sia attiva in <em>Impostazioni &rarr; Integrazioni</em>.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Il cliente ha cancellato l'appuntamento ma risulta ancora in agenda</summary>
+                            <div class="docs-accordion-content">
+                                <p>Se la cancellazione è avvenuta al telefono, ricordati di modificare lo stato in <em>Cancellata</em> manualmente nella schermata prenotazioni per liberare lo slot all'assistente AI.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>La disponibilità degli slot orari viene calcolata dal modulo in <code>src/core/calendar.py</code>. L'algoritmo suddivide la giornata lavorativa in blocchi discreti e sottrae gli intervalli già prenotati o bloccati:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/core/calendar.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>async def get_available_slots(org_id: str, date: datetime.date, duration_minutes: int) -> list[datetime.time]:
+    schedule = await get_org_schedule(org_id, date.weekday())
+    if not schedule.is_open:
+        return []
+
+    existing_bookings = await get_bookings_for_day(org_id, date)
+    external_busy = await fetch_google_busy_intervals(org_id, date)
+
+    available = []
+    current_time = schedule.open_time
+    while current_time + timedelta(minutes=duration_minutes) <= schedule.close_time:
+        slot_end = current_time + timedelta(minutes=duration_minutes)
+        if not is_overlapping(current_time, slot_end, existing_bookings + external_busy):
+            available.append(current_time)
+        current_time += timedelta(minutes=15)
+    return available</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-related-card">
+                            <div class="docs-related-tag">Integrazione</div>
+                            <div class="docs-related-title">Collegare Google Calendar</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-related-card">
+                            <div class="docs-related-tag">Servizi</div>
+                            <div class="docs-related-title">Listino Servizi e Durata</div>
+                        </a>
+                        <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-related-card">
+                            <div class="docs-related-tag">PMS Esterni</div>
+                            <div class="docs-related-title">SimplyBook e Apaleo PMS</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

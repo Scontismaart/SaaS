@@ -3,7 +3,15 @@
   "private": true,
   "scripts": {
     "lint:web": "eslint web/*.js web/landing/app.js",
-    "test:web": "node --test tests/frontend/*.test.cjs"
+    "test:web": "node --test tests/frontend/*.test.cjs",
+    "test:i18n": "node scripts/verify-i18n.js",
+    "build:i18n": "node scripts/build-i18n.js",
+    "audit:csp": "node scripts/audit-csp.js",
+    "audit:assets": "node scripts/audit-assets.js",
+    "audit:images": "node scripts/audit-images.js",
+    "audit:links": "node scripts/audit-links.js",
+    "audit:seo": "node scripts/audit-seo.js",
+    "audit:hardcoded": "node scripts/audit-hardcoded.js"
   },
   "devDependencies": {
     "eslint": "9.39.1",

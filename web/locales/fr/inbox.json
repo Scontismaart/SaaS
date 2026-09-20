@@ -1,0 +1,36 @@
+{
+  "filters": {
+    "all": "Tous",
+    "open": "Ouverts",
+    "mine": "Mes tickets",
+    "ai_handling": "Gérés par l'IA",
+    "human_needed": "Intervention requise",
+    "closed": "Fermés",
+    "search_chats": "Rechercher une conversation..."
+  },
+  "chat": {
+    "claim_btn": "Prendre en charge",
+    "claimed_by_you": "Pris en charge par vous",
+    "claimed_by_other": "Pris en charge par {{name}}",
+    "release_btn": "Rétablir l'assistant IA",
+    "close_ticket": "Fermer la conversation",
+    "reopen_ticket": "Rouvrir la conversation",
+    "channel_whatsapp": "WhatsApp",
+    "channel_instagram": "Instagram Direct",
+    "type_message": "Rédigez votre réponse...",
+    "send_btn": "Envoyer",
+    "customer_info": "Coordonnées du contact",
+    "phone": "Téléphone",
+    "last_seen": "Dernière activité : {{time}}",
+    "notes": "Notes internes d'équipe",
+    "add_note_placeholder": "Ajouter une note visible uniquement par l'équipe...",
+    "opt_out_badge": "Désinscription marketing active",
+    "ai_paused": "Assistant en pause sur cet échange"
+  },
+  "status_labels": {
+    "active": "Active",
+    "waiting_reply": "En attente de réponse",
+    "resolved": "Résolue",
+    "archived": "Archivée"
+  }
+}

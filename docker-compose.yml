@@ -39,6 +39,7 @@ services:
       - ./web/landing/prenotazioni.webp:/usr/share/nginx/html/prenotazioni.webp:ro
       - ./web/landing/inbox.webp:/usr/share/nginx/html/inbox.webp:ro
       - ./web/landing/logo.webp:/usr/share/nginx/html/logo.webp:ro
+      - ./web/landing/sfondoherosction.webp:/usr/share/nginx/html/sfondoherosction.webp:ro
       - ./web/landing/privacy.html:/usr/share/nginx/html/privacy.html:ro
       - ./web/landing/termini.html:/usr/share/nginx/html/termini.html:ro
       - ./web/landing/cookie.html:/usr/share/nginx/html/cookie.html:ro
@@ -46,6 +47,16 @@ services:
       - ./web/landing/settori:/usr/share/nginx/html/settori:ro
       - ./web/landing/prezzi:/usr/share/nginx/html/prezzi:ro
       - ./web/landing/documentazione:/usr/share/nginx/html/documentazione:ro
+      - ./web/landing/en:/usr/share/nginx/html/en:ro
+      - ./web/landing/es:/usr/share/nginx/html/es:ro
+      - ./web/landing/fr:/usr/share/nginx/html/fr:ro
+      - ./web/landing/de:/usr/share/nginx/html/de:ro
+      - ./web/landing/fonts:/usr/share/nginx/html/fonts:ro
+      - ./web/landing/navbar.js:/usr/share/nginx/html/navbar.js:ro
+      - ./web/landing/og-image-universal.jpg:/usr/share/nginx/html/og-image-universal.jpg:ro
+      - ./web/locales:/usr/share/nginx/html/locales:ro
+      - ./web/i18n-client.js:/usr/share/nginx/html/i18n-client.js:ro
+      - ./web/inline-assets:/usr/share/nginx/html/inline-assets:ro
       - ./web/index.html:/usr/share/nginx/html/app/index.html:ro
       - ./web/style.css:/usr/share/nginx/html/app/style.css:ro
       - ./web/app.js:/usr/share/nginx/html/app/app.js:ro

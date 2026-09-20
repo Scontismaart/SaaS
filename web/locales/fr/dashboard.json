@@ -1,0 +1,68 @@
+{
+  "sidebar": {
+    "brand_eyebrow": "Tableau de bord",
+    "business_default": "Votre Entreprise",
+    "group_main": "Principal",
+    "group_assistant": "Assistant",
+    "nav_panoramica": "Aperçu",
+    "nav_inbox": "Boîte de réception",
+    "nav_prenotazioni": "Réservations",
+    "nav_recensioni": "Avis clients",
+    "nav_team": "Équipe & Collaborateurs",
+    "nav_assistente": "Simulateur IA",
+    "nav_conoscenza": "Connaissances",
+    "nav_configurazione_ai": "Configuration IA",
+    "menu_impostazioni": "Paramètres",
+    "menu_piano": "Formule & Facturation",
+    "menu_logout": "Déconnexion"
+  },
+  "topbar": {
+    "title_panoramica": "Aperçu",
+    "title_inbox": "Boîte de réception & Échanges",
+    "title_prenotazioni": "Réservations & Planning",
+    "title_recensioni": "Avis & Retours clients",
+    "title_team": "Équipe & Collaborateurs",
+    "title_assistente": "Simulateur de l'Assistant IA",
+    "title_conoscenza": "Documents & Connaissances",
+    "title_configurazione_ai": "Configuration IA & Règles",
+    "title_impostazioni": "Paramètres Généraux",
+    "title_account": "Compte & Facturation",
+    "search_placeholder": "Rechercher des tickets, réservations, documents…",
+    "search_aria": "Recherche globale",
+    "notifications": "Centre de notifications",
+    "notifications_title": "Notifications",
+    "notifications_empty": "Aucune nouvelle notification.",
+    "login_btn": "Connexion"
+  },
+  "kpi": {
+    "total_received": "messages reçus aujourd'hui",
+    "handled_by_ai": "traités par l'assistant IA",
+    "escalated_human": "transmis à l'équipe",
+    "bookings_created": "réservations confirmées",
+    "trend_neutral": "Stable par rapport à hier",
+    "trend_positive": "En hausse par rapport à hier",
+    "trend_negative": "En baisse par rapport à hier",
+    "sparkline_caption": "7 derniers jours",
+    "sparkline_unit": "sem."
+  },
+  "modals": {
+    "confirm_action": "Confirmer l'opération",
+    "confirm_btn": "Confirmer",
+    "cancel_btn": "Annuler",
+    "delete_item_title": "Confirmer la suppression",
+    "delete_item_desc": "Êtes-vous certain de vouloir supprimer cet élément ? Cette action est irréversible."
+  },
+  "empty_states": {
+    "no_data": "Aucune donnée disponible.",
+    "no_notifications": "Aucune notification non lue.",
+    "no_bookings": "Aucune réservation correspondant aux critères sélectionnés.",
+    "no_messages": "Aucun message dans cette conversation.",
+    "search_no_results": "Aucun résultat trouvé."
+  },
+  "toast": {
+    "saved": "Modifications enregistrées avec succès.",
+    "error": "Une erreur inattendue est survenue.",
+    "network_error": "Problème de connexion réseau. Veuillez réessayer dans un instant.",
+    "session_expired": "Session expirée. Veuillez vous reconnecter."
+  }
+}

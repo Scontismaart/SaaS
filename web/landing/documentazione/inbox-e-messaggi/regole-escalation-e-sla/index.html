@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Regole di Escalation Umana e Monitoraggio SLA — Documentazione Melpis</title>
+    <meta name="description" content="Come funziona l'escalation automatica dall'AI allo staff in Melpis: trigger di frustrazione, richiesta operatore e tempi di risposta (SLA).">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/inbox-e-messaggi/regole-escalation-e-sla/">
+    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link is-active">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Shared Inbox &amp; Umano</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Regole Escalation e SLA</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Regole di Escalation Umana e Monitoraggio SLA</h1>
+                    <p class="docs-article-subtitle">Come Melpis protegge la relazione con i tuoi clienti trasferendo la chat allo staff quando l'AI non può o non deve rispondere.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>L'intelligenza artificiale non deve mai sostituire il giudizio umano nelle situazioni critiche. Il sistema di <strong>Escalation &amp; SLA</strong> di Melpis monitora ogni conversazione in tempo reale. Quando rileva segnali di allarme (richiesta di un operatore umano, lamentele o reclami, violazioni di prezzo o argomenti delicati), contrassegna la chat come <code>richiede_umano</code>, invia un alert al team e monitora il tempo di presa in carico per rispettare gli standard di servizio.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Assicurati che gli indirizzi email del tuo staff siano verificati per la ricezione degli avvisi di notifica.</li>
+                        <li>Definisci un tempo obiettivo (SLA) per la presa in carico (es. 15 minuti in orario di apertura).</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">I 4 Trigger di Escalation Automatica</h3>
+                                <p class="docs-step-text">Melpis attiva automaticamente l'escalation nei seguenti scenari deterministici:
+                                <ul>
+                                    <li><strong>1. Richiesta esplicita di persona fisica</strong>: parole o frasi come <em>"voglio parlare con una persona"</em>, <em>"passami un operatore"</em>, <em>"parlare con il titolare"</em>, <em>"chiamatemi subito"</em>.</li>
+                                    <li><strong>2. Frustrazione e sentiment negativo</strong>: lamentele su disservizi passati, toni esasperati, reclami su cibo o trattamenti.</li>
+                                    <li><strong>3. Violazione Guardrail (Prezzi e Policy)</strong>: tentativi di contrattazione forzata o informazioni non presenti nel database ufficiale.</li>
+                                    <li><strong>4. Blocco ripetuto prenotazione</strong>: se per 3 volte consecutive non si riesce a concordare un orario valido.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Messaggio di cortesia al cliente</h3>
+                                <p class="docs-step-text">Allo scatto del trigger, l'AI non abbandona il cliente ma invia una rassicurazione immediata calibrata sul tuo tono aziendale: <em>"Ho informato subito il nostro staff. Un responsabile del salone prenderà in carico il messaggio a breve!"</em>.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Notifiche al team e Badge Visivo</h3>
+                                <p class="docs-step-text">Nella barra superiore della Dashboard Melpis compare un badge rosso lampeggiante con il conteggio dei ticket in attesa. Contestualmente, i manager ricevono un'email con il riepilogo della richiesta e il link diretto per aprire la chat.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Calcolo e Monitoraggio SLA</h3>
+                                <p class="docs-step-text">Dalla sezione <strong>Statistiche &rarr; Tempi di Risposta</strong> puoi consultare il tempo medio di presa in carico (Time-to-Claim). Un indicatore grafico mostra la percentuale di richieste prese in carico entro i 15 minuti.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-warning">
+                        <div class="docs-callout-title">⚠️ Non-Negotiable Invariant 11: Human Escalation</div>
+                        <p class="docs-callout-text">Secondo le linee guida architetturali di Melpis, l'escalation a un operatore umano non può mai essere disabilitata dal pannello. Se un cliente chiede di parlare con una persona, l'assistente ha il dovere etico e tecnico di fermarsi e consentire il contatto diretto con il personale aziendale.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>La conversazione rimane evidenziata in cima alla lista con lo stato <strong>Richiede attenzione</strong> fino a quando un operatore non clicca su <strong>Prendi in carico</strong>.</li>
+                        <li>Il contatore del tempo di attesa si arresta nel momento esatto del claim.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Notifiche push mobile</strong>: Al momento le notifiche avvengono via email e interfaccia web in tempo reale (WebSocket/SSE). Si consiglia di mantenere aperta una scheda del browser alla reception o su un tablet aziendale.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Non riceviamo le email di notifica di escalation</summary>
+                            <div class="docs-accordion-content">
+                                <p>Controlla la cartella Spam del tuo client di posta. Gli avvisi provengono da <code>alert@melpis.it</code>. Verifica inoltre in <em>Impostazioni &rarr; Team</em> che l'indirizzo email dell'utente abbia la spunta attiva su <em>Ricevi avvisi di escalation</em>.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'AI è andata in escalation per una frase banale</summary>
+                            <div class="docs-accordion-content">
+                                <p>La pipeline adotta una logica "fail-safe": preferisce coinvolgere lo staff una volta in più piuttosto che rischiare di fornire una risposta inappropriata a un cliente indispettito. Se capita, l'operatore può rispondere in pochi secondi o semplicemente cliccare su <em>Rilascia all'AI</em>.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>La classificazione di escalation avviene nel middleware di analisi in <code>src/whatsapp/inbound_processor.py</code> e <code>src/core/escalation.py</code>:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/core/escalation.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>ESCALATION_KEYWORDS = {
+    "operatore", "persona vera", "umano", "parlare con qualcuno",
+    "reclamo", "titolare", "avvocato", "denuncia", "rimborso"
+}
+
+def check_human_escalation_needed(text: str, sentiment_score: float) -> bool:
+    cleaned = text.lower().strip()
+    # Verifica parole chiave esplicite
+    if any(kw in cleaned for kw in ESCALATION_KEYWORDS):
+        return True
+    # Rilevamento sentiment marcatamente negativo
+    if sentiment_score < -0.65:
+        return True
+    return False</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-related-card">
+                            <div class="docs-related-tag">Inbox</div>
+                            <div class="docs-related-title">Shared Inbox e Presa in Carico</div>
+                        </a>
+                        <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-related-card">
+                            <div class="docs-related-tag">Team</div>
+                            <div class="docs-related-title">Team e Gestione Operatori</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-related-card">
+                            <div class="docs-related-tag">Assistente</div>
+                            <div class="docs-related-title">Personalizzazione Prompt e Regole</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

@@ -48,6 +48,34 @@ scratch_*
 ci_log_tmp.txt
 lh_report.json
 
+# Local visual/browser QA evidence and discarded landing experiments. Keep these
+# recoverable locally, but never include them in the release checkpoint.
+/tests/screenshots/
+/tests/browser_qa_runner.py
+/tests/browser_qa_runner_full.py
+/tests/capture_dashboard_views.py
+/tests/capture_full.py
+/tests/check_sections.js
+/tests/check_sections.py
+/tests/crop.py
+/tests/production_smoke_test.py
+/tests/test_inbox_responsive.py
+/tests/test_panoramica_responsive.py
+/tests/test_prenotazioni_responsive.py
+/tests/test_recensioni_responsive.py
+/tests/test_team_responsive.py
+/tests/verify_recovered_landing.py
+/tests/verify_regression_fix.py
+/web/landing/hero-glassmorphism.html
+/web/landing/knowledge-hero.html
+/web/landing/knowledge-hero-render.png
+/sezione-Automatizza-richieste-mockup.webp
+/web/sezione-Automatizza-richieste-mockup.png
+/web/sezione-Automatizza-richieste-mockup.webp
+/web/landing/sezione-Automatizza-richieste-mockup.png
+/web/landing/sezione-Automatizza-richieste-mockup.webp
+/web/og-image-universal.jpg
+
 # dipendenze frontend
 node_modules/
 

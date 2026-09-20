@@ -1,0 +1,59 @@
+{
+  "tabs": {
+    "general": "General",
+    "assistant": "Assistant & Rules",
+    "channels": "Channels & WhatsApp",
+    "calendar": "Calendar & Slots",
+    "team": "Team & Permissions",
+    "billing": "Subscription & Plan",
+    "language": "Language & Region"
+  },
+  "general_section": {
+    "subtitle": "Localization, timezone and operational preferences for the panel."
+  },
+  "timezone_section": {
+    "title": "Localization & Timezone",
+    "description": "The timezone is used for booking reminders, end-of-day reports, and SLA calculations.",
+    "label": "Business Timezone",
+    "save_btn": "Save timezone"
+  },
+  "language_section": {
+    "title": "Panel Language",
+    "description": "Select the language you want to display the Melpis interface in.",
+    "select_label": "Active language",
+    "note": "This preference is saved for your user profile."
+  },
+  "assistant_rules": {
+    "title": "AI Instructions & Behavior",
+    "personality_label": "Tone of voice and personality",
+    "formality_label": "Formality level",
+    "formality_tu": "Informal (friendly)",
+    "formality_lei": "Formal (business polite)",
+    "business_hours_title": "Operating hours and responses",
+    "outside_hours_title": "Outside hours behavior",
+    "auto_reply_outside": "Send automated message outside business hours",
+    "save_rules_btn": "Save assistant rules"
+  },
+  "channels": {
+    "whatsapp_title": "WhatsApp Business Connection",
+    "phone_number": "Connected phone number",
+    "meta_status": "Meta Cloud API status",
+    "reconnect_btn": "Reconnect channel",
+    "disconnect_btn": "Disconnect"
+  },
+  "calendar": {
+    "title": "Google Calendar Synchronization",
+    "status_connected": "Google Calendar connected",
+    "sync_calendar_name": "Primary calendar",
+    "slot_duration": "Default slot duration (minutes)",
+    "buffer_time": "Buffer time between bookings (minutes)",
+    "save_calendar_btn": "Save calendar settings"
+  },
+  "billing": {
+    "current_plan": "Current plan",
+    "status": "Subscription status",
+    "manage_stripe_btn": "Manage billing & cards on Stripe",
+    "upgrade_btn": "Upgrade to higher plan",
+    "cancel_btn": "Cancel subscription"
+  }
+}

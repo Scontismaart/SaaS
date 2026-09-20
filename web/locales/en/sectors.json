@@ -1,0 +1,98 @@
+{
+  "restaurants": {
+    "page_title": "Melpis for Restaurants · Automated WhatsApp Table Bookings",
+    "meta_description": "Automate table bookings on WhatsApp 24/7. Shift management, automated no-show reminders, and instant Google Calendar synchronization for dining venues.",
+    "hero": {
+      "badge": "Food & Beverage Industry",
+      "title": "Fill your tables without pulling your staff away from service",
+      "subtitle": "Guests message on WhatsApp day and night to reserve a table. Melpis replies instantly, checks seating availability, and locks in the booking on your calendar.",
+      "cta": "Start 7-day free trial"
+    },
+    "features": [
+      {
+        "title": "Shift control and seating capacity",
+        "desc": "Set maximum capacity per seating shift (e.g., 7:30 PM and 9:30 PM) and eliminate double bookings and overcrowded rooms."
+      },
+      {
+        "title": "Automated reminders that eliminate no-shows",
+        "desc": "Send friendly WhatsApp reminder messages a few hours before service: guests confirm with a tap or release the table for waitlisted patrons."
+      },
+      {
+        "title": "Menus, dietary allergies, and hours",
+        "desc": "Deliver accurate details on gluten-free options, tasting menus, and holiday opening hours directly from your source menu."
+      }
+    ]
+  },
+  "beauty": {
+    "page_title": "Melpis for Salons & Barbershops · Automated WhatsApp Bookings",
+    "meta_description": "Automate salon bookings on WhatsApp. Staff selection, combined treatments, and automatic reminders without stepping away from the styling chair.",
+    "hero": {
+      "badge": "Beauty & Wellness Industry",
+      "title": "Keep your calendar fully booked without stepping away from your clients",
+      "subtitle": "Stop interrupting haircuts or treatments to answer messages. Melpis schedules appointments, verifies open slots, and proposes alternative times automatically.",
+      "cta": "Set up your salon in 5 minutes"
+    },
+    "features": [
+      {
+        "title": "Appointments booked by specific stylist",
+        "desc": "Clients can request their favorite stylist or aesthetician, checking individual staff availability in real time."
+      },
+      {
+        "title": "Combined treatments and custom durations",
+        "desc": "Automatically calculates total time required for consecutive services like color + blow dry or facial + massage."
+      },
+      {
+        "title": "Client re-engagement reminders",
+        "desc": "Send polite check-ins for periodic touch-ups or seasonal treatments while respecting client preferences and privacy."
+      }
+    ]
+  },
+  "medical": {
+    "page_title": "Melpis for Medical & Dental Clinics · WhatsApp Front Desk",
+    "meta_description": "Round-the-clock patient communications for medical and dental clinics. Pre-visit triage, clinic hours, appointment bookings, and dedicated patient privacy.",
+    "hero": {
+      "badge": "Healthcare & Dental Industry",
+      "title": "Streamline patient scheduling without overburdening your clinic reception",
+      "subtitle": "Provide patients with clear guidance on clinic hours, appointment preparation, and visit availability without overwhelming reception staff.",
+      "cta": "Explore the clinical solution"
+    },
+    "features": [
+      {
+        "title": "Pre-visit triage and prep instructions",
+        "desc": "Instantly shares preparation guidelines (such as fasting or required paperwork) and flags urgent requests to clinic staff."
+      },
+      {
+        "title": "Strict and confidential handling of health data",
+        "desc": "No sensitive clinical data is ever used to train public language models. End-to-end encryption at rest and in transit."
+      },
+      {
+        "title": "Priority handoff to medical reception",
+        "desc": "Complex medical inquiries are immediately routed to front-desk staff with an orderly summary waiting in the Inbox."
+      }
+    ]
+  },
+  "hotels": {
+    "page_title": "Melpis for Hotels & Hospitality · 24/7 WhatsApp Guest Concierge",
+    "meta_description": "Virtual WhatsApp concierge for boutique hotels and B&Bs. 24/7 instant answers for check-in, amenities, parking, and local attractions.",
+    "hero": {
+      "badge": "Hospitality & Accommodation",
+      "title": "Welcome every guest with five-star service and instant answers before and during their stay",
+      "subtitle": "Welcome guests before they even arrive. Provide directions, breakfast hours, parking codes, and local tips without congesting the front desk.",
+      "cta": "Upgrade your guest experience"
+    },
+    "features": [
+      {
+        "title": "Rapid check-in and arrival guides",
+        "desc": "Send access codes, parking GPS coordinates, and check-in times as soon as a guest booking is confirmed."
+      },
+      {
+        "title": "Hotel amenities always at hand",
+        "desc": "Spa schedules, bike rentals, dinner reservations at the in-house restaurant, and late check-out requests handled on the fly."
+      },
+      {
+        "title": "Seamless front-desk collaboration",
+        "desc": "Reception staff can take over any guest conversation with one click from any tablet, phone, or computer."
+      }
+    ]
+  }
+}

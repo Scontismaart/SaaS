@@ -1,0 +1,59 @@
+{
+  "tabs": {
+    "general": "Allgemein",
+    "assistant": "Assistent & Regeln",
+    "channels": "Kanäle & WhatsApp",
+    "calendar": "Kalender & Termine",
+    "team": "Team & Berechtigungen",
+    "billing": "Abo & Tarif",
+    "language": "Sprache & Region"
+  },
+  "general_section": {
+    "subtitle": "Lokalisierung, Zeitzone und operative Einstellungen des Dashboards."
+  },
+  "timezone_section": {
+    "title": "Lokalisierung und Zeitzone",
+    "description": "Die Zeitzone wird für Buchungserinnerungen, Tagesabschlussberichte und SLA-Berechnungen verwendet.",
+    "label": "Zeitzone des Unternehmens",
+    "save_btn": "Zeitzone speichern"
+  },
+  "language_section": {
+    "title": "Sprache des Dashboards",
+    "description": "Wählen Sie die gewünschte Anzeigesprache für die Benutzeroberfläche.",
+    "select_label": "Aktive Sprache",
+    "note": "Diese Einstellung wird für Ihr Benutzerprofil gespeichert."
+  },
+  "assistant_rules": {
+    "title": "KI-Anweisungen & Verhalten",
+    "personality_label": "Tonalität und Persönlichkeit",
+    "formality_label": "Anredeform",
+    "formality_tu": "Informell (Du-Form)",
+    "formality_lei": "Geschäftlich höflich (Sie-Form)",
+    "business_hours_title": "Betriebszeiten & Erreichbarkeit",
+    "outside_hours_title": "Verhalten außerhalb der Öffnungszeiten",
+    "auto_reply_outside": "Automatische Antwort außerhalb der Geschäftszeiten senden",
+    "save_rules_btn": "Assistentenregeln speichern"
+  },
+  "channels": {
+    "whatsapp_title": "WhatsApp Business Anbindung",
+    "phone_number": "Verknüpfte Rufnummer",
+    "meta_status": "Status der Meta Cloud API",
+    "reconnect_btn": "Kanal erneut verbinden",
+    "disconnect_btn": "Trennen"
+  },
+  "calendar": {
+    "title": "Google Calendar Synchronisierung",
+    "status_connected": "Google Calendar verbunden",
+    "sync_calendar_name": "Hauptkalender",
+    "slot_duration": "Standarddauer der Termine (Minuten)",
+    "buffer_time": "Pufferzeit zwischen Terminen (Minuten)",
+    "save_calendar_btn": "Kalendereinstellungen speichern"
+  },
+  "billing": {
+    "current_plan": "Aktueller Tarif",
+    "status": "Abonnementstatus",
+    "manage_stripe_btn": "Zahlung & Rechnungen auf Stripe verwalten",
+    "upgrade_btn": "Tarif upgraden",
+    "cancel_btn": "Abonnement kündigen"
+  }
+}

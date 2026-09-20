@@ -1,0 +1,17 @@
+{
+  "required_field": "Dieses Feld ist erforderlich.",
+  "invalid_email": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+  "password_too_short": "Das Passwort muss mindestens 10 Zeichen lang sein.",
+  "password_missing_requirements": "Das Passwort erfüllt nicht alle erforderlichen Sicherheitskriterien.",
+  "passwords_do_not_match": "Die eingegebenen Passwörter stimmen nicht überein.",
+  "terms_required": "Sie müssen den Nutzungsbedingungen und der Datenschutzerklärung zustimmen, um fortzufahren.",
+  "network_error": "Verbindung zum Server fehlgeschlagen. Bitte überprüfen Sie Ihre Internetverbindung.",
+  "session_expired": "Sitzung abgelaufen. Bitte melden Sie sich erneut an.",
+  "unauthorized": "Nicht autorisierter Zugriff. Bitte melden Sie sich an.",
+  "forbidden": "Sie verfügen nicht über die erforderlichen Berechtigungen für diese Aktion.",
+  "not_found": "Die angeforderte Ressource wurde nicht gefunden.",
+  "rate_limit": "Zu viele Anfragen. Bitte warten Sie einen Augenblick, bevor Sie es erneut versuchen.",
+  "server_error": "Interner Serverfehler. Bitte versuchen Sie es später noch einmal.",
+  "invalid_credentials": "E-Mail-Adresse oder Passwort ist nicht korrekt.",
+  "email_already_exists": "Ein Konto mit dieser E-Mail-Adresse existiert bereits."
+}

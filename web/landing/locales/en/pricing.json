@@ -1,0 +1,105 @@
+{
+  "page_title": "Plans & Pricing · WhatsApp AI Assistant for Business | Melpis",
+  "meta_description": "Clear, transparent pricing for your WhatsApp AI assistant. 7-day free trial with no credit card required, two-way Google Calendar sync, cancel anytime.",
+  "hero": {
+    "badge": "Transparent pricing",
+    "title": "A plan tailored to every stage of your growth",
+    "subtitle": "Activate your AI WhatsApp assistant in minutes. Free 7-day trial, no credit card required, no lock-in contracts.",
+    "monthly_toggle": "Monthly",
+    "annual_toggle": "Annual",
+    "annual_discount": "2 months free"
+  },
+  "plans": {
+    "essential": {
+      "name": "Essential",
+      "badge": "",
+      "tagline": "For solo practitioners and small businesses looking to automate FAQs and business hours.",
+      "price_monthly": 29,
+      "price_annual": 24,
+      "period": "/month",
+      "cta": "Start with Essential",
+      "features": [
+        "1 official WhatsApp Business phone number",
+        "Up to 300 AI conversations/month",
+        "Business hours, pricing, and 24/7 automated replies",
+        "Shared web inbox accessible from any device",
+        "Email escalation notifications",
+        "Standard ticket support within 24h"
+      ]
+    },
+    "growth": {
+      "name": "Growth",
+      "badge": "Most popular",
+      "tagline": "For restaurants, salons, and medical clinics managing continuous bookings and appointments.",
+      "price_monthly": 69,
+      "price_annual": 57,
+      "period": "/month",
+      "cta": "Try Growth free",
+      "features": [
+        "Everything included in Essential",
+        "Up to 1,200 AI conversations/month",
+        "Two-way Google Calendar synchronization",
+        "Appointment management and no-show reminders",
+        "Up to 3 concurrent team operators in the Inbox",
+        "AI knowledge training with PDF docs and price lists",
+        "Priority WhatsApp and email support"
+      ]
+    },
+    "scale": {
+      "name": "Scale",
+      "badge": "Maximum power",
+      "tagline": "For hotels, multi-location clinics, and high-volume teams with complex requirements.",
+      "price_monthly": 149,
+      "price_annual": 124,
+      "period": "/month",
+      "cta": "Upgrade to Scale",
+      "features": [
+        "Everything included in Growth",
+        "Unlimited AI conversations (fair use)",
+        "Unlimited operators with granular permissions",
+        "Instagram Direct integration included",
+        "Custom webhooks and PMS/Airtable integration",
+        "Security audit logs & Data Processing Agreement (DPA)",
+        "Dedicated account manager & guided onboarding"
+      ]
+    }
+  },
+  "guarantee": {
+    "title": "Our transparency promise",
+    "items": [
+      {
+        "title": "No credit card required for trial",
+        "desc": "Get started in 60 seconds with your email and business name. No surprise charges."
+      },
+      {
+        "title": "One-click cancellation anytime",
+        "desc": "No multi-year lock-ins. Cancel anytime directly from your dashboard settings."
+      },
+      {
+        "title": "Official Meta Cloud API included",
+        "desc": "Official connection via Meta Cloud API: minimizes the risk of account bans compared to unofficial tools."
+      }
+    ]
+  },
+  "faq": {
+    "title": "Frequently asked questions about pricing",
+    "items": [
+      {
+        "q": "What counts as an 'AI conversation'?",
+        "a": "A conversation is an active messaging thread with a customer within a 24-hour window. Sending multiple messages back and forth during the same interaction counts as a single conversation."
+      },
+      {
+        "q": "What happens if I exceed my plan's conversation limit?",
+        "a": "We never interrupt your customer service: we notify you promptly via email. You can upgrade to a higher tier anytime or purchase an add-on bundle."
+      },
+      {
+        "q": "Can I switch plans or cancel later?",
+        "a": "Absolutely. You can upgrade, downgrade, or cancel anytime through the Stripe billing portal integrated in your settings."
+      },
+      {
+        "q": "Are Meta message fees included?",
+        "a": "Yes. All customer-initiated service conversations (Customer-Initiated) incur no additional delivery charges from us."
+      }
+    ]
+  }
+}

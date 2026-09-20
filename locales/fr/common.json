@@ -1,0 +1,64 @@
+{
+  "brand": "Melpis",
+  "tagline": "Assistant WhatsApp avec IA pour votre entreprise",
+  "nav": {
+    "home": "Accueil",
+    "sectors": "Secteurs",
+    "pricing": "Tarifs",
+    "documentation": "Documentation",
+    "login": "Connexion",
+    "signup": "Essai gratuit",
+    "open_menu": "Ouvrir le menu",
+    "close_menu": "Fermer le menu"
+  },
+  "sectors": {
+    "restaurants": "Restaurants & Pizzerias",
+    "beauty": "Salons & Instituts de Beauté",
+    "medical": "Cabinets Médicaux & Dentaires",
+    "hotels": "Hôtels & Hébergements"
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "save_changes": "Enregistrer les modifications",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "close": "Fermer",
+    "back": "Retour",
+    "continue": "Continuer",
+    "loading": "Chargement en cours...",
+    "search": "Rechercher...",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "copy": "Copier",
+    "copied": "Copié dans le presse-papiers"
+  },
+  "status": {
+    "active": "Actif",
+    "inactive": "Inactif",
+    "pending": "En attente",
+    "completed": "Terminé",
+    "cancelled": "Annulé",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "error": "Erreur",
+    "online": "En ligne",
+    "offline": "Hors ligne"
+  },
+  "footer": {
+    "rights": "Tous droits réservés.",
+    "privacy": "Politique de Confidentialité",
+    "terms": "Conditions d'Utilisation",
+    "cookies": "Gestion des Cookies",
+    "legal_note": "Melpis s'appuie sur la Meta Cloud API officielle. Nous ne sommes pas affiliés à WhatsApp LLC ou Meta Platforms Inc."
+  },
+  "languages": {
+    "it": "Italiano",
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "select_language": "Choisir la langue"
+  }
+}

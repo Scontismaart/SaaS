@@ -1,0 +1,106 @@
+{
+  "page_title": "Melpis · Assistente WhatsApp AI per la tua attività | Prova 7 giorni",
+  "meta_description": "Attiva l'assistente WhatsApp AI per la tua attività: risposte 24/7 ai clienti, prenotazioni su Google Calendar e bozze recensioni. Prova gratis di 7 giorni.",
+  "hero": {
+    "badge": "Infrastruttura ufficiale Meta Cloud API",
+    "title_part1": "Il tuo assistente WhatsApp AI che",
+    "title_highlight": "converte messaggi in clienti",
+    "subtitle": "Risponde in tempo reale 24 ore su 24, registra appuntamenti su Google Calendar e ti avvisa quando serve l'intervento del tuo staff.",
+    "cta_primary": "Inizia la prova gratuita di 7 giorni",
+    "cta_secondary": "Scopri come funziona",
+    "no_card_required": "Nessuna carta di credito richiesta",
+    "setup_time": "Configurazione in 5 minuti"
+  },
+  "stats": {
+    "response_time": "< 3 secondi",
+    "response_time_label": "tempo medio di risposta",
+    "availability": "24/7",
+    "availability_label": "copertura senza pause",
+    "no_shows": "Real-time",
+    "no_shows_label": "sincronizzazione disponibilità per evitare sovrapposizioni",
+    "time_saved": "1 click",
+    "time_saved_label": "per riprendere il controllo manuale della chat"
+  },
+  "features": {
+    "section_badge": "Funzionalità studiate per la crescita",
+    "section_title": "Tutto ciò di cui hai bisogno per non perdere nessun cliente su WhatsApp",
+    "f1": {
+      "title": "Risposte intelligenti ed empatiche basate sui tuoi dati",
+      "desc": "Carica i tuoi documenti, orari, listini e condizioni: Melpis risponde con precisione millimetrica senza inventare nulla."
+    },
+    "f2": {
+      "title": "Sincronizzazione prenotazioni su Google Calendar",
+      "desc": "Verifica in tempo reale gli slot liberi, fissa l'appuntamento e invia conferme e promemoria automatici al cliente."
+    },
+    "f3": {
+      "title": "Shared Inbox e passaggio all'operatore umano",
+      "desc": "Se una conversazione necessita di attenzione personale, il tuo team può subentrare istantaneamente dalla dashboard web."
+    },
+    "f4": {
+      "title": "Gestione recensioni e soddisfazione cliente",
+      "desc": "Raccogli feedback sinceri e invita i clienti soddisfatti a lasciare una recensione a 5 stelle su Google Maps."
+    }
+  },
+  "how_it_works": {
+    "badge": "Semplice e immediato",
+    "title": "Come funziona Melpis",
+    "step1": {
+      "num": "01",
+      "title": "Collega il tuo numero WhatsApp",
+      "desc": "Connessione sicura in un clic tramite la Meta Cloud API ufficiale, mantenendo intatto il tuo numero esistente."
+    },
+    "step2": {
+      "num": "02",
+      "title": "Insegna le regole della tua attività",
+      "desc": "Inserisci orari, listino prezzi, servizi e il tono di voce preferito per comunicare con i tuoi clienti."
+    },
+    "step3": {
+      "num": "03",
+      "title": "Lascia che l'assistente lavori per te",
+      "desc": "Melpis accoglie ogni messaggio in pochi secondi e tu monitori tutto dalla dashboard."
+    }
+  },
+  "faq": {
+    "badge": "Risposte chiare",
+    "title": "Domande frequenti",
+    "items": [
+      {
+        "q": "Ho bisogno di un nuovo numero di telefono per usare Melpis?",
+        "a": "No. Puoi collegare il tuo numero WhatsApp Business esistente tramite l'infrastruttura ufficiale Meta Cloud API, oppure utilizzarne uno dedicato se preferisci separare i canali."
+      },
+      {
+        "q": "Come funziona la gestione delle chat e posso usare l'app dal telefono?",
+        "a": "Melpis si integra tramite la Meta Cloud API ufficiale. La lettura e la risposta manuale alle chat avvengono direttamente dalla Inbox di Melpis (accessibile via web da computer, tablet o smartphone). L'assistente risponde in tempo reale e ti notifica subito quando è necessario un intervento del tuo team."
+      },
+      {
+        "q": "Cosa succede se l'assistente non trova una risposta o riceve una richiesta complessa?",
+        "a": "Melpis risponde basandosi solo sui documenti e sulle regole che imposti. Se la richiesta riguarda informazioni non presenti o necessita di accordi speciali, l'assistente non improvvisa: informa il cliente e inoltra la richiesta allo staff nella Inbox."
+      },
+      {
+        "q": "Quanto tempo serve per configurare il servizio?",
+        "a": "La configurazione iniziale si completa in pochi passaggi: colleghi il canale WhatsApp, carichi le informazioni base e imposti le regole di risposta. L'assistente è subito pronto per essere testato nel simulatore interno prima di andare online."
+      },
+      {
+        "q": "Come funziona la prova gratuita di 7 giorni?",
+        "a": "La prova dura 7 giorni con accesso completo alle funzionalità del piano scelto. La registrazione richiede solo nome attività, email e password: non è richiesta alcuna carta di credito e non c'è rinnovo automatico."
+      },
+      {
+        "q": "I dati dei clienti sono al sicuro e conformi al GDPR?",
+        "a": "Sì. Melpis applica una rigida separazione dei dati per ciascun tenant, crittografia a riposo (Fernet), gestione dei consensi e dell'opt-out, e non utilizza i dati dei tuoi clienti per addestrare modelli linguistici terzi."
+      },
+      {
+        "q": "Posso personalizzare il tono di voce e le regole di risposta?",
+        "a": "Sì. Dalla dashboard puoi definire le istruzioni dell'assistente, scegliere il livello di formalità (dare del tu o del lei), impostare i limiti di prenotazione e specificare quali argomenti richiedono sempre la conferma manuale dell'operatore."
+      },
+      {
+        "q": "Posso disdire l'abbonamento in qualsiasi momento?",
+        "a": "Sì, puoi gestire o interrompere l'abbonamento in qualsiasi momento direttamente dal portale di fatturazione Stripe integrato nella dashboard, senza vincoli contrattuali di durata né penali di cancellazione."
+      }
+    ]
+  },
+  "cta_banner": {
+    "title": "Pronto a trasformare WhatsApp nel tuo miglior canale di vendita?",
+    "subtitle": "Unisciti alle attività che hanno già automatizzato prenotazioni e assistenza clienti.",
+    "button": "Inizia la prova gratuita di 7 giorni"
+  }
+}

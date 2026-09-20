@@ -1,0 +1,56 @@
+{
+  "page_title": "Official Documentation & Help Center · Melpis",
+  "meta_description": "Official guides, pre-launch checklists, and documentation to set up your WhatsApp AI assistant, connect Google Calendar, and manage the shared team inbox.",
+  "hero": {
+    "badge": "Help Center & Guides",
+    "title": "How can we help you?",
+    "subtitle": "Everything you need to set up, integrate, and get the most out of your Melpis assistant.",
+    "search_placeholder": "Search guides, integrations, configuration (Ctrl+K)..."
+  },
+  "search": {
+    "empty": "No articles found matching this query.",
+    "count_articles": "{{count}} articles",
+    "shortcut_hint": "Press / to quick search"
+  },
+  "categories": {
+    "start": {
+      "title": "Start here",
+      "desc": "What Melpis is, core architecture, 7-step onboarding wizard, and pre-launch checklist."
+    },
+    "integrations": {
+      "title": "Channels & Integrations",
+      "desc": "WhatsApp Business, Instagram Direct, Google Calendar, Google Reviews, PMS, and Airtable."
+    },
+    "ai_config": {
+      "title": "AI Configuration & Knowledge Base",
+      "desc": "Personality, tone of voice, business hours, RAG document upload, price lists, and FAQ cache."
+    },
+    "inbox": {
+      "title": "Shared Inbox & Human Handoff",
+      "desc": "Ticket assignment (Claim), manual replies on WhatsApp/Instagram, escalation rules, and SLAs."
+    },
+    "bookings": {
+      "title": "Bookings & Appointments",
+      "desc": "Slot availability, schedule indicators, capacities, appointment creation, and calendar sync."
+    },
+    "accounts": {
+      "title": "Account, Team & Plans",
+      "desc": "Team management (Owner, Manager, Staff), Essential, Growth, Scale plans, and Stripe billing."
+    },
+    "security": {
+      "title": "Security, Privacy & GDPR",
+      "desc": "GDPR compliance, DPA, 60-90 day retention, opt-out management, and right to erasure."
+    },
+    "troubleshooting": {
+      "title": "Troubleshooting & Architecture",
+      "desc": "Expired token diagnosis, Meta API errors, webhooks, rate limits, and worker architecture."
+    }
+  },
+  "ui": {
+    "back_to_docs": "← All documentation",
+    "table_of_contents": "On this page",
+    "need_help": "Can't find what you're looking for?",
+    "contact_support": "Contact Melpis Support",
+    "last_updated": "Last updated: {{date}}"
+  }
+}

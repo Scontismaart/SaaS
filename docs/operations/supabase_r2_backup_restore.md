@@ -12,14 +12,32 @@ R2 is usage-metered. Its free allowance and pricing can change; budget for stora
 
 ## Restore drill
 
-The drill has no production path. It requires all of the following: `RESTORE_TARGET_ENV` equal to `development`, `test`, `staging`, or `drill`; `RESTORE_NON_PRODUCTION_CONFIRMATION=RESTORE_<environment>`; and values for `PRODUCTION_PGHOST` and `PRODUCTION_PGDATABASE` that are both different from the restore host/database. It also requires the restore `RESTORE_PG*` variables, the same R2 variables, and `BACKUP_AGE_IDENTITY_FILE` (owner-only).
+The drill has no production path and never reads `RESTORE_PG*`, `PRODUCTION_PG*`, `PG*`, service-file, or caller-supplied connection settings. Its only database identity is an exact target ID selected from the fixed root-managed directory `/etc/whatsapp-ai-responder/backup-drill-targets`. The parent directory and target directory must be owned by root and not group/world writable; each target file must be a root-owned, owner-only regular file, not a symlink. The path itself is canonicalized and may not be redirected.
 
-Example, after injecting secrets into the environment:
+An administrator creates one file per approved target, for example `/etc/whatsapp-ai-responder/backup-drill-targets/drill-eu1.conf` (mode `0600`, root-owned):
 
-```bash
-RESTORE_TARGET_ENV=drill \
-RESTORE_NON_PRODUCTION_CONFIRMATION=RESTORE_drill \
-scripts/restore_supabase_drill.sh --artifact-key supabase-backups/supabase-20260920T010203Z-12345.dump.age
+```ini
+TARGET_ID=drill-eu1
+TARGET_ENV=drill
+PGHOST=db.drill-project.supabase.co
+PGPORT=5432
+PGDATABASE=postgres
+PGUSER=backup_drill_restore
+PGPASSWORD=injected-only-into-this-root-owned-file
+# Optional, root-owned mode 0600 certificate path:
+# PGSSLROOTCERT=/etc/whatsapp-ai-responder/supabase-ca.pem
 ```
 
-The drill downloads the artifact and manifest, checks their binding and SHA-256 digest, authenticates/decrypts with age, verifies the PostgreSQL archive, restores in one transaction, then requires non-empty public tables and constraints plus at least one analyzed user-table row (`RESTORE_MINIMUM_ROWS` can raise that threshold). It rejects any target host or database containing `prod`. It is destructive to the named non-production database. Do not point it at a shared staging database without a maintenance window; use an isolated drill project/database instead. This is not point-in-time recovery, does not back up Supabase Auth/Storage/configuration outside PostgreSQL, and cannot recover data newer than the latest successful dump.
+Only `development`, `test`, `staging`, and `drill` target labels are accepted. A `prod` substring rejection remains a supplemental tripwire, not authorization: the root-managed exact allowlist is the authorization boundary. Do not add production endpoints, database names, or credentials to this directory.
+
+The runtime identity must have read access only to this non-production target configuration and no production database secret, network route, DNS override, cloud IAM role, or security-group/e-gress rule that can reach production. Use a dedicated non-production restore role, distinct projects/accounts, and network policy that denies production database endpoints. Keep the production backup and deployment roles separate from the drill host/service account.
+
+The caller supplies the same R2 variables as backup, `BACKUP_AGE_IDENTITY_FILE` (owner-only), and an explicit `RESTORE_NON_PRODUCTION_CONFIRMATION=RESTORE_<target-id>`. Example:
+
+```bash
+RESTORE_NON_PRODUCTION_CONFIRMATION=RESTORE_drill-eu1 \
+scripts/restore_supabase_drill.sh --target drill-eu1 \
+  --artifact-key supabase-backups/supabase-20260920T010203Z-12345.dump.age
+```
+
+The drill downloads the artifact and manifest, checks their binding and SHA-256 digest, authenticates/decrypts with age, verifies the PostgreSQL archive, restores in one transaction, then requires non-empty public tables and constraints plus at least one analyzed user-table row (`RESTORE_MINIMUM_ROWS` can raise that threshold). It is destructive to the named non-production database. Do not point it at a shared staging database without a maintenance window; use an isolated drill project/database instead. This is not point-in-time recovery, does not back up Supabase Auth/Storage/configuration outside PostgreSQL, and cannot recover data newer than the latest successful dump.

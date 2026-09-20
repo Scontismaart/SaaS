@@ -86,6 +86,8 @@ def test_buildx_builds_api_and_web_for_amd64_and_arm64_with_sha_only_tags() -> N
 
 def test_production_compose_uses_release_images_and_only_caddy_publishes() -> None:
     compose = _read("compose.production.yml")
+    assert "${MELPIS_API_IMAGE_REF:-" in compose
+    assert "${MELPIS_WEB_IMAGE_REF:-" in compose
     assert "${MELPIS_API_IMAGE:?" in compose
     assert "${MELPIS_WEB_IMAGE:?" in compose
     assert compose.count("${MELPIS_IMAGE_TAG:?") == 2

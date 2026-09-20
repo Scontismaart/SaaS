@@ -1,5 +1,5 @@
 x-api: &api
-  image: ${MELPIS_API_IMAGE:?set MELPIS_API_IMAGE}:${MELPIS_IMAGE_TAG:?set immutable MELPIS_IMAGE_TAG}
+  image: ${MELPIS_API_IMAGE:?set MELPIS_API_IMAGE}:${MELPIS_IMAGE_TAG:?set CI SHA tag (sha-<40 hex>)}
   env_file: ${MELPIS_ENV_FILE:-.env.production}
   restart: unless-stopped
   networks: [app_internal]
@@ -30,7 +30,7 @@ services:
       web: {condition: service_started}
 
   web:
-    image: ${MELPIS_WEB_IMAGE:?set MELPIS_WEB_IMAGE}:${MELPIS_IMAGE_TAG:?set immutable MELPIS_IMAGE_TAG}
+    image: ${MELPIS_WEB_IMAGE:?set MELPIS_WEB_IMAGE}:${MELPIS_IMAGE_TAG:?set CI SHA tag (sha-<40 hex>)}
     restart: unless-stopped
     networks: [app_internal]
     read_only: true

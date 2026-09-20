@@ -1,15 +1,25 @@
-{$PUBLIC_HOST} {
-  encode zstd gzip
-  @backend path /api/* /webhooks/* /docs* /redoc* /openapi.json
-  reverse_proxy @backend api:8000
-  reverse_proxy web:80
-  header {
-    Strict-Transport-Security "max-age=31536000; includeSubDomains"
-    Permissions-Policy "camera=(), microphone=(), geolocation=()"
-    -Server
-  }
-  log {
-    output stdout
-    format json
-  }
+(melpis_app) {
+	encode zstd gzip
+	@backend path /api/* /webhooks/* /docs* /redoc* /openapi.json
+	reverse_proxy @backend api:8000
+	reverse_proxy web:80
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	log {
+		output stdout
+		format json
+	}
+}
+
+# PUBLIC_HOST is the temporary DNS hostname used for TLS smoke tests. The
+# localhost default keeps static/local validation independent from final DNS.
+{$PUBLIC_HOST:localhost}, melpis.it {
+	import melpis_app
+}
+
+app.melpis.it {
+	redir https://melpis.it/app/ 308
 }

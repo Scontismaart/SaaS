@@ -6,8 +6,12 @@ on:
   push:
     branches: ["**"]
 
+permissions:
+  contents: read
+
 jobs:
   test:
+    name: Validate application and deployment
     runs-on: ubuntu-22.04
 
     services:
@@ -69,6 +73,22 @@ jobs:
       - name: Tenant scoping check (guard dog)
         run: python scripts/check_tenant_scoping.py
 
+      - name: Deployment checks
+        env:
+          MELPIS_API_IMAGE: ghcr.io/example/melpis-api
+          MELPIS_WEB_IMAGE: ghcr.io/example/melpis-web
+          MELPIS_IMAGE_TAG: sha-0000000000000000000000000000000000000000
+          MELPIS_ENV_FILE: /dev/null
+          PUBLIC_HOST: temporary.example.test
+        run: |
+          bash tests/scripts/test_oracle_vm_bootstrap.sh
+          docker compose -f compose.production.yml config --quiet
+          docker run --rm \
+            --env PUBLIC_HOST \
+            --volume "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
       - name: Run tests
         env:
           CI: true
@@ -80,3 +100,103 @@ jobs:
           TEST_DB_DSN: postgresql://postgres:test@localhost:5432/test
           ENCRYPTION_KEY: C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=
         run: pytest -v --tb=short
+
+  # Pull requests and non-release branches prove both target architectures
+  # build successfully, but this job has no package-write permission or login.
+  build_images:
+    name: Build ${{ matrix.image }} image (no push)
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: .
+            file: ./Dockerfile
+          - image: web
+            context: ./web
+            file: ./web/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build both release architectures
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: false
+
+  # Only a validated, direct push to main receives package-write permission.
+  # The sole release tag contains the complete commit SHA; no mutable tag is
+  # emitted by this workflow.
+  publish_images:
+    name: Publish ${{ matrix.image }} image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: .
+            file: ./Dockerfile
+          - image: web
+            context: ./web
+            file: ./web/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve lowercase GHCR image name
+        id: image
+        shell: bash
+        env:
+          IMAGE_SUFFIX: ${{ matrix.image }}
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${IMAGE_SUFFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable release image
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: true
+          tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          provenance: mode=max
+          sbom: true

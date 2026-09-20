@@ -11,9 +11,10 @@ Commits:
 
 - Extended GitHub Actions so tests, frontend checks, tenant-scoping checks, Compose validation, and release-container checks gate the image job.
 - Added Buildx builds for API and web on `linux/amd64` and `linux/arm64`; pull requests build without publishing, while authorized push events publish SHA-only GHCR tags.
-- Added Caddy routing for a temporary TLS host, final `melpis.it`, and redirect from `app.melpis.it` to `/app/`.
+- Added separately selected Caddy routing for a temporary TLS host and for final
+  `melpis.it` plus the `app.melpis.it` redirect to `/app/`.
 - Kept API/web ports internal; only Caddy publishes 80/443.
-- Production Compose accepts immutable SHA tags or complete digest references.
+- Production Compose requires complete immutable digest references.
 - Added focused static/regression tests for workflow topology, platforms, tags, routing, and Compose exposure.
 - Preserved all pre-existing dirty frontend/i18n files, including `web/Dockerfile` and `web/nginx.conf`.
 
@@ -45,7 +46,8 @@ The local non-escalated Docker CLI did not expose the Compose plugin (`unknown f
 ## Self-review and concerns
 
 - No pull-request event can publish images.
-- Image tags are full commit-SHA tags; digest references are also accepted by Compose.
+- A full commit-SHA tag is emitted only for traceability; Compose deploys only
+  the Buildx-recorded digest reference.
 - No mutable production tag is generated.
 - No user-owned dirty frontend file was staged or committed.
 - A real GHCR push and both-platform build require GitHub Actions credentials and must be observed in the PR before release.
@@ -84,3 +86,22 @@ workflow YAML passed
 The local Docker binary has no Compose plugin and its user config is unreadable,
 so local `docker compose config` and Caddy-container validation remain delegated
 to the existing GitHub Actions deployment-check step.
+
+## Round 2 remediation
+
+`CADDY_SITE_MODE=temporary` now accepts only a sane FQDN in `PUBLIC_HOST` and
+explicitly rejects `melpis.it` and `app.melpis.it` (case-insensitively). This
+prevents temporary mode from obtaining final-domain certificates or bypassing
+the final `app.melpis.it` redirect. The Task 5 operator runbook now names both
+mode-specific Caddy files, and the superseded tag-fallback claims above have
+been corrected.
+
+Verification after round 2:
+
+```text
+python -m pytest tests/unit/test_release_preflight.py tests/unit/test_release_containers.py -q --basetemp C:\tmp\melpis-task3-round2
+44 passed, 1 warning in 0.24s
+
+git diff --check -- scripts/release_preflight.py tests/unit/test_release_preflight.py docs/operations/oracle_vm_bootstrap.md .superpowers/sdd/2026-09-15-commercial-bootstrap/task-3-report.md
+passed
+```

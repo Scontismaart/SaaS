@@ -217,6 +217,23 @@ def test_temporary_caddy_mode_requires_a_real_temporary_host():
     assert "PUBLIC_HOST: missing or placeholder" in validate(config)
 
 
+@pytest.mark.parametrize("host", ("melpis.it", "app.melpis.it"))
+def test_temporary_caddy_mode_rejects_final_hosts(host):
+    config = commercial_config()
+    config["PUBLIC_HOST"] = host
+    assert (
+        "PUBLIC_HOST: temporary mode cannot use melpis.it or app.melpis.it"
+        in validate(config)
+    )
+
+
+@pytest.mark.parametrize("host", ("https://temporary.melpis.test", "127.0.0.1", "temporary"))
+def test_temporary_caddy_mode_requires_a_sane_fqdn(host):
+    config = commercial_config()
+    config["PUBLIC_HOST"] = host
+    assert "PUBLIC_HOST: must be a valid temporary FQDN" in validate(config)
+
+
 def test_release_preflight_blocks_unknown_caddy_site_mode():
     config = commercial_config()
     config["CADDY_SITE_MODE"] = "temporary-and-final"

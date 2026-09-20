@@ -42,6 +42,11 @@ _DIGEST_IMAGE_REFERENCE = re.compile(
     r"^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?"
     r"(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
 )
+_FQDN = re.compile(
+    r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+    r"[a-z]{2,63}$"
+)
+_FINAL_CADDY_HOSTS = frozenset({"melpis.it", "app.melpis.it"})
 _PLACEHOLDER_MARKERS = (
     "<",
     ">",
@@ -83,6 +88,16 @@ def _require_digest_image_reference(config, errors, name):
         errors.append(f"{name}: must be repository@sha256:<64 lowercase hex>")
 
 
+def _require_temporary_host(config, errors):
+    value = str(config.get("PUBLIC_HOST") or "").strip().lower()
+    if _is_placeholder(value):
+        errors.append("PUBLIC_HOST: missing or placeholder")
+    elif value in _FINAL_CADDY_HOSTS:
+        errors.append("PUBLIC_HOST: temporary mode cannot use melpis.it or app.melpis.it")
+    elif not _FQDN.fullmatch(value):
+        errors.append("PUBLIC_HOST: must be a valid temporary FQDN")
+
+
 def validate(config):
     errors = []
     profile = str(config.get("LAUNCH_PROFILE") or "").strip().lower()
@@ -106,7 +121,7 @@ def validate(config):
     if caddy_site_mode not in {"temporary", "final"}:
         errors.append("CADDY_SITE_MODE: must be temporary or final")
     elif caddy_site_mode == "temporary":
-        _require(config, errors, "PUBLIC_HOST")
+        _require_temporary_host(config, errors)
 
     expected = {
         "APP_ENV": "production",

@@ -104,7 +104,8 @@ ssh melpis@VM_PUBLIC_IP
 `/srv/melpis/app` is persistent across container recreation. Place only a
 reviewed repository checkout/release bundle there as `melpis`; do not build an
 unreviewed branch directly on the production VM. Ensure it contains the reviewed
-`compose.production.yml`, `Caddyfile`, and `scripts/backup_supabase_r2.sh`.
+`compose.production.yml`, `Caddyfile.temporary`, `Caddyfile.final`, and
+`scripts/backup_supabase_r2.sh`.
 Validate architecture and immutable image references before a pull:
 
 ```bash

@@ -90,6 +90,8 @@ def test_buildx_builds_api_and_web_for_amd64_and_arm64_and_records_digests() -> 
         job = _job(workflow, job_name)
         assert "docker/setup-qemu-action" in job
         assert "docker/setup-buildx-action" in job
+        assert "buildkitd-config-inline" in job
+        assert "max-parallelism = 1" in job
         assert "docker/build-push-action" in job
         assert "linux/amd64,linux/arm64" in job
         assert "./Dockerfile" in job

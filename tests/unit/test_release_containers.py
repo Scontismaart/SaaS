@@ -74,6 +74,15 @@ def test_ci_prepares_non_secret_legal_env_for_compose_syntax_check() -> None:
     assert prepare < empty_env < compose_check
 
 
+def test_ci_does_not_duplicate_branch_push_and_pull_request_runs() -> None:
+    workflow = _read(".github/workflows/ci.yml")
+    trigger = workflow.split("permissions:", 1)[0]
+
+    assert "pull_request:\n    branches: [main]" in trigger
+    assert "push:\n    branches: [main]" in trigger
+    assert 'branches: ["**"]' not in trigger
+
+
 def test_buildx_builds_api_and_web_for_amd64_and_arm64_and_records_digests() -> None:
     workflow = _read(".github/workflows/ci.yml")
 

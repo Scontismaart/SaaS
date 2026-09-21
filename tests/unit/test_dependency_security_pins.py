@@ -21,5 +21,6 @@ def test_torch_pin_is_cpu_only_for_release_images() -> None:
     """Oracle launch hosts have no GPU; CUDA wheels waste free-tier disk."""
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
 
-    assert "--extra-index-url https://download.pytorch.org/whl/cpu" in requirements
+    assert "--find-links https://download.pytorch.org/whl/cpu/torch/" in requirements
+    assert "--extra-index-url" not in requirements
     assert re.search(r"(?m)^torch==2\.14\.0\+cpu$", requirements)

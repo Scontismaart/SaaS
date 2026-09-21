@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from src.core.rate_limit import reset_memory_rate_limiter
+
 
 # Local, ignored browser-QA helpers are executable scripts: importing them
 # launches Playwright immediately.  Keep them available for manual visual
@@ -32,6 +34,20 @@ def pytest_ignore_collect(collection_path: Path, config):
     if collection_path.parent == Path(__file__).parent:
         return collection_path.name in _LOCAL_BROWSER_QA_SCRIPTS
     return None
+
+
+@pytest.fixture(autouse=True)
+def isolate_memory_rate_limiter():
+    """Keep request quotas deterministic and isolated between tests.
+
+    Production uses the shared Redis backend.  Test and development runs use
+    the process-wide in-memory backend, so without an explicit reset unrelated
+    TestClient fixtures can collectively exhaust the 100-request window and
+    make later tests fail with spurious HTTP 429 responses.
+    """
+    reset_memory_rate_limiter()
+    yield
+    reset_memory_rate_limiter()
 
 
 @pytest.fixture

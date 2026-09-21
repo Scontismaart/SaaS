@@ -142,3 +142,24 @@ def test_application_dockerfiles_are_architecture_neutral() -> None:
         assert "--platform=linux/amd64" not in dockerfile
         assert "--platform=linux/arm64" not in dockerfile
         assert "TARGETARCH=amd64" not in dockerfile
+
+
+def test_api_build_context_excludes_local_runtime_and_agent_artifacts() -> None:
+    ignored = {
+        line.strip()
+        for line in _read(".dockerignore").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    }
+
+    for pattern in (
+        ".pytest-*-tmp/",
+        ".runtime/",
+        ".agent/",
+        ".agents/",
+        ".codex/",
+        ".superpowers/",
+        "graphify-out/",
+        "node_modules/",
+        "review/",
+    ):
+        assert pattern in ignored

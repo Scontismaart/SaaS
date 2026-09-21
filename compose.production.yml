@@ -31,10 +31,15 @@ services:
 
   web:
     image: ${MELPIS_WEB_IMAGE_REF:?set MELPIS_WEB_IMAGE_REF to repository@sha256:<64 lowercase hex>}
+    # Deliberately not .env.production: the web process receives only the
+    # reviewed public legal identity fields that its renderer can use.
+    env_file: [.runtime/legal.env]
     restart: unless-stopped
     networks: [app_internal]
     read_only: true
-    tmpfs: [/var/cache/nginx, /var/run]
+    tmpfs: [/var/cache/nginx, /var/run, /run]
+    environment:
+      LEGAL_RENDER_ENABLED: "true"
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
     cap_add: [CHOWN, SETGID, SETUID]

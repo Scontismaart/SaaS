@@ -46,6 +46,16 @@ LEGAL_IDENTITY_ENV_NAMES = (
     "LEGAL_FORUM",
     "LEGAL_DOCUMENT_EFFECTIVE_DATE",
 )
+LEGAL_REVIEW_APPROVAL_ENV_NAMES = (
+    "LEGAL_PUBLIC_DOCUMENTS_REVIEWED",
+    "LEGAL_PRIVACY_REVIEW_APPROVED",
+    "LEGAL_TERMS_REVIEW_APPROVED",
+    "LEGAL_DPA_REVIEW_APPROVED",
+)
+LEGAL_DECISION_INTEGER_ENV_NAMES = (
+    "LEGAL_PAYMENT_SUSPENSION_DAYS",
+    "LEGAL_ACCOUNT_TERMINATION_DAYS",
+)
 _DIGEST_IMAGE_REFERENCE = re.compile(
     r"^[a-z0-9]+(?:[._-][a-z0-9]+)*(?::[0-9]+)?"
     r"(?:/[a-z0-9]+(?:[._-][a-z0-9]+)*)+@sha256:[0-9a-f]{64}$"
@@ -128,6 +138,16 @@ def validate(config):
     # production release must supply every reviewed identity value.
     for name in LEGAL_IDENTITY_ENV_NAMES:
         _require(config, errors, name)
+    # These deliberately require an affirmative, reviewed decision. They are
+    # separate from public identity data so a populated template is never
+    # mistaken for legal approval.
+    for name in LEGAL_REVIEW_APPROVAL_ENV_NAMES:
+        if config.get(name) != "true":
+            errors.append(f"{name}: must be true after legal review")
+    for name in LEGAL_DECISION_INTEGER_ENV_NAMES:
+        value = str(config.get(name) or "").strip()
+        if not re.fullmatch(r"[1-9][0-9]{0,3}", value):
+            errors.append(f"{name}: explicit 1..9999-day legal decision required")
 
     caddy_site_mode = str(config.get("CADDY_SITE_MODE") or "").strip()
     if caddy_site_mode not in {"temporary", "final"}:

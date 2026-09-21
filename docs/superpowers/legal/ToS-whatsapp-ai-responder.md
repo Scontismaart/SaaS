@@ -2,7 +2,7 @@
 > audit tecnico verificato del codice sorgente e in allineamento con
 > `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md`. Prima di farla accettare
 > a clienti reali va fatta rivedere da un professionista qualificato,
-> in particolare sulle sezioni indicate con [REV]. I segnaposto fra
+> in particolare sulle sezioni indicate con `{{LEGAL_TERMS_REVIEW_APPROVAL}}`. I segnaposto fra
 > parentesi quadre vanno compilati con i dati reali del Fornitore.
 
 # Termini di Servizio — WhatsApp AI Responder
@@ -58,7 +58,7 @@ di parlare con un operatore umano ("OPERATORE").
 
 4.1 Il Servizio è soggetto a canone, secondo i piani e le condizioni esposti
 in sede di sottoscrizione, fatturati tramite Stripe o altro processore di
-pagamento indicato all'Allegato B del DPA. [REV]
+pagamento indicato all'Allegato B del DPA. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 4.2 Il mancato pagamento può comportare la sospensione del Servizio. Le
 condizioni di sospensione e disattivazione sono descritte all'Appendice 1.
@@ -85,7 +85,7 @@ cliente finale scrive "OPERATORE" (o formule equivalenti riconosciute dal
 Servizio).
 
 6.3 Restano a carico del Cliente gli obblighi AI Act non specificamente
-adempiuti dal Servizio (vedi DPA §10.2). [REV]
+adempiuti dal Servizio (vedi DPA §10.2). `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 ## 7. Contenuti del Cliente e diritti di proprietà
 
@@ -101,7 +101,7 @@ revocabile, necessaria a fornire il Servizio.
 8.1 Il Fornitore si impegna a mantenere il Servizio disponibile con la
 diligenza richiesta dalla natura del Servizio. Il Servizio non è soggetto a
 un obbligo di disponibilità ininterrotta e può essere sospeso per
-manutenzione. [REV]
+manutenzione. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 8.2 Il supporto è fornito secondo le modalità indicate in sede di
 sottoscrizione.
@@ -109,7 +109,7 @@ sottoscrizione.
 ## 9. Limitazioni di responsabilità
 
 9.1 Salvo quanto previsto da norme inderogabili, il Fornitore non risponde
-di danni indiretti, conseguenziali o lucro cessante. [REV]
+di danni indiretti, conseguenziali o lucro cessante. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 9.2 Restano ferme le responsabilità derivanti dal trattamento di dati
 personali, disciplinate dal DPA e dall'art. 82 GDPR.
@@ -150,8 +150,8 @@ dati o all'esercizio dei diritti, è possibile contattarci a
 ## Appendice 1 — Sospensione e disattivazione
 
 - **Inadempimento del pagamento:** il Servizio può essere sospeso dopo
-  [N] giorni dalla scadenza non onorata, con avviso via email, e disattivato
-  dopo ulteriori [M] giorni. [REV]
+  `{{LEGAL_PAYMENT_SUSPENSION_DAYS}}` giorni dalla scadenza non onorata, con avviso via email, e disattivato
+  dopo ulteriori `{{LEGAL_ACCOUNT_TERMINATION_DAYS}}` giorni. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 - **Violazione grave:** sospensione immediata in caso di uso illecito del
   Servizio, con comunicazione al Cliente.
 - **Cessazione:** alla cessazione dell'account i messaggi e i dati sono

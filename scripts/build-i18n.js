@@ -1640,15 +1640,30 @@ function localizePricing(html, lang, bundle) {
         res = res.replace(/<p class="comp-footnote">\* I costi Meta WhatsApp Business Platform sono separati dal piano Melpis\.<\/p>/, `<p class="comp-footnote">${pex.compFootnote}</p>`);
       }
       if (pex.commercialFaq) {
-        res = res.replace(/<span class="eyebrow-pill">Domande Commerciali<\/span>/, `<span class="eyebrow-pill">${pex.commercialFaq.eyebrow}</span>`);
-        res = res.replace(/<h2>Dubbi su pagamenti, limiti o fatturazione\?<\/h2>/, `<h2>${pex.commercialFaq.title}</h2>`);
+        // Replace the complete section, not the first nested div. The former
+        // non-greedy div match left the Italian FAQ tail in every locale.
+        // Keep structured-data wording native too, so no Italian invoice copy
+        // survives on a non-Italian pricing route.
+        const invoiceItem = pex.commercialFaq.items[4];
+        res = res.replace(/Come viene emessa la fattura e include la fatturazione elettronica italiana\?/g, invoiceItem.q);
+        res = res.replace(/Ricevuta Stripe immediata; fattura fiscale su richiesta\./g, invoiceItem.a);
         const commFaqHtml = pex.commercialFaq.items.map(item => `                    <details class="faq-item">
                         <summary class="faq-quest"><span>${item.q}</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
                         <div class="faq-ans"><p>${item.a}</p></div>
                     </details>`).join('\n');
-        res = res.replace(/<section class="faq-section" id="faq">[\s\S]*?<div class="faq-list">[\s\S]*?<\/div>\s*<\/div>\s*<\/section>/, (match) => {
-          return match.replace(/<div class="faq-list">[\s\S]*?<\/div>/, `<div class="faq-list">\n${commFaqHtml}\n                </div>`);
-        });
+        const commercialFaqSection = `<section class="faq-section" id="faq">
+            <div class="container">
+                <div class="center">
+                    <span class="eyebrow-pill">${pex.commercialFaq.eyebrow}</span>
+                    <h2>${pex.commercialFaq.title}</h2>
+                </div>
+
+                <div class="faq-list">
+${commFaqHtml}
+                </div>
+            </div>
+        </section>`;
+        res = res.replace(/<section class="faq-section" id="faq">[\s\S]*?<\/section>/, commercialFaqSection);
       }
       if (pex.finalTitle) {
         res = res.replace(/<h2 class="final-cta-title">Meno lavoro manuale ogni giorno\.<br>Più tempo per la tua attività\.<\/h2>/, `<h2 class="final-cta-title">${pex.finalTitle}</h2>`);

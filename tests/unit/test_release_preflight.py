@@ -15,6 +15,8 @@ validate = _MODULE.validate
 STRIPE_PRICE_ENV_NAMES = _MODULE.STRIPE_PRICE_ENV_NAMES
 IMAGE_REFERENCE_ENV_NAMES = _MODULE.IMAGE_REFERENCE_ENV_NAMES
 LEGAL_IDENTITY_ENV_NAMES = _MODULE.LEGAL_IDENTITY_ENV_NAMES
+LEGAL_REVIEW_APPROVAL_ENV_NAMES = _MODULE.LEGAL_REVIEW_APPROVAL_ENV_NAMES
+LEGAL_DECISION_INTEGER_ENV_NAMES = _MODULE.LEGAL_DECISION_INTEGER_ENV_NAMES
 
 
 def test_production_example_declares_safe_commercial_defaults():
@@ -64,6 +66,12 @@ def common_config():
         "LEGAL_PRIVACY_CONTACT_EMAIL": "privacy@melpis.invalid",
         "LEGAL_FORUM": "Roma",
         "LEGAL_DOCUMENT_EFFECTIVE_DATE": "2026-09-21",
+        "LEGAL_PUBLIC_DOCUMENTS_REVIEWED": "true",
+        "LEGAL_PRIVACY_REVIEW_APPROVED": "true",
+        "LEGAL_TERMS_REVIEW_APPROVED": "true",
+        "LEGAL_DPA_REVIEW_APPROVED": "true",
+        "LEGAL_PAYMENT_SUSPENSION_DAYS": "14",
+        "LEGAL_ACCOUNT_TERMINATION_DAYS": "30",
         "STRIPE_WEBHOOK_SECRET": "whsec_unit_safe_value",
         "TRUSTED_PROXY_CIDRS": "172.30.0.0/24",
         "OPENROUTER_MODEL": "groq/openai/gpt-oss-20b",
@@ -118,6 +126,20 @@ def test_production_preflight_blocks_unresolved_legal_identity_tokens(name):
     config = commercial_config()
     config[name] = "<replace-me>"
     assert f"{name}: missing or placeholder" in validate(config)
+
+
+@pytest.mark.parametrize("name", LEGAL_REVIEW_APPROVAL_ENV_NAMES)
+def test_production_preflight_requires_explicit_legal_review(name):
+    config = commercial_config()
+    config[name] = "false"
+    assert f"{name}: must be true after legal review" in validate(config)
+
+
+@pytest.mark.parametrize("name", LEGAL_DECISION_INTEGER_ENV_NAMES)
+def test_production_preflight_requires_explicit_legal_day_decisions(name):
+    config = commercial_config()
+    config[name] = "<review-me>"
+    assert f"{name}: explicit 1..9999-day legal decision required" in validate(config)
 
 
 @pytest.mark.parametrize(

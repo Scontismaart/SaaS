@@ -138,6 +138,7 @@ without printing the file:
 
 ```bash
 sudo -u melpis python3 scripts/release_preflight.py --env-file .env.production
+sudo -u melpis python3 scripts/write_legal_runtime_env.py --env-file .env.production --output .runtime/legal.env
 ```
 
 `/etc/whatsapp-ai-responder` and backup-drill allowlists are root-only. Keep

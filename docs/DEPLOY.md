@@ -35,7 +35,14 @@ log. Solo Caddy pubblica 80/443.
    python scripts/release_preflight.py --env-file .env.production
    ```
 
-7. Copia dal GitHub Actions summary i due riferimenti digest completi in
+7. Crea il file runtime del frontend. Contiene solo i sei valori legali già
+   approvati (nessun segreto API/DB) ed è scritto con permessi owner-only:
+
+   ```powershell
+   python scripts/write_legal_runtime_env.py --env-file .env.production --output .runtime/legal.env
+   ```
+
+8. Copia dal GitHub Actions summary i due riferimenti digest completi in
    `MELPIS_API_IMAGE_REF` e `MELPIS_WEB_IMAGE_REF`. Imposta inoltre
    `CADDY_SITE_MODE=temporary` e `PUBLIC_HOST` sul DNS temporaneo. Il compose
    carica solo `Caddyfile.temporary`, quindi non richiede certificati per

@@ -52,6 +52,10 @@ nel codice.
 - [ ] DNS `melpis.it`/`app.melpis.it` oppure hostname temporaneo e HTTPS validi.
 - [ ] Caselle support/privacy e base giuridica/DPA/sub-responsabili convalidati da
   un professionista; la revisione tecnica non è consulenza legale.
+- [ ] Valori `LEGAL_*` verificati e flag `LEGAL_PUBLIC_DOCUMENTS_REVIEWED`,
+  `LEGAL_PRIVACY_REVIEW_APPROVED`, `LEGAL_TERMS_REVIEW_APPROVED` e
+  `LEGAL_DPA_REVIEW_APPROVED` impostati a `true` dopo review legale; nessun
+  token `{{LEGAL_*}}` residuo nell'output pubblico renderizzato.
 - [ ] Strategia backup gratuita separata dall'host, dump cifrato e restore drill.
 - [ ] Alerting: Sentry Free configurato e testato oppure monitoraggio equivalente;
   i log strutturati da soli non sono un alert proattivo.
@@ -59,6 +63,8 @@ nel codice.
 ## Go/no-go su ambiente reale sandbox
 
 - [ ] `python scripts/release_preflight.py --env-file .env.production` verde.
+- [ ] Renderer legale eseguito nel container read-only con output in tmpfs e
+  controllo dell'HTML pubblico senza token non risolti.
 - [x] Suite backend completa, lint/test frontend, tenant scanner e migrazioni verdi
   localmente (1.748 passed, 42 live skipped per policy; 15 settembre 2026).
 - [ ] Registrazione → verifica email → login → MFA → dashboard.

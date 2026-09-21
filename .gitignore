@@ -51,6 +51,7 @@ lh_report.json
 # Local visual/browser QA evidence and discarded landing experiments. Keep these
 # recoverable locally, but never include them in the release checkpoint.
 /tests/screenshots/
+/.pytest-*-tmp/
 /tests/browser_qa_runner.py
 /tests/browser_qa_runner_full.py
 /tests/capture_dashboard_views.py

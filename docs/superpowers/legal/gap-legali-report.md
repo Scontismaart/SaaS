@@ -25,13 +25,14 @@ e tre i documenti prima della sottoscrizione con clienti reali:
 | `{{LEGAL_ENTITY_REGISTERED_OFFICE}}` / `{{LEGAL_FORUM}}` | DPA, ToS, Informativa, pagine pubbliche | Sede legale e foro competente (DPA §14, ToS §12) |
 | `{{LEGAL_ENTITY_VAT_NUMBER}}` | DPA, ToS, Informativa, pagine pubbliche | Partita IVA del fornitore |
 | `{{LEGAL_DOCUMENT_EFFECTIVE_DATE}}` | DPA, ToS, Informativa | Data di ultimo aggiornamento |
-| `[REV]` | ToS, Informativa | Punti markati per decisione legale (vedi sotto) |
-| `[N]`/`[M]` giorni sospensione | ToS Appendice 1 | Termini commerciali di sospensione/disattivazione |
+| `{{LEGAL_*_REVIEW_APPROVAL}}` | ToS, Informativa | Punti bloccati da decisione legale (vedi `legal-decision-tokens.md`) |
+| `{{LEGAL_PAYMENT_SUSPENSION_DAYS}}` / `{{LEGAL_ACCOUNT_TERMINATION_DAYS}}` | ToS Appendice 1 | Termini commerciali di sospensione/disattivazione |
 | `{{LEGAL_PRIVACY_CONTACT_EMAIL}}` | Informativa §7, pagine pubbliche | Contatto privacy effettivo; non inventare un indirizzo |
 
 I token e le variabili bloccanti di produzione sono centralizzati in
-`docs/superpowers/legal/legal-identity-tokens.md`; il release preflight rifiuta
-valori mancanti o segnaposto.
+`docs/superpowers/legal/legal-identity-tokens.md` e
+`docs/superpowers/legal/legal-decision-tokens.md`; il release preflight rifiuta
+valori mancanti, segnaposto o decisioni non approvate.
 
 Finché i documenti restano anonimi, il soggetto cui è imputabile ogni
 obbligo giuridico (art. 28 GDPR, AI Act) è indeterminato.
@@ -116,13 +117,13 @@ obbligo giuridico (art. 28 GDPR, AI Act) è indeterminato.
   WhatsApp/IA con dati di soggetti terzi, considerata anche la posizione del
   Garante sui chatbot (caso OpenAI/CA 2023).
 - **ToS/Informativa:** bozze redatte (`docs/superpowers/legal/`): vanno
-  convalidate (punti `[REV]`) e tradotte almeno in inglese se il servizio è
+  convalidate (token di review risolti) e tradotte almeno in inglese se il servizio è
   offerto a clienti non italiani.
 
 ## 6. Prima del lancio a clienti reali (checklist minima)
 
 - [ ] Società costituita / soggetto giuridico definito; segnaposto compilati
-- [ ] Review legale di DPA, ToS, Informativa; `[REV]` risolti
+- [ ] Review legale di DPA, ToS, Informativa; token di decisione risolti e flag di approvazione impostati
 - [ ] Strumenti di trasferimento confermati con i fornitori (DPA §6.3)
 - [ ] Decisione su base giuridica dei messaggi proattivi (DPA §4.2/ePrivacy)
 - [ ] Registro dei trattamenti Fornitore (art. 30 GDPR)

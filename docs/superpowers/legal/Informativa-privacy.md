@@ -73,7 +73,7 @@ propagazione cancellazione GDPR).
 Alcuni destinatari trattano dati al di fuori dello Spazio Economico Europeo
 (in particolare negli Stati Uniti). I trasferimenti avvengono sulla base di
 Clausole Contrattuali Tipo e/o meccanismi di adeguatezza applicabili, come
-disponibili per ciascun fornitore. [REV — verifica puntuale dello strumento di
+disponibili per ciascun fornitore. `{{LEGAL_DPA_REVIEW_APPROVAL}}` — verifica puntuale dello strumento di
 trasferimento alla data di sottoscrizione, come richiesto dal DPA §6.3]
 
 ## 7. Diritti dell'interessato

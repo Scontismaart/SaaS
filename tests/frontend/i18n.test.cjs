@@ -91,10 +91,45 @@ test("production landing CSP has no inline-code exception", () => {
   });
 });
 
+test("FullCalendar uses only the deployed same-origin stylesheet under CSP", () => {
+  const root = path.resolve(__dirname, "../..");
+  const headers = fs.readFileSync(path.join(root, "web/security-headers.conf"), "utf8");
+  const dashboard = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
+  const vendor = fs.readFileSync(path.join(root, "web/vendor/fullcalendar.min.js"), "utf8");
+  assert.match(headers, /style-src 'self';/);
+  assert.match(dashboard, /<link rel="stylesheet" href="vendor\/fullcalendar\.css">/);
+  assert.ok(fs.statSync(path.join(root, "web/vendor/fullcalendar.css")).size > 1000);
+  assert.doesNotMatch(vendor, /function _e\(e\)\{let t=Re\.get\(e\)/, "runtime style creation is removed");
+  childProcess.execFileSync(process.execPath, ["scripts/externalize-fullcalendar-styles.js", "--check"], {
+    cwd: root,
+    stdio: "pipe"
+  });
+  const dom = new JSDOM("<!doctype html><head></head><body></body>", { runScripts: "outside-only" });
+  dom.window.eval(vendor);
+  assert.equal(dom.window.document.querySelectorAll("style[data-fullcalendar]").length, 0);
+  dom.window.close();
+});
+
 test("pricing copy never promises automatic electronic invoicing", () => {
   const pricing = fs.readFileSync(path.resolve(__dirname, "../../web/landing/prezzi/index.html"), "utf8");
   const extraCopy = fs.readFileSync(path.resolve(__dirname, "../../scripts/i18n-extra-copy.js"), "utf8");
   assert.match(pricing, /Ricevuta Stripe immediata; fattura fiscale su richiesta\./);
   assert.doesNotMatch(pricing, /Sistema di Interscambio|codice SDI/i);
   assert.doesNotMatch(extraCopy, /standard compliant tax invoices are automatically generated|facturas oficiales se generan y envían automáticamente|factures avec mentions fiscales légales sont automatiquement générées|Rechnungen mit ausgewiesener Mehrwertsteuer automatisch erstellt/i);
+});
+
+test("localized pricing has one native invoice answer and no Italian residue", () => {
+  const routes = {
+    en: ["pricing", "Your Stripe receipt is available immediately; request a fiscal invoice from us when needed."],
+    es: ["precios", "Recibes el recibo de Stripe de inmediato; solicita la factura fiscal cuando la necesites."],
+    fr: ["tarifs", "Votre reçu Stripe est disponible immédiatement ; demandez une facture fiscale si nécessaire."],
+    de: ["preise", "Ihre Stripe-Quittung ist sofort verfügbar; fordern Sie bei Bedarf eine steuerliche Rechnung an."],
+  };
+  for (const [lang, [route, invoiceCopy]] of Object.entries(routes)) {
+    const page = fs.readFileSync(path.resolve(__dirname, `../../web/landing/${lang}/${route}/index.html`), "utf8");
+    const faq = page.match(/<section class="faq-section" id="faq">([\s\S]*?)<\/section>/);
+    assert.ok(faq, `${lang} commercial FAQ section exists`);
+    assert.equal(faq[1].split(invoiceCopy).length - 1, 1, `${lang} has exactly one native invoice answer`);
+    assert.doesNotMatch(page, /Ricevuta Stripe immediata; fattura fiscale su richiesta\./, `${lang} has no Italian invoice copy`);
+  }
 });

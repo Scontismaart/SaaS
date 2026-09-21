@@ -38,6 +38,7 @@ def test_validation_gates_all_image_builds_and_prs_never_publish() -> None:
     validation = _job(workflow, "test")
     build = _job(workflow, "build_images")
     publish = _job(workflow, "publish_images")
+    manifest = _job(workflow, "publish_manifests")
 
     for expected in (
         "ruff check",
@@ -52,6 +53,7 @@ def test_validation_gates_all_image_builds_and_prs_never_publish() -> None:
 
     assert "needs: test" in build
     assert "needs: test" in publish
+    assert "needs: [test, publish_images]" in manifest
     assert "github.event_name == 'pull_request'" in build
     assert "push: false" in build
     assert "docker/login-action" not in build
@@ -62,6 +64,9 @@ def test_validation_gates_all_image_builds_and_prs_never_publish() -> None:
     assert "packages: write" in publish
     assert "docker/login-action" in publish
     assert "push: true" in publish
+    assert "github.event_name == 'push'" in manifest
+    assert "packages: write" in manifest
+    assert "docker/login-action" in manifest
 
 
 def test_ci_prepares_non_secret_legal_env_for_compose_syntax_check() -> None:
@@ -83,32 +88,46 @@ def test_ci_does_not_duplicate_branch_push_and_pull_request_runs() -> None:
     assert 'branches: ["**"]' not in trigger
 
 
-def test_buildx_builds_api_and_web_for_amd64_and_arm64_and_records_digests() -> None:
+def test_buildx_distributes_api_and_web_across_native_amd64_and_arm64_runners() -> None:
     workflow = _read(".github/workflows/ci.yml")
 
     for job_name in ("build_images", "publish_images"):
         job = _job(workflow, job_name)
-        assert "docker/setup-qemu-action" in job
+        assert "docker/setup-qemu-action" not in job
         assert "docker/setup-buildx-action" in job
         assert "buildkitd-config-inline" in job
         assert "max-parallelism = 1" in job
         assert "docker/build-push-action" in job
-        assert "linux/amd64,linux/arm64" in job
+        assert job.count("platform: linux/amd64") == 2
+        assert job.count("platform: linux/arm64") == 2
+        assert job.count("runner: ubuntu-22.04") == 2
+        assert job.count("runner: ubuntu-24.04-arm") == 2
+        assert "runs-on: ${{ matrix.runner }}" in job
+        assert "platforms: ${{ matrix.platform }}" in job
+        assert "linux/amd64,linux/arm64" not in job
         assert "./Dockerfile" in job
         assert "./web/Dockerfile" in job
         assert "context: ." in job
         assert "context: ./web" in job
 
     publish = _job(workflow, "publish_images")
-    assert ":sha-${{ github.sha }}" in publish
+    assert ":sha-${{ github.sha }}-${{ matrix.arch }}" in publish
     assert "id: build" in publish
-    assert "steps.build.outputs.digest" in publish
-    assert "Record immutable deployment reference" in publish
-    assert "MELPIS_API_IMAGE_REF" in publish
-    assert "MELPIS_WEB_IMAGE_REF" in publish
-    assert "GITHUB_STEP_SUMMARY" in publish
+    assert "provenance: mode=max" in publish
+    assert "sbom: true" in publish
+
+    manifest = _job(workflow, "publish_manifests")
+    assert "docker buildx imagetools create" in manifest
+    assert ":sha-${GITHUB_SHA}-amd64" in manifest
+    assert ":sha-${GITHUB_SHA}-arm64" in manifest
+    assert "docker buildx imagetools inspect" in manifest
+    assert "index(\"amd64\")" in manifest
+    assert "index(\"arm64\")" in manifest
+    assert "MELPIS_API_IMAGE_REF" in manifest
+    assert "MELPIS_WEB_IMAGE_REF" in manifest
+    assert "GITHUB_STEP_SUMMARY" in manifest
     assert ":latest" not in workflow
-    assert "type=ref" not in publish
+    assert "type=ref" not in workflow
 
 
 def test_production_compose_uses_release_images_and_only_caddy_publishes() -> None:

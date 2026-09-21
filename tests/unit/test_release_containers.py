@@ -64,6 +64,16 @@ def test_validation_gates_all_image_builds_and_prs_never_publish() -> None:
     assert "push: true" in publish
 
 
+def test_ci_prepares_non_secret_legal_env_for_compose_syntax_check() -> None:
+    workflow = _read(".github/workflows/ci.yml")
+    validation = _job(workflow, "test")
+    prepare = validation.index("mkdir -p .runtime")
+    empty_env = validation.index(": > .runtime/legal.env")
+    compose_check = validation.index("docker compose -f compose.production.yml config --quiet")
+
+    assert prepare < empty_env < compose_check
+
+
 def test_buildx_builds_api_and_web_for_amd64_and_arm64_and_records_digests() -> None:
     workflow = _read(".github/workflows/ci.yml")
 

@@ -83,6 +83,14 @@ jobs:
       - name: Tenant scoping check (guard dog)
         run: python scripts/check_tenant_scoping.py
 
+      - name: Prepare compose syntax-check files
+        run: |
+          # Compose validates env_file existence.  This deliberately empty,
+          # non-secret file is only for static config validation; production
+          # generates reviewed public values with write_legal_runtime_env.py.
+          mkdir -p .runtime
+          : > .runtime/legal.env
+
       - name: Deployment checks
         env:
           MELPIS_API_IMAGE_REF: ghcr.io/example/melpis-api@sha256:0000000000000000000000000000000000000000000000000000000000000000

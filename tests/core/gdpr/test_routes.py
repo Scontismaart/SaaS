@@ -81,9 +81,10 @@ class TestDPA:
         assert resp.status_code == 200
         text = resp.text
         assert "Neon" not in text
+        assert "OpenRouter" not in text
         assert "Supabase" in text
         assert "Meta Platforms (WhatsApp Business API)" in text
-        assert "OpenRouter / underlying LLM providers" in text
+        assert "Groq / provider LLM configurato" in text
         assert "Google (Business Profile, Calendar)" in text
         assert "Stripe" in text
         assert "Sentry" in text

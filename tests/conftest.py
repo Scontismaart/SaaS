@@ -1,7 +1,37 @@
 """Live inference is opt-in, never triggered by incidental local API keys."""
 import os
+from pathlib import Path
 
 import pytest
+
+
+# Local, ignored browser-QA helpers are executable scripts: importing them
+# launches Playwright immediately.  Keep them available for manual visual
+# checks without allowing pytest's filename discovery to execute them during
+# the deterministic unit/integration suite.
+_LOCAL_BROWSER_QA_SCRIPTS = frozenset({
+    "browser_qa_runner.py",
+    "browser_qa_runner_full.py",
+    "capture_dashboard_views.py",
+    "capture_full.py",
+    "check_sections.py",
+    "crop.py",
+    "production_smoke_test.py",
+    "test_inbox_responsive.py",
+    "test_panoramica_responsive.py",
+    "test_prenotazioni_responsive.py",
+    "test_recensioni_responsive.py",
+    "test_team_responsive.py",
+    "verify_recovered_landing.py",
+    "verify_regression_fix.py",
+})
+
+
+def pytest_ignore_collect(collection_path: Path, config):
+    """Exclude executable local browser helpers from normal suite discovery."""
+    if collection_path.parent == Path(__file__).parent:
+        return collection_path.name in _LOCAL_BROWSER_QA_SCRIPTS
+    return None
 
 
 @pytest.fixture

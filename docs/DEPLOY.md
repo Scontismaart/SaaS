@@ -1,4 +1,4 @@
-# Deploy a costo zero — profilo sandbox
+# Deploy a costi fissi zero — profilo commercial bootstrap
 
 Questa procedura non crea risorse e non autorizza addebiti. Il target scelto è
 una VM Oracle Cloud Always Free, perché l'app richiede API e worker sempre
@@ -25,8 +25,11 @@ log. Solo Caddy pubblica 80/443.
    `053_billing_reliability.sql` e `054_supabase_advisor_hardening.sql`.
 3. Verifica nel pannello Groq che l'account sia FREE e senza billing attivo;
    solo allora imposta `GROQ_FREE_ACCOUNT_CONFIRMED=true`.
-4. Usa esclusivamente Stripe Test Mode e Meta sandbox/test number. Compila
-   `WHATSAPP_TEST_RECIPIENTS` e, se usato, `INSTAGRAM_TEST_RECIPIENTS`.
+4. Collauda i flussi in Stripe Test Mode e Meta sandbox/test number. Per il
+   go-live commerciale configura poi Stripe Live con i sei Price ID e webhook
+   firmato, mantenendo `LLM_COST_POLICY=free_only`. Prima del cutover compila
+   `WHATSAPP_TEST_RECIPIENTS` e, se usato, `INSTAGRAM_TEST_RECIPIENTS` solo con
+   destinatari autorizzati.
 5. Copia `.env.production.example` in `.env.production` solo sulla VM, genera
    una nuova chiave Fernet e inserisci i segreti. Non commettere il file.
 6. Esegui il controllo read-only:
@@ -60,8 +63,9 @@ log. Solo Caddy pubblica 80/443.
 - Webhook Meta firmato: ACK rapido, riga inbox durabile, worker completato.
 - Solo un destinatario in allowlist riceve il messaggio di prova.
 - STOP persiste il consenso, blocca invii e produce audit event.
-- Stripe `sk_test_`: checkout, duplicati, eventi fuori ordine, cancellazione e
-  deposito con carta fittizia.
+- Stripe Test: checkout, duplicati, eventi fuori ordine, cancellazione e
+  deposito con carta fittizia; Stripe Live: chiavi, sei Price ID e firma webhook
+  validati senza un addebito reale di prova.
 - Fallimento escalation visibile in Inbox e intervento umano disponibile.
 - Riavvio durante webhook/retry senza doppio effetto osservabile.
 - Prima di clienti reali: `pg_dump` cifrato verso storage separato gratuito e

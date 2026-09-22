@@ -1,6 +1,6 @@
-# Checklist lancio definitiva — profilo €0 sandbox
+# Checklist lancio definitiva — commercial bootstrap a costi fissi €0
 
-Ultimo aggiornamento: 15 settembre 2026. Le voci sono basate su evidenza
+Ultimo aggiornamento: 22 settembre 2026. Le voci sono basate su evidenza
 verificabile; nessuna risorsa cloud è considerata pronta solo perché configurata
 nel codice.
 
@@ -11,9 +11,11 @@ nel codice.
 - [x] Scala: 10.000 messaggi/mese, €149 o €129/mese annuale.
 - [x] Nessun cliente/dato reale nel progetto pre-lancio.
 - [x] Budget LLM €0; nessun fallback a pagamento.
-- [x] Stripe Test Mode e Meta sandbox; destinatari solo in allowlist.
+- [x] Stripe Live per monetizzare dal Day 1; Groq resta `free_only` senza
+  fallback a pagamento. Stripe Test e Meta sandbox restano obbligatori per le
+  prove pre-cutover, senza invii a terzi.
 
-## Correzioni implementate da verificare in CI
+## Correzioni implementate e verificate in CI
 
 - [x] API utente: JWT Supabase + membership server-side; API key statica non
   rappresenta più un utente/tenant.
@@ -46,9 +48,11 @@ nel codice.
   password applicative restano obbligatorie.
 - [ ] Account Groq FREE verificato senza billing; limiti annotati; chiave inserita;
   `GROQ_FREE_ACCOUNT_CONFIRMED=true` solo dopo il controllo.
-- [ ] Stripe `sk_test_` e webhook sandbox configurati; nessuna chiave live.
-- [ ] Meta test number/app sandbox configurati; allowlist composta solo dai numeri
-  autorizzati dall'utente.
+- [ ] Stripe Live configurato con chiavi coerenti, i sei Price ID
+  mensili/annuali e il webhook firmato; il flusso è stato prima collaudato in
+  Test Mode senza addebiti reali.
+- [ ] App/numero Meta configurati e approvati per il go-live; fino al cutover la
+  sandbox/allowlist contiene solo numeri di test autorizzati dall'utente.
 - [ ] DNS `melpis.it`/`app.melpis.it` oppure hostname temporaneo e HTTPS validi.
 - [ ] Caselle support/privacy e base giuridica/DPA/sub-responsabili convalidati da
   un professionista; la revisione tecnica non è consulenza legale.
@@ -65,13 +69,16 @@ nel codice.
 - [ ] `python scripts/release_preflight.py --env-file .env.production` verde.
 - [ ] Renderer legale eseguito nel container read-only con output in tmpfs e
   controllo dell'HTML pubblico senza token non risolti.
-- [x] Suite backend completa, lint/test frontend, tenant scanner e migrazioni verdi
-  localmente (1.748 passed, 42 live skipped per policy; 15 settembre 2026).
+- [x] Suite backend completa, lint/test frontend, tenant scanner, migrazioni e
+  immagini API/web amd64+arm64 verdi sul commit di release (`1850 passed, 33
+  skipped`; 21 settembre 2026).
 - [ ] Registrazione → verifica email → login → MFA → dashboard.
 - [ ] Webhook firmato → ACK rapido → worker → Inbox → risposta al solo numero test.
 - [ ] STOP/opt-out persistito e invii successivi bloccati.
 - [ ] Escalation normale e simulazione fallimento visibile allo staff.
-- [ ] Checkout mensile/annuale, replay/fuori ordine/cancellazione/deposito in Stripe test.
+- [ ] Checkout mensile/annuale, replay/fuori ordine/cancellazione/deposito
+  collaudati in Stripe Test; prodotti/prezzi/webhook Live verificati senza
+  creare addebiti di prova su carte reali.
 - [ ] Riavvio API/worker durante ingress/retry senza perdita o duplicazione effetto.
 - [ ] Smoke desktop/mobile e controllo accessibilità tastiera/screen reader.
 - [ ] Rollback al tag immagine precedente e restore drill documentati.

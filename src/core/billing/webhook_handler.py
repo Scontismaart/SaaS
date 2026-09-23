@@ -34,10 +34,13 @@ def _resolve_plan_from_subscription(subscription_data: dict) -> str | None:
     if not PRICE_TO_PLAN and not PRODUCT_TO_PLAN:
         _init_plan_maps()
     for item in subscription_data.get("items", {}).get("data", []):
-        price_id = item.get("price", {}).get("id", "")
+        price = item.get("price") or {}
+        if not isinstance(price, dict):
+            continue
+        price_id = price.get("id", "")
         if price_id in PRICE_TO_PLAN:
             return PRICE_TO_PLAN[price_id]
-        product_id = item.get("plan", {}).get("product", "")
+        product_id = price.get("product") or (item.get("plan") or {}).get("product", "")
         if product_id in PRODUCT_TO_PLAN:
             return PRODUCT_TO_PLAN[product_id]
     return None
@@ -268,12 +271,7 @@ async def _handle_invoice_paid(conn, repo, data, event_id):
     period_start = datetime.fromtimestamp(data.get("period_start", 0), tz=timezone.utc)
     period_end = datetime.fromtimestamp(data.get("period_end", 0), tz=timezone.utc)
 
-    plan_slug = None
-    for line in data.get("lines", {}).get("data", []):
-        price_id = line.get("price", {}).get("id", "")
-        if price_id in PRICE_TO_PLAN:
-            plan_slug = PRICE_TO_PLAN[price_id]
-            break
+    plan_slug = _resolve_plan_from_subscription({"items": data.get("lines") or {}})
 
     await conn.execute(
         "UPDATE organizations SET subscription_status = 'active', suspension_notified_at = NULL WHERE id = $1",

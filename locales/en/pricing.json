@@ -20,7 +20,7 @@
       "cta": "Start with Essential",
       "features": [
         "1 official WhatsApp Business phone number",
-        "Up to 300 AI conversations/month",
+        "Up to 500 AI messages/month",
         "Business hours, pricing, and 24/7 automated replies",
         "Shared web inbox accessible from any device",
         "Email escalation notifications",
@@ -32,12 +32,12 @@
       "badge": "Most popular",
       "tagline": "For restaurants, salons, and medical clinics managing continuous bookings and appointments.",
       "price_monthly": 69,
-      "price_annual": 57,
+      "price_annual": 59,
       "period": "/month",
       "cta": "Try Growth free",
       "features": [
         "Everything included in Essential",
-        "Up to 1,200 AI conversations/month",
+        "Up to 2,000 AI messages/month",
         "Two-way Google Calendar synchronization",
         "Appointment management and no-show reminders",
         "Up to 3 concurrent team operators in the Inbox",
@@ -50,12 +50,12 @@
       "badge": "Maximum power",
       "tagline": "For hotels, multi-location clinics, and high-volume teams with complex requirements.",
       "price_monthly": 149,
-      "price_annual": 124,
+      "price_annual": 129,
       "period": "/month",
       "cta": "Upgrade to Scale",
       "features": [
         "Everything included in Growth",
-        "Unlimited AI conversations (fair use)",
+        "Up to 10,000 AI messages/month",
         "Unlimited operators with granular permissions",
         "Instagram Direct integration included",
         "Custom webhooks and PMS/Airtable integration",
@@ -85,12 +85,12 @@
     "title": "Frequently asked questions about pricing",
     "items": [
       {
-        "q": "What counts as an 'AI conversation'?",
-        "a": "A conversation is an active messaging thread with a customer within a 24-hour window. Sending multiple messages back and forth during the same interaction counts as a single conversation."
+        "q": "How is the monthly allowance expressed?",
+        "a": "Plan allowances are measured in messages per month, not 24-hour conversations. You can check usage in the dashboard."
       },
       {
-        "q": "What happens if I exceed my plan's conversation limit?",
-        "a": "We never interrupt your customer service: we notify you promptly via email. You can upgrade to a higher tier anytime or purchase an add-on bundle."
+        "q": "What happens when I reach my plan's message limit?",
+        "a": "The AI assistant stops sending new automated replies and requests are passed to a human operator. You can upgrade your plan to increase the allowance."
       },
       {
         "q": "Can I switch plans or cancel later?",

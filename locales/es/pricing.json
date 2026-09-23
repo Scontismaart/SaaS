@@ -20,7 +20,7 @@
       "cta": "Empezar con Esencial",
       "features": [
         "1 número oficial de WhatsApp Business",
-        "Hasta 300 conversaciones con IA/mes",
+        "Hasta 500 mensajes con IA/mes",
         "Horarios, tarifas y respuestas automáticas 24/7",
         "Bandeja de entrada web desde cualquier dispositivo",
         "Notificaciones de escalado por correo",
@@ -32,12 +32,12 @@
       "badge": "Más elegido",
       "tagline": "Para restaurantes, salones y clínicas que gestionan reservas y citas de forma constante.",
       "price_monthly": 69,
-      "price_annual": 57,
+      "price_annual": 59,
       "period": "/mes",
       "cta": "Probar Crecimiento gratis",
       "features": [
         "Todo lo incluido en Esencial",
-        "Hasta 1.200 conversaciones con IA/mes",
+        "Hasta 2.000 mensajes con IA/mes",
         "Sincronización bidireccional con Google Calendar",
         "Gestión de reservas y recordatorios anti-ausencias",
         "Hasta 3 operadores simultáneos en la bandeja",
@@ -50,12 +50,12 @@
       "badge": "Máxima potencia",
       "tagline": "Para hoteles, clínicas con múltiples sedes y negocios con alto volumen de consultas.",
       "price_monthly": 149,
-      "price_annual": 124,
+      "price_annual": 129,
       "period": "/mes",
       "cta": "Pasar a Escala",
       "features": [
         "Todo lo incluido en Crecimiento",
-        "Conversaciones con IA ilimitadas (uso razonable)",
+        "Hasta 10.000 mensajes con IA/mes",
         "Operadores ilimitados con permisos dedicados",
         "Integración con Instagram Direct incluida",
         "Webhooks personalizados e integración PMS/Airtable",
@@ -85,12 +85,12 @@
     "title": "Preguntas frecuentes sobre precios",
     "items": [
       {
-        "q": "¿Qué se considera una 'conversación con IA'?",
-        "a": "Una conversación es una sesión de intercambio continuo con un cliente dentro de una ventana de 24 horas. El envío de múltiples mensajes durante la misma consulta cuenta como una sola conversación."
+        "q": "¿Cómo se expresa la cuota mensual?",
+        "a": "La cuota del plan se mide en mensajes por mes, no en conversaciones de 24 horas. Puedes consultar el consumo en el panel."
       },
       {
-        "q": "¿Qué ocurre si supero el límite de conversaciones de mi plan?",
-        "a": "Nunca bloqueamos el servicio: te avisamos de inmediato por correo. Puedes subir de plan en cualquier momento o añadir un paquete adicional."
+        "q": "¿Qué ocurre al alcanzar el límite de mensajes del plan?",
+        "a": "El asistente de IA deja de enviar respuestas automáticas y las solicitudes pasan a un operador. Puedes mejorar tu plan para aumentar la cuota."
       },
       {
         "q": "¿Puedo cambiar de plan o cancelar después?",

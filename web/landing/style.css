@@ -1,3 +1,5 @@
+@import url('/design-tokens.css');
+
 /* ============================================================
    Melpis — Landing Page (Lemni Design System Architecture)
    Vanilla CSS, zero dipendenze. Font self-hosted (Outfit/Geist).
@@ -5633,4 +5635,190 @@ html.js .reveal.visible {
     .hero-nav-actions .btn-pill-white {
         display: none;
     }
+}
+
+/* 2026 monochrome visual language: the default halo keeps the headline free of image detail.
+   Alternate horizon/contour treatments are available with ?hero= for review. */
+.hero-section {
+    background: var(--melpis-canvas);
+}
+.hero-bg-backdrop {
+    background: radial-gradient(ellipse 58% 52% at 75% 12%, rgba(255, 255, 255, .09), transparent 72%),
+                linear-gradient(155deg, #090909 0%, #0b0b0b 52%, #171717 100%);
+}
+.hero-bg-backdrop::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(9, 9, 9, .15), rgba(9, 9, 9, .72) 78%);
+}
+.hero-bg-image {
+    position: absolute;
+    inset: 0;
+    object-position: 50% 62%;
+    opacity: .24;
+    filter: grayscale(1);
+}
+.hero-bg-vignette {
+    z-index: 1;
+    background: radial-gradient(ellipse 52% 56% at 50% 44%, rgba(9, 9, 9, .62), transparent 82%),
+                linear-gradient(90deg, rgba(9, 9, 9, .2), transparent 20%, transparent 80%, rgba(9, 9, 9, .2));
+}
+.hero-section[data-hero-variant="horizon"] .hero-bg-backdrop {
+    background: #090909;
+}
+.hero-section[data-hero-variant="horizon"] .hero-bg-image {
+    opacity: .55;
+    object-position: 50% 78%;
+    filter: grayscale(1);
+}
+.hero-section[data-hero-variant="horizon"] .hero-bg-vignette {
+    background: linear-gradient(180deg, rgba(9, 9, 9, .86) 15%, rgba(9, 9, 9, .75) 50%, rgba(9, 9, 9, .18) 100%);
+}
+.hero-section[data-hero-variant="contour"] .hero-bg-image { opacity: 0; }
+.hero-section[data-hero-variant="contour"] .hero-bg-backdrop {
+    background: radial-gradient(ellipse 45% 65% at 75% 65%, rgba(255, 255, 255, .08), transparent 80%),
+                repeating-radial-gradient(ellipse at 80% 84%, transparent 0 62px, rgba(255, 255, 255, .075) 63px 64px, transparent 65px 100px),
+                #090909;
+}
+.hero-h1 {
+    max-width: 900px;
+    color: var(--melpis-ink);
+    text-shadow: 0 5px 36px rgba(0, 0, 0, .7);
+    letter-spacing: -.048em;
+}
+.hero-sub, .hero-trust-row { color: var(--melpis-muted); }
+.hero-ambient-badge .ambient-text, .ambient-bottom-text { color: var(--melpis-subtle); }
+.hero-nav-header.is-scrolled { background: rgba(9, 9, 9, .92); border-bottom-color: var(--melpis-line); }
+.hero-nav-link { color: var(--melpis-muted); }
+.hero-nav-link:hover, .hero-nav-link:focus-visible { color: var(--melpis-ink); }
+.btn-cta-primary {
+    background: var(--melpis-accent);
+    color: #090909;
+    box-shadow: 0 12px 36px rgba(255, 255, 255, .12);
+}
+.btn-cta-primary:hover {
+    background: #e8e8e8;
+    box-shadow: 0 16px 42px rgba(255, 255, 255, .19);
+}
+.btn-cta-secondary { border-color: var(--melpis-line-strong); background: rgba(20, 20, 20, .58); }
+.hero-section :focus-visible, .hero-nav-header :focus-visible {
+    outline: 3px solid var(--melpis-focus);
+    outline-offset: 4px;
+}
+@media (max-width: 768px) {
+    .hero-bg-image { object-position: 62% 50%; }
+    .hero-section[data-hero-variant="horizon"] .hero-bg-image { object-position: 62% 60%; }
+    .hero-bg-vignette { background: linear-gradient(180deg, rgba(9, 9, 9, .8), rgba(9, 9, 9, .5) 45%, rgba(9, 9, 9, .84)); }
+    .hero-h1 { font-size: clamp(2.15rem, 8vw, 3.5rem); line-height: 1.12; }
+    .hero-sub { font-size: 1rem; }
+    .hero-cta-row { gap: 10px; }
+    .hero-trust-row { font-size: .78rem; }
+}
+
+/* Release hero: preserve the supplied artwork and the reference's left-aligned composition. */
+.hero-section {
+    background: #080808;
+    font-family: "Geist Sans", "Inter", sans-serif;
+}
+.hero-bg-backdrop {
+    background: #080808 url('sfondohero-release.webp') center / cover no-repeat;
+}
+.hero-bg-backdrop::after {
+    background: linear-gradient(90deg, rgba(0, 0, 0, .12), transparent 66%);
+}
+.hero-bg-image {
+    opacity: 1;
+    filter: none;
+    object-position: center center;
+}
+.hero-bg-vignette {
+    background: linear-gradient(90deg, rgba(0, 0, 0, .12) 0%, transparent 68%);
+}
+.hero-content-wrapper {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: clamp(115px, 15vh, 165px) 0 5rem;
+}
+.hero-inner {
+    max-width: 1600px;
+    padding-inline: clamp(24px, 5.8vw, 100px);
+    margin: 0 auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    text-align: left;
+}
+.hero-eyebrow {
+    margin: 0 0 25px;
+    font-size: clamp(.7rem, .87vw, .9rem);
+    font-weight: 500;
+    letter-spacing: .28em;
+    line-height: 1.5;
+    color: #d1d1d5;
+}
+.hero-h1 {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 0 25px;
+    font-family: "Geist Sans", "Inter", sans-serif;
+    font-size: clamp(3.1rem, 4.7vw, 5rem);
+    font-weight: 500;
+    letter-spacing: -.055em;
+    line-height: .99;
+    text-align: left;
+    text-shadow: none;
+    text-wrap: normal;
+}
+.hero-h1-lead,
+.hero-h1-tail { display: block; }
+.hero-h1-lead { max-width: 515px; color: #f7f7f9; }
+.hero-h1-tail { max-width: 805px; color: #c7c8d0; }
+.hero-sub {
+    max-width: 600px;
+    margin: 8px 0 31px;
+    font-family: "Geist Sans", "Inter", sans-serif;
+    font-size: clamp(1.05rem, 1.38vw, 1.45rem);
+    line-height: 1.47;
+    color: #d4d4d9;
+    text-align: left;
+    text-wrap: pretty;
+}
+.hero-cta-row { justify-content: flex-start; margin: 0; }
+.hero-cta-row .btn-cta-primary {
+    min-height: 66px;
+    padding: 17px 38px;
+    gap: 24px;
+    font-family: "Geist Sans", "Inter", sans-serif;
+    font-size: 1.12rem;
+    font-weight: 600;
+    box-shadow: 0 6px 28px rgba(255, 255, 255, .08);
+}
+.hero-nav-header .hero-nav-container { max-width: 1600px; }
+.hero-nav-header .brand-text,
+.hero-nav-header .hero-brand,
+.hero-nav-header .hero-nav-link,
+.hero-nav-header .dropdown-trigger-btn,
+.hero-nav-header .btn-pill-white { font-family: "Geist Sans", "Inter", sans-serif; }
+
+@media (max-width: 1024px) {
+    .hero-content-wrapper { padding-top: clamp(100px, 14vh, 150px); }
+    .hero-h1 { font-size: clamp(3.3rem, 6.7vw, 4.6rem); max-width: 840px; }
+    .hero-h1-lead { max-width: 515px; }
+    .hero-h1-tail { max-width: 805px; }
+}
+@media (max-width: 640px) {
+    .hero-section { min-height: 650px; padding-top: var(--navbar-height); }
+    .hero-bg-backdrop { background-position: 65% center; }
+    .hero-bg-image { object-position: 65% center; }
+    .hero-bg-backdrop::after,
+    .hero-bg-vignette { background: linear-gradient(90deg, rgba(0, 0, 0, .58), rgba(0, 0, 0, .22) 78%); }
+    .hero-content-wrapper { padding: clamp(110px, 14vh, 145px) 0 3rem; }
+    .hero-inner { padding-inline: 24px; }
+    .hero-eyebrow { margin-bottom: 20px; font-size: .66rem; letter-spacing: .19em; }
+    .hero-h1 { font-size: clamp(2.45rem, 10.5vw, 3.7rem); line-height: 1.04; margin-bottom: 20px; }
+    .hero-h1-lead,
+    .hero-h1-tail { max-width: 100%; }
+    .hero-sub { font-size: 1rem; line-height: 1.52; margin-bottom: 26px; }
+    .hero-cta-row { width: auto; }
+    .hero-cta-row .btn-cta-primary { width: auto; min-height: 56px; padding: 14px 23px; font-size: 1rem; }
 }

@@ -197,8 +197,8 @@ const PRICING_EXTRAS = {
           a: "No. To start the 7-day trial you only need your business name, email, and password. No credit card is required at registration, with zero surprise charges and no automatic renewal."
         },
         {
-          q: "What counts as 'conversations managed by Melpis per month'?",
-          a: "It is the maximum monthly threshold of customer conversations processed by the Melpis AI assistant included in your subscription fee. Service never cuts off abruptly: you receive timely notifications at 80% and 100% of capacity with instant upgrade options."
+          q: "How does the monthly message limit work?",
+          a: "The allowance is measured in messages per month. At the limit, the AI assistant stops sending automated replies and new requests are passed to a human operator. You can upgrade to increase the allowance."
         },
         {
           q: "How do Meta's WhatsApp Business Platform fees work?",
@@ -276,8 +276,8 @@ const PRICING_EXTRAS = {
           a: "No. Para iniciar los 7 días de prueba solo necesitas el nombre de tu negocio, email y contraseña. No se solicita ninguna tarjeta y no hay cargos sorpresa ni renovación automática."
         },
         {
-          q: "¿Qué se entiende por 'conversaciones gestionadas por Melpis al mes'?",
-          a: "Es el límite mensual de conversaciones con clientes atendidas por el asistente de IA incluido en tu plan. El servicio no se bloquea: recibes avisos al 80% y 100% con posibilidad de ampliación inmediata."
+          q: "¿Cómo funciona el límite mensual de mensajes?",
+          a: "La cuota se mide en mensajes por mes. Al alcanzar el límite, el asistente de IA deja de enviar respuestas automáticas y las nuevas solicitudes pasan a un operador. Puedes mejorar el plan para aumentar la cuota."
         },
         {
           q: "¿Cómo funcionan las tarifas de Meta para WhatsApp Business?",
@@ -355,8 +355,8 @@ const PRICING_EXTRAS = {
           a: "Non. Pour lancer l'essai de 7 jours, vous avez seulement besoin du nom de votre entreprise, d'un e-mail et d'un mot de passe. Aucune carte n'est requise et aucun prélèvement surprise n'est appliqué."
         },
         {
-          q: "Qu'entend-on par 'conversations gérées par Melpis par mois' ?",
-          a: "Il s'agit du volume mensuel maximal d'échanges clients traités par l'assistant IA inclus dans votre abonnement. Le service ne s'interrompt pas brusquement : vous recevez des alertes à 80 % et 100 % avec option de mise à niveau."
+          q: "Comment fonctionne la limite mensuelle de messages ?",
+          a: "Le quota est exprimé en messages par mois. À la limite, l'assistant IA cesse les réponses automatiques et les nouvelles demandes sont transmises à un opérateur. Vous pouvez changer de forfait pour augmenter le quota."
         },
         {
           q: "Comment fonctionnent les tarifs de la plateforme Meta WhatsApp Business ?",
@@ -434,8 +434,8 @@ const PRICING_EXTRAS = {
           a: "Nein. Für die 7-tägige Testphase benötigen Sie lediglich Ihren Unternehmensnamen, E-Mail und Passwort. Es wird keine Kreditkarte verlangt und es gibt keine versteckten Kosten oder automatische Verlängerungen."
         },
         {
-          q: "Was bedeutet 'von Melpis verwaltete Konversationen pro Monat'?",
-          a: "Es handelt sich um das monatliche Kontingent an Kundenchats, die der Melpis-KI-Assistent bearbeitet. Der Dienst wird nicht abrupt gestoppt: Sie erhalten rechtzeitige Benachrichtigungen bei 80 % und 100 % mit direkter Upgrade-Option."
+          q: "Wie funktioniert das monatliche Nachrichtenlimit?",
+          a: "Das Kontingent wird in Nachrichten pro Monat angegeben. Am Limit sendet der KI-Assistent keine automatischen Antworten mehr und neue Anfragen werden an Mitarbeitende weitergeleitet. Mit einem Upgrade erhöhen Sie das Kontingent."
         },
         {
           q: "Wie funktionieren die Gebühren der Meta WhatsApp Business Platform?",

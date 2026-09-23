@@ -129,7 +129,7 @@
               "name": "Come funziona la prova gratuita di 7 giorni?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "La prova dura 7 giorni con accesso completo alle funzionalità del piano scelto. La registrazione richiede solo nome attività, email e password: non è richiesta alcuna carta di credito e non c'è alcun rinnovo automatico. Al termine decidi tu se attivare l'abbonamento."
+                "text": "La prova termina dopo 7 giorni o 150 messaggi AI, al primo limite raggiunto. Non è richiesta una carta di credito e non c'è alcun rinnovo automatico. Raggiunta la quota, l'AI si ferma e le richieste passano a un operatore."
               }
             },
             {
@@ -359,77 +359,30 @@
 
     <!-- ==================== HERO + NARRATIVE SLIDE STAGE (Exclusive Sticky Scope) ==================== -->
     <div class="hero-slide-stage">        <!-- ==================== 1. HERO SECTION ==================== -->
-        <section class="hero-section" id="hero">
-            <!-- Background from sfondoherosction.webp -->
+        <section class="hero-section" id="hero" data-hero-variant="halo">
+            <!-- Release hero artwork supplied for Melpis. -->
             <div class="hero-bg-backdrop" aria-hidden="true">
-                <img src="/sfondoherosction.webp" class="hero-bg-image" alt="" fetchpriority="high" decoding="async">
+                <img src="/sfondohero-release.webp" class="hero-bg-image" alt="" fetchpriority="high" decoding="async">
                 <div class="hero-bg-vignette"></div>
             </div>
 
-            <!-- Left Ambient Vertical Badge -->
-            <aside class="hero-ambient-badge hero-ambient-left" aria-hidden="true">
-                <span class="ambient-text">AUTOMATIZACIÓN</span>
-                <span class="ambient-text">PARA QUIEN</span>
-                <span class="ambient-text">EMPRENDE</span>
-                <span class="ambient-dash"></span>
-            </aside>
-
-            <!-- Right Ambient Vertical Badge -->
-            <aside class="hero-ambient-badge hero-ambient-right" aria-hidden="true">
-                <span class="ambient-text">MÁS</span>
-                <span class="ambient-text">TIEMPO</span>
-                <span class="ambient-text">PARA LO QUE</span>
-                <span class="ambient-dash"></span>
-            </aside>
-
-            <!-- Centered Hero Content -->
             <div class="hero-content-wrapper">
                 <div class="hero-inner">
+                    <p class="hero-eyebrow">AUTOMATIZACIÓN PARA QUIEN EMPRENDE</p>
                     <h1 class="hero-h1 hero-anim-title">
-                        Menos mensajes que gestionar.<br>
-                        Más tiempo para hacer crecer<br>
-                        tu negocio.
+                        <span class="hero-h1-lead">Menos mensajes que gestionar.</span><span class="hero-h1-tail">Más tiempo para hacer crecer tu negocio.</span>
                     </h1>
                     <p class="hero-sub hero-anim-sub">
-                        Melpis es tu asistente de IA para WhatsApp, Instagram y canales de contacto de tu negocio.<br class="hero-sub-break">
-                        Responde consultas, gestiona reservas y automatiza tareas repetitivas<br class="hero-sub-break">
-                        siguiendo tus propias reglas.
+                        Melpis responde a tus clientes, organiza las reservas y automatiza el trabajo repetitivo en WhatsApp, Instagram y otros canales.
                     </p>
                     
                     <div class="hero-cta-row">
                         <button type="button" class="btn-cta-primary" data-signup data-track-location="hero">
-                            <span>Iniciar prueba gratuita</span>
+                            <span>Empieza gratis</span>
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                         </button>
-                        <a href="#come-funziona" class="btn-cta-secondary">
-                            <svg class="hero-play-icon" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
-                            <span>Cómo funciona</span>
-                        </a>
-                    </div>
-
-                    <div class="hero-trust-row">
-                        <span class="trust-badge">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                            7 días gratis
-                        </span>
-                        <span class="trust-divider" aria-hidden="true"></span>
-                        <span class="trust-badge">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                            Sin tarjeta requerida
-                        </span>
-                        <span class="trust-divider" aria-hidden="true"></span>
-                        <span class="trust-badge">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                            API oficial Meta Cloud
-                        </span>
                     </div>
                 </div>
-            </div>
-
-            <!-- Bottom Ambient Tagline -->
-            <div class="hero-ambient-bottom" aria-hidden="true">
-                <span class="ambient-bottom-text">DE CONVERSACIONES A OPORTUNIDADES</span>
-                <span class="ambient-bottom-dash"></span>
             </div>
         </section>
 
@@ -1625,7 +1578,7 @@
                 <!-- Billing Toggle -->
                 <div class="billing-toggle-wrap">
                     <button type="button" class="toggle-btn active" id="btnMonthly">Facturación Mensual</button>
-                    <button type="button" class="toggle-btn" id="btnAnnual">Anual <span class="discount-badge">-20%</span></button>
+                    <button type="button" class="toggle-btn" id="btnAnnual">Anual</button>
                 </div>
             </div>
 
@@ -1637,11 +1590,11 @@
                         <div class="p-head">
                             <h3>Esencial</h3>
                             <p class="p-desc">Para pequeños negocios y autónomos que buscan automatizar sus primeros mensajes.</p>
-                            <div class="p-cost"><span class="p-currency">€</span><span class="p-amount" data-monthly="29" data-annual="23">29</span><span class="p-period">/mese</span></div>
+                            <div class="p-cost"><span class="p-currency">€</span><span class="p-amount" data-monthly="29" data-annual="24">29</span><span class="p-period">/mese</span></div>
                         </div>
                         <ul class="p-features">
                             <li><span class="chk-icon">✓</span> 1 Numero WhatsApp Business</li>
-                            <li><span class="chk-icon">✓</span> Fino a 500 conversazioni/mese</li>
+                            <li><span class="chk-icon">✓</span> Hasta 500 mensajes/mes</li>
                             <li><span class="chk-icon">✓</span> Knowledge Base fino a 5 documenti</li>
                             <li><span class="chk-icon">✓</span> Sincronizzazione Google Calendar</li>
                             <li><span class="chk-icon">✓</span> Supporto via email standard</li>
@@ -1657,11 +1610,11 @@
                         <div class="p-head">
                             <h3>Crecimiento</h3>
                             <p class="p-desc">Ideal para restaurantes, salones y clínicas con flujo continuo de clientes.</p>
-                            <div class="p-cost"><span class="p-currency">€</span><span class="p-amount" data-monthly="69" data-annual="55">69</span><span class="p-period">/mese</span></div>
+                            <div class="p-cost"><span class="p-currency">€</span><span class="p-amount" data-monthly="69" data-annual="59">69</span><span class="p-period">/mese</span></div>
                         </div>
                         <ul class="p-features">
                             <li><span class="chk-icon">✓</span> WhatsApp + Instagram DM</li>
-                            <li><span class="chk-icon">✓</span> Fino a 2.000 conversazioni/mese</li>
+                            <li><span class="chk-icon">✓</span> Hasta 2.000 mensajes/mes</li>
                             <li><span class="chk-icon">✓</span> Knowledge Base e documenti illimitati</li>
                             <li><span class="chk-icon">✓</span> Sync Google Calendar + Google Reviews</li>
                             <li><span class="chk-icon">✓</span> Multilingua (IT, EN, FR, DE, ES)</li>
@@ -1677,11 +1630,11 @@
                         <div class="p-head">
                             <h3>Escala</h3>
                             <p class="p-desc">Para hoteles, clínicas y empresas con alto volumen de solicitudes complejas.</p>
-                            <div class="p-cost"><span class="p-currency">€</span><span class="p-amount" data-monthly="149" data-annual="119">149</span><span class="p-period">/mese</span></div>
+                            <div class="p-cost"><span class="p-currency">€</span><span class="p-amount" data-monthly="149" data-annual="129">149</span><span class="p-period">/mese</span></div>
                         </div>
                         <ul class="p-features">
                             <li><span class="chk-icon">✓</span> Tutto del piano Crescita</li>
-                            <li><span class="chk-icon">✓</span> Fino a 5.000 conversazioni/mese</li>
+                            <li><span class="chk-icon">✓</span> Hasta 10.000 mensajes/mes</li>
                             <li><span class="chk-icon">✓</span> Regole personalizzate su misura</li>
                             <li><span class="chk-icon">✓</span> Account Manager dedicato</li>
                             <li><span class="chk-icon">✓</span> Onboarding assistito 1-to-1</li>
@@ -1722,7 +1675,7 @@
                 </details>
                 <details class="faq-item">
                     <summary class="faq-quest"><span>¿Cómo funciona la prueba gratuita de 7 días?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
-                    <div class="faq-ans"><div class="faq-ans-inner"><p>Dispones de 7 días con acceso completo a las funciones del plan elegido. Para registrarte solo se solicita nombre de negocio, correo y contraseña: no se requiere tarjeta y no hay renovación automática.</p></div></div>
+                    <div class="faq-ans"><div class="faq-ans-inner"><p>La prueba termina tras 7 días o 150 mensajes de IA, lo que ocurra primero. No se requiere tarjeta ni hay renovación automática. Al alcanzar el límite de mensajes, la IA deja de responder y las solicitudes pasan a un operador.</p></div></div>
                 </details>
                 <details class="faq-item">
                     <summary class="faq-quest"><span>¿Están los datos de mis clientes seguros y conformes con el RGPD?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>

@@ -13,6 +13,7 @@ FROM nginx:1.27-alpine AS runtime
 
 # ── Landing e pagine pubbliche multilingua (root del docroot) ─
 COPY landing/index.html landing/style.css landing/app.js landing/navbar.js /usr/share/nginx/html/
+COPY design-tokens.css /usr/share/nginx/html/
 COPY landing/404.html /usr/share/nginx/html/
 COPY landing/robots.txt landing/sitemap.xml landing/*.jpg /usr/share/nginx/html/
 COPY landing/*.webp landing/*.svg /usr/share/nginx/html/
@@ -32,7 +33,8 @@ COPY i18n-client.js /usr/share/nginx/html/
 COPY login.html login.js register.html register.js auth.js auth.css /usr/share/nginx/html/
 
 # ── Dashboard (sotto /app/) ─────────────────────────────────
-COPY index.html style.css app.js logo.webp i18n-client.js /usr/share/nginx/html/app/
+COPY index.html style.css app.js theme-init.js logo.webp i18n-client.js /usr/share/nginx/html/app/
+COPY design-tokens.css /usr/share/nginx/html/app/
 COPY fonts/ /usr/share/nginx/html/app/fonts/
 COPY vendor/ /usr/share/nginx/html/app/vendor/
 COPY config.template.js /usr/share/nginx/html/config.template.js

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.audit import audit_log
-from src.core.billing.plans import PLANS
+from src.core.billing.plans import PLANS, TRIAL_MESSAGES_LIMIT
 from src.core.billing.webhook_handler import handle_stripe_webhook
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ async def get_subscription(
     users_limit = billing.get("users_limit")
     if (status == "trialing" or not plan):
         if messages_limit is None:
-            messages_limit = 2000
+            messages_limit = TRIAL_MESSAGES_LIMIT
         if users_limit is None:
             users_limit = 3
 
@@ -177,7 +177,7 @@ async def get_usage(
     billing = await repo.get_organization_billing(org_id)
     limit = billing.get("messages_limit")
     if limit is None and (billing.get("subscription_status") == "trialing" or not billing.get("plan")):
-        limit = 2000
+        limit = TRIAL_MESSAGES_LIMIT
     used = billing.get("messages_used_this_period", 0) or 0
 
     return {

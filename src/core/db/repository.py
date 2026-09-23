@@ -378,7 +378,7 @@ class CoreRepository(TenantScopedRepository):
         self,
         auth_user_id: str,
         nome_attivita: str,
-        trial_days: int = 14,
+        trial_days: int = 7,
     ) -> dict:
         return await self._org_repo.create_organization_with_owner(
             auth_user_id, nome_attivita, trial_days=trial_days

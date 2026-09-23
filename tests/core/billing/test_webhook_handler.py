@@ -87,6 +87,28 @@ async def test_handle_invoice_paid_resets_usage(repo, sample_org, valid_invoice_
     assert billing["subscription_status"] == "active"
 
 
+async def test_invoice_paid_converts_exhausted_trial_to_paid_quota(repo, sample_org, valid_invoice_paid_event):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test001",
+        "subscription_status": "trialing",
+        "messages_limit": 150,
+        "messages_used_this_period": 150,
+    })
+    event = valid_invoice_paid_event
+    await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == "active"
+    assert billing["messages_limit"] == 500
+    assert billing["messages_used_this_period"] == 0
+
+    duplicate = await handle_stripe_webhook(event, repo, 7)
+    assert duplicate["action"] == "duplicate"
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["messages_limit"] == 500
+    assert billing["messages_used_this_period"] == 0
+
+
 async def test_handle_invoice_paid_sets_period(repo, sample_org, valid_invoice_paid_event):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {

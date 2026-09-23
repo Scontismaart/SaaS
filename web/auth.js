@@ -38,6 +38,23 @@ function mostraErrorePagina(msg) {
   el.classList.add("visible");
 }
 
+function showAuthFieldError(errorElement, message, field) {
+  if (!errorElement) return;
+  errorElement.textContent = message;
+  if (field) {
+    field.setAttribute('aria-invalid', 'true');
+    field.focus();
+  } else {
+    errorElement.setAttribute('tabindex', '-1');
+    errorElement.focus();
+  }
+}
+
+function clearAuthFieldError(form, errorElement) {
+  if (errorElement) errorElement.textContent = '';
+  form?.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.removeAttribute('aria-invalid'));
+}
+
 /* Pulsante Google: il round-trip OAuth è gestito dal backend (PKCE). */
 function collegaGoogle(elementId = "google-btn") {
   const btn = document.getElementById(elementId);

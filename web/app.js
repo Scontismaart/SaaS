@@ -392,8 +392,6 @@ async function caricaSessione() {
       return false;
     }
     sessione = data;
-    const pbn = document.getElementById("panoramica-business-name");
-    if (pbn && sessione.org_name) pbn.textContent = sessione.org_name;
     aggiornaBottoneAccesso();
     return true;
   } catch {
@@ -934,6 +932,7 @@ navItems.forEach((btn) => {
       team: "Team & Collaboratori",
       assistente: "Simulatore AI",
       conoscenza: "Conoscenza",
+      "configurazione-ai": "Configurazione AI",
       impostazioni: "Impostazioni",
       account: "Piano e abbonamento",
       onboarding: "Configurazione assistente",
@@ -2032,8 +2031,8 @@ function inizializzaCalendarioPrenotazioni() {
       });
       bookingCalendar.unselect();
     },
-    datesSet(info) {
-      const dateKey = _toDateKey(info.start);
+    datesSet() {
+      const dateKey = _toDateKey(bookingCalendar.getDate());
       aggiornaSemaforo(dateKey);
       renderTabellaPrenotazioniGiorno(dateKey);
       aggiornaToolbarCalendario();
@@ -2204,6 +2203,16 @@ function aggiornaToolbarCalendario() {
   document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.bookingCalendarView === vista));
   });
+  const dateKey = _toDateKey(bookingCalendar.getDate());
+  const picker = document.getElementById("booking-date-picker");
+  const label = document.getElementById("booking-selected-date-label");
+  const trigger = document.getElementById("booking-date-picker-trigger");
+  if (picker) picker.value = dateKey;
+  if (label) label.textContent = bookingCalendar.getDate().toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+  if (trigger) {
+    trigger.classList.toggle("is-selected", dateKey !== oggiIso());
+    trigger.setAttribute("aria-label", `Seleziona la data delle prenotazioni. Giorno selezionato: ${label?.textContent || dateKey}`);
+  }
 }
 
 function verificaPrenotazioneAggiornata(prenotazioni) {
@@ -2380,6 +2389,22 @@ document.querySelectorAll("[data-booking-calendar-command]").forEach((button) =>
     if (command === "next") bookingCalendar.next();
     if (command === "today") bookingCalendar.today();
   });
+});
+
+const bookingDatePicker = document.getElementById("booking-date-picker");
+document.getElementById("booking-date-picker-trigger")?.addEventListener("click", () => {
+  if (!bookingDatePicker) return;
+  try {
+    bookingDatePicker.showPicker();
+  } catch {
+    bookingDatePicker.classList.add("booking-date-picker-input--fallback");
+    bookingDatePicker.tabIndex = 0;
+    bookingDatePicker.focus();
+  }
+});
+bookingDatePicker?.addEventListener("change", () => {
+  if (!bookingCalendar || !/^\d{4}-\d{2}-\d{2}$/.test(bookingDatePicker.value)) return;
+  bookingCalendar.gotoDate(bookingDatePicker.value);
 });
 
 document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
@@ -6061,7 +6086,7 @@ notifBell?.addEventListener("click", () => {
   function risolviTema(preferenza) {
     if (preferenza === "light") return "light";
     if (preferenza === "dark") return "dark";
-    return "dark";
+    return mediaQuery.matches ? "dark" : "light";
   }
 
   function applica(preferenza) {

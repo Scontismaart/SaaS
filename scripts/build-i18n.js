@@ -529,9 +529,9 @@ function localizeFooter(html, lang, bundle) {
 
 const LANDING_COPY = {
   en: {
-    heroH1: "Fewer messages to juggle.<br>\n                        More time to grow<br>\n                        your business.",
-    heroSub: "Melpis is your AI assistant for WhatsApp, Instagram, and customer communication channels.<br class=\"hero-sub-break\">\n                        It answers inquiries, coordinates bookings, and automates repetitive tasks<br class=\"hero-sub-break\">\n                        strictly following your rules.",
-    ctaPrimary: "Start free trial",
+    heroH1: '<span class="hero-h1-lead">Fewer messages to manage.</span><span class="hero-h1-tail">More time to grow your business.</span>',
+    heroSub: "Melpis answers customers, organizes bookings, and automates repetitive work on WhatsApp, Instagram, and other channels.",
+    ctaPrimary: "Start free",
     ctaSecondary: "See how it works",
     badge7Days: "7-day free trial",
     badgeNoCard: "No card required",
@@ -648,9 +648,9 @@ const LANDING_COPY = {
     wfProofText: "Happier customers"
   },
   es: {
-    heroH1: "Menos mensajes que gestionar.<br>\n                        Más tiempo para hacer crecer<br>\n                        tu negocio.",
-    heroSub: "Melpis es tu asistente de IA para WhatsApp, Instagram y canales de contacto de tu negocio.<br class=\"hero-sub-break\">\n                        Responde consultas, gestiona reservas y automatiza tareas repetitivas<br class=\"hero-sub-break\">\n                        siguiendo tus propias reglas.",
-    ctaPrimary: "Iniciar prueba gratuita",
+    heroH1: '<span class="hero-h1-lead">Menos mensajes que gestionar.</span><span class="hero-h1-tail">Más tiempo para hacer crecer tu negocio.</span>',
+    heroSub: "Melpis responde a tus clientes, organiza las reservas y automatiza el trabajo repetitivo en WhatsApp, Instagram y otros canales.",
+    ctaPrimary: "Empieza gratis",
     ctaSecondary: "Cómo funciona",
     badge7Days: "7 días gratis",
     badgeNoCard: "Sin tarjeta requerida",
@@ -767,9 +767,9 @@ const LANDING_COPY = {
     wfProofText: "Clientes más satisfechos"
   },
   fr: {
-    heroH1: "Moins de messages à gérer.<br>\n                        Plus de temps pour développer<br>\n                        votre activité.",
-    heroSub: "Melpis est votre assistant IA pour WhatsApp, Instagram et vos canaux de contact.<br class=\"hero-sub-break\">\n                        Il répond aux demandes, gère les réservations et automatise les tâches répétitives<br class=\"hero-sub-break\">\n                        selon vos propres règles.",
-    ctaPrimary: "Démarrer l'essai gratuit",
+    heroH1: '<span class="hero-h1-lead">Moins de messages à gérer.</span><span class="hero-h1-tail">Plus de temps pour développer votre activité.</span>',
+    heroSub: "Melpis répond aux clients, organise les réservations et automatise le travail répétitif sur WhatsApp, Instagram et d'autres canaux.",
+    ctaPrimary: "Commencer gratuitement",
     ctaSecondary: "Comment ça marche",
     badge7Days: "7 jours gratuits",
     badgeNoCard: "Aucune carte requise",
@@ -886,9 +886,9 @@ const LANDING_COPY = {
     wfProofText: "Clients plus satisfaits"
   },
   de: {
-    heroH1: "Weniger Routineanfragen im Tagesgeschäft.<br>\n                        Mehr Zeit für das Wachstum<br>\n                        Ihres Unternehmens.",
-    heroSub: "Melpis ist Ihr KI-Assistent für WhatsApp, Instagram und Unternehmenskanäle.<br class=\"hero-sub-break\">\n                        Er beantwortet Kundenanfragen, koordiniert Buchungen und automatisiert Routinearbeiten<br class=\"hero-sub-break\">\n                        nach Ihren Vorgaben.",
-    ctaPrimary: "Kostenlose Testphase starten",
+    heroH1: '<span class="hero-h1-lead">Weniger Nachrichten verwalten.</span><span class="hero-h1-tail">Mehr Zeit, Ihr Unternehmen voranzubringen.</span>',
+    heroSub: "Melpis beantwortet Kundenanfragen, organisiert Buchungen und automatisiert Routinearbeit auf WhatsApp, Instagram und weiteren Kanälen.",
+    ctaPrimary: "Kostenlos starten",
     ctaSecondary: "So funktioniert's",
     badge7Days: "7 Tage kostenlos",
     badgeNoCard: "Keine Kreditkarte nötig",
@@ -1015,9 +1015,9 @@ const PRICING_PAGE_COPY = {
     trustChip2: "No card required",
     trustChip3: "Official Meta Cloud API",
     volumeLabel: "Monthly volume",
-    volEss: "Up to 500 managed conversations / month",
-    volGro: "Up to 2,000 managed conversations / month",
-    volSca: "Up to 10,000 managed conversations / month",
+    volEss: "Up to 500 managed messages / month",
+    volGro: "Up to 2,000 managed messages / month",
+    volSca: "Up to 10,000 managed messages / month",
     featEss: [
       "1 official WhatsApp Business number",
       "Standard knowledge base",
@@ -1059,7 +1059,7 @@ const PRICING_PAGE_COPY = {
     metaBadge1: "Software Fee",
     metaCard1Title: "Melpis",
     metaCard1High: "Fixed monthly subscription based on chosen plan.",
-    metaCard1Desc: "Includes dedicated AI assistant, calendar and channel integrations, company knowledge base, staff inbox, and conversation handling up to your plan limit.",
+    metaCard1Desc: "Includes a dedicated AI assistant, calendar and channel integrations, a company knowledge base, staff inbox, and message handling up to your plan limit.",
     metaBadge2: "Official Infrastructure",
     metaCard2Title: "Meta WhatsApp Business Platform",
     metaCard2High: "Variable message fees applied directly by Meta.",
@@ -1084,9 +1084,9 @@ const PRICING_PAGE_COPY = {
     trustChip2: "Sin tarjeta requerida",
     trustChip3: "API oficial Meta Cloud",
     volumeLabel: "Volumen mensual",
-    volEss: "Hasta 500 conversaciones gestionadas / mes",
-    volGro: "Hasta 2.000 conversaciones gestionadas / mes",
-    volSca: "Hasta 10.000 conversaciones gestionadas / mes",
+    volEss: "Hasta 500 mensajes gestionados / mes",
+    volGro: "Hasta 2.000 mensajes gestionados / mes",
+    volSca: "Hasta 10.000 mensajes gestionados / mes",
     featEss: [
       "1 número oficial WhatsApp Business",
       "Base de conocimiento estándar",
@@ -1128,7 +1128,7 @@ const PRICING_PAGE_COPY = {
     metaBadge1: "Cuota de Software",
     metaCard1Title: "Melpis",
     metaCard1High: "Suscripción mensual fija según el plan contratado.",
-    metaCard1Desc: "Incluye asistente de IA dedicado, integración con calendarios y canales, base de conocimientos, panel para el personal y gestión de conversaciones.",
+    metaCard1Desc: "Incluye asistente de IA dedicado, integración con calendarios y canales, base de conocimientos, panel para el personal y gestión de mensajes hasta el límite del plan.",
     metaBadge2: "Infraestructura Oficial",
     metaCard2Title: "Meta WhatsApp Business Platform",
     metaCard2High: "Costes variables por mensaje aplicados por Meta.",
@@ -1153,9 +1153,9 @@ const PRICING_PAGE_COPY = {
     trustChip2: "Aucune carte requise",
     trustChip3: "API officielle Meta Cloud",
     volumeLabel: "Volume mensuel",
-    volEss: "Jusqu'à 500 conversations gérées / mois",
-    volGro: "Jusqu'à 2 000 conversations gérées / mois",
-    volSca: "Jusqu'à 10 000 conversations gérées / mois",
+    volEss: "Jusqu'à 500 messages gérés / mois",
+    volGro: "Jusqu'à 2 000 messages gérés / mois",
+    volSca: "Jusqu'à 10 000 messages gérés / mois",
     featEss: [
       "1 numéro officiel WhatsApp Business",
       "Base de connaissances standard",
@@ -1222,9 +1222,9 @@ const PRICING_PAGE_COPY = {
     trustChip2: "Keine Kreditkarte nötig",
     trustChip3: "Offizielle Meta Cloud API",
     volumeLabel: "Monatliches Volumen",
-    volEss: "Bis zu 500 verwaltete Konversationen / Monat",
-    volGro: "Bis zu 2.000 verwaltete Konversationen / Monat",
-    volSca: "Bis zu 10.000 verwaltete Konversationen / Monat",
+    volEss: "Bis zu 500 verwaltete Nachrichten / Monat",
+    volGro: "Bis zu 2.000 verwaltete Nachrichten / Monat",
+    volSca: "Bis zu 10.000 verwaltete Nachrichten / Monat",
     featEss: [
       "1 offizielle WhatsApp Business-Nummer",
       "Standard-Wissensdatenbank",
@@ -1303,7 +1303,8 @@ function localizeLanding(html, lang, bundle) {
   );
 
   // 2. CTAs and Badges
-  res = res.replace(/<span>Inizia la prova gratuita<\/span>/g, `<span>${c.ctaPrimary}</span>`);
+  res = res.replace(/<span>Inizia gratis<\/span>/g, `<span>${c.ctaPrimary}</span>`);
+  res = res.replace(/<p class="hero-eyebrow">AUTOMAZIONE PER CHI FA IMPRESA<\/p>/, `<p class="hero-eyebrow">${c.ambLeft.join(' ')}</p>`);
   res = res.replace(/<span>Come funziona<\/span>/g, `<span>${c.ctaSecondary}</span>`);
   res = res.replace(/(?:<span>)?7 giorni gratis(?:<\/span>)?/g, c.badge7Days);
   res = res.replace(/(?:<span>)?Nessuna carta richiesta(?:<\/span>)?/g, c.badgeNoCard);
@@ -1438,7 +1439,18 @@ function localizeLanding(html, lang, bundle) {
   res = res.replace(/Scegli il piano ideale per la tua attività/, c.pricingTitle);
   res = res.replace(/Inizia con 7 giorni di prova gratuita[\s\S]*?disdici quando vuoi con un solo click\./, c.pricingLead);
   res = res.replace(/>Fatturazione Mensile<\/button>/, `>${c.monthlyToggle}</button>`);
-  res = res.replace(/>Annuale <span class="discount-badge">-20%<\/span><\/button>/, `>${c.annualToggle} <span class="discount-badge">-20%</span></button>`);
+  res = res.replace(/>Annuale<\/button>/, `>${c.annualToggle}</button>`);
+  const quotaCopy = {
+    en: ['Up to 500 messages/month', 'Up to 2,000 messages/month', 'Up to 10,000 messages/month'],
+    es: ['Hasta 500 mensajes/mes', 'Hasta 2.000 mensajes/mes', 'Hasta 10.000 mensajes/mes'],
+    fr: ["Jusqu'à 500 messages/mois", "Jusqu'à 2 000 messages/mois", "Jusqu'à 10 000 messages/mois"],
+    de: ['Bis zu 500 Nachrichten/Monat', 'Bis zu 2.000 Nachrichten/Monat', 'Bis zu 10.000 Nachrichten/Monat'],
+  }[lang];
+  if (quotaCopy) {
+    ['500', '2.000', '10.000'].forEach((amount, index) => {
+      res = res.replace(`Fino a ${amount} messaggi/mese`, quotaCopy[index]);
+    });
+  }
   res = res.replace(/<h3>Essenziale<\/h3>/, `<h3>${c.planEssentialTitle}</h3>`);
   res = res.replace(/Per piccole attività e professionisti che vogliono automatizzare i primi messaggi\./, c.planEssentialDesc);
   res = res.replace(/<h3>Crescita<\/h3>/, `<h3>${c.planGrowthTitle}</h3>`);
@@ -1542,9 +1554,9 @@ function localizePricing(html, lang, bundle) {
     res = res.replace(/<div class="popular-badge">Più Scelto<\/div>/, `<div class="popular-badge">${p.plans?.growth?.badge || 'Most Popular'}</div>`);
     res = res.replace(/<div class="popular-lead-line">Il miglior equilibrio per la maggior parte delle attività<\/div>/, `<div class="popular-lead-line">${c.popularLead}</div>`);
     res = res.replace(/<span class="volume-label">Volume mensile<\/span>/g, `<span class="volume-label">${c.volumeLabel}</span>`);
-    res = res.replace(/Fino a 500 conversazioni gestite \/ mese/, c.volEss);
-    res = res.replace(/Fino a 2\.000 conversazioni gestite \/ mese/, c.volGro);
-    res = res.replace(/Fino a 10\.000 conversazioni gestite \/ mese/, c.volSca);
+    res = res.replace(/Fino a 500 messaggi gestiti \/ mese/, c.volEss);
+    res = res.replace(/Fino a 2\.000 messaggi gestiti \/ mese/, c.volGro);
+    res = res.replace(/Fino a 10\.000 messaggi gestiti \/ mese/, c.volSca);
     res = res.replace(/Esigenze su misura\? <a href="mailto:info@melpis\.it">Parla con noi<\/a>/, c.customNeeds);
 
     // 3. Meta disclaimer
@@ -1570,7 +1582,7 @@ function localizePricing(html, lang, bundle) {
     res = res.replace(/Una distinzione chiara e corretta tra la piattaforma software e i costi vivi dei provider di messaggistica\./, c.metaLead);
     res = res.replace(/<div class="meta-pricing-badge">Canone Software<\/div>/, `<div class="meta-pricing-badge">${c.metaBadge1}</div>`);
     res = res.replace(/<div class="meta-pricing-highlight">Abbonamento mensile fisso in base al piano\.<\/div>/, `<div class="meta-pricing-highlight">${c.metaCard1High}</div>`);
-    res = res.replace(/Include l'assistente AI dedicato, l'integrazione con agende e canali, la knowledge base aziendale, il pannello operativo per lo staff e la gestione delle conversazioni fino al limite del tuo piano\./, c.metaCard1Desc);
+    res = res.replace(/Include l'assistente AI dedicato, l'integrazione con agende e canali, la knowledge base aziendale, il pannello operativo per lo staff e la gestione dei messaggi fino al limite del tuo piano\./, c.metaCard1Desc);
     res = res.replace(/<div class="meta-pricing-badge">Infrastruttura Ufficiale<\/div>/, `<div class="meta-pricing-badge">${c.metaBadge2}</div>`);
     res = res.replace(/<div class="meta-pricing-highlight">Costi messaggio variabili applicati da Meta\.<\/div>/, `<div class="meta-pricing-highlight">${c.metaCard2High}</div>`);
     res = res.replace(/I costi per i messaggi inviati tramite l'API ufficiale WhatsApp Business vengono conteggiati da Meta in base alla categoria del messaggio \(utility, marketing, servizio\) e al Paese del destinatario\./, c.metaCard2Desc);
@@ -1866,28 +1878,29 @@ function localizeAuth(html, routeKey, lang, bundle) {
     const r = a.register;
     res = res.replace(/<h1 id="register-title">.*?<\/h1>/, `<h1 id="register-title">${r.heading}</h1>`);
     res = res.replace(/<p class="accesso-help" id="register-help">.*?<\/p>/, `<p class="accesso-help" id="register-help">${r.subtitle}</p>`);
-    res = res.replace(/<\/svg>\s*Registrati con Google/i, `</svg>\n      ${r.google_btn}`);
+    res = res.replace(/<\/svg>\s*Continua con Google/i, `</svg>\n      ${r.google_btn}`);
     res = res.replace(/<div class="accedi-divider">oppure con email<\/div>/, `<div class="accedi-divider">${r.divider}</div>`);
-    res = res.replace(/<label for="reg-nome">Nome della tua attività<\/label>/, `<label for="reg-nome">${r.business_label}</label>`);
+    res = res.replace(/<label for="reg-nome">Nome dell'attività<\/label>/, `<label for="reg-nome">${r.business_label}</label>`);
     res = res.replace(/placeholder="Es\. Trattoria Da Mario"/, `placeholder="${r.business_placeholder}"`);
-    res = res.replace(/<label for="reg-email">Email aziendale<\/label>/, `<label for="reg-email">${r.email_label}</label>`);
-    res = res.replace(/placeholder="tuonome@attivita\.it"/, `placeholder="${r.email_placeholder}"`);
+    res = res.replace(/<label for="reg-email">Email di lavoro<\/label>/, `<label for="reg-email">${r.email_label}</label>`);
+    res = res.replace(/placeholder="tu@attivita\.it"/, `placeholder="${r.email_placeholder}"`);
     res = res.replace(/<label for="reg-password">Password<\/label>/, `<label for="reg-password">${r.password_label}</label>`);
-    res = res.replace(/placeholder="Almeno 10 caratteri con un simbolo"/, `placeholder="${r.password_placeholder}"`);
+    res = res.replace(/placeholder="Minimo 10 caratteri con un simbolo"/, `placeholder="${r.password_placeholder}"`);
 
     if (r.checks) {
       res = res.replace(/<li data-check="len">Almeno 10 caratteri<\/li>/, `<li data-check="len">${r.checks.len}</li>`);
-      res = res.replace(/<li data-check="special">Un simbolo speciale \(! @ # \$ % …\)<\/li>/, `<li data-check="special">${r.checks.special}</li>`);
-      res = res.replace(/<li data-check="upper">Una lettera maiuscola<\/li>/, `<li data-check="upper">${r.checks.upper}</li>`);
+      res = res.replace(/<li data-check="special">Un simbolo \(! @ # \$ % …\)<\/li>/, `<li data-check="special">${r.checks.special}</li>`);
+      res = res.replace(/<li data-check="upper">Una maiuscola<\/li>/, `<li data-check="upper">${r.checks.upper}</li>`);
       res = res.replace(/<li data-check="num">Un numero<\/li>/, `<li data-check="num">${r.checks.num}</li>`);
     }
 
     if (r.terms_agree) {
-      res = res.replace(/Ho letto l'Informativa Privacy e accetto i Termini di Servizio/, r.terms_agree.replace(/<a href="[^"]*">([^<]*)<\/a>/g, '$1'));
+      res = res.replace(/<label for="reg-termini">[\s\S]*?<\/label>/, `<label for="reg-termini">${r.terms_agree}</label>`);
     }
 
     res = res.replace(/<button type="submit" class="review-analyze" id="register-save">Crea il mio assistente<\/button>/, `<button type="submit" class="review-analyze" id="register-save">${r.submit_btn}</button>`);
-    res = res.replace(/Hai già un account\?\s*<a id="link-accedi"[^>]*>Accedi<\/a>/, `${r.has_account || "Already have an account?"} <a id="link-accedi" href="${ROUTE_MAP.login[lang]}">${r.login_link || "Log in"}</a>`);
+    res = res.replace(/Hai già un account\?\s*<a id="link-accedi"[^>]*>[^<]*<\/a>/, `${r.have_account || "Already have an account?"} <a id="link-accedi" href="${ROUTE_MAP.login[lang]}">${r.login_link || "Log in"}</a>`);
+    res = res.replace(/(<p class="accesso-success" id="register-success"[^>]*>)[\s\S]*?(<\/p>)/, `$1\n        <strong>${r.success_title}</strong> ${r.success_body} <a id="success-login-link" href="${ROUTE_MAP.login[lang]}">${r.success_login_link}</a>\n      $2`);
     res = res.replace(/← Torna alla home/, r.back_home || "← Back to home");
   }
 

@@ -55,7 +55,7 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
   e.preventDefault();
   const errEl = document.getElementById("register-error");
   const okEl = document.getElementById("register-success");
-  errEl.textContent = "";
+  clearAuthFieldError(e.currentTarget, errEl);
   okEl.hidden = true;
 
   const nomeAttivita = document.getElementById("reg-nome").value.trim();
@@ -65,11 +65,11 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
 
   // Stesse regole del server (register.py): messaggi chiari ma che non
   // rivelano nulla sugli account esistenti.
-  if (!nomeAttivita) { errEl.textContent = getAuthMessage("enter_business_name"); return; }
-  if (!EMAIL_RE.test(email)) { errEl.textContent = getAuthMessage("invalid_email"); return; }
-  if (password.length < PASSWORD_MIN) { errEl.textContent = getAuthMessage("password_too_short"); return; }
-  if (!/[^A-Za-z0-9]/.test(password)) { errEl.textContent = getAuthMessage("password_special"); return; }
-  if (!termini) { errEl.textContent = getAuthMessage("accept_terms"); return; }
+  if (!nomeAttivita) return showAuthFieldError(errEl, getAuthMessage("enter_business_name"), document.getElementById("reg-nome"));
+  if (!EMAIL_RE.test(email)) return showAuthFieldError(errEl, getAuthMessage("invalid_email"), document.getElementById("reg-email"));
+  if (password.length < PASSWORD_MIN) return showAuthFieldError(errEl, getAuthMessage("password_too_short"), document.getElementById("reg-password"));
+  if (!/[^A-Za-z0-9]/.test(password)) return showAuthFieldError(errEl, getAuthMessage("password_special"), document.getElementById("reg-password"));
+  if (!termini) return showAuthFieldError(errEl, getAuthMessage("accept_terms"), document.getElementById("reg-termini"));
 
   const btn = document.getElementById("register-save");
   btn.disabled = true;
@@ -92,9 +92,13 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
     }
     // Verifica email obbligatoria: nessuna sessione finché non conferma.
     okEl.hidden = false;
+    okEl.focus();
   } catch (err) {
-    errEl.textContent = err.message;
+    showAuthFieldError(errEl, err.message);
   } finally {
     btn.disabled = false;
   }
+});
+document.getElementById("form-register")?.addEventListener("input", (e) => {
+  if (e.target.matches("input")) clearAuthFieldError(e.currentTarget, document.getElementById("register-error"));
 });

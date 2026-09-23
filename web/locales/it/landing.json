@@ -82,7 +82,7 @@
       },
       {
         "q": "Come funziona la prova gratuita di 7 giorni?",
-        "a": "La prova dura 7 giorni con accesso completo alle funzionalità del piano scelto. La registrazione richiede solo nome attività, email e password: non è richiesta alcuna carta di credito e non c'è rinnovo automatico."
+        "a": "La prova termina dopo 7 giorni o 150 messaggi AI, al primo limite raggiunto. Non è richiesta una carta di credito e non c'è rinnovo automatico. Raggiunta la quota, l'AI si ferma e le richieste passano a un operatore."
       },
       {
         "q": "I dati dei clienti sono al sicuro e conformi al GDPR?",

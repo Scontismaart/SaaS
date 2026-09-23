@@ -6,6 +6,12 @@
     // così il contenuto resta visibile se app.js non si carica o JS è disabilitato.
     document.documentElement.classList.add('js');
 
+    // Preview only: three approved visual treatments share the same content and CTA.
+    var heroPreview = new URLSearchParams(window.location.search).get('hero');
+    if (['halo', 'horizon', 'contour'].includes(heroPreview)) {
+        document.getElementById('hero')?.setAttribute('data-hero-variant', heroPreview);
+    }
+
     var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     /* ---------- Unified Navbar Controller (Sticky, Dropdown & Mobile Accordion) ---------- */

@@ -1,3 +1,5 @@
+@import url('/design-tokens.css');
+
 /* ============================================================
    AUTH — Stile condiviso /accedi/ e /registrati/
    Melpis Design System (Dark Obsidian & Glass Luxury)
@@ -454,3 +456,85 @@ body {
 /* generated:inline-styles:start */
 .is-1a7584936aed{border-radius: 6px; object-fit: cover;}
 /* generated:inline-styles:end */
+
+/* Shared Melpis restyle: calm field contrast, visible focus, a clear desktop canvas. */
+.accedi-page {
+  align-items: flex-end;
+  padding: clamp(24px, 5vw, 72px) clamp(18px, 8vw, 132px);
+  background: radial-gradient(ellipse 42% 50% at 18% 52%, rgba(255, 255, 255, .075), transparent 80%),
+              repeating-radial-gradient(ellipse at 14% 55%, transparent 0 57px, rgba(255, 255, 255, .045) 58px 59px, transparent 60px 98px),
+              var(--melpis-canvas);
+}
+.accedi-card {
+  width: min(470px, 100%);
+  background: linear-gradient(155deg, rgba(30, 30, 30, .97), rgba(17, 17, 17, .99));
+  border: 1px solid var(--melpis-line-strong);
+  border-radius: var(--melpis-radius-card);
+  padding: clamp(26px, 4vw, 46px);
+  box-shadow: var(--melpis-shadow), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.accedi-card::before {
+  content: '';
+  display: block;
+  width: 38px;
+  height: 3px;
+  margin-bottom: 24px;
+  border-radius: 3px;
+  background: var(--melpis-accent);
+}
+.accedi-brand { margin-bottom: 20px; }
+.accedi-brand-name { color: var(--melpis-ink); }
+.accedi-card h1 {
+  color: var(--melpis-ink);
+  font-family: var(--melpis-display);
+  font-size: clamp(1.8rem, 3vw, 2.2rem);
+  letter-spacing: -.045em;
+}
+.accesso-help { color: var(--melpis-muted); font-size: .94rem; margin-bottom: 16px; }
+.accedi-card label { color: var(--melpis-ink); font-size: .87rem; }
+.wizard-input {
+  min-height: 50px;
+  background: rgba(0, 0, 0, .32);
+  border-color: var(--melpis-line-strong);
+  color: var(--melpis-ink);
+}
+.wizard-input::placeholder { color: var(--melpis-subtle); opacity: 1; }
+.wizard-input:hover { border-color: rgba(255, 255, 255, .48); }
+.wizard-input:focus-visible {
+  outline: 3px solid var(--melpis-focus);
+  outline-offset: 2px;
+  border-color: var(--melpis-focus);
+  box-shadow: none;
+}
+.wizard-input[aria-invalid="true"] { border-color: var(--melpis-danger); }
+.google-btn {
+  border-color: var(--melpis-line-strong);
+  background: rgba(0, 0, 0, .28);
+  color: var(--melpis-ink);
+  box-shadow: none;
+}
+.google-btn:hover { border-color: var(--melpis-accent); background: rgba(255, 255, 255, .08); }
+.onboarding-actions .review-analyze {
+  background: var(--melpis-accent);
+  color: #0a0a0a;
+  box-shadow: 0 12px 30px rgba(255, 255, 255, .08);
+}
+.onboarding-actions .review-analyze:hover {
+  background: #e8e8e8;
+  box-shadow: 0 14px 36px rgba(255, 255, 255, .14);
+}
+.accedi-divider { color: var(--melpis-muted); }
+.accedi-foot { color: var(--melpis-muted); }
+.accedi-foot a, .field-check a, .accesso-success a { color: var(--melpis-accent); }
+.pw-checks li { color: var(--melpis-subtle); }
+.pw-checks li.done { color: var(--melpis-accent); }
+.doc-config-status, .accedi-error { color: var(--melpis-danger); }
+.accedi-card :is(a, button, input[type="checkbox"]):focus-visible {
+  outline: 3px solid var(--melpis-focus);
+  outline-offset: 3px;
+}
+.accesso-success[role="status"] { color: var(--melpis-ink); }
+@media (max-width: 768px) {
+  .accedi-page { align-items: center; padding: 18px 14px; }
+  .accedi-card { padding: 26px 20px; }
+}

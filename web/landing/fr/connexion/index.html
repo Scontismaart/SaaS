@@ -42,9 +42,9 @@
 
     <form id="form-login" novalidate>
       <label for="accesso-email">Adresse e-mail</label>
-      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" placeholder="nom@entreprise.fr">
+      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="accesso-error" placeholder="nom@entreprise.fr">
       <label for="accesso-password">Mot de passe</label>
-      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" placeholder="••••••••">
+      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" required aria-describedby="accesso-error" placeholder="••••••••">
       <p class="doc-config-status" id="accesso-error" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="accesso-save">Se connecter</button>
@@ -55,7 +55,7 @@
     <form id="form-recover" hidden novalidate>
       <p class="doc-config-status">Saisissez l'e-mail associé à votre compte : si un compte existe, vous recevrez un lien pour réinitialiser votre mot de passe.</p>
       <label for="recover-email">Email</label>
-      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" placeholder="nom@entreprise.fr">
+      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="recover-status" placeholder="nom@entreprise.fr">
       <p class="doc-config-status" id="recover-status" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="recover-save">Envoyer le lien de réinitialisation</button>
@@ -67,7 +67,7 @@
     <form id="form-reset" hidden novalidate>
       <p class="doc-config-status">Définissez un nouveau mot de passe : au moins 10 caractères avec un caractère spécial.</p>
       <label for="reset-password">Nouveau mot de passe</label>
-      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" placeholder="••••••••">
+      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-status" placeholder="••••••••">
       <p class="doc-config-status" id="reset-status" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="reset-save">Mettre à jour le mot de passe</button>

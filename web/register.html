@@ -28,8 +28,8 @@
       <span class="accedi-brand-name">Melpis</span>
     </div>
 
-    <h1 id="accesso-title">Crea il tuo account</h1>
-    <p class="accesso-help">Assistente AI su WhatsApp per la tua attività. Prova gratuita: 7 giorni o 150 conversazioni, nessuna carta richiesta.</p>
+    <h1 id="register-title">Crea il tuo account</h1>
+    <p class="accesso-help" id="register-help">Assistente AI su WhatsApp per la tua attività. Prova gratuita: 7 giorni o 150 messaggi, nessuna carta richiesta.</p>
 
     <p class="accedi-error" id="accedi-error" role="alert"></p>
 
@@ -42,27 +42,27 @@
 
     <form id="form-register" novalidate>
       <label for="reg-nome">Nome dell'attività</label>
-      <input class="wizard-input" id="reg-nome" type="text" autocomplete="organization" maxlength="120" placeholder="Es. Trattoria Da Mario">
+      <input class="wizard-input" id="reg-nome" type="text" autocomplete="organization" maxlength="120" required aria-describedby="register-error" placeholder="Es. Trattoria Da Mario">
       <label for="reg-email">Email di lavoro</label>
-      <input class="wizard-input" id="reg-email" type="email" autocomplete="email" placeholder="tu@attivita.it">
+      <input class="wizard-input" id="reg-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="register-error" placeholder="tu@attivita.it">
       <label for="reg-password">Password</label>
-      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" placeholder="Minimo 10 caratteri con un simbolo">
+      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="password-rules register-error" placeholder="Minimo 10 caratteri con un simbolo">
       <div class="pw-meter" aria-hidden="true"><div class="pw-meter-bar" id="pw-bar"></div></div>
-      <ul class="pw-checks" aria-live="polite">
+      <ul class="pw-checks" id="password-rules" aria-live="polite">
         <li data-check="len">Almeno 10 caratteri</li>
         <li data-check="special">Un simbolo (! @ # $ % …)</li>
         <li data-check="upper">Una maiuscola</li>
         <li data-check="num">Un numero</li>
       </ul>
       <div class="field-check">
-        <input type="checkbox" id="reg-termini">
+        <input type="checkbox" id="reg-termini" required aria-describedby="register-error">
         <label for="reg-termini">Ho letto la <a href="/privacy/">Privacy Policy</a> e accetto i <a href="/termini/">Termini di Servizio</a>.</label>
       </div>
       <p class="doc-config-status" id="register-error" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="register-save">Crea il mio assistente</button>
       </div>
-      <p class="accesso-success" id="register-success" hidden>
+      <p class="accesso-success" id="register-success" role="status" tabindex="-1" hidden>
         <strong>Account creato.</strong> Ti abbiamo inviato un'email di verifica: apri il link dentro l'email per attivare l'account, poi <a id="success-login-link" href="/accedi/">accedi da qui</a>.
       </p>
     </form>

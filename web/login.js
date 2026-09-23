@@ -22,13 +22,15 @@ collegaGoogle();
 /* ── Login email/password ────────────────────────────────── */
 document.getElementById("form-login")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("accesso-email").value.trim();
-  const password = document.getElementById("accesso-password").value;
+  const emailEl = document.getElementById("accesso-email");
+  const passwordEl = document.getElementById("accesso-password");
+  const email = emailEl.value.trim();
+  const password = passwordEl.value;
   const errEl = document.getElementById("accesso-error");
-  if (!email || !password) {
-    errEl.textContent = getAuthMessage("empty_fields");
-    return;
-  }
+  clearAuthFieldError(e.currentTarget, errEl);
+  if (!email) return showAuthFieldError(errEl, getAuthMessage("enter_email"), emailEl);
+  if (!emailEl.checkValidity()) return showAuthFieldError(errEl, getAuthMessage("invalid_email"), emailEl);
+  if (!password) return showAuthFieldError(errEl, getAuthMessage("empty_fields"), passwordEl);
   const btn = document.getElementById("accesso-save");
   btn.disabled = true;
   try {
@@ -44,10 +46,13 @@ document.getElementById("form-login")?.addEventListener("submit", async (e) => {
     }
     vaiADestinazione();
   } catch (err) {
-    errEl.textContent = err.message;
+    showAuthFieldError(errEl, err.message);
   } finally {
     btn.disabled = false;
   }
+});
+document.getElementById("form-login")?.addEventListener("input", (e) => {
+  if (e.target.matches("input")) clearAuthFieldError(e.currentTarget, document.getElementById("accesso-error"));
 });
 
 /* ============================================================
@@ -100,7 +105,7 @@ if (RECOVERY_TOKEN) {
     const status = document.getElementById("reset-status");
     const pwd = document.getElementById("reset-password").value;
     if (!pwd) {
-      status.textContent = getAuthMessage("enter_new_password");
+      showAuthFieldError(status, getAuthMessage("enter_new_password"), document.getElementById("reset-password"));
       return;
     }
     const btn = document.getElementById("reset-save");
@@ -122,7 +127,7 @@ if (RECOVERY_TOKEN) {
       document.getElementById("accesso-help").textContent = getAuthMessage("login_help");
       document.getElementById("accesso-password").focus();
     } catch (err) {
-      status.textContent = err.message;
+      showAuthFieldError(status, err.message);
     } finally {
       btn.disabled = false;
     }
@@ -154,7 +159,7 @@ if (RECOVERY_TOKEN) {
     const status = document.getElementById("recover-status");
     const email = document.getElementById("recover-email").value.trim();
     if (!email) {
-      status.textContent = getAuthMessage("enter_email");
+      showAuthFieldError(status, getAuthMessage("enter_email"), document.getElementById("recover-email"));
       return;
     }
     const btn = document.getElementById("recover-save");
@@ -171,7 +176,7 @@ if (RECOVERY_TOKEN) {
         body.message || getAuthMessage("recovery_sent");
       formRecover.querySelector(".onboarding-actions").hidden = true;
     } catch (err) {
-      status.textContent = err.message;
+      showAuthFieldError(status, err.message);
     } finally {
       btn.disabled = false;
     }

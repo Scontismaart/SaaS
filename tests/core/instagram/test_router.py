@@ -108,6 +108,47 @@ class TestInstagramWebhookVerify:
 
 
 class TestInstagramWebhookReceive:
+    async def test_ingress_and_repeated_claim_bill_exactly_once(self, ig_app, pg_pool):
+        from httpx import AsyncClient, ASGITransport
+        from src.whatsapp.repository import Repository as WRepo
+
+        org = await _create_org_with_ig_account(pg_pool)
+        await pg_pool.execute(
+            "UPDATE organizations SET messages_limit = 1, messages_used_this_period = 0 WHERE id = $1",
+            org["id"],
+        )
+        payload = _ig_payload(mid="mid.ig.bill-once")
+        async with AsyncClient(transport=ASGITransport(app=ig_app), base_url="http://test") as client:
+            for _ in range(2):
+                response = await client.post("/webhooks/instagram", content=json.dumps(payload),
+                                             headers=_signed_headers(payload))
+                assert response.status_code == 200
+        assert await _drain_webhook_inbox(pg_pool) == 1
+        assert await pg_pool.fetchval(
+            "SELECT messages_used_this_period FROM organizations WHERE id = $1", org["id"],
+        ) == 0, "Durable ingestion must not spend the AI quota"
+
+        message_id = await pg_pool.fetchval(
+            "SELECT id FROM messages WHERE organization_id = $1 AND wam_id = $2",
+            org["id"], "ig:mid.ig.bill-once",
+        )
+        repo = WRepo(pool=pg_pool)
+        result = await repo.claim_message_and_check_quota(str(message_id), str(org["id"]))
+        assert result["status"] == "claimed", "The only quota unit remains available at claim"
+        await pg_pool.execute(
+            "UPDATE messages SET processing_at = NULL WHERE id = $1 AND organization_id = $2",
+            message_id, org["id"],
+        )
+        result = await repo.claim_message_and_check_quota(str(message_id), str(org["id"]))
+        assert result["status"] == "claimed", "Worker retry must reuse billed_at"
+        assert await pg_pool.fetchval(
+            "SELECT messages_used_this_period FROM organizations WHERE id = $1", org["id"],
+        ) == 1
+        assert await pg_pool.fetchval(
+            "SELECT count(*) FROM messages WHERE organization_id = $1 AND billed_at IS NOT NULL",
+            org["id"],
+        ) == 1
+
     async def test_invalid_signature_403(self, ig_app, pg_pool):
         from httpx import AsyncClient, ASGITransport
         payload = _ig_payload()

@@ -21,6 +21,8 @@ export default [{
       t: "readonly",
       i18next: "readonly",
       getAuthMessage: "readonly",
+      showAuthFieldError: "readonly",
+      clearAuthFieldError: "readonly",
     },
   },
   rules: { "no-undef": "error", "no-dupe-args": "error", "no-unreachable": "error" },

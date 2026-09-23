@@ -82,7 +82,7 @@
       },
       {
         "q": "Comment se déroule la période d'essai gratuit de 7 jours ?",
-        "a": "Vous disposez de 7 jours avec un accès complet à l'ensemble des fonctionnalités de la formule retenue. L'inscription nécessite seulement votre nom d'établissement, un e-mail et un mot de passe : aucune carte n'est requise et aucun renouvellement n'est automatique."
+        "a": "L'essai se termine après 7 jours ou 150 messages IA, selon la première limite atteinte. Aucune carte bancaire n'est requise et le renouvellement n'est pas automatique. Une fois la limite de messages atteinte, l'IA cesse de répondre et les demandes sont transmises à un opérateur."
       },
       {
         "q": "Les données de mes clients sont-elles protégées et conformes au RGPD ?",

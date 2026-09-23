@@ -20,7 +20,7 @@
       "cta": "Démarrer avec Essentiel",
       "features": [
         "1 numéro officiel WhatsApp Business",
-        "Jusqu'à 300 conversations IA/mois",
+        "Jusqu'à 500 messages IA/mois",
         "Horaires, tarifs et réponses automatiques 24/7",
         "Boîte de réception web accessible sur tout écran",
         "Notifications d'escalade par e-mail",
@@ -32,12 +32,12 @@
       "badge": "Le plus choisi",
       "tagline": "Pour les restaurants, instituts et cabinets gérant des rendez-vous et réservations en continu.",
       "price_monthly": 69,
-      "price_annual": 57,
+      "price_annual": 59,
       "period": "/mois",
       "cta": "Tester Croissance gratuitement",
       "features": [
         "Tout ce qui est inclus dans Essentiel",
-        "Jusqu'à 1 200 conversations IA/mois",
+        "Jusqu'à 2 000 messages IA/mois",
         "Synchronisation bidirectionnelle Google Calendar",
         "Gestion des rendez-vous et rappels anti-no-show",
         "Jusqu'à 3 opérateurs simultanés dans la boîte",
@@ -50,12 +50,12 @@
       "badge": "Puissance maximale",
       "tagline": "Pour les hôtels, cliniques multi-sites et volumes élevés avec besoins sur mesure.",
       "price_monthly": 149,
-      "price_annual": 124,
+      "price_annual": 129,
       "period": "/mois",
       "cta": "Passer à Échelle",
       "features": [
         "Tout ce qui est inclus dans Croissance",
-        "Conversations IA illimitées (usage équitable)",
+        "Jusqu'à 10 000 messages IA/mois",
         "Opérateurs illimités avec droits personnalisés",
         "Intégration Instagram Direct incluse",
         "Webhooks sur mesure et passerelle PMS/Airtable",
@@ -85,12 +85,12 @@
     "title": "Questions fréquentes sur les forfaits",
     "items": [
       {
-        "q": "Qu'entend-on par 'conversation IA' ?",
-        "a": "Une conversation correspond à une session d'échange continue avec un client sur une période de 24 heures. L'envoi de plusieurs messages durant une même demande compte pour une seule conversation."
+        "q": "Comment le quota mensuel est-il exprimé ?",
+        "a": "Le quota du forfait est exprimé en messages par mois, et non en conversations de 24 heures. Vous pouvez suivre l'utilisation dans le tableau de bord."
       },
       {
-        "q": "Que se passe-t-il si je dépasse le quota de mon forfait ?",
-        "a": "Votre service n'est jamais interrompu : nous vous en informons immédiatement par e-mail. Vous pouvez changer de formule ou acquérir un pack additionnel à tout moment."
+        "q": "Que se passe-t-il lorsque j'atteins la limite de messages ?",
+        "a": "L'assistant IA cesse les nouvelles réponses automatiques et les demandes sont transmises à un opérateur. Vous pouvez changer de forfait pour augmenter le quota."
       },
       {
         "q": "Puis-je modifier ma formule ou résilier par la suite ?",

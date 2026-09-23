@@ -82,7 +82,7 @@
       },
       {
         "q": "How does the 7-day free trial work?",
-        "a": "The trial runs for 7 days with full access to all features in your chosen plan. Signing up requires only your business name, email, and password: no credit card is asked for and there is no automatic renewal."
+        "a": "The trial ends after 7 days or 150 AI messages, whichever comes first. No credit card is required and there is no automatic renewal. When the message limit is reached, AI replies stop and requests are handed to an operator."
       },
       {
         "q": "Is customer data secure and GDPR-compliant?",

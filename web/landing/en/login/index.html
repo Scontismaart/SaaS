@@ -42,9 +42,9 @@
 
     <form id="form-login" novalidate>
       <label for="accesso-email">Email</label>
-      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" placeholder="name@business.com">
+      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="accesso-error" placeholder="name@business.com">
       <label for="accesso-password">Password</label>
-      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" placeholder="••••••••">
+      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" required aria-describedby="accesso-error" placeholder="••••••••">
       <p class="doc-config-status" id="accesso-error" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="accesso-save">Log in</button>
@@ -55,7 +55,7 @@
     <form id="form-recover" hidden novalidate>
       <p class="doc-config-status">Enter the email associated with your account: if an account exists, you'll receive a password reset link.</p>
       <label for="recover-email">Email</label>
-      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" placeholder="name@business.com">
+      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="recover-status" placeholder="name@business.com">
       <p class="doc-config-status" id="recover-status" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="recover-save">Send reset link</button>
@@ -67,7 +67,7 @@
     <form id="form-reset" hidden novalidate>
       <p class="doc-config-status">Set a new password: minimum 10 characters and at least one special symbol.</p>
       <label for="reset-password">New password</label>
-      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" placeholder="••••••••">
+      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-status" placeholder="••••••••">
       <p class="doc-config-status" id="reset-status" role="alert"></p>
       <div class="onboarding-actions">
         <button type="submit" class="review-analyze" id="reset-save">Update password</button>

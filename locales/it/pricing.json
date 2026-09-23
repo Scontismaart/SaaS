@@ -20,7 +20,7 @@
       "cta": "Inizia con Essenziale",
       "features": [
         "1 numero WhatsApp Business ufficiale",
-        "Fino a 300 conversazioni AI/mese",
+        "Fino a 500 messaggi AI/mese",
         "Orari, listino e risposte automatiche 24/7",
         "Inbox condivisa web da qualsiasi dispositivo",
         "Notifiche di escalation via email",
@@ -32,12 +32,12 @@
       "badge": "Più scelto",
       "tagline": "Per ristoranti, saloni e studi medici che gestiscono prenotazioni e appuntamenti continui.",
       "price_monthly": 69,
-      "price_annual": 57,
+      "price_annual": 59,
       "period": "/mese",
       "cta": "Prova Crescita gratis",
       "features": [
         "Tutto ciò che è incluso in Essenziale",
-        "Fino a 1.200 conversazioni AI/mese",
+        "Fino a 2.000 messaggi AI/mese",
         "Sincronizzazione bidirezionale Google Calendar",
         "Gestione prenotazioni e promemoria no-show",
         "Fino a 3 operatori contemporanei nella Inbox",
@@ -50,12 +50,12 @@
       "badge": "Massima potenza",
       "tagline": "Per hotel, cliniche o attività ad alto volume con richieste complesse e più sedi.",
       "price_monthly": 149,
-      "price_annual": 124,
+      "price_annual": 129,
       "period": "/mese",
       "cta": "Passa a Scala",
       "features": [
         "Tutto ciò che è incluso in Crescita",
-        "Conversazioni AI illimitate (fair use)",
+        "Fino a 10.000 messaggi AI/mese",
         "Operatori illimitati con permessi dedicati",
         "Integrazione Instagram Direct inclusa",
         "Webhook personalizzati e integrazione PMS/Airtable",
@@ -85,12 +85,12 @@
     "title": "Domande frequenti sui prezzi",
     "items": [
       {
-        "q": "Cosa si intende per 'conversazione AI'?",
-        "a": "Una conversazione è una sessione di scambio continuativo con un cliente nelle 24 ore. L'invio di più messaggi durante la stessa richiesta conta come una singola conversazione."
+        "q": "Come viene espressa la quota mensile?",
+        "a": "La quota del piano è espressa in messaggi al mese, non in conversazioni di 24 ore. Puoi controllare il consumo nella dashboard."
       },
       {
-        "q": "Cosa succede se supero il limite di conversazioni del piano?",
-        "a": "Non blocchiamo mai il servizio: ti avvisiamo tempestivamente via email. Puoi scegliere di fare l'upgrade al piano superiore in qualsiasi momento o acquistare un pacchetto extra."
+        "q": "Cosa succede quando raggiungo il limite di messaggi del piano?",
+        "a": "L'assistente AI interrompe le nuove risposte automatiche e le richieste passano a un operatore. Puoi fare l'upgrade del piano per aumentare la quota."
       },
       {
         "q": "Posso cambiare piano o disdire successivamente?",

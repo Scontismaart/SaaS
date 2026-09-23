@@ -6,7 +6,8 @@
 <title>Melpis — Pannello di controllo</title>
 <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="logo.webp" type="image/webp">
-<link rel="stylesheet" href="style.css?v=integ-v6">
+<script src="theme-init.js"></script>
+<link rel="stylesheet" href="style.css?v=integ-v7">
 </head>
 <body>
 
@@ -172,20 +173,6 @@
 
     <!-- ---------- VISTA: PANORAMICA ---------- -->
     <section class="view" data-view-panel="panoramica">
-
-      <div class="panoramica-header">
-        <div class="panoramica-welcome">
-          <h1 class="panoramica-title">Bentornato!</h1>
-          <p class="panoramica-subtitle">Ecco cosa sta succedendo nel tuo <span id="panoramica-business-name">barbershop</span> oggi.</p>
-        </div>
-        <div class="panoramica-quote-block">
-          <div class="panoramica-quote">“Un cliente soddisfatto è la miglior pubblicità.”</div>
-          <div class="panoramica-brand-note">
-            <span class="panoramica-brand-title">Melpis</span>
-            <span class="panoramica-brand-tagline">Più tempo per ciò che conta.</span>
-          </div>
-        </div>
-      </div>
 
       <div class="kpi-row">
         <!-- KPI: Ricevuti oggi -->
@@ -596,7 +583,13 @@
               <button type="button" data-booking-calendar-command="next" aria-label="Periodo successivo">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
               </button>
-              <button type="button" data-booking-calendar-command="today">Oggi</button>
+              <div class="booking-date-control">
+                <button type="button" id="booking-date-picker-trigger" class="booking-date-picker-trigger" aria-label="Seleziona la data delle prenotazioni" aria-controls="booking-date-picker">
+                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18"/></svg>
+                </button>
+                <input type="date" id="booking-date-picker" class="booking-date-picker-input" aria-label="Data delle prenotazioni" tabindex="-1">
+                <span class="booking-selected-date-label" id="booking-selected-date-label" aria-live="polite"></span>
+              </div>
             </div>
             <div class="booking-calendar-views" role="group" aria-label="Vista calendario">
               <button type="button" data-booking-calendar-view="timeGridDay" aria-pressed="true">Giorno</button>
@@ -1380,6 +1373,7 @@
 
       <form id="ai-config-form" autocomplete="off">
         <div class="ai-config-grid">
+          <h3 class="ai-config-group-title">Configurazioni principali</h3>
           <!-- CARD 1: IDENTITÀ & SETTORE -->
           <div class="dash-card settings-card">
             <div class="dash-card-header">
@@ -1445,6 +1439,7 @@
             </div>
           </div>
 
+          <h3 class="ai-config-group-title ai-config-group-title--advanced">Lingue e regole avanzate</h3>
           <!-- CARD 3: MULTILINGUA -->
           <div class="dash-card settings-card">
             <div class="dash-card-header">

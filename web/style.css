@@ -1,3 +1,5 @@
+@import url('/app/design-tokens.css');
+
 /* Font self-hosted: Outfit variabile (300 — 800), stesso set della landing. */
 @font-face {
   font-family: 'Outfit';
@@ -10890,3 +10892,312 @@ html[data-theme="dark"] .theme-seg-btn.active {
 .is-2470a4539b2f{font-size: 0.96rem;}
 .is-22be9933c4d5{background: var(--bg-elev-2); color: var(--ink-soft); border-color: var(--line-strong);}
 /* generated:inline-styles:end */
+
+/* Melpis shell and overview: shared monochrome language. Other views keep their contracts. */
+html[data-theme="dark"] {
+  --dashboard-bg: var(--melpis-canvas);
+  --dashboard-surface: var(--melpis-surface);
+  --dashboard-surface-raised: var(--melpis-surface-raised);
+  --dashboard-border: var(--melpis-line);
+  --dashboard-border-strong: var(--melpis-line-strong);
+  --dashboard-text: var(--melpis-ink);
+  --dashboard-text-muted: var(--melpis-muted);
+  --dashboard-text-dim: var(--melpis-subtle);
+  --dashboard-accent: var(--melpis-accent);
+}
+html[data-theme="dark"] .sidebar {
+  background: linear-gradient(160deg, #1b1b1b, #101010 72%);
+  border-color: var(--melpis-line-strong);
+  box-shadow: var(--melpis-shadow);
+}
+html[data-theme="dark"] .topbar {
+  background: rgba(23, 23, 23, .94);
+  border-color: var(--melpis-line);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .28);
+}
+html[data-theme="dark"] .main,
+html[data-theme="dark"] .view {
+  background: var(--melpis-canvas);
+}
+html[data-theme="dark"] .view[data-view-panel="panoramica"] {
+  background: radial-gradient(ellipse 46% 28% at 80% 4%, rgba(255, 255, 255, .055), transparent), var(--melpis-canvas);
+}
+html[data-theme="dark"] .panoramica-header {
+  padding: clamp(20px, 3vw, 32px);
+  border-radius: var(--melpis-radius-card);
+  background: linear-gradient(110deg, rgba(38, 38, 38, .88), rgba(21, 21, 21, .64));
+  border: 1px solid var(--melpis-line);
+}
+html[data-theme="dark"] .panoramica-title { color: var(--melpis-ink); letter-spacing: -.045em; }
+html[data-theme="dark"] .panoramica-subtitle,
+html[data-theme="dark"] .panoramica-quote { color: var(--melpis-muted); }
+html[data-theme="dark"] .kpi-card,
+html[data-theme="dark"] .view[data-view-panel="panoramica"] .dash-card {
+  min-width: 0;
+  background: linear-gradient(165deg, #202020, #151515);
+  border-color: var(--melpis-line);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .24), inset 0 1px rgba(255,255,255,.035);
+}
+html[data-theme="dark"] .kpi-card:hover,
+html[data-theme="dark"] .view[data-view-panel="panoramica"] .dash-card:hover {
+  border-color: var(--melpis-line-strong);
+}
+html[data-theme="dark"] .kpi-icon-box {
+  background: rgba(255, 255, 255, .06);
+  border-color: var(--melpis-line);
+  color: var(--melpis-ink);
+}
+html[data-theme="dark"] .view[data-view-panel="panoramica"] .panorama-grid {
+  grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr);
+}
+html[data-theme="dark"] .sidebar :focus-visible,
+html[data-theme="dark"] .topbar :focus-visible,
+html[data-theme="dark"] .view[data-view-panel="panoramica"] :focus-visible {
+  outline: 3px solid var(--melpis-focus);
+  outline-offset: 3px;
+}
+@media (max-width: 768px) {
+  html[data-theme="dark"] .panoramica-header { padding: 22px; }
+  html[data-theme="dark"] .view[data-view-panel="panoramica"] .panorama-grid { grid-template-columns: minmax(0, 1fr); }
+  .topbar-date-wrap { display: none; }
+}
+
+/* Dashboard final pass: denser controls and a consistent monochrome hierarchy. */
+.view[data-view-panel="panoramica"] .kpi-row { margin-top: 0; }
+
+.inbox-list-header { padding: 17px 18px 12px; gap: 10px; }
+.inbox-panel-title { font-size: 1.16rem; }
+.inbox-search-input { padding-block: 8px; }
+.inbox-filter-groups { gap: 6px; }
+.inbox-filter-row { gap: 8px; }
+.inbox-filter-row-label { width: 44px; font-size: .65rem; }
+.inbox-chips-group { gap: 4px; }
+.inbox-chip { min-height: 29px; padding: 3px 8px; font-size: .72rem; }
+.inbox-chip:focus-visible,
+.booking-date-picker-trigger:focus-visible { outline: 3px solid var(--melpis-focus, currentColor); outline-offset: 2px; }
+
+.booking-date-control { display: inline-flex; align-items: center; gap: 9px; position: relative; }
+.booking-date-picker-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.booking-date-picker-input--fallback { position: static; width: auto; height: 36px; opacity: 1; pointer-events: auto; color: var(--ink); background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; }
+[data-view-panel="prenotazioni"] .booking-calendar-nav .booking-date-picker-trigger { width: 36px; padding: 0; }
+[data-view-panel="prenotazioni"] .booking-date-picker-trigger.is-selected {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.booking-selected-date-label { color: var(--ink-soft); font-size: .79rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-calendar-nav button {
+  background: var(--card-bg); border-color: var(--line); color: var(--ink); box-shadow: none;
+}
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-calendar-nav button:hover { background: var(--bg-elev); }
+
+.ai-config-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 36px; margin-top: 8px; }
+.ai-config-group-title {
+  grid-column: 1 / -1;
+  margin: 12px 0 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -.015em;
+}
+.ai-config-group-title--advanced { margin-top: 36px; }
+.ai-config-grid > .settings-card {
+  min-width: 0;
+  padding: 24px 0 4px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 13px;
+}
+.ai-config-grid .dash-card-header { padding: 0; border: 0; }
+.ai-config-grid .settings-help { margin: 0 0 4px; }
+.ai-config-grid .settings-field-group { gap: 7px; }
+.ai-config-grid .settings-lang-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.ai-config-grid .settings-lang-checkbox { min-width: 0; padding: 9px 10px; }
+.ai-config-grid .settings-rule-add-row { flex-wrap: wrap; }
+.ai-config-grid .settings-rule-add-row input { min-width: 0; }
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f6f6; --bg-elev: #ececec; --bg-elev-2: #e2e2e2;
+  --main-bg: #f6f6f6; --card-bg: #fff; --card-border: #d9d9d9;
+  --ink: #181818; --ink-soft: #525252; --ink-muted: #626262;
+  --line: #d9d9d9; --line-strong: #bdbdbd; --muted: #525252;
+  --sidebar-bg: #fff; --sidebar-bg-2: #f4f4f4;
+  --sidebar-text: #515151; --sidebar-active: #111;
+  --sidebar-brand: #111; --sidebar-hover: #f1f1f1;
+  --dashboard-bg: #f6f6f6; --dashboard-surface: #fff;
+  --dashboard-surface-raised: #f4f4f4; --dashboard-surface-subtle: #ececec;
+  --dashboard-border: #dedede; --dashboard-border-strong: #c5c5c5;
+  --dashboard-text: #181818; --dashboard-text-muted: #525252; --dashboard-text-dim: #626262;
+}
+html[data-theme="light"] .inbox-list-header,
+html[data-theme="light"] .inbox-col-list,
+html[data-theme="light"] .inbox-col-detail { background: var(--card-bg); border-color: var(--line); }
+html[data-theme="light"] .inbox-panel-title { color: var(--ink); }
+html[data-theme="light"] .inbox-search-input,
+html[data-theme="light"] .inbox-chip { background: var(--bg-elev); border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] .inbox-chip.active {
+  background: var(--ink) !important; border-color: var(--ink) !important; color: #fff !important;
+}
+html[data-theme="light"] .inbox-chip.active svg { stroke: #fff; }
+html[data-theme="light"] .inbox-chip.active .chip-count { color: #fff; }
+html[data-theme="light"] .inbox-conv-row,
+html[data-theme="light"] .inbox-conv-row.active {
+  background: #f8f8f8 !important; border-color: var(--line) !important; box-shadow: none !important;
+}
+html[data-theme="light"] .inbox-conv-row.active { background: #eaeaea !important; border-color: #a7a7a7 !important; }
+html[data-theme="light"] .inbox-conv-name,
+html[data-theme="light"] .inbox-detail-name { color: var(--ink); }
+html[data-theme="light"] .inbox-conv-preview,
+html[data-theme="light"] .inbox-conv-time,
+html[data-theme="light"] .inbox-detail-phone { color: var(--ink-soft); }
+html[data-theme="light"] .inbox-status-strip,
+html[data-theme="light"] .inbox-reply-disabled-banner { background: #f4f4f4; border-color: var(--line); color: var(--ink-soft); box-shadow: none; }
+html[data-theme="light"] .inbox-ai-badge,
+html[data-theme="light"] .inbox-detail-placeholder { color: var(--ink-soft); }
+html[data-theme="light"] .inbox-action-select,
+html[data-theme="light"] .inbox-action-select option { background-color: #f4f4f4; border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] .inbox-action-btn:not(.primary) { background: #f4f4f4; border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] .inbox-btn-claim-inline { background: #191919 !important; color: #fff !important; }
+
+.view[data-view-panel="panoramica"] .panorama-grid { grid-template-columns: minmax(0, 1.28fr) minmax(0, 1fr); }
+.view[data-view-panel="panoramica"] .panorama-grid > *,
+.view[data-view-panel="panoramica"] .ticket-item-text { min-width: 0; }
+html[data-theme="light"] .nav-item.active {
+  background: #e9e9e9 !important; border-color: #c9c9c9 !important; color: #111 !important; box-shadow: none !important;
+}
+html[data-theme="light"] .nav-item.active .nav-icon { color: #111 !important; }
+html[data-theme="light"] .dash-card-title,
+html[data-theme="light"] .dash-card-header-icon { color: var(--ink); }
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-card {
+  background: #fff; border-color: var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+}
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-value,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-label,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-card-footer { color: var(--ink); }
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-icon-box,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-action-btn,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .kpi-trend-badge {
+  background: #f2f2f2; border-color: var(--line); color: var(--ink-soft);
+}
+html[data-theme="light"] .view[data-view-panel="panoramica"] .priority-item,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .priority-inbox-link,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .ticket-item {
+  background: #f4f4f4; border-color: var(--line); color: var(--ink);
+}
+html[data-theme="light"] .view[data-view-panel="panoramica"] .priority-item-msg,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .priority-inbox-link,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .ticket-item-msg,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .activity-view-all-btn { color: var(--ink); }
+html[data-theme="light"] .view[data-view-panel="panoramica"] .ticket-tag,
+html[data-theme="light"] .view[data-view-panel="panoramica"] .ticket-copy-btn {
+  background: #eaeaea; border-color: var(--line); color: var(--ink-soft);
+}
+html[data-theme="light"] .report-panoramica-title { color: var(--ink); }
+
+/* FullCalendar and booking controls use the same light canvas as the rest of the dashboard. */
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-title-row h1,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-empty-title,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-table-title { color: var(--ink); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-summary,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-empty-sub,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-table-subtitle { color: var(--ink-soft); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-pending-count,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-pending-count strong { color: #765009; }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-calendar-views { background: #ececec; border-color: var(--line); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-calendar-views button { color: var(--ink-soft); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-calendar-views button:hover { color: var(--ink); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-calendar-views button[aria-pressed="true"] {
+  background: #fff !important; border-color: var(--line) !important; color: var(--ink) !important; box-shadow: none;
+}
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-empty-notice,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-table-card {
+  background: #fff; border-color: var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+}
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-empty-icon { background: #f3f3f3; border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-header-actions .review-analyze,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-empty-new-btn {
+  background: #181818 !important; color: #fff !important; box-shadow: none;
+}
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-icon-text-button { background: #fff; border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar {
+  background: #fff !important; border-color: var(--line) !important; box-shadow: 0 8px 24px rgba(0, 0, 0, .06) !important;
+  --fc-border-color: #e2e2e2; --fc-page-bg-color: #fff; --fc-neutral-bg-color: #fff;
+  --fc-today-bg-color: #f3f3f3; color: var(--ink);
+}
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-scrollgrid,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-col-header,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-col-header-cell,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-timegrid-slot-lane,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-daygrid-day { background: #fff !important; }
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-col-header-cell-cushion,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-timegrid-slot-label-cushion,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-daygrid-day-number { color: var(--ink) !important; }
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-theme-standard th,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-theme-standard td,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-col-header-cell,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-timegrid-slot-label,
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-timegrid-axis {
+  border-color: var(--line) !important;
+}
+html[data-theme="light"] [data-view-panel="prenotazioni"] #booking-calendar .fc-timegrid-slot-minor { border-top-color: #efefef !important; }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-table th { background: #f5f5f5; border-color: var(--line); color: var(--ink-soft); }
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-table td,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-row-time,
+html[data-theme="light"] [data-view-panel="prenotazioni"] .booking-row-client { color: var(--ink); border-color: var(--line); }
+
+html[data-theme="light"] [data-view-panel="recensioni"] .dash-card,
+html[data-theme="light"] [data-view-panel="recensioni"] .review-history-item,
+html[data-theme="light"] [data-view-panel="recensioni"] .review-draft-panel {
+  background: #fff; border-color: var(--line); color: var(--ink); box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+}
+html[data-theme="light"] [data-view-panel="recensioni"] :is(
+  .dash-card-title, .draft-card-title, .review-history-title, .review-control-label,
+  .review-overall-score, .review-history-item h3, .review-history-item h4
+) { color: var(--ink) !important; }
+html[data-theme="light"] [data-view-panel="recensioni"] :is(
+  .dash-card-sub, .compose-header-left .dash-card-sub, .history-header .dash-card-sub,
+  .review-history-item p, .review-history-item span
+) { color: var(--ink-soft); }
+html[data-theme="light"] [data-view-panel="recensioni"] :is(
+  .review-textarea, .review-author-input, .review-stars-select, .review-source-select,
+  .review-search-input, .review-filter-source, .review-tab, .review-draft-textarea
+) { background-color: #f6f6f6; border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] [data-view-panel="recensioni"] :is(
+  .review-textarea, .review-author-input, .review-search-input, .review-draft-textarea
+)::placeholder { color: var(--ink-muted); }
+html[data-theme="light"] [data-view-panel="recensioni"] .review-tab.active { background: #181818; color: #fff; }
+html[data-theme="light"] [data-view-panel="recensioni"] .review-tab.active .tab-count { color: #fff; }
+
+html[data-theme="light"] [data-view-panel="team"] :is(.team-welcome-title, .team-welcome-brand-title, .dash-card-title) { color: var(--ink); }
+html[data-theme="light"] [data-view-panel="team"] :is(.team-welcome-subtitle, .team-welcome-quote, .dash-card-sub) { color: var(--ink-soft); }
+html[data-theme="light"] [data-view-panel="team"] .dash-card {
+  background: #fff; border-color: var(--line); box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+}
+html[data-theme="light"] [data-view-panel="team"] .dash-card-header::before { background-color: #f3f3f3; border-color: var(--line); }
+html[data-theme="light"] [data-view-panel="team"] .form-input,
+html[data-theme="light"] [data-view-panel="team"] .form-select { background-color: #f8f8f8; border-color: var(--line); color: var(--ink); }
+html[data-theme="light"] [data-view-panel="team"] .field-label,
+html[data-theme="light"] [data-view-panel="team"] .team-table td,
+html[data-theme="light"] [data-view-panel="team"] .team-member-name { color: var(--ink); }
+html[data-theme="light"] [data-view-panel="team"] .field-hint,
+html[data-theme="light"] [data-view-panel="team"] .team-table th { color: var(--ink-soft); }
+html[data-theme="light"] [data-view-panel="team"] .team-table thead tr,
+html[data-theme="light"] [data-view-panel="team"] .team-table tbody tr { background: #fafafa; border-color: var(--line); }
+html[data-theme="light"] [data-view-panel="team"] .kb-conflict-banner { color: #8c3e08; }
+
+@media (max-width: 768px) {
+  .view[data-view-panel="panoramica"] .panorama-grid { grid-template-columns: minmax(0, 1fr); }
+  .ai-config-grid { grid-template-columns: minmax(0, 1fr); }
+  .ai-config-group-title { margin-top: 20px; }
+  .ai-config-grid > .settings-card { padding-top: 20px; }
+  .booking-calendar-toolbar { gap: 10px; }
+}
+@media (max-width: 430px) {
+  .booking-selected-date-label { font-size: .72rem; }
+  .inbox-filter-row { align-items: flex-start; }
+  .inbox-filter-row-label { padding-top: 6px; }
+}

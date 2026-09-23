@@ -34,11 +34,13 @@ function check(file) {
       : root;
     // A few landing routes intentionally share dashboard/auth root assets and
     // the content-addressed CSP assets; Dockerfile publishes those from web/.
-    const sharedRootAsset = /^\/(?:inline-assets\/|auth(?:\.css|\.js)|login\.js|register\.js|config\.js)/.test(clean);
+    const sharedRootAsset = /^\/(?:inline-assets\/|auth(?:\.css|\.js)|login\.js|register\.js|config\.js|design-tokens\.css)/.test(clean);
     let candidate = clean.startsWith("/")
       ? path.join(sharedRootAsset ? root : documentRoot, clean.slice(1))
       : path.resolve(path.dirname(file), clean);
     if (clean === "/config.js") candidate = path.join(root, "config.template.js");
+    // The same shared token file is copied to /app/ by the web Dockerfile.
+    if (clean === "/app/design-tokens.css") candidate = path.join(root, "design-tokens.css");
     if (!(sharedRootAsset ? candidate.startsWith(root) : candidate.startsWith(documentRoot)) || !fs.existsSync(candidate)) {
       missing.push(`${path.relative(process.cwd(), file)} -> ${value}`);
     }

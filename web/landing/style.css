@@ -5741,7 +5741,7 @@ html.js .reveal.visible {
     padding: clamp(115px, 15vh, 165px) 0 5rem;
 }
 .hero-inner {
-    max-width: 1600px;
+    max-width: none;
     padding-inline: clamp(24px, 5.8vw, 100px);
     margin: 0 auto;
     align-items: flex-start;
@@ -5793,12 +5793,17 @@ html.js .reveal.visible {
     font-weight: 600;
     box-shadow: 0 6px 28px rgba(255, 255, 255, .08);
 }
-.hero-nav-header .hero-nav-container { max-width: 1600px; }
+.hero-nav-header .hero-nav-container { max-width: none; }
 .hero-nav-header .brand-text,
 .hero-nav-header .hero-brand,
 .hero-nav-header .hero-nav-link,
 .hero-nav-header .dropdown-trigger-btn,
 .hero-nav-header .btn-pill-white { font-family: "Geist Sans", "Inter", sans-serif; }
+
+@media (min-width: 1600px) {
+    .hero-h1-lead { max-width: 630px; }
+    .hero-h1-tail { max-width: 950px; }
+}
 
 @media (max-width: 1024px) {
     .hero-content-wrapper { padding-top: clamp(100px, 14vh, 150px); }

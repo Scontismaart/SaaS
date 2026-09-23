@@ -72,7 +72,7 @@ async def _get_supabase_jwks() -> list[dict]:
 
 
 async def verify_supabase_jwt(token: str) -> dict:
-    from jose import JWTError, jwt
+    from jose import ExpiredSignatureError, JWTError, jwt
 
     jwks = await _get_supabase_jwks()
     expected_aud = os.getenv("SUPABASE_JWT_AUD", "authenticated")
@@ -85,16 +85,34 @@ async def verify_supabase_jwt(token: str) -> dict:
         alg = key.get("alg")
         if alg and alg not in SUPPORTED_JWT_ALGS:
             continue
+        algorithms = [alg] if alg else list(SUPPORTED_JWT_ALGS)
+        options = {"verify_aud": True, "verify_iss": bool(expected_iss)}
         try:
             payload = jwt.decode(
                 token,
                 key,
-                algorithms=[alg] if alg else list(SUPPORTED_JWT_ALGS),
+                algorithms=algorithms,
                 audience=expected_aud,
                 issuer=expected_iss,
-                options={"verify_aud": True, "verify_iss": bool(expected_iss)},
+                options=options,
             )
             return payload
+        except ExpiredSignatureError:
+            # Solo un token autentico con gli altri claim validi e' una
+            # sessione scaduta da rinnovare. Firma/issuer/audience errati
+            # restano 403, senza cambiare i gate MFA o di tenant.
+            try:
+                jwt.decode(
+                    token,
+                    key,
+                    algorithms=algorithms,
+                    audience=expected_aud,
+                    issuer=expected_iss,
+                    options={**options, "verify_exp": False},
+                )
+            except JWTError:
+                continue
+            raise HTTPException(401, "Sessione scaduta: rinnova l'accesso")
         except JWTError:
             continue
     raise HTTPException(403, "Token JWT non valido")

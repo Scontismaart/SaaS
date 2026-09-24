@@ -532,12 +532,8 @@ async def liveness_check(request: Request):
 @app.get("/api/health")
 async def readiness_check(request: Request):
     """
-    Kubernetes / Docker Readiness Probe & Deep Health Check.
-    Verifica che l'istanza sia effettivamente pronta a servire traffico:
-    - Connettività database PostgreSQL via pool ('SELECT 1')
-    - Configurazione Groq FREE confermata dall'operatore
-    Se il database è irraggiungibile, ritorna 503 affinché il load balancer escluda
-    temporaneamente l'istanza dal routing senza riavviare il processo.
+    Core readiness depends on the database, not an optional AI provider.
+    AI configuration is reported separately and never probed remotely here.
     """
     checks: dict[str, str] = {}
     healthy = True
@@ -545,6 +541,7 @@ async def readiness_check(request: Request):
     pool = getattr(request.app.state, "pool", None)
     if pool is None:
         checks["database"] = "non configurato (DATABASE_URL assente)"
+        healthy = False
     else:
         try:
             async with pool.acquire() as conn:
@@ -555,22 +552,28 @@ async def readiness_check(request: Request):
             checks["database"] = "errore di connessione"
             healthy = False
 
-    from src.core.cost_policy import assert_model_allowed, DEFAULT_FREE_MODEL
-    try:
-        assert_model_allowed(os.getenv("OPENROUTER_MODEL", DEFAULT_FREE_MODEL))
-        llm_ready = bool(os.getenv("GROQ_API_KEY"))
-    except RuntimeError:
-        llm_ready = False
-    checks["llm_free_configurato"] = "ok" if llm_ready else "mancante/non confermato"
-    if not llm_ready:
-        healthy = False
+    from src.core.llm_config import ai_configuration_status
+    ai_status = ai_configuration_status()
+    checks["ai_provider"] = ai_status["status"]
 
     payload = {
         "status": "ok" if healthy else "degraded",
-        "modello_configurato": os.getenv("OPENROUTER_MODEL", "non impostato"),
+        "modello_configurato": ai_status["model"],
         "checks": checks,
     }
     if not healthy:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
+
+
+@app.get("/api/health/ai")
+async def ai_availability_check():
+    """Configuration visibility only: no paid inference or remote request."""
+    from src.core.llm_config import ai_configuration_status
+
+    status = ai_configuration_status()
+    payload = {**status, "remote_status": "non_verificato"}
+    if status["status"] != "configurato":
         return JSONResponse(status_code=503, content=payload)
     return payload
 

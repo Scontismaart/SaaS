@@ -2286,6 +2286,7 @@ module.exports = {
   generateHreflangs,
   generateLanguageSelector,
   generateMultilingualSitemap,
+  copyLocalesToWeb,
   loadLocales,
   buildAll
 };

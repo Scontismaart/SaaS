@@ -1,12 +1,12 @@
 {
   "filters": {
-    "all": "Alle",
-    "open": "Offen",
-    "mine": "Meine Tickets",
-    "ai_handling": "KI aktiv",
-    "human_needed": "Mitarbeiter nötig",
-    "closed": "Geschlossen",
-    "search_chats": "Konversation suchen..."
+    "open": "Offen", "mine": "Meine Tickets", "ai_handling": "KI aktiv", "human_needed": "Mitarbeiter nötig", "closed": "Geschlossen", "search_chats": "Konversation suchen...",
+    "conversations": "Unterhaltungen", "list_aria": "Unterhaltungsliste", "search_aria": "Unterhaltungen suchen",
+    "channel": "Kanal", "channel_aria": "Nach Kanal filtern", "status": "Status", "status_aria": "Nach Status und Zuständigkeit filtern",
+    "all": "Alle", "operator": "Teammitglied", "escalated": "Eskaliert", "resolved": "Gelöst",
+    "detail_aria": "Unterhaltungsdetails", "empty_title": "Keine Nachrichten in dieser Unterhaltung.",
+    "empty_text": "Wählen Sie eine Unterhaltung aus der Liste, um den Verlauf zu sehen und zu antworten.",
+    "back_aria": "Zurück zur Unterhaltungsliste", "message_placeholder": "Nachricht schreiben…", "message_aria": "Nachricht schreiben"
   },
   "chat": {
     "claim_btn": "Ticket übernehmen",

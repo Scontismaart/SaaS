@@ -103,6 +103,9 @@ def _llm_enabled() -> bool:
 
 
 def _modello_intent() -> str:
+    configured = os.getenv("AI_MODEL", "").strip()
+    if configured:
+        return os.getenv("AI_MODEL_INTENT", "").strip() or os.getenv("AI_MODEL_CHEAP", "").strip() or configured
     return (
         os.getenv("OPENROUTER_MODEL_INTENT", "").strip()
         or os.getenv("OPENROUTER_MODEL_CHEAP", "").strip()

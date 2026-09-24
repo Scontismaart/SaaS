@@ -8,12 +8,6 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
 }
 const PROFILO_ID = "trattoria_da_mario";
 
-if (typeof window !== "undefined" && typeof window.MelpisI18n !== "undefined" && typeof window.MelpisI18n.init === "function") {
-  window.MelpisI18n.init().catch(function (e) {
-    console.warn("[App] Inizializzazione i18n:", e);
-  });
-}
-
 /* ============================================================
    AUTENTICAZIONE — BFF (task18)
    ============================================================
@@ -720,7 +714,7 @@ const VIEW_FALLBACK = {
   reviews: { view: "impostazioni", tab: "reviews" },
   documenti: { view: "conoscenza" },
   report: { view: "panoramica" },
-  onboarding: { view: "assistente" },
+  onboarding: { view: "configurazione-ai" },
 };
 
 function apriVistaImpostazioni(cat = "generale") {
@@ -733,17 +727,18 @@ function apriVistaImpostazioni(cat = "generale") {
     v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
   });
 
-  const titles = {
-    piano: "Piano e abbonamento",
-    fatturazione: "Piano e abbonamento",
-    whatsapp: "WhatsApp Business",
-    instagram: "Instagram Direct",
-    calendar: "Google Calendar",
-    reviews: "Google Recensioni",
-    "booking-pms": "Gestionale Prenotazioni (PMS)",
-    airtable: "Airtable",
+  const titleKeys = {
+    piano: "title_account",
+    fatturazione: "title_account",
+    whatsapp: "title_whatsapp",
+    instagram: "title_instagram",
+    calendar: "title_calendar",
+    reviews: "title_reviews_settings",
+    "booking-pms": "title_pms",
+    airtable: "title_airtable",
   };
-  topbarTitle.textContent = titles[cat] || "Impostazioni";
+  topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[cat] || "title_impostazioni"}`;
+  topbarTitle.textContent = t(topbarTitle.dataset.i18n);
 
   attivaCategoriaImpostazioni(cat);
 }
@@ -893,7 +888,9 @@ function aggiornaDataTopbar() {
     : new Date().toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
   const topbarWeekday = document.getElementById("topbar-weekday");
   if (topbarWeekday) {
-    const rawDay = new Date().toLocaleDateString("it-IT", { weekday: "long" });
+    const rawDay = (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
+      ? MelpisI18n.formatDate(new Date(), { weekday: "long" })
+      : new Date().toLocaleDateString("it-IT", { weekday: "long" });
     topbarWeekday.textContent = rawDay.charAt(0).toUpperCase() + rawDay.slice(1);
   }
 }
@@ -914,7 +911,8 @@ navItems.forEach((btn) => {
       views.forEach((v) => {
         v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
       });
-      topbarTitle.textContent = "Piano e abbonamento";
+      topbarTitle.dataset.i18n = "dashboard:topbar.title_account";
+      topbarTitle.textContent = t(topbarTitle.dataset.i18n);
       attivaCategoriaImpostazioni("piano");
       caricaAccount();
       return;
@@ -924,20 +922,21 @@ navItems.forEach((btn) => {
       v.classList.toggle("view-hidden", v.dataset.viewPanel !== viewName);
     });
 
-    const titles = {
-      panoramica: "Panoramica",
-      inbox: "Inbox",
-      prenotazioni: "Prenotazioni",
-      recensioni: "Recensioni",
-      team: "Team & Collaboratori",
-      assistente: "Simulatore AI",
-      conoscenza: "Conoscenza",
-      "configurazione-ai": "Configurazione AI",
-      impostazioni: "Impostazioni",
-      account: "Piano e abbonamento",
-      onboarding: "Configurazione assistente",
+    const titleKeys = {
+      panoramica: "title_panoramica",
+      inbox: "title_inbox",
+      prenotazioni: "title_prenotazioni",
+      recensioni: "title_recensioni",
+      team: "title_team",
+      assistente: "title_assistente",
+      conoscenza: "title_conoscenza",
+      "configurazione-ai": "title_configurazione_ai",
+      impostazioni: "title_impostazioni",
+      account: "title_account",
+      onboarding: "title_configurazione_ai",
     };
-    topbarTitle.textContent = titles[viewName] || viewName;
+    topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[viewName] || "title_panoramica"}`;
+    topbarTitle.textContent = t(topbarTitle.dataset.i18n);
     if (viewName === "impostazioni") {
       attivaCategoriaImpostazioni("generale");
     }
@@ -952,11 +951,6 @@ navItems.forEach((btn) => {
     }
     if (viewName === "team") {
       caricaTeam();
-    }
-    if (viewName === "assistente") {
-      // Il wizard salva solo owner/manager (gate lato API): per lo staff
-      // la card "Configura" non ha senso, la rimuoviamo dal DOM.
-      if (sessione?.ruolo === "staff") document.getElementById("onboarding-banner")?.remove();
     }
     if (viewName === "recensioni") {
       aggiornaRecensioni();
@@ -1345,25 +1339,16 @@ async function salvaProfiloOnboarding() {
   return record;
 }
 
-/* ============================================================
-   ONBOARDING — accesso dal banner in "Assistente" (voce nav rimossa)
-   ============================================================ */
-
-function apriOnboarding() {
-  chiudiMenuMobile();
-  navItems.forEach((n) => n.classList.remove("active"));
-  views.forEach((v) => {
-    v.classList.toggle("view-hidden", v.dataset.viewPanel !== "onboarding");
-  });
-  topbarTitle.textContent = "Configurazione assistente";
-  inizializzaOnboarding();
-}
-
 function chiudiOnboarding() {
-  document.querySelector('.nav-item[data-view="assistente"]')?.click();
+  apriView("configurazione-ai");
 }
 
-document.getElementById("onboarding-banner-cta")?.addEventListener("click", apriOnboarding);
+function _tDash(key, fallback, options = {}) {
+  if (typeof t !== "function") return fallback || key;
+  const translated = t(`dashboard:${key}`, { ...options, defaultValue: fallback || key });
+  return translated === `dashboard:${key}` ? (fallback || key) : translated;
+}
+
 document.getElementById("onboarding-chiudi")?.addEventListener("click", chiudiOnboarding);
 document.getElementById("onboarding-draft-discard")?.addEventListener("click", () => {
   pulisciBozzaOnboarding();
@@ -2053,9 +2038,12 @@ function renderTabellaPrenotazioniGiorno(data = null) {
   if (titleEl) {
     try {
       const dObj = new Date(`${targetDate}T12:00:00`);
-      titleEl.textContent = `Prenotazioni di ${dObj.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}`;
+      const dateLabel = typeof MelpisI18n !== "undefined"
+        ? MelpisI18n.formatDate(dObj, { weekday: "long", day: "numeric", month: "long" })
+        : dObj.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+      titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: dateLabel });
     } catch {
-      titleEl.textContent = `Prenotazioni del ${targetDate}`;
+      titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: targetDate });
     }
   }
 
@@ -2064,17 +2052,21 @@ function renderTabellaPrenotazioniGiorno(data = null) {
     .sort((a, b) => String(a.ora || "").localeCompare(String(b.ora || "")));
 
   if (countEl) {
-    countEl.textContent = `${prenotazioniGiorno.length} prenotazioni`;
+    countEl.textContent = _tDash("bookings.runtime.count", "{{count}} prenotazioni", { count: prenotazioniGiorno.length });
   }
 
   if (!prenotazioniGiorno.length) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="8" class="booking-table-empty">
-          Nessuna prenotazione per ${targetDate}. Clicca "+ Nuova prenotazione" per aggiungerne una.
-        </td>
-      </tr>
-    `;
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 8;
+    emptyCell.className = "booking-table-empty";
+    emptyCell.textContent = _tDash(
+      "bookings.runtime.empty_day",
+      'Nessuna prenotazione per {{date}}. Clicca "+ Nuova prenotazione" per aggiungerne una.',
+      { date: targetDate }
+    );
+    emptyRow.appendChild(emptyCell);
+    tableBody.replaceChildren(emptyRow);
     return;
   }
 
@@ -2097,7 +2089,7 @@ function renderTabellaPrenotazioniGiorno(data = null) {
         <td><span class="booking-badge ${badgeClass}">${_sanitize(p.stato || "confermata")}</span></td>
         <td style="text-align: right;">
           <button type="button" class="report-refresh" data-open-booking-id="${_sanitize(p.id)}" style="padding: 4px 10px; font-size: 0.75rem;">
-            Dettagli
+            ${_escapeHtml(_tDash("bookings.runtime.details", "Dettagli"))}
           </button>
         </td>
       </tr>
@@ -2133,7 +2125,7 @@ async function aggiornaPrenotazioni() {
     bookingRecords = prenotazioni;
     const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
     prenotazioniInAttesaCount = pending.length;
-    bookingCount.textContent = `${prenotazioni.length} prenotazioni`;
+    bookingCount.textContent = _tDash("bookings.runtime.count", "{{count}} prenotazioni", { count: prenotazioni.length });
     if (bookingPendingValue) bookingPendingValue.textContent = pending.length;
     const statoNotif = leggiStatoNotifiche();
     aggiornaBadgeNotifiche(statoNotif);
@@ -2746,9 +2738,9 @@ function renderStoricoRecensioni() {
     if (recensioniListaDati.length === 0) {
       reviewHistoryList.appendChild(_emptyState(
         ICONS.chat,
-        "Nessuna recensione registrata",
-        "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale.",
-        "Incolla una recensione",
+        _tDash("reviews.runtime.empty_title", "Nessuna recensione registrata"),
+        _tDash("reviews.runtime.empty_desc", "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale."),
+        _tDash("reviews.runtime.empty_cta", "Incolla una recensione"),
         () => {
           reviewText?.focus();
           reviewText?.scrollIntoView({ behavior: "smooth" });
@@ -2757,9 +2749,9 @@ function renderStoricoRecensioni() {
     } else {
       reviewHistoryList.appendChild(_emptyState(
         ICONS.alert,
-        "Nessun risultato con i filtri attuali",
-        "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati.",
-        "Reimposta filtri",
+        _tDash("reviews.runtime.filtered_title", "Nessun risultato con i filtri attuali"),
+        _tDash("reviews.runtime.filtered_desc", "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati."),
+        _tDash("reviews.runtime.reset_filters", "Reimposta filtri"),
         () => {
           recensioniFiltroCorrente = "tutte";
           if (reviewFilterTabs) {
@@ -2789,11 +2781,11 @@ function renderStoricoRecensioni() {
 
     let statusPill = "";
     if (isApprovata) {
-      statusPill = '<span class="review-status-badge status-approvata">Approvata</span>';
+      statusPill = `<span class="review-status-badge status-approvata">${_escapeHtml(_tDash("reviews.runtime.status_approved", "Approvata"))}</span>`;
     } else if (isUrgente) {
-      statusPill = '<span class="review-status-badge status-urgente">Richiede attenzione</span>';
+      statusPill = `<span class="review-status-badge status-urgente">${_escapeHtml(_tDash("reviews.runtime.status_urgent", "Richiede attenzione"))}</span>`;
     } else {
-      statusPill = '<span class="review-status-badge">Bozza pronta</span>';
+      statusPill = `<span class="review-status-badge">${_escapeHtml(_tDash("reviews.runtime.status_draft", "Bozza pronta"))}</span>`;
     }
 
     const sentimentBadge = `<span class="review-sentiment-badge sentiment-${sentimentStr}">${sentimentStr.charAt(0).toUpperCase() + sentimentStr.slice(1)}</span>`;
@@ -2803,7 +2795,7 @@ function renderStoricoRecensioni() {
     if (r.bozza_risposta) {
       aiBox = `
         <div class="history-ai-reply-box">
-          <span class="ai-reply-label">Bozza di risposta suggerita:</span>
+          <span class="ai-reply-label">${_escapeHtml(_tDash("reviews.runtime.ai_reply_label", "Bozza di risposta suggerita:"))}</span>
           <p class="ai-reply-text">${_sanitize(r.bozza_risposta)}</p>
         </div>
       `;
@@ -2831,9 +2823,9 @@ function renderStoricoRecensioni() {
           ${catBadge}
         </div>
         <div class="history-actions">
-          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">Approva</button>` : ""}
-          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">Rivedi bozza</button>
-          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">Copia testo</button>` : ""}
+          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">${_escapeHtml(_tDash("reviews.approve_reply", "Approva risposta"))}</button>` : ""}
+          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">${_escapeHtml(_tDash("reviews.runtime.review_draft", "Rivedi bozza"))}</button>
+          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">${_escapeHtml(_tDash("reviews.copy_text", "Copia testo"))}</button>` : ""}
         </div>
       </div>
     `;
@@ -2843,7 +2835,7 @@ function renderStoricoRecensioni() {
     item.querySelector('[data-action="copy"]')?.addEventListener("click", () => {
       if (r.bozza_risposta) {
         navigator.clipboard.writeText(r.bozza_risposta).catch(() => {});
-        toast("Testo della bozza copiato negli appunti!", "info");
+        toast(_tDash("reviews.runtime.copied_toast", "Testo della bozza copiato negli appunti!"), "info");
       }
     });
 
@@ -2868,7 +2860,7 @@ function aggiornaConteggiRecensioni() {
     ? (conStelle.reduce((acc, r) => acc + Number(r.valutazione_stelle), 0) / conStelle.length)
     : 0;
 
-  if (reviewStatCount) reviewStatCount.textContent = `${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
+  if (reviewStatCount) reviewStatCount.textContent = _tDash("reviews.runtime.review_count", "{{count}} recensioni", { count: totale });
   if (reviewStatRating) {
     reviewStatRating.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> <span>${mediaStelle ? mediaStelle.toFixed(1) : "0.0"}</span>`;
   }
@@ -2876,7 +2868,7 @@ function aggiornaConteggiRecensioni() {
   // Sidebar rating & sentiment
   if (sidebarRatingNum) sidebarRatingNum.textContent = mediaStelle ? mediaStelle.toFixed(1) : "--";
   if (sidebarRatingStars) sidebarRatingStars.textContent = _stelleVisual(Math.round(mediaStelle));
-  if (sidebarRatingTotal) sidebarRatingTotal.textContent = `Basato su ${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
+  if (sidebarRatingTotal) sidebarRatingTotal.textContent = _tDash("reviews.runtime.rating_total", "Basato su {{count}} recensioni", { count: totale });
 
   // Distribuzione sentiment
   const pos = recensioniListaDati.filter(r => r.sentiment === "positiva" || r.sentiment === "positivo" || (r.valutazione_stelle && r.valutazione_stelle >= 4)).length;
@@ -3233,12 +3225,12 @@ function _errorState(messaggio, retryFn) {
   wrap.setAttribute("role", "alert");
   wrap.innerHTML =
     '<div class="empty-state-icon error" aria-hidden="true">' + ICONS.alert + "</div>" +
-    '<span class="empty-state-title">Qualcosa è andato storto</span>' +
+    '<span class="empty-state-title">' + _sanitize(_tDash("overview.runtime.error_title", "Qualcosa è andato storto")) + "</span>" +
     '<span class="empty-state-sub">' + _sanitize(messaggio) + "</span>";
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "review-analyze";
-  btn.textContent = "Riprova";
+  btn.textContent = _tDash("overview.runtime.retry", "Riprova");
   btn.addEventListener("click", retryFn);
   wrap.appendChild(btn);
   return wrap;
@@ -3291,7 +3283,7 @@ async function aggiornaPrioritari(silent = false) {
     if (!res.ok) {
       if (!silent) {
         priorityList.innerHTML = "";
-        priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", () => aggiornaPrioritari()));
+        priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), () => aggiornaPrioritari()));
       }
       return;
     }
@@ -3299,7 +3291,7 @@ async function aggiornaPrioritari(silent = false) {
     const eventi = Array.isArray(rawEventi) ? rawEventi : [];
     const countBadge = document.getElementById("priority-count-badge");
     if (countBadge) {
-      countBadge.textContent = eventi.length ? `${eventi.length} elementi` : "";
+      countBadge.textContent = eventi.length ? _tDash("overview.runtime.priority_count", "{{count}} elementi", { count: eventi.length }) : "";
       countBadge.hidden = !eventi.length;
     }
     priorityList.innerHTML = "";
@@ -3363,8 +3355,8 @@ async function aggiornaPrioritari(silent = false) {
       } else {
         li.appendChild(_emptyState(
           ICONS.check,
-          "Nessun messaggio oggi",
-          "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti."
+          _tDash("overview.runtime.no_messages_title", "Nessun messaggio oggi"),
+          _tDash("overview.runtime.no_messages_desc", "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti.")
         ));
       }
       priorityList.appendChild(li);
@@ -3404,7 +3396,7 @@ async function aggiornaPrioritari(silent = false) {
   } catch (err) {
     console.error("Impossibile aggiornare gli eventi prioritari:", err);
     priorityList.innerHTML = "";
-    priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", aggiornaPrioritari));
+    priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), aggiornaPrioritari));
   }
 }
 
@@ -3540,7 +3532,7 @@ async function aggiornaRiepilogo(silent = false) {
     if (!res.ok) {
       if (!silent) {
         ticketList.innerHTML = "";
-        ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", () => aggiornaRiepilogo()));
+        ticketList.appendChild(_errorState(_tDash("overview.runtime.activity_error", "Impossibile caricare l'attività recente."), () => aggiornaRiepilogo()));
       }
       return;
     }
@@ -3623,9 +3615,10 @@ async function aggiornaRiepilogo(silent = false) {
     const valAiEl = document.getElementById("sparkline-ai-val");
     const valUmanoEl = document.getElementById("sparkline-umano-val");
 
-    if (valTotEl) valTotEl.textContent = `${totSettimana} sett.`;
-    if (valAiEl) valAiEl.textContent = `${aiSettimana} sett.`;
-    if (valUmanoEl) valUmanoEl.textContent = `${umanoSettimana} sett.`;
+    const sparklineUnit = t("dashboard:kpi.sparkline_unit");
+    if (valTotEl) valTotEl.textContent = `${totSettimana} ${sparklineUnit}`;
+    if (valAiEl) valAiEl.textContent = `${aiSettimana} ${sparklineUnit}`;
+    if (valUmanoEl) valUmanoEl.textContent = `${umanoSettimana} ${sparklineUnit}`;
 
     ticketList.innerHTML = "";
     const eventiDaMostrare = eventiOggi.length > 0 ? eventiOggi.slice().reverse() : storico.slice(0, 15);
@@ -3633,9 +3626,9 @@ async function aggiornaRiepilogo(silent = false) {
     if (eventiDaMostrare.length === 0) {
       ticketList.appendChild(_emptyState(
         ICONS.chat,
-        "In attesa di conversazioni",
-        "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale.",
-        "Prova nel simulatore",
+        _tDash("overview.runtime.waiting_title", "In attesa di conversazioni"),
+        _tDash("overview.runtime.waiting_desc", "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale."),
+        _tDash("overview.runtime.try_simulator", "Prova nel simulatore"),
         () => document.querySelector('[data-view="assistente"]')?.click()
       ));
       return;
@@ -3665,7 +3658,9 @@ async function aggiornaRiepilogo(silent = false) {
       tags.classList.add("ticket-item-tags");
       const tipoBadge = document.createElement("span");
       tipoBadge.classList.add("ticket-tag", `ticket-tag-${e.tipo_evento}`);
-      tipoBadge.textContent = e.tipo_evento === "recensione" ? "Recensione" : "Messaggio";
+      tipoBadge.textContent = e.tipo_evento === "recensione"
+        ? _tDash("overview.runtime.review_kind", "Recensione")
+        : _tDash("overview.runtime.message_kind", "Messaggio");
       tags.appendChild(tipoBadge);
       if (e.tipo_evento === "recensione" && e.dettagli?.stelle) {
         const stelleTag = document.createElement("span");
@@ -3679,7 +3674,7 @@ async function aggiornaRiepilogo(silent = false) {
       if (e.tipo_evento === "recensione") {
         const viewBtn = document.createElement("button");
         viewBtn.classList.add("ticket-copy-btn");
-        viewBtn.textContent = "Visualizza";
+        viewBtn.textContent = _tDash("overview.runtime.open_review", "Visualizza");
         viewBtn.addEventListener("click", () => {
           apriView("recensioni");
           setTimeout(() => {
@@ -3925,16 +3920,16 @@ async function caricaFAQ() {
     const statusUpdatedText = document.getElementById("kb-faq-updated-text");
     const attive = items.filter((d) => d.is_active).length;
     if (statusBarText) {
-      statusBarText.textContent = `${attive} FAQ attive su ${items.length} totali (tutte indicizzate)`;
+      statusBarText.textContent = _tDash("knowledge.runtime.faq_count", "{{active}} FAQ attive su {{total}} totali (tutte indicizzate)", { active: attive, total: items.length });
     }
     if (statusUpdatedText && items.length > 0) {
       const lastUpdate = items[0].updated_at || items[0].caricato_il;
-      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(lastUpdate)}`;
+      statusUpdatedText.textContent = _tDash("knowledge.runtime.last_update", "Ultimo aggiornamento: {{date}}", { date: _formatDataOra(lastUpdate) });
     }
 
     kbFAQList.innerHTML = "";
     if (items.length === 0) {
-      kbFAQList.innerHTML = '<p class="doc-library-empty">Nessuna FAQ configurata. Clicca su "+ Nuova FAQ" per aggiungerne una.</p>';
+      kbFAQList.innerHTML = '<p class="doc-library-empty">' + _escapeHtml(_tDash("knowledge.runtime.empty_faq", 'Nessuna FAQ configurata. Clicca su "+ Nuova FAQ" per aggiungerne una.')) + "</p>";
       return;
     }
 
@@ -4163,15 +4158,15 @@ async function caricaDocumenti() {
     const statusUpdatedText = document.getElementById("kb-doc-updated-text");
     const attivi = items.filter((d) => d.is_active && d.stato !== "errore").length;
     if (statusBarText) {
-      statusBarText.textContent = `${attivi} documenti attivi su ${items.length} totali`;
+      statusBarText.textContent = _tDash("knowledge.runtime.documents_count", "{{active}} documenti attivi su {{total}} totali", { active: attivi, total: items.length });
     }
     if (statusUpdatedText && items.length > 0) {
-      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(items[0].updated_at || items[0].caricato_il)}`;
+      statusUpdatedText.textContent = _tDash("knowledge.runtime.last_update", "Ultimo aggiornamento: {{date}}", { date: _formatDataOra(items[0].updated_at || items[0].caricato_il) });
     }
 
     docLibrary.innerHTML = "";
     if (items.length === 0) {
-      docLibrary.innerHTML = '<p class="doc-library-empty">Nessun file caricato. Usa l\'area tratteggiata sopra per caricare PDF, DOCX o immagini.</p>';
+      docLibrary.innerHTML = '<p class="doc-library-empty">' + _escapeHtml(_tDash("knowledge.runtime.empty_documents", "Nessun file caricato. Usa l'area tratteggiata sopra per caricare PDF, DOCX o immagini.")) + "</p>";
       return;
     }
 
@@ -4337,15 +4332,15 @@ async function caricaPagineWeb() {
     const statusUpdatedText = document.getElementById("kb-web-updated-text");
     const attive = items.filter((d) => d.is_active && d.stato !== "errore").length;
     if (statusBarText) {
-      statusBarText.textContent = `${attive} pagine web attive su ${items.length} totali`;
+      statusBarText.textContent = _tDash("knowledge.runtime.web_count", "{{active}} pagine web attive su {{total}} totali", { active: attive, total: items.length });
     }
     if (statusUpdatedText && items.length > 0) {
-      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(items[0].updated_at || items[0].caricato_il)}`;
+      statusUpdatedText.textContent = _tDash("knowledge.runtime.last_update", "Ultimo aggiornamento: {{date}}", { date: _formatDataOra(items[0].updated_at || items[0].caricato_il) });
     }
 
     kbWebList.innerHTML = "";
     if (items.length === 0) {
-      kbWebList.innerHTML = '<p class="doc-library-empty">Nessuna pagina web importata. Inserisci un link sopra per importare listino o info dal tuo sito.</p>';
+      kbWebList.innerHTML = '<p class="doc-library-empty">' + _escapeHtml(_tDash("knowledge.runtime.empty_web", "Nessuna pagina web importata. Inserisci un link sopra per importare listino o info dal tuo sito.")) + "</p>";
       return;
     }
 
@@ -6200,24 +6195,6 @@ let caricaTimezone;
     if (settingsSelect && settingsSelect.value !== lang) settingsSelect.value = lang;
   }
 
-  async function onLangChange(e) {
-    const newLang = e.target.value;
-    if (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.setLanguage === "function") {
-      syncSelects(newLang);
-      try {
-        await MelpisI18n.setLanguage(newLang);
-        if (typeof toast === "function") {
-          toast(typeof t === "function" ? t("dashboard.toast.saved") : "Lingua aggiornata", "success");
-        }
-      } catch (err) {
-        console.error("Errore cambio lingua:", err);
-      }
-    }
-  }
-
-  if (sidebarSelect) sidebarSelect.addEventListener("change", onLangChange);
-  if (settingsSelect) settingsSelect.addEventListener("change", onLangChange);
-
   // Inizializza lingua corrente
   if (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.getLanguage === "function") {
     syncSelects(MelpisI18n.getLanguage());
@@ -6229,6 +6206,9 @@ let caricaTimezone;
     }
     if (typeof aggiornaDataTopbar === "function") {
       aggiornaDataTopbar();
+    }
+    if (typeof toast === "function") {
+      toast(typeof t === "function" ? t("dashboard.toast.saved") : "Lingua aggiornata", "success");
     }
   });
 })();
@@ -6271,7 +6251,10 @@ let caricaConfigurazioneAI;
     if (!rulesContainer) return;
     rulesContainer.innerHTML = "";
     if (!currentRules.length) {
-      rulesContainer.innerHTML = '<p class="settings-help-sm">Nessuna regola attiva. Aggiungine una con il campo sottostante.</p>';
+      const empty = document.createElement("p");
+      empty.className = "settings-help-sm";
+      empty.textContent = t("settings:ai_configuration.rules_empty");
+      rulesContainer.appendChild(empty);
       return;
     }
     currentRules.forEach((rule, idx) => {
@@ -6285,8 +6268,8 @@ let caricaConfigurazioneAI;
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "settings-rule-remove-btn";
-      delBtn.title = "Rimuovi questa regola";
-      delBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Elimina</span>';
+      delBtn.title = t("settings:ai_configuration.remove_rule");
+      delBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>' + _escapeHtml(t("settings:ai_configuration.remove_rule")) + '</span>';
       delBtn.addEventListener("click", () => {
         currentRules.splice(idx, 1);
         renderRules();
@@ -6441,7 +6424,7 @@ let caricaConfigurazioneAI;
 
   async function eseguiSalvataggio() {
     if (saveBtn) saveBtn.disabled = true;
-    if (saveStatus) { saveStatus.textContent = "Salvataggio in corso…"; saveStatus.style.color = ""; }
+    if (saveStatus) { saveStatus.textContent = t("settings:ai_configuration.save_loading"); saveStatus.style.color = ""; }
 
     try {
       const payload = raccogliPayload();
@@ -6454,7 +6437,7 @@ let caricaConfigurazioneAI;
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         if (saveStatus) {
-          saveStatus.textContent = err.detail || "Errore durante il salvataggio";
+          saveStatus.textContent = err.detail || t("settings:ai_configuration.save_error");
           saveStatus.style.color = "var(--red)";
         }
         return;
@@ -6475,11 +6458,11 @@ let caricaConfigurazioneAI;
         kbOrari.value = payload.orari;
       }
 
-      if (saveStatus) securityStatus(saveStatus, "Configurazione AI salvata e sincronizzata!");
-      toast("Configurazione AI salvata e sincronizzata con successo", "success");
+      if (saveStatus) securityStatus(saveStatus, t("settings:ai_configuration.save_success"));
+      toast(t("settings:ai_configuration.save_toast"), "success");
     } catch {
       if (saveStatus) {
-        saveStatus.textContent = "Errore di connessione con il server";
+        saveStatus.textContent = t("settings:ai_configuration.connection_error");
         saveStatus.style.color = "var(--red)";
       }
     } finally {
@@ -6491,6 +6474,8 @@ let caricaConfigurazioneAI;
     e.preventDefault();
     eseguiSalvataggio();
   });
+
+  window.addEventListener("melpis:lang-changed", renderRules);
 
   caricaConfigurazioneAI = carica;
 })();
@@ -8537,7 +8522,9 @@ async function caricaTeam() {
     const res = await apiFetch(`${API_BASE}/api/team/members`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      tbody.innerHTML = `<tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--red);">Impossibile caricare i membri del team: ${_estraiMessaggioErroreApi(res, err, "Errore")}</td></tr>`;
+      const detail = _estraiMessaggioErroreApi(res, err, "Errore");
+      const message = _tDash("team.runtime.load_error", "Impossibile caricare i membri del team: {{detail}}", { detail });
+      tbody.innerHTML = `<tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--red);">${_escapeHtml(message)}</td></tr>`;
       return;
     }
     const data = await res.json();
@@ -8546,25 +8533,27 @@ async function caricaTeam() {
     const { members, total, users_limit, can_add_more } = data;
 
     // Aggiorna contatori e badge
-    if (countBadge) countBadge.textContent = `${total} membr${total === 1 ? 'o' : 'i'}`;
+    if (countBadge) countBadge.textContent = _tDash("team.runtime.member_count", "{{count}} membri", { count: total });
 
     if (statLimit) {
       if (users_limit === null) {
-        statLimit.textContent = `${total} account attivi (illimitati)`;
+        statLimit.textContent = _tDash("team.runtime.unlimited_accounts", "{{count}} account attivi (illimitati)", { count: total });
       } else if (users_limit === 1) {
-        statLimit.textContent = `1 / 1 account (Piano Essenziale - Solo titolare)`;
+        statLimit.textContent = _tDash("team.runtime.essential_account", "1 / 1 account (Piano Essenziale - Solo titolare)");
       } else {
         const operatori = Math.max(0, total - 1);
         const maxOperatori = users_limit - 1;
-        statLimit.textContent = `${total} / ${users_limit} account (${operatori} di ${maxOperatori} collaboratori)`;
+        statLimit.textContent = _tDash("team.runtime.account_capacity", "{{used}} / {{limit}} account ({{operators}} di {{max}} collaboratori)", {
+          used: total, limit: users_limit, operators: operatori, max: maxOperatori
+        });
       }
     }
 
     // Aggiorna piano visualizzato
     if (statPlan) {
-      let nomePiano = "Essenziale";
-      if (users_limit === 3) nomePiano = "Crescita (Pro)";
-      else if (users_limit === null) nomePiano = "Scala";
+      let nomePiano = _tDash("team.runtime.plan_essential", "Essenziale");
+      if (users_limit === 3) nomePiano = _tDash("team.runtime.plan_growth", "Crescita (Pro)");
+      else if (users_limit === null) nomePiano = _tDash("team.runtime.plan_scale", "Scala");
       statPlan.textContent = nomePiano;
     }
 
@@ -8574,12 +8563,12 @@ async function caricaTeam() {
         limitBanner.hidden = false;
         submitBtn.disabled = true;
         submitBtn.title = users_limit === 1
-          ? "Il piano Essenziale non include collaboratori aggiuntivi"
-          : "Limite massimo collaboratori raggiunto per il piano corrente";
+          ? _tDash("team.runtime.essential_limit_title", "Il piano Essenziale non include collaboratori aggiuntivi")
+          : _tDash("team.runtime.limit_title", "Limite massimo collaboratori raggiunto per il piano corrente");
         if (limitTitle) {
           limitTitle.textContent = users_limit === 1
-            ? "Il piano Essenziale include solo il titolare"
-            : `Limite account raggiunto (${total}/${users_limit})`;
+            ? _tDash("team.runtime.essential_limit_banner", "Il piano Essenziale include solo il titolare")
+            : _tDash("team.runtime.limit_banner", "Limite account raggiunto ({{used}}/{{limit}})", { used: total, limit: users_limit });
         }
         if (limitDesc) {
           if (users_limit === 1) {

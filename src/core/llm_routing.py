@@ -69,7 +69,13 @@ def _split_models(raw: str) -> tuple[str, ...]:
 
 
 def get_route_fallback_models(primary_model: str) -> list[str]:
-    raw = os.getenv("OPENROUTER_MODEL_FALLBACKS", _DEFAULT_FALLBACK_MODELS)
+    # A newly configured provider must never silently fall back to Groq (or a
+    # differently billed account). Legacy deployments keep their old chain.
+    configured = os.getenv("AI_MODEL", "").strip()
+    raw = (
+        os.getenv("AI_MODEL_FALLBACKS", "")
+        if configured else os.getenv("OPENROUTER_MODEL_FALLBACKS", _DEFAULT_FALLBACK_MODELS)
+    )
     return [model for model in _split_models(raw) if model != primary_model]
 
 
@@ -90,8 +96,13 @@ def _budget_is_low(ratio: float | None) -> bool:
 
 
 def route_llm(request: LLMRouteRequest) -> LLMRoute:
-    cheap_model = _env_model("OPENROUTER_MODEL_CHEAP", _DEFAULT_CHEAP_MODEL)
-    premium_model = _env_model("OPENROUTER_MODEL_PREMIUM", os.getenv("OPENROUTER_MODEL", _DEFAULT_PREMIUM_MODEL))
+    configured = os.getenv("AI_MODEL", "").strip()
+    if configured:
+        cheap_model = _env_model("AI_MODEL_CHEAP", configured)
+        premium_model = _env_model("AI_MODEL_PREMIUM", configured)
+    else:
+        cheap_model = _env_model("OPENROUTER_MODEL_CHEAP", _DEFAULT_CHEAP_MODEL)
+        premium_model = _env_model("OPENROUTER_MODEL_PREMIUM", os.getenv("OPENROUTER_MODEL", _DEFAULT_PREMIUM_MODEL))
 
     if request.force_tier == "cheap":
         tier: LLMTier = "cheap"

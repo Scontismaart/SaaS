@@ -5720,6 +5720,8 @@ html.js .reveal.visible {
 .hero-section {
     background: #080808;
     font-family: "Geist Sans", "Inter", sans-serif;
+    /* The following narrative must not slide over the hero CTA while scrolling. */
+    position: relative;
 }
 .hero-bg-backdrop {
     background: #080808 url('sfondohero-release.webp') center / cover no-repeat;
@@ -5738,7 +5740,7 @@ html.js .reveal.visible {
 .hero-content-wrapper {
     align-items: flex-start;
     justify-content: flex-start;
-    padding: clamp(115px, 15vh, 165px) 0 5rem;
+    padding: clamp(80px, 10vh, 120px) 0 5rem;
 }
 .hero-inner {
     max-width: none;
@@ -5761,7 +5763,7 @@ html.js .reveal.visible {
     max-width: 1080px;
     margin: 0 0 25px;
     font-family: "Geist Sans", "Inter", sans-serif;
-    font-size: clamp(3.1rem, 4.7vw, 5rem);
+    font-size: clamp(3rem, 4.45vw, 4.7rem);
     font-weight: 500;
     letter-spacing: -.055em;
     line-height: .99;
@@ -5771,8 +5773,8 @@ html.js .reveal.visible {
 }
 .hero-h1-lead,
 .hero-h1-tail { display: block; }
-.hero-h1-lead { max-width: 515px; color: #f7f7f9; }
-.hero-h1-tail { max-width: 805px; color: #c7c8d0; }
+.hero-h1-lead { max-width: 450px; color: #f7f7f9; }
+.hero-h1-tail { max-width: 720px; color: #c7c8d0; }
 .hero-sub {
     max-width: 600px;
     margin: 8px 0 31px;
@@ -5801,15 +5803,15 @@ html.js .reveal.visible {
 .hero-nav-header .btn-pill-white { font-family: "Geist Sans", "Inter", sans-serif; }
 
 @media (min-width: 1600px) {
-    .hero-h1-lead { max-width: 630px; }
-    .hero-h1-tail { max-width: 950px; }
+    .hero-h1-lead { max-width: 550px; }
+    .hero-h1-tail { max-width: 880px; }
 }
 
 @media (max-width: 1024px) {
-    .hero-content-wrapper { padding-top: clamp(100px, 14vh, 150px); }
-    .hero-h1 { font-size: clamp(3.3rem, 6.7vw, 4.6rem); max-width: 840px; }
-    .hero-h1-lead { max-width: 515px; }
-    .hero-h1-tail { max-width: 805px; }
+    .hero-content-wrapper { padding-top: clamp(88px, 11vh, 125px); }
+    .hero-h1 { font-size: clamp(3.15rem, 6.4vw, 4.4rem); max-width: 840px; }
+    .hero-h1-lead { max-width: 450px; }
+    .hero-h1-tail { max-width: 720px; }
 }
 @media (max-width: 640px) {
     .hero-section { min-height: 650px; padding-top: var(--navbar-height); }
@@ -5817,13 +5819,65 @@ html.js .reveal.visible {
     .hero-bg-image { object-position: 65% center; }
     .hero-bg-backdrop::after,
     .hero-bg-vignette { background: linear-gradient(90deg, rgba(0, 0, 0, .58), rgba(0, 0, 0, .22) 78%); }
-    .hero-content-wrapper { padding: clamp(110px, 14vh, 145px) 0 3rem; }
+    .hero-content-wrapper { padding: clamp(94px, 12vh, 120px) 0 3rem; }
     .hero-inner { padding-inline: 24px; }
     .hero-eyebrow { margin-bottom: 20px; font-size: .66rem; letter-spacing: .19em; }
-    .hero-h1 { font-size: clamp(2.45rem, 10.5vw, 3.7rem); line-height: 1.04; margin-bottom: 20px; }
+    .hero-h1 { font-size: clamp(2.35rem, 9.9vw, 3.5rem); line-height: 1.04; margin-bottom: 20px; }
     .hero-h1-lead,
     .hero-h1-tail { max-width: 100%; }
     .hero-sub { font-size: 1rem; line-height: 1.52; margin-bottom: 26px; }
     .hero-cta-row { width: auto; }
     .hero-cta-row .btn-cta-primary { width: auto; min-height: 56px; padding: 14px 23px; font-size: 1rem; }
+}
+
+/* The medical sector has its own artwork, like the other sector pages. */
+.vertical-hero.medical-hero {
+    min-height: 790px;
+    padding: 90px 0 85px;
+    text-align: left;
+    background-color: #08090c;
+    background-image:
+        linear-gradient(90deg, #08090c 0%, rgba(8, 9, 12, .97) 28%, rgba(8, 9, 12, .76) 49%, rgba(8, 9, 12, .14) 75%),
+        linear-gradient(180deg, rgba(8, 9, 12, .35), transparent 48%, #08090c 100%),
+        url('/settori/studi-medici/hero-bg.webp');
+    background-size: cover, cover, auto 940px;
+    background-position: center, center, right top;
+    background-repeat: no-repeat;
+}
+.medical-hero .hero-contour-bg { display: none; }
+.medical-hero .hero-container {
+    width: 100%;
+    max-width: 1380px;
+    padding-inline: clamp(24px, 3.5vw, 52px);
+}
+.medical-hero .sector-breadcrumb,
+.medical-hero .vertical-hero-title,
+.medical-hero .vertical-hero-sub,
+.medical-hero .hero-actions-row,
+.medical-hero .trust-points-row,
+.medical-hero .vertical-chat-preview { margin-left: 0; margin-right: 0; max-width: 600px; }
+.medical-hero .sector-breadcrumb { justify-content: flex-start; }
+.medical-hero .vertical-hero-title { text-align: left; font-size: clamp(2.3rem, 4vw, 3.15rem); }
+.medical-hero .vertical-hero-sub { max-width: 550px; }
+.medical-hero .hero-actions-row,
+.medical-hero .trust-points-row { justify-content: flex-start; }
+.medical-hero .hero-actions-row .btn-cta-primary { min-height: 54px; }
+
+@media (max-width: 900px) {
+    .vertical-hero.medical-hero {
+        padding-top: 110px;
+        background-image:
+            linear-gradient(90deg, rgba(8, 9, 12, .98), rgba(8, 9, 12, .77)),
+            linear-gradient(180deg, rgba(8, 9, 12, .25), #08090c 85%),
+            url('/settori/studi-medici/hero-bg.webp');
+        background-size: cover, cover, auto 760px;
+        background-position: center, center, 60% top;
+    }
+}
+@media (max-width: 640px) {
+    .vertical-hero.medical-hero { padding: 105px 0 64px; }
+    .medical-hero .vertical-hero-title { font-size: clamp(2.2rem, 9vw, 3rem); }
+    .medical-hero .hero-actions-row .btn-cta-primary,
+    .medical-hero .hero-actions-row .btn-cta-secondary { width: 100%; }
+    .medical-hero .trust-points-row { justify-content: flex-start; align-items: flex-start; }
 }

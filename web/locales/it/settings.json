@@ -23,6 +23,34 @@
     "select_label": "Lingua attiva",
     "note": "La preferenza viene salvata per il tuo profilo."
   },
+  "appearance": {
+    "title": "Aspetto e Tema",
+    "description": "Personalizza l'aspetto visivo dell'interfaccia. La modalità sistema adatterà i colori in base al tuo dispositivo.",
+    "aria": "Selezione tema", "light": "Chiaro", "dark": "Scuro", "system": "Sistema"
+  },
+  "ai_configuration": {
+    "group_main": "Configurazioni principali", "identity_title": "Identità dell'attività",
+    "identity_help": "Dati essenziali utilizzati dall'assistente per presentarsi ed elaborare le risposte.",
+    "business_name": "Nome dell'attività", "business_name_placeholder": "Es. Salone Bellavista, Ristorante La Pergola...",
+    "category": "Settore / Categoria", "description": "Descrizione per l'AI",
+    "description_placeholder": "Es. Salone di bellezza specializzato in tagli moda, trattamenti benessere e colorazioni naturali.",
+    "opening_hours": "Orari di apertura ufficiali", "opening_hours_placeholder": "Es. Mar-Sab: 09:00 - 19:30 | Dom-Lun: Chiuso",
+    "hours_sync_note": "Gli orari sono sincronizzati automaticamente con Priorità 1 nella scheda Dati struttura.",
+    "communication_title": "Tono di voce e stile", "communication_help": "Stile comunicativo adottato dall'assistente nei messaggi verso i clienti.",
+    "communication_default": "Stile di comunicazione predefinito", "tone_professional": "Professionale e caloroso (consigliato)",
+    "tone_informal": "Informale e amichevole", "tone_formal": "Formale ed elegante", "custom_style": "Istruzioni specifiche di stile",
+    "custom_style_placeholder": "Es. Accogliente, chiaro, dai del tu, usa emoji con moderazione ed evidenzia la cura per i dettagli.",
+    "group_advanced": "Lingue e regole avanzate", "languages_title": "Lingue supportate",
+    "languages_help": "Rilevamento automatico della lingua del cliente. L'italiano è predefinito.",
+    "enabled_languages": "Lingue abilitate", "italian_default": "Italiano (predefinita)",
+    "fallback_default": "Lingua predefinita (se messaggio ambiguo)", "escalation_title": "Regole di escalation e sicurezza",
+    "escalation_help": "Condizioni per il passaggio immediato della conversazione allo staff.",
+    "new_rule_placeholder": "Aggiungi una nuova regola (es. Richieste per eventi privati o convenzioni)",
+    "add_rule": "+ Aggiungi regola", "save_btn": "Salva Configurazione AI", "save_loading": "Salvataggio in corso…",
+    "save_success": "Configurazione AI salvata e sincronizzata!", "save_toast": "Configurazione AI salvata e sincronizzata con successo",
+    "save_error": "Errore durante il salvataggio", "connection_error": "Errore di connessione con il server",
+    "rules_empty": "Nessuna regola attiva. Aggiungine una con il campo sottostante.", "remove_rule": "Elimina"
+  },
   "assistant_rules": {
     "title": "Istruzioni e Comportamento AI",
     "personality_label": "Tono di voce e personalità",

@@ -23,6 +23,33 @@
     "select_label": "Aktive Sprache",
     "note": "Diese Einstellung wird für Ihr Benutzerprofil gespeichert."
   },
+  "appearance": {
+    "title": "Erscheinungsbild & Design", "description": "Passen Sie das Erscheinungsbild der Oberfläche an. Der Systemmodus richtet die Farben nach den Geräteeinstellungen aus.",
+    "aria": "Designauswahl", "light": "Hell", "dark": "Dunkel", "system": "System"
+  },
+  "ai_configuration": {
+    "group_main": "Grundeinstellungen", "identity_title": "Unternehmensidentität",
+    "identity_help": "Wichtige Angaben, mit denen sich der Assistent vorstellt und Antworten formuliert.",
+    "business_name": "Name des Unternehmens", "business_name_placeholder": "z. B. Salon Bellavista, Restaurant La Pergola...",
+    "category": "Branche / Kategorie", "description": "Beschreibung für die KI",
+    "description_placeholder": "z. B. Ein Schönheitssalon für moderne Schnitte, Wellnessbehandlungen und natürliche Colorationen.",
+    "opening_hours": "Offizielle Öffnungszeiten", "opening_hours_placeholder": "z. B. Di-Sa: 09:00-19:30 | So-Mo: geschlossen",
+    "hours_sync_note": "Die Öffnungszeiten werden automatisch mit Priorität 1 im Tab Unternehmensdaten synchronisiert.",
+    "communication_title": "Stimme und Stil", "communication_help": "Kommunikationsstil, den der Assistent in Nachrichten an Kunden verwendet.",
+    "communication_default": "Standard-Kommunikationsstil", "tone_professional": "Professionell und herzlich (empfohlen)",
+    "tone_informal": "Locker und freundlich", "tone_formal": "Förmlich und elegant", "custom_style": "Individuelle Stilvorgaben",
+    "custom_style_placeholder": "z. B. Freundlich und klar formulieren, Emojis sparsam einsetzen und auf Details achten.",
+    "group_advanced": "Sprachen und erweiterte Regeln", "languages_title": "Unterstützte Sprachen",
+    "languages_help": "Die Sprache der Kunden wird automatisch erkannt. Italienisch ist die Standardsprache.",
+    "enabled_languages": "Aktivierte Sprachen", "italian_default": "Italienisch (Standard)",
+    "fallback_default": "Standardsprache (bei uneindeutiger Nachricht)", "escalation_title": "Eskalations- und Sicherheitsregeln",
+    "escalation_help": "Bedingungen für die sofortige Übergabe eines Gesprächs an Ihr Team.",
+    "new_rule_placeholder": "Regel hinzufügen (z. B. Anfragen zu privaten Veranstaltungen oder Sondervereinbarungen)",
+    "add_rule": "+ Regel hinzufügen", "save_btn": "KI-Konfiguration speichern", "save_loading": "Wird gespeichert…",
+    "save_success": "KI-Konfiguration gespeichert und synchronisiert!", "save_toast": "KI-Konfiguration wurde erfolgreich gespeichert und synchronisiert",
+    "save_error": "Fehler beim Speichern", "connection_error": "Verbindung zum Server fehlgeschlagen",
+    "rules_empty": "Keine aktiven Regeln. Fügen Sie unten eine Regel hinzu.", "remove_rule": "Entfernen"
+  },
   "assistant_rules": {
     "title": "KI-Anweisungen & Verhalten",
     "personality_label": "Tonalität und Persönlichkeit",

@@ -108,7 +108,7 @@ def test_allowlisted_function_is_skipped(tmp_path, monkeypatch):
     path = _write_module(tmp_path, BAD_SOURCE)
     monkeypatch.setitem(
         ALLOWLISTED_FUNCTIONS,
-        f"{path.as_posix()}::fetch_booking_by_id",
+        f"{check_tenant_scoping._path_label(path)}::fetch_booking_by_id",
         "motivo di test",
     )
     assert check_file(path) == []

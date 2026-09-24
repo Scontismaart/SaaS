@@ -9,6 +9,7 @@
   var DEFAULT_LANG = 'it';
   var STORAGE_KEY = 'melpis_lang';
   var COOKIE_NAME = 'melpis_lang';
+  var BUNDLE_VERSION = 'pr38-dashboard-language';
 
   var LOCALE_MAP = {
     it: 'it-IT',
@@ -95,7 +96,7 @@
       return Promise.resolve(loadedBundles[targetLang][ns]);
     }
 
-    var basePath = '/locales/' + targetLang + '/' + ns + '.json';
+    var basePath = '/locales/' + targetLang + '/' + ns + '.json?v=' + BUNDLE_VERSION;
     return fetch(basePath)
       .then(function (res) {
         if (!res.ok) throw new Error('Cannot fetch ' + basePath + ' (' + res.status + ')');
@@ -157,9 +158,9 @@
 
     if (global.i18next && global.i18next.isInitialized) {
       var res = global.i18next.t(ns + ':' + path, options);
-      if (res && res !== (ns + ':' + path)) return res;
+      if (res && res !== path && res !== (ns + ':' + path)) return res;
       res = global.i18next.t(key, options);
-      if (res && res !== key) return res;
+      if (res && res !== path && res !== key && res !== (ns + ':' + path)) return res;
     }
 
     // Fallback directly to in-memory bundles if i18next is pending or key missing
@@ -258,10 +259,10 @@
       }
     }).then(function () {
       updateDomTranslations();
-      var selectEl = typeof document !== 'undefined' ? document.getElementById('sidebar-lang-select') : null;
-      if (selectEl && selectEl.value !== lang) {
-        selectEl.value = lang;
-      }
+      ['sidebar-lang-select', 'settings-lang-select'].forEach(function (id) {
+        var selectEl = typeof document !== 'undefined' ? document.getElementById(id) : null;
+        if (selectEl && selectEl.value !== lang) selectEl.value = lang;
+      });
       // Dispatch custom event so app.js can re-render dynamic tables/charts
       var evt = new CustomEvent('melpis:lang-changed', {
         detail: {
@@ -282,19 +283,41 @@
     currentLang = initialLang;
     if (typeof document !== 'undefined') {
       document.documentElement.lang = (initialLang === 'pseudo') ? 'it' : initialLang;
+      // Bind both language controls before fetching bundles so a quick choice
+      // during initial loading is never lost.
+      ['sidebar-lang-select', 'settings-lang-select'].forEach(function (id) {
+        var selectEl = document.getElementById(id);
+        if (!selectEl) return;
+        selectEl.value = initialLang;
+        if (!selectEl.dataset.i18nBound) {
+          selectEl.dataset.i18nBound = 'true';
+          selectEl.addEventListener('change', function () {
+            setLanguage(this.value).catch(function (err) {
+              console.warn('[MelpisI18n] Language change failed', err);
+            });
+          });
+        }
+      });
     }
 
     // Load initial bundles
     return loadAllNamespaces(initialLang, namespaces)
       .then(function () {
-        if (initialLang !== DEFAULT_LANG && initialLang !== 'pseudo') {
+        var effectiveLang = currentLang;
+        if (!loadedBundles[effectiveLang === 'pseudo' ? 'it' : effectiveLang]) {
+          return loadAllNamespaces(effectiveLang, namespaces).then(function () { return effectiveLang; });
+        }
+        return effectiveLang;
+      })
+      .then(function (effectiveLang) {
+        if (effectiveLang !== DEFAULT_LANG && effectiveLang !== 'pseudo') {
           // Always preload default language for instantaneous fallback
           loadAllNamespaces(DEFAULT_LANG, namespaces);
         }
 
         if (global.i18next) {
           var resources = {};
-          var targetLang = (initialLang === 'pseudo') ? 'it' : initialLang;
+          var targetLang = (effectiveLang === 'pseudo') ? 'it' : effectiveLang;
           resources[targetLang] = loadedBundles[targetLang] || {};
           if (loadedBundles[DEFAULT_LANG]) {
             resources[DEFAULT_LANG] = loadedBundles[DEFAULT_LANG];
@@ -317,16 +340,10 @@
         isInitialized = true;
         updateDomTranslations();
         if (typeof document !== 'undefined') {
-          var selectEl = document.getElementById('sidebar-lang-select');
-          if (selectEl) {
-            selectEl.value = initialLang;
-            if (!selectEl.dataset.i18nBound) {
-              selectEl.dataset.i18nBound = 'true';
-              selectEl.addEventListener('change', function () {
-                setLanguage(this.value);
-              });
-            }
-          }
+          ['sidebar-lang-select', 'settings-lang-select'].forEach(function (id) {
+            var selectEl = document.getElementById(id);
+            if (selectEl) selectEl.value = currentLang;
+          });
         }
         return currentLang;
       });

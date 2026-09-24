@@ -85,3 +85,46 @@ def test_health_ready_probe_db_down(client, monkeypatch):
     assert data["status"] == "degraded"
     assert data["checks"]["database"] == "errore di connessione"
     assert "DB connection refused" not in resp.text
+
+
+def test_health_ready_remains_ok_without_ai_provider(client, monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    mock_pool = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.fetchval = AsyncMock(return_value=1)
+    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    app.state.pool = mock_pool
+
+    ready = client.get("/api/health/ready")
+    assert ready.status_code == 200
+    assert ready.json()["checks"]["ai_provider"] == "non_configurato"
+    ai = client.get("/api/health/ai")
+    assert ai.status_code == 503
+    assert ai.json()["remote_status"] == "non_verificato"
+    assert "dummy-offline-key" not in ai.text
+
+
+def test_health_ready_requires_database_pool(client):
+    app.state.pool = None
+    ready = client.get("/api/health/ready")
+    assert ready.status_code == 503
+    assert ready.json()["checks"]["database"].startswith("non configurato")
+
+
+def test_malformed_ai_endpoint_does_not_break_core_health(client, monkeypatch):
+    monkeypatch.setenv("LLM_COST_POLICY", "standard")
+    monkeypatch.setenv("AI_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AI_MODEL", "custom-free-model")
+    monkeypatch.setenv("AI_API_KEY", "dummy-offline-key")
+    monkeypatch.setenv("AI_BASE_URL", "http://[bad-ipv6")
+    mock_pool = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.fetchval = AsyncMock(return_value=1)
+    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+    app.state.pool = mock_pool
+    assert client.get("/api/health/ready").status_code == 200
+    ai = client.get("/api/health/ai")
+    assert ai.status_code == 503
+    assert ai.json()["status"] == "non_configurato"

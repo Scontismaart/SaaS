@@ -23,6 +23,33 @@
     "select_label": "Active language",
     "note": "This preference is saved for your user profile."
   },
+  "appearance": {
+    "title": "Appearance & Theme", "description": "Customize the interface appearance. System mode adapts colors to your device settings.",
+    "aria": "Theme selection", "light": "Light", "dark": "Dark", "system": "System"
+  },
+  "ai_configuration": {
+    "group_main": "Main settings", "identity_title": "Business identity",
+    "identity_help": "Essential details the assistant uses to introduce your business and prepare replies.",
+    "business_name": "Business name", "business_name_placeholder": "e.g. Bellavista Salon, La Pergola Restaurant...",
+    "category": "Industry / Category", "description": "Description for the AI",
+    "description_placeholder": "e.g. A beauty salon specializing in modern cuts, wellness treatments, and natural color.",
+    "opening_hours": "Official opening hours", "opening_hours_placeholder": "e.g. Tue-Sat: 09:00-19:30 | Sun-Mon: Closed",
+    "hours_sync_note": "Hours sync automatically with Priority 1 in the Business Details tab.",
+    "communication_title": "Voice and style", "communication_help": "The communication style the assistant uses in messages to customers.",
+    "communication_default": "Default communication style", "tone_professional": "Professional and warm (recommended)",
+    "tone_informal": "Informal and friendly", "tone_formal": "Formal and polished", "custom_style": "Custom style instructions",
+    "custom_style_placeholder": "e.g. Be welcoming and clear, use a friendly tone, limit emojis, and highlight attention to detail.",
+    "group_advanced": "Languages and advanced rules", "languages_title": "Supported languages",
+    "languages_help": "Automatically detect the customer's language. Italian is the default.",
+    "enabled_languages": "Enabled languages", "italian_default": "Italian (default)",
+    "fallback_default": "Default language (when a message is ambiguous)", "escalation_title": "Escalation and safety rules",
+    "escalation_help": "Conditions for immediately handing a conversation to your team.",
+    "new_rule_placeholder": "Add a rule (e.g. requests for private events or special arrangements)",
+    "add_rule": "+ Add rule", "save_btn": "Save AI Configuration", "save_loading": "Saving…",
+    "save_success": "AI configuration saved and synced!", "save_toast": "AI configuration saved and synced successfully",
+    "save_error": "Error while saving", "connection_error": "Could not connect to the server",
+    "rules_empty": "No active rules. Add one using the field below.", "remove_rule": "Remove"
+  },
   "assistant_rules": {
     "title": "AI Instructions & Behavior",
     "personality_label": "Tone of voice and personality",

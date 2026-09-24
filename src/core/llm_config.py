@@ -1,25 +1,12 @@
-"""
-llm_config.py
--------------
-Punto unico dove configuriamo quale modello LLM usare e con quale
-provider. I connettori disponibili non certificano le condizioni commerciali
-o privacy del singolo account. Il profilo free_only ammette solo Groq verificato:
-  - openrouter:  parametro `provider.data_collection='deny'` (fail-closed)
-  - groq:        via LiteLLM, chiave GROQ_API_KEY (policy: no training)
-  - cerebras:    connettore disponibile, escluso dal profilo free_only
-
-CrewAI usa LiteLLM sotto il cofano: basta prefissare il model id con il
-provider ("openrouter/", "groq/", "cerebras/") e passare la chiave della
-variabile d'ambiente del provider. Non aggiungere provider che addestrano
-sui dati senza prima verificare la policy.
-"""
+"""Common LLM factory with provider-specific adapters and a fail-closed budget."""
 
 import asyncio
 import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 from crewai import LLM
-from src.core.cost_policy import DEFAULT_FREE_MODEL, assert_model_allowed
+from src.core.ai_providers import provider_for_model
+from src.core.cost_policy import DEFAULT_FREE_MODEL, assert_model_allowed, free_only
 from src.core.llm_routing import (
     LLMRoute,
     LLMRouteRequest,
@@ -49,23 +36,30 @@ LLM_CONCURRENCY_SEM = asyncio.Semaphore(int(os.getenv("LLM_MAX_CONCURRENT", "3")
 
 # Prefissi provider riconosciuti nei model id. I provider sono whitelistati:
 # solo quelli che NON addestrano sui dati possono stare nella chain.
-_PROVIDER_PREFIXES = ("openrouter/", "groq/", "cerebras/", "mistral/")
-
-_KEY_ENV_BY_PROVIDER = {
-    "openrouter": "OPENROUTER_API_KEY",
-    "groq": "GROQ_API_KEY",
-    "cerebras": "CEREBRAS_API_KEY",
-    "mistral": "MISTRAL_API_KEY",
-}
+def configured_model() -> str:
+    return os.getenv("AI_MODEL", "").strip() or os.getenv("OPENROUTER_MODEL", "").strip() or MODELLO_DEFAULT
 
 
-def _provider_of(model: str) -> str:
-    """Riconosce il prefisso provider di un model id. Un id senza prefisso
-    noto (es. "openai/gpt-4o-mini") e' un id OpenRouter (backwards compat)."""
-    for prefix in _PROVIDER_PREFIXES:
-        if model.startswith(prefix):
-            return prefix[:-1]  # "openrouter/"(->"openrouter"), "groq/"->"groq"
-    return "openrouter"
+def ai_configuration_status() -> dict[str, str]:
+    """Report local configuration only; never contact a provider or expose keys."""
+    model = configured_model()
+    try:
+        assert_model_allowed(model)
+        provider = provider_for_model(model, os.getenv("AI_PROVIDER", "").strip().lower())
+        if free_only() and (provider.name != "groq" or os.getenv("AI_BASE_URL", "").strip()):
+            raise RuntimeError("Budget EUR 0: provider o endpoint non autorizzato")
+        key_env = provider.key_env
+        if provider.name == "openai_compatible" or (os.getenv("AI_PROVIDER") and not free_only()):
+            key_env = "AI_API_KEY" if os.getenv("AI_API_KEY", "").strip() else provider.key_env
+        key = os.getenv(key_env, "").strip()
+        if not key:
+            return {"status": "non_configurato", "provider": provider.name, "model": model, "reason": f"{key_env} mancante"}
+        if provider.requires_base_url and not os.getenv("AI_BASE_URL", "").strip():
+            return {"status": "non_configurato", "provider": provider.name, "model": model, "reason": "AI_BASE_URL mancante"}
+        provider.client_params(model, key, os.getenv("AI_BASE_URL", "").strip() or None)
+        return {"status": "configurato", "provider": provider.name, "model": model, "reason": "verifica remota non eseguita"}
+    except RuntimeError:
+        return {"status": "non_configurato", "provider": "non_disponibile", "model": model, "reason": "configurazione o policy non valida"}
 
 
 def crea_llm(
@@ -77,35 +71,30 @@ def crea_llm(
     selected_model = model
     if selected_model is None and route_request is not None:
         selected_model = route_llm(route_request).model
-    selected_model = selected_model or MODELLO_DEFAULT
+    selected_model = selected_model or configured_model()
     assert_model_allowed(selected_model)
 
-    provider = _provider_of(selected_model)
-    key_env = _KEY_ENV_BY_PROVIDER[provider]
-    api_key = os.getenv(key_env)
+    provider = provider_for_model(selected_model, os.getenv("AI_PROVIDER", "").strip().lower())
+    if free_only() and (provider.name != "groq" or os.getenv("AI_BASE_URL", "").strip()):
+        raise RuntimeError("Budget EUR 0: provider o endpoint non autorizzato")
+    key_env = provider.key_env
+    if provider.name == "openai_compatible" or (os.getenv("AI_PROVIDER") and not free_only()):
+        key_env = "AI_API_KEY" if os.getenv("AI_API_KEY", "").strip() else provider.key_env
+    api_key = os.getenv(key_env, "").strip()
     if not api_key:
         raise RuntimeError(
             f"{key_env} non trovata. Copia .env.example in .env e inserisci "
-            f"la chiave API per il provider '{provider}'."
+            f"la chiave API per il provider '{provider.name}'."
         )
 
     if max_tokens is None:
         max_tokens = int(os.getenv("LLM_MAX_TOKENS", "250"))
 
     llm_params: dict[str, object] = {
-        "model": selected_model,
-        "api_key": api_key,
+        **provider.client_params(selected_model, api_key, os.getenv("AI_BASE_URL", "").strip() or None),
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
-
-    if provider == "openrouter":
-        if not selected_model.startswith("openrouter/"):
-            llm_params["model"] = f"openrouter/{selected_model}"
-        llm_params["base_url"] = "https://openrouter.ai/api/v1"
-        llm_params["additional_params"] = {
-            "extra_body": {"provider": {"data_collection": "deny"}},
-        }
 
     return LLM(**llm_params)
 
@@ -116,6 +105,8 @@ __all__ = [
     "LLMRouteRequest",
     "MAX_RETRY",
     "MODELLO_DEFAULT",
+    "ai_configuration_status",
+    "configured_model",
     "budget_ratio_from_billing",
     "crea_llm",
     "get_route_fallback_models",

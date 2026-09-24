@@ -1,12 +1,12 @@
 {
   "filters": {
-    "all": "Tutti",
-    "open": "Aperti",
-    "mine": "Miei ticket",
-    "ai_handling": "Gestiti da AI",
-    "human_needed": "Intervento richiesto",
-    "closed": "Chiusi",
-    "search_chats": "Cerca conversazione..."
+    "open": "Aperti", "mine": "Miei ticket", "ai_handling": "Gestiti da AI", "human_needed": "Intervento richiesto", "closed": "Chiusi", "search_chats": "Cerca conversazione...",
+    "conversations": "Conversazioni", "list_aria": "Lista conversazioni", "search_aria": "Cerca nelle conversazioni",
+    "channel": "Canale", "channel_aria": "Filtra per canale", "status": "Stato", "status_aria": "Filtra per stato e gestione",
+    "all": "Tutti", "operator": "Operatore", "escalated": "Escalated", "resolved": "Risolte",
+    "detail_aria": "Dettaglio conversazione", "empty_title": "Nessun messaggio in questa conversazione.",
+    "empty_text": "Seleziona una conversazione dall'elenco per visualizzare lo storico dei messaggi e rispondere.",
+    "back_aria": "Torna all'elenco conversazioni", "message_placeholder": "Scrivi un messaggio…", "message_aria": "Scrivi messaggio"
   },
   "chat": {
     "claim_btn": "Prendi in carico",

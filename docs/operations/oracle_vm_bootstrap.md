@@ -178,10 +178,15 @@ curl --fail --show-error --resolve 'melpis-vm.example.net:443:VM_PUBLIC_IP' \
   https://melpis-vm.example.net/api/health/live
 curl --fail --show-error --resolve 'melpis-vm.example.net:443:VM_PUBLIC_IP' \
   https://melpis-vm.example.net/api/health/ready
+curl --fail --show-error --resolve 'melpis-vm.example.net:443:VM_PUBLIC_IP' \
+  https://melpis-vm.example.net/api/health/ai
 ```
 
-`live` proves the API/worker liveness contract; `ready` also checks required
-dependencies and configuration. Do the full sandbox smoke test before buying or
+`live` proves the API/worker liveness contract; `ready` checks the core database
+dependency. The separate `ai` check validates local provider configuration and
+the EUR 0 policy, but deliberately makes no remote inference call: HTTP 200 is
+not proof that the provider is reachable or has remaining free quota. All three
+checks must pass before enabling AI for users. Do the full sandbox smoke test before buying or
 switching the final domain: login/MFA, two-tenant isolation, signed webhook fast
 ACK plus durable processing, STOP consent persistence, guardrailed reply,
 escalation, and idempotent retry. See `docs/DEPLOY.md` for the full release gate.
@@ -205,6 +210,7 @@ Caddy/compose release and verify:
 sudo -iu melpis docker compose --env-file /srv/melpis/app/.env.production \
   -f /srv/melpis/app/compose.production.yml up -d
 curl --fail --show-error https://melpis.it/api/health/ready
+curl --fail --show-error https://melpis.it/api/health/ai
 curl --fail --show-error --location --max-redirs 1 https://app.melpis.it/
 ```
 
@@ -238,7 +244,8 @@ Set `SENTRY_DSN` only in `.env.production`, retain appropriate PII scrubbing and
 sampling, restart the compose stack, and send a controlled error from a sandbox
 workflow to confirm the project receives it. Configure an independent uptime
 monitor for `https://melpis.it/api/health/ready` (and alert delivery), with no
-credentials in the monitor URL. Uptime checks do not replace Sentry, logs, or
+credentials in the monitor URL. Monitor `/api/health/ai` separately so an
+unconfigured provider cannot be mistaken for a healthy assistant. Uptime checks do not replace Sentry, logs, or
 the end-to-end webhook/worker checks.
 
 For an application rollback, retain the prior immutable image digest references

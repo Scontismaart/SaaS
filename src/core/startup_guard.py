@@ -18,6 +18,11 @@ STRIPE_PRICE_ENV_NAMES = (
     "STRIPE_PRICE_BUSINESS_YEARLY",
 )
 MODEL_ENV_NAMES = (
+    "AI_MODEL",
+    "AI_MODEL_CHEAP",
+    "AI_MODEL_PREMIUM",
+    "AI_MODEL_FALLBACKS",
+    "AI_MODEL_INTENT",
     "OPENROUTER_MODEL",
     "OPENROUTER_MODEL_CHEAP",
     "OPENROUTER_MODEL_PREMIUM",
@@ -70,6 +75,10 @@ def _assert_free_groq_profile() -> None:
     if os.getenv("GROQ_ZDR_CONFIRMED", "").strip().lower() != "true":
         raise RuntimeError("AVVIO BLOCCATO: Groq ZDR non confermato")
     _require_safe_value("GROQ_API_KEY", prefix="gsk_", min_length=16)
+    if os.getenv("AI_PROVIDER", "groq").strip().lower() != "groq":
+        raise RuntimeError("AVVIO BLOCCATO: il profilo EUR 0 richiede AI_PROVIDER=groq")
+    if os.getenv("AI_BASE_URL", "").strip() or os.getenv("AI_API_KEY", "").strip():
+        raise RuntimeError("AVVIO BLOCCATO: endpoint/chiave AI custom non autorizzati nel profilo EUR 0")
 
     for name in MODEL_ENV_NAMES:
         configured = os.getenv(name, "")

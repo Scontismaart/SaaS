@@ -1,12 +1,12 @@
 {
   "filters": {
-    "all": "All",
-    "open": "Open",
-    "mine": "My tickets",
-    "ai_handling": "AI handling",
-    "human_needed": "Human needed",
-    "closed": "Closed",
-    "search_chats": "Search conversations..."
+    "open": "Open", "mine": "My tickets", "ai_handling": "AI handling", "human_needed": "Human needed", "closed": "Closed", "search_chats": "Search conversations...",
+    "conversations": "Conversations", "list_aria": "Conversation list", "search_aria": "Search conversations",
+    "channel": "Channel", "channel_aria": "Filter by channel", "status": "Status", "status_aria": "Filter by status and owner",
+    "all": "All", "operator": "Agent", "escalated": "Escalated", "resolved": "Resolved",
+    "detail_aria": "Conversation details", "empty_title": "No messages in this conversation.",
+    "empty_text": "Select a conversation from the list to view message history and reply.",
+    "back_aria": "Back to conversation list", "message_placeholder": "Write a message…", "message_aria": "Write a message"
   },
   "chat": {
     "claim_btn": "Take over ticket",

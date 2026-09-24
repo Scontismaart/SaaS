@@ -79,6 +79,110 @@ test("i18n: client adapter loads and provides Intl formatters", () => {
   dom.window.close();
 });
 
+test("i18n: Settings language selector updates the dashboard shell and persists", async () => {
+  const clientCode = fs.readFileSync(path.resolve(__dirname, "../../web/i18n-client.js"), "utf8");
+  const localeDir = path.resolve(__dirname, "../../web/locales");
+  const dom = new JSDOM(`<!doctype html><html><head></head><body>
+    <select id="sidebar-lang-select"><option value="it">Italiano</option><option value="en">English</option></select>
+    <select id="settings-lang-select"><option value="it">Italiano</option><option value="en">English</option></select>
+    <nav data-i18n-aria="dashboard:sidebar.nav_aria"><span data-i18n="dashboard:sidebar.nav_panoramica">Panoramica</span></nav>
+    <h1 id="topbar-title" data-i18n="dashboard:topbar.title_panoramica">Panoramica</h1>
+    <span data-i18n="dashboard:overview.attention_title">Richiede la tua attenzione</span>
+  </body></html>`, { url: "https://melpis.it/app/", runScripts: "outside-only" });
+
+  dom.window.localStorage.setItem("melpis_lang", "it");
+  // Some i18next configurations return the unresolved path without its namespace.
+  // The client must fall back to its loaded JSON bundle rather than showing that path.
+  dom.window.i18next = {
+    isInitialized: false,
+    init: async function () { this.isInitialized = true; },
+    addResourceBundle: function () {},
+    changeLanguage: async function () {},
+    t: function (key) { return String(key).split(":").pop(); },
+  };
+  dom.window.fetch = async (url) => {
+    const relative = String(url).replace(/^\//, "").split("?")[0];
+    const filePath = path.join(path.resolve(__dirname, "../../web"), relative);
+    return {
+      ok: fs.existsSync(filePath),
+      status: fs.existsSync(filePath) ? 200 : 404,
+      json: async () => JSON.parse(fs.readFileSync(filePath, "utf8")),
+    };
+  };
+  dom.window.eval(clientCode);
+  const i18n = dom.window.MelpisI18n;
+  await i18n.init();
+  assert.equal(dom.window.document.querySelector("[data-i18n='dashboard:sidebar.nav_panoramica']").textContent, "Panoramica");
+
+  const changed = new Promise((resolve) => dom.window.addEventListener("melpis:lang-changed", resolve, { once: true }));
+  const settingsSelect = dom.window.document.getElementById("settings-lang-select");
+  settingsSelect.value = "en";
+  settingsSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  await changed;
+
+  assert.equal(i18n.getLanguage(), "en");
+  assert.equal(dom.window.document.documentElement.lang, "en");
+  assert.equal(dom.window.document.getElementById("sidebar-lang-select").value, "en");
+  assert.equal(settingsSelect.value, "en");
+  assert.equal(dom.window.document.querySelector("[data-i18n='dashboard:sidebar.nav_panoramica']").textContent, "Overview");
+  assert.equal(dom.window.document.getElementById("topbar-title").textContent, "Overview");
+  assert.equal(dom.window.document.querySelector("[data-i18n='dashboard:overview.attention_title']").textContent, "Needs your attention");
+  assert.equal(dom.window.localStorage.getItem("melpis_lang"), "en");
+  assert.match(dom.window.document.cookie, /melpis_lang=en/);
+  dom.window.close();
+});
+
+test("i18n: dashboard bundles stay synchronized and cover visible Settings, AI, and Inbox copy", () => {
+  const root = path.resolve(__dirname, "../..");
+  const localesRoot = path.join(root, "locales");
+  const dashboard = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
+  const appCode = fs.readFileSync(path.join(root, "web/app.js"), "utf8");
+  const keys = new Set([
+    ...Array.from(dashboard.matchAll(/data-i18n(?:-[a-z]+)?="([^"]+)"/g), (match) => match[1]),
+    ...Array.from(appCode.matchAll(/t\("((?:settings|inbox|dashboard):[^\"]+)"\)/g), (match) => match[1]),
+  ]);
+  const resolveKey = (bundle, key) => {
+    const separator = key.indexOf(":");
+    let namespace = separator >= 0 ? key.slice(0, separator) : "common";
+    let keyPath = separator >= 0 ? key.slice(separator + 1) : key;
+    if (separator < 0) {
+      const dot = key.indexOf(".");
+      const possibleNamespace = dot >= 0 ? key.slice(0, dot) : "";
+      if (["dashboard", "inbox", "settings"].includes(possibleNamespace)) {
+        namespace = possibleNamespace;
+        keyPath = key.slice(dot + 1);
+      }
+    }
+    return keyPath.split(".").reduce((value, part) => value && value[part], bundle[namespace]);
+  };
+
+  for (const lang of SUPPORTED_LANGS) {
+    const namespaces = {};
+    for (const ns of ["dashboard", "settings", "inbox"]) {
+      const sourcePath = path.join(localesRoot, lang, `${ns}.json`);
+      const source = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
+      namespaces[ns] = source;
+      for (const targetRoot of [path.join(root, "web/locales"), path.join(root, "web/landing/locales")]) {
+        const served = JSON.parse(fs.readFileSync(path.join(targetRoot, lang, `${ns}.json`), "utf8"));
+        assert.deepEqual(served, source, `${targetRoot} ${lang}/${ns}.json is synchronized with source`);
+      }
+    }
+    for (const key of keys) {
+      assert.equal(typeof resolveKey(namespaces, key), "string", `${lang} translation exists for ${key}`);
+    }
+  }
+  for (const key of [
+    "settings:ai_configuration.rules_empty",
+    "settings:ai_configuration.remove_rule",
+    "settings:ai_configuration.save_loading",
+    "settings:ai_configuration.save_success",
+    "settings:ai_configuration.save_error",
+    "settings:ai_configuration.connection_error",
+  ]) {
+    assert.ok(appCode.includes(`t("${key}")`), `dynamic AI copy uses ${key}`);
+  }
+});
+
 test("production landing CSP has no inline-code exception", () => {
   const headers = fs.readFileSync(path.resolve(__dirname, "../../web/security-headers.conf"), "utf8");
   assert.match(headers, /script-src 'self';/);

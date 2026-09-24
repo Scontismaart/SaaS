@@ -21,8 +21,11 @@ def test_health_check(monkeypatch):
     _configure_free_llm(monkeypatch)
     from fastapi.testclient import TestClient
     with TestClient(app) as client:
-        resp = client.get("/api/health")
+        resp = client.get("/api/health/live")
         assert resp.status_code == 200
+        readiness = client.get("/api/health")
+        assert readiness.status_code == 503
+        assert readiness.json()["checks"]["database"] != "ok"
 
 
 @pytest.mark.skipif(not HAS_MAIN, reason=f"Cannot import main.py: {globals().get('_import_error', 'unknown')}")
@@ -53,7 +56,7 @@ def test_cors_header_present(monkeypatch):
     _configure_free_llm(monkeypatch)
     from fastapi.testclient import TestClient
     with TestClient(app) as client:
-        resp = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
+        resp = client.get("/api/health/live", headers={"Origin": "http://localhost:5173"})
         assert resp.status_code == 200
         assert resp.headers.get("access-control-allow-origin") == "http://localhost:5173"
 
@@ -71,10 +74,10 @@ def test_cors_whitespace_stripped(monkeypatch):
     app2 = main_mod.app
     from fastapi.testclient import TestClient
     with TestClient(app2) as client:
-        resp = client.get("/api/health", headers={"Origin": "http://a.com"})
+        resp = client.get("/api/health/live", headers={"Origin": "http://a.com"})
         assert resp.status_code == 200
         assert resp.headers.get("access-control-allow-origin") == "http://a.com"
-        resp2 = client.get("/api/health", headers={"Origin": "http://b.com"})
+        resp2 = client.get("/api/health/live", headers={"Origin": "http://b.com"})
         assert resp2.status_code == 200
         assert resp2.headers.get("access-control-allow-origin") == "http://b.com"
 

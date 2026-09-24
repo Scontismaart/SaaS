@@ -1,12 +1,12 @@
 {
   "filters": {
-    "all": "Todos",
-    "open": "Abiertos",
-    "mine": "Mis conversaciones",
-    "ai_handling": "Atendidos por IA",
-    "human_needed": "Atención requerida",
-    "closed": "Cerrados",
-    "search_chats": "Buscar conversación..."
+    "open": "Abiertos", "mine": "Mis conversaciones", "ai_handling": "Atendidos por IA", "human_needed": "Atención requerida", "closed": "Cerrados", "search_chats": "Buscar conversación...",
+    "conversations": "Conversaciones", "list_aria": "Lista de conversaciones", "search_aria": "Buscar conversaciones",
+    "channel": "Canal", "channel_aria": "Filtrar por canal", "status": "Estado", "status_aria": "Filtrar por estado y responsable",
+    "all": "Todos", "operator": "Agente", "escalated": "Escaladas", "resolved": "Resueltas",
+    "detail_aria": "Detalles de la conversación", "empty_title": "No hay mensajes en esta conversación.",
+    "empty_text": "Selecciona una conversación de la lista para ver el historial y responder.",
+    "back_aria": "Volver a la lista de conversaciones", "message_placeholder": "Escribe un mensaje…", "message_aria": "Escribe un mensaje"
   },
   "chat": {
     "claim_btn": "Tomar conversación",

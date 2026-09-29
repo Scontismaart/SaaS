@@ -15,7 +15,13 @@
     "title": "Localizzazione e Fuso orario",
     "description": "Il fuso orario è usato per reminder prenotazioni, report di fine giornata e calcolo degli SLA.",
     "label": "Fuso orario dell'attività",
-    "save_btn": "Salva fuso orario"
+    "save_btn": "Salva fuso orario",
+    "load_loading": "Caricamento fuso orario in corso…",
+    "load_error": "Impossibile caricare il fuso orario. Riprova.",
+    "save_loading": "Salvataggio in corso…",
+    "save_success": "Fuso orario aggiornato",
+    "save_error": "Salvataggio non riuscito",
+    "connection_error": "Errore di connessione"
   },
   "language_section": {
     "title": "Lingua del pannello",
@@ -49,6 +55,7 @@
     "add_rule": "+ Aggiungi regola", "save_btn": "Salva Configurazione AI", "save_loading": "Salvataggio in corso…",
     "save_success": "Configurazione AI salvata e sincronizzata!", "save_toast": "Configurazione AI salvata e sincronizzata con successo",
     "save_error": "Errore durante il salvataggio", "connection_error": "Errore di connessione con il server",
+    "load_loading": "Caricamento configurazione AI in corso…", "load_error": "Impossibile caricare la configurazione AI. Riprova accedendo di nuovo a questa sezione.",
     "rules_empty": "Nessuna regola attiva. Aggiungine una con il campo sottostante.", "remove_rule": "Elimina"
   },
   "assistant_rules": {

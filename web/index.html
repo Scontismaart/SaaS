@@ -5,9 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Melpis — Pannello di controllo</title>
 <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="icon" href="logo.webp" type="image/webp">
+<link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+<link rel="manifest" href="/brand/melpis.webmanifest">
+<link rel="apple-touch-icon" sizes="180x180" href="/brand/melpis-app-icon.svg">
 <script src="theme-init.js"></script>
-<link rel="stylesheet" href="style.css?v=integ-v7">
+<link rel="stylesheet" href="style.css?v=dashboard-ui-refresh-20260925-v3">
+<link rel="stylesheet" href="/brand/brand-logo.css">
+<script defer src="/brand/brand-logo.js"></script>
 </head>
 <body>
 
@@ -20,7 +24,7 @@
     <div class="sidebar-brand">
       <div class="sidebar-brand-row">
         <span class="sidebar-mark is-1cd97b70ca2e" aria-hidden="true">
-          <img src="logo.webp" alt="Melpis" width="32" height="32" class="is-bc202627ef28">
+          <brand-logo variant="symbol" theme="auto" size="lg"></brand-logo>
         </span>
         <div class="sidebar-brand-text">
           <span class="sidebar-brand-eyebrow" data-i18n="dashboard:sidebar.brand_eyebrow">Pannello</span>
@@ -120,10 +124,6 @@
           </button>
         </div>
       </div>
-      <div class="sidebar-footer-note">
-        <div class="sidebar-footer-brand">Melpis · <span id="sidebar-footer-business">La tua attività</span></div>
-        <div class="sidebar-footer-tagline" data-i18n="dashboard:sidebar.tagline">Più tempo per ciò che conta.</div>
-      </div>
     </div>
   </aside>
 
@@ -164,9 +164,6 @@
             <div class="notif-list" id="notif-list"></div>
           </div>
         </div>
-        <button type="button" class="topbar-avatar-btn" id="topbar-avatar-btn" aria-label="Profilo" data-i18n-aria="dashboard:topbar.profile_aria">
-          <span class="topbar-avatar-initial" id="topbar-avatar-initial">F</span>
-        </button>
         <button type="button" class="accesso-btn" id="accesso-btn" data-i18n="dashboard:topbar.login_btn">Accedi</button>
       </div>
     </header>
@@ -185,9 +182,6 @@
               <span class="kpi-label" data-i18n="dashboard:kpi.total_received">Messaggi ricevuti</span>
               <span class="kpi-value" id="stat-totale">0</span>
             </div>
-            <button type="button" class="kpi-action-btn" aria-label="Dettagli messaggi ricevuti" data-i18n-aria="dashboard:kpi.total_received_aria" data-view="inbox">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
           </div>
           <div class="kpi-card-middle">
             <span class="kpi-trend-badge trend-neutral" id="trend-totale">
@@ -212,9 +206,6 @@
               <span class="kpi-label" data-i18n="dashboard:kpi.handled_by_ai">Gestiti dall'assistente</span>
               <span class="kpi-value" id="stat-ai">0</span>
             </div>
-            <button type="button" class="kpi-action-btn" aria-label="Dettagli gestiti AI" data-i18n-aria="dashboard:kpi.ai_details_aria" data-view="assistente">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
           </div>
           <div class="kpi-card-middle">
             <span class="kpi-trend-badge trend-positive" id="trend-ai">
@@ -239,9 +230,6 @@
               <span class="kpi-label" data-i18n="dashboard:kpi.escalated_human">Girati a un umano</span>
               <span class="kpi-value" id="stat-umano">0</span>
             </div>
-            <button type="button" class="kpi-action-btn" aria-label="Dettagli girati a umano" data-i18n-aria="dashboard:kpi.human_details_aria" data-view="inbox">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m9 18 6-6-6-6"/></svg>
-            </button>
           </div>
           <div class="kpi-card-middle">
             <span class="kpi-trend-badge trend-neutral" id="trend-umano">
@@ -775,7 +763,7 @@
               </div>
             </div>
             
-            <textarea class="review-textarea" id="review-text" rows="3" placeholder="Incolla qui il testo della recensione ricevuta (es. 'Cibo eccellente e personale molto cortese, ma l\'attesa è stata un po\' lunga...')..." data-i18n-placeholder="dashboard:reviews.text_placeholder"></textarea>
+            <textarea class="review-textarea" id="review-text" rows="3" placeholder="Incolla qui il testo della recensione ricevuta (es. 'Cibo eccellente e personale molto cortese, ma l\'attesa è stata un po\' lunga...')..." data-i18n-placeholder="dashboard:reviews.text_placeholder" data-i18n-aria="dashboard:reviews.text_placeholder"></textarea>
             
             <div class="review-controls-bar">
               <div class="review-input-group author-group">
@@ -900,9 +888,9 @@
               <div class="review-search-wrap">
                 <div class="search-input-box">
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                  <input type="text" class="review-search-input" id="review-search-input" placeholder="Cerca per autore o testo..." data-i18n-placeholder="dashboard:reviews.search_placeholder">
+                  <input type="text" class="review-search-input" id="review-search-input" placeholder="Cerca per autore o testo..." data-i18n-placeholder="dashboard:reviews.search_placeholder" data-i18n-aria="dashboard:reviews.search_placeholder">
                 </div>
-                <select class="review-filter-source" id="review-filter-source">
+                <select class="review-filter-source" id="review-filter-source" data-i18n-aria="dashboard:reviews.all_sources">
                   <option value="" data-i18n="dashboard:reviews.all_sources">Tutti i canali</option>
                   <option value="google">Google</option>
                   <option value="tripadvisor">TripAdvisor</option>
@@ -986,7 +974,7 @@
                     <span class="channel-desc" data-i18n="dashboard:reviews.google_sync">Sincronizzazione recensioni</span>
                   </div>
                 </div>
-                <span class="channel-badge ready" data-i18n="dashboard:reviews.active">Attivo</span>
+                <span class="channel-badge manual" id="reviews-google-summary-status" data-state="loading" aria-live="polite">Verifica stato…</span>
               </div>
               <div class="channel-status-item">
                 <div class="channel-item-left">
@@ -1041,8 +1029,8 @@
         <div class="dash-card" id="team-add-card">
           <div class="dash-card-header">
             <div>
-          <span class="dash-card-title" data-i18n="dashboard:team.add_title">Aggiungi un collaboratore</span>
-              <span class="dash-card-sub" data-i18n="dashboard:team.add_intro">Associa un operatore o un manager al pannello aziendale della tua attività.</span>
+          <span class="dash-card-title" data-i18n="dashboard:team.add_title">Invita un collaboratore</span>
+              <span class="dash-card-sub" data-i18n="dashboard:team.add_intro">Il collaboratore accede solo dopo aver verificato la propria email e accettato l'invito.</span>
             </div>
           </div>
           <form id="team-add-form" class="team-add-form is-ff270db33d21">
@@ -1061,13 +1049,17 @@
               <div class="field-group team-submit-group is-020227ab5036">
                 <button type="submit" class="btn-primary is-9c2515f5a9c0" id="team-submit-btn">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-                  <span data-i18n="dashboard:team.add_btn">Aggiungi al Team</span>
+                   <span data-i18n="dashboard:team.add_btn">Invia invito</span>
                 </button>
               </div>
             </div>
             <p class="field-hint is-2f10a1ccb655">
-              💡 <strong data-i18n="dashboard:team.immediate_access">Accesso immediato:</strong> <span data-i18n="dashboard:team.access_help_before_link">Se il collaboratore ha già un profilo Melpis, viene collegato all'istante a questo pannello. Se è un nuovo collega, può creare il proprio account personale su</span> <a href="/registrati/" target="_blank" class="is-0dc9a0685324">melpis.it/registrati</a> <span data-i18n="dashboard:team.access_help_after_link">con la stessa email e troverà l'accesso già configurato.</span>
+               💡 <strong data-i18n="dashboard:team.immediate_access">Invito protetto:</strong> <span data-i18n="dashboard:team.access_help_before_link">Il destinatario può registrarsi su</span> <a href="/registrati/" target="_blank" class="is-0dc9a0685324">melpis.it/registrati</a> <span data-i18n="dashboard:team.access_help_after_link">con la stessa email; dovrà poi accettare il link ricevuto.</span>
             </p>
+            <div>
+              <strong data-i18n="dashboard:team.pending_title">Inviti in attesa</strong>
+              <ul id="team-invitations-list" aria-live="polite"></ul>
+            </div>
           </form>
         </div>
 
@@ -1078,7 +1070,9 @@
                   <span class="dash-card-title" data-i18n="dashboard:team.members_title">Membri del team attivi</span>
               <span class="dash-card-sub" data-i18n="dashboard:team.members_intro">Persone autorizzate ad accedere alle conversazioni WhatsApp e alle prenotazioni.</span>
             </div>
-            <span class="review-stat-pill" id="team-count-badge">0 membri</span>
+              <label for="team-org-selector" data-i18n="dashboard:team.organization">Organizzazione</label>
+              <select id="team-org-selector" hidden aria-label="Seleziona organizzazione"></select>
+              <span class="review-stat-pill" id="team-count-badge">0 membri</span>
           </div>
 
           <div class="team-table-responsive is-4cf8373417dc">
@@ -1148,16 +1142,16 @@
 
       <!-- Tab Navigation per le 4 categorie -->
       <div class="kb-tabs" role="tablist" aria-label="Categorie della Knowledge Base" data-i18n-aria="dashboard:knowledge.tabs_aria">
-        <button type="button" class="kb-tab-btn active" data-kb-tab="faq" role="tab" aria-selected="true" id="kb-tab-btn-faq">
+        <button type="button" class="kb-tab-btn active" data-kb-tab="faq" role="tab" aria-selected="true" tabindex="0" id="kb-tab-btn-faq">
           <span class="kb-tab-text is-42cb6bab25cc"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> <span data-i18n="dashboard:knowledge.faq_tab">FAQ</span></span> <span class="kb-tab-badge" id="kb-badge-faq">0</span>
         </button>
-        <button type="button" class="kb-tab-btn" data-kb-tab="documenti" role="tab" aria-selected="false" id="kb-tab-btn-documenti">
+        <button type="button" class="kb-tab-btn" data-kb-tab="documenti" role="tab" aria-selected="false" tabindex="-1" id="kb-tab-btn-documenti">
           <span class="kb-tab-text is-42cb6bab25cc"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> <span data-i18n="dashboard:knowledge.documents_tab">Documenti</span></span> <span class="kb-tab-badge" id="kb-badge-documenti">0</span>
         </button>
-        <button type="button" class="kb-tab-btn" data-kb-tab="web" role="tab" aria-selected="false" id="kb-tab-btn-web">
+        <button type="button" class="kb-tab-btn" data-kb-tab="web" role="tab" aria-selected="false" tabindex="-1" id="kb-tab-btn-web">
           <span class="kb-tab-text is-42cb6bab25cc"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg> <span data-i18n="dashboard:knowledge.web_tab">Pagine web</span></span> <span class="kb-tab-badge" id="kb-badge-web">0</span>
         </button>
-        <button type="button" class="kb-tab-btn" data-kb-tab="dati-struttura" role="tab" aria-selected="false" id="kb-tab-btn-dati-struttura">
+        <button type="button" class="kb-tab-btn" data-kb-tab="dati-struttura" role="tab" aria-selected="false" tabindex="-1" id="kb-tab-btn-dati-struttura">
           <span class="kb-tab-text is-42cb6bab25cc"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 0-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> <span data-i18n="dashboard:knowledge.business_data_tab">Dati struttura</span></span> <span class="kb-tab-badge" id="kb-badge-dati-struttura">0</span>
         </button>
       </div>
@@ -1325,7 +1319,7 @@
           <span class="dash-card-title">Test Assistente: Chiedi alla Knowledge Base</span>
         </div>
         <p class="is-03c32cd4377d">Verifica istantaneamente come risponde l'assistente basandosi sui tuoi Dati struttura, FAQ, Documenti e Pagine web.</p>
-        <textarea class="doc-query-input" id="doc-query" rows="2" placeholder="Es. «Quanto costa un taglio uomo?» oppure «Quali sono gli orari di apertura?»"></textarea>
+        <textarea class="doc-query-input" id="doc-query" rows="2" placeholder="Es. «Quanto costa un taglio uomo?» oppure «Quali sono gli orari di apertura?»" data-i18n-placeholder="dashboard:knowledge.ask_placeholder" data-i18n-aria="dashboard:knowledge.ask_placeholder"></textarea>
         <div class="doc-query-row is-c804002a4185">
           <button type="button" class="review-analyze" id="doc-chiedi-btn">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1464,7 +1458,7 @@
             <div class="settings-rules-list" id="ai-cfg-rules-list"></div>
 
             <div class="settings-rule-add-row is-cc50b98ea4cc">
-              <input type="text" class="wizard-input" id="ai-cfg-new-rule-input" placeholder="Aggiungi una nuova regola (es. Richieste per eventi privati o convenzioni)" data-i18n-placeholder="settings:ai_configuration.new_rule_placeholder">
+              <input type="text" class="wizard-input" id="ai-cfg-new-rule-input" placeholder="Aggiungi una nuova regola (es. Richieste per eventi privati o convenzioni)" data-i18n-placeholder="settings:ai_configuration.new_rule_placeholder" data-i18n-aria="settings:ai_configuration.new_rule_placeholder">
               <button type="button" class="report-refresh is-58d7da1d74b0" id="ai-cfg-add-rule-btn" data-i18n="settings:ai_configuration.add_rule">+ Aggiungi regola</button>
             </div>
           </div>
@@ -1472,7 +1466,7 @@
 
         <!-- BARRA AZIONI SALVATAGGIO -->
         <div class="settings-actions is-b13ab5d6a8aa">
-          <button type="submit" class="report-refresh is-49d7f2a061b8" id="ai-cfg-save-btn" data-i18n="settings:ai_configuration.save_btn">Salva Configurazione AI</button>
+          <button type="submit" class="report-refresh is-49d7f2a061b8" id="ai-cfg-save-btn" data-i18n="settings:ai_configuration.save_btn" disabled>Salva Configurazione AI</button>
           <span class="security-status" id="ai-cfg-save-status" role="status"></span>
         </div>
       </form>
@@ -1743,7 +1737,7 @@
                 <label class="wizard-label" for="settings-timezone" data-i18n="settings.timezone_section.label">Fuso orario dell'attività</label>
                 <div class="wizard-inline">
                   <select class="wizard-input is-c388235ac698" id="settings-timezone"></select>
-                  <button type="button" class="report-refresh" id="settings-timezone-save" data-i18n="settings.timezone_section.save_btn">Salva fuso orario</button>
+                  <button type="button" class="report-refresh" id="settings-timezone-save" data-i18n="settings.timezone_section.save_btn" disabled>Salva fuso orario</button>
                 </div>
                 <p class="security-status" id="settings-timezone-status" role="status"></p>
               </div>
@@ -2759,6 +2753,7 @@
 <script src="vendor/dompurify.min.js"></script>
 <script src="vendor/i18next.min.js"></script>
 <script src="/i18n-client.js?v=pr38-dashboard-language"></script>
-<script src="app.js?v=integ-v10"></script>
+<script src="dialog-focus.js"></script>
+<script src="app.js?v=dashboard-ui-refresh-20260925-v3"></script>
 </body>
 </html>

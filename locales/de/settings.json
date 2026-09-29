@@ -15,7 +15,13 @@
     "title": "Lokalisierung und Zeitzone",
     "description": "Die Zeitzone wird für Buchungserinnerungen, Tagesabschlussberichte und SLA-Berechnungen verwendet.",
     "label": "Zeitzone des Unternehmens",
-    "save_btn": "Zeitzone speichern"
+    "save_btn": "Zeitzone speichern",
+    "load_loading": "Zeitzone wird geladen…",
+    "load_error": "Die Zeitzone konnte nicht geladen werden. Bitte erneut versuchen.",
+    "save_loading": "Wird gespeichert…",
+    "save_success": "Zeitzone aktualisiert",
+    "save_error": "Zeitzone konnte nicht gespeichert werden",
+    "connection_error": "Verbindungsfehler"
   },
   "language_section": {
     "title": "Sprache des Dashboards",
@@ -48,6 +54,7 @@
     "add_rule": "+ Regel hinzufügen", "save_btn": "KI-Konfiguration speichern", "save_loading": "Wird gespeichert…",
     "save_success": "KI-Konfiguration gespeichert und synchronisiert!", "save_toast": "KI-Konfiguration wurde erfolgreich gespeichert und synchronisiert",
     "save_error": "Fehler beim Speichern", "connection_error": "Verbindung zum Server fehlgeschlagen",
+    "load_loading": "KI-Konfiguration wird geladen…", "load_error": "Die KI-Konfiguration konnte nicht geladen werden. Öffnen Sie diesen Bereich erneut, um es noch einmal zu versuchen.",
     "rules_empty": "Keine aktiven Regeln. Fügen Sie unten eine Regel hinzu.", "remove_rule": "Entfernen"
   },
   "assistant_rules": {

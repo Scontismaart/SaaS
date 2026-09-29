@@ -15,7 +15,13 @@
     "title": "Localisation et Fuseau Horaire",
     "description": "Le fuseau horaire est utilisé pour les rappels de réservation, les rapports de fin de journée et le calcul des SLA.",
     "label": "Fuseau horaire de l'activité",
-    "save_btn": "Enregistrer le fuseau horaire"
+    "save_btn": "Enregistrer le fuseau horaire",
+    "load_loading": "Chargement du fuseau horaire…",
+    "load_error": "Impossible de charger le fuseau horaire. Réessayez.",
+    "save_loading": "Enregistrement…",
+    "save_success": "Fuseau horaire mis à jour",
+    "save_error": "Impossible d’enregistrer le fuseau horaire",
+    "connection_error": "Erreur de connexion"
   },
   "language_section": {
     "title": "Langue du tableau de bord",
@@ -48,6 +54,7 @@
     "add_rule": "+ Ajouter une règle", "save_btn": "Enregistrer la configuration IA", "save_loading": "Enregistrement…",
     "save_success": "Configuration IA enregistrée et synchronisée !", "save_toast": "Configuration IA enregistrée et synchronisée avec succès",
     "save_error": "Erreur lors de l'enregistrement", "connection_error": "Impossible de joindre le serveur",
+    "load_loading": "Chargement de la configuration IA…", "load_error": "Impossible de charger la configuration IA. Rouvrez cette section pour réessayer.",
     "rules_empty": "Aucune règle active. Ajoutez-en une avec le champ ci-dessous.", "remove_rule": "Supprimer"
   },
   "assistant_rules": {

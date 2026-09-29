@@ -8,6 +8,10 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
 }
 const PROFILO_ID = "trattoria_da_mario";
 
+function localeCorrente() {
+  return window.MelpisI18n?.getLocale?.() || "it-IT";
+}
+
 /* ============================================================
    AUTENTICAZIONE — BFF (task18)
    ============================================================
@@ -105,11 +109,16 @@ function confermaDestructiva({ titolo = "Conferma azione", descrizione = "", lab
     titleEl.textContent = titolo;
     descEl.textContent = descrizione;
     okBtn.textContent = label;
-    modal.hidden = false;
-    okBtn.focus();
+    if (window.MelpisDialogFocus) {
+      window.MelpisDialogFocus.open(modal, { initialFocus: okBtn });
+    } else {
+      modal.hidden = false;
+      okBtn.focus();
+    }
 
     const chiudi = (esito) => {
-      modal.hidden = true;
+      if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal);
+      else modal.hidden = true;
       okBtn.removeEventListener("click", onOk);
       cancelBtn.removeEventListener("click", onCancel);
       modal.removeEventListener("keydown", onKey);
@@ -208,6 +217,8 @@ async function tentaRefresh() {
 async function apiFetch(url, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const headers = { ...(options.headers || {}) };
+  const selectedOrg = localStorage.getItem("melpis_selected_organization");
+  if (selectedOrg) headers["X-Organization-Id"] = selectedOrg;
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     const token = csrfToken();
     if (token) headers["X-CSRF-Token"] = token;
@@ -282,13 +293,11 @@ function aggiornaBottoneAccesso() {
   const email = sessione.email || "utente";
   const iniziale = (email[0] || "U").toUpperCase();
 
-  // Sidebar account trigger & topbar avatar
+  // Sidebar account trigger
   const sbAvatar = document.getElementById("sidebar-avatar-initial");
   const sbEmail = document.getElementById("sidebar-account-email");
   const sbPlan = document.getElementById("sidebar-account-plan");
-  const tbAvatar = document.getElementById("topbar-avatar-initial");
   if (sbAvatar) sbAvatar.textContent = iniziale;
-  if (tbAvatar) tbAvatar.textContent = iniziale;
   if (sbEmail) sbEmail.textContent = email;
   if (sbPlan && sessione.ruolo) {
     const rLabel = RUOLI_LABELS[sessione.ruolo] || sessione.ruolo;
@@ -365,14 +374,29 @@ function vaiAdAccesso() {
 
 async function caricaSessione() {
   try {
-    let res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+    const orgHeaders = () => {
+      const id = localStorage.getItem("melpis_selected_organization");
+      return id ? { "X-Organization-Id": id } : {};
+    };
+    let res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include", headers: orgHeaders() });
     if (res.status === 401) {
       try {
         const refRes = await tentaRefresh();
         if (refRes && refRes.ok) {
-          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include", headers: orgHeaders() });
         }
       } catch { /* ignora */ }
+    }
+    if (res.status === 403) {
+      const choices = await fetch(`${API_BASE}/api/team/organizations`, { credentials: "include" });
+      if (choices.ok) {
+        const data = await choices.json();
+        const first = data.organizations?.[0]?.id;
+        if (first) {
+          localStorage.setItem("melpis_selected_organization", first);
+          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include", headers: orgHeaders() });
+        }
+      }
     }
     if (!res.ok) {
       sessione = null;
@@ -495,7 +519,7 @@ async function caricaAccount() {
       if (isNaN(d.getTime())) return "";
       return (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
         ? MelpisI18n.formatDate(d)
-        : d.toLocaleDateString("it-IT");
+        : d.toLocaleDateString(localeCorrente());
     };
     if (rinnovo) {
       if (sub.trial_end) rinnovo.textContent = `Prova gratuita attiva fino al ${dataIt(sub.trial_end)}.`;
@@ -623,6 +647,11 @@ const navItems = document.querySelectorAll(".nav-item");
 const topbarTitle = document.getElementById("topbar-title");
 const topbarDate = document.getElementById("topbar-date");
 const views = document.querySelectorAll(".view");
+function resetDashboardScroll() {
+  const scrollingElement = document.scrollingElement || document.documentElement;
+  scrollingElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
 const NOTIFICATION_STORAGE_KEY = "restaurant-dashboard-notifications-v1";
 const notificationBadges = document.querySelectorAll("[data-notification-badge]");
 let notificationItems = {
@@ -726,6 +755,7 @@ function apriVistaImpostazioni(cat = "generale") {
   views.forEach((v) => {
     v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
   });
+  resetDashboardScroll();
 
   const titleKeys = {
     piano: "title_account",
@@ -885,12 +915,12 @@ function aggiornaDataTopbar() {
   if (!topbarDate) return;
   topbarDate.textContent = (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
     ? MelpisI18n.formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })
-    : new Date().toLocaleDateString("it-IT", { day: "numeric", month: "long", year: "numeric" });
+    : new Date().toLocaleDateString(localeCorrente(), { day: "numeric", month: "long", year: "numeric" });
   const topbarWeekday = document.getElementById("topbar-weekday");
   if (topbarWeekday) {
     const rawDay = (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
       ? MelpisI18n.formatDate(new Date(), { weekday: "long" })
-      : new Date().toLocaleDateString("it-IT", { weekday: "long" });
+      : new Date().toLocaleDateString(localeCorrente(), { weekday: "long" });
     topbarWeekday.textContent = rawDay.charAt(0).toUpperCase() + rawDay.slice(1);
   }
 }
@@ -921,6 +951,7 @@ navItems.forEach((btn) => {
     views.forEach((v) => {
       v.classList.toggle("view-hidden", v.dataset.viewPanel !== viewName);
     });
+    resetDashboardScroll();
 
     const titleKeys = {
       panoramica: "title_panoramica",
@@ -1093,8 +1124,8 @@ function profiloOnboarding() {
   const vertical = verticaleCorrente();
   return {
     verticale: onboardingState.selectedVertical,
-    nome_attivita: onboardingEls.name.value.trim() || "Nuova attività",
-    orari: onboardingEls.hours.value.trim() || "Orari da configurare",
+    nome_attivita: onboardingEls.name.value.trim(),
+    orari: onboardingEls.hours.value.trim(),
     tono: onboardingEls.tone.value.trim() || vertical?.tono || "",
     servizi: righeDaTextarea(onboardingEls.services.value),
     regole_escalation: [...document.querySelectorAll(".onboarding-rule:checked")].map((input) => input.value),
@@ -1118,7 +1149,7 @@ function salvaBozzaOnboarding() {
     localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(bozza));
     const badge = document.getElementById("onboarding-autosave");
     if (badge) {
-      const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      const ora = new Date().toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
       badge.textContent = `Bozza salvata · ${ora}`;
       badge.hidden = false;
     }
@@ -1297,7 +1328,7 @@ async function inizializzaOnboarding() {
         if (timeHint && bozzaLocale.salvata_at) {
           try {
             const d = new Date(bozzaLocale.salvata_at);
-            timeHint.textContent = `Bozza salvata il ${d.toLocaleDateString("it-IT")} alle ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}.`;
+            timeHint.textContent = `Bozza salvata il ${d.toLocaleDateString(localeCorrente())} alle ${d.toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" })}.`;
           } catch {
             timeHint.textContent = "Bozza recuperata in locale.";
           }
@@ -1665,8 +1696,14 @@ async function inviaMessaggio(testo) {
   try {
     const res = await apiFetch(`${API_BASE}/api/messaggio?profilo_id=${PROFILO_ID}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ testo }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        testo,
+        id_conversazione: inviaMessaggio.conversationId ||= crypto.randomUUID(),
+      }),
     });
     rimuoviTyping();
     if (!res.ok) {
@@ -1890,7 +1927,7 @@ function apriDettaglioPrenotazione(prenotazione) {
   if (!bookingModal || !prenotazione) return;
   const valore = (dato, fallback = "Non indicato") => dato || fallback;
   const data = prenotazione.data
-    ? new Date(`${prenotazione.data}T12:00:00`).toLocaleDateString("it-IT", {
+    ? new Date(`${prenotazione.data}T12:00:00`).toLocaleDateString(localeCorrente(), {
       weekday: "long", day: "2-digit", month: "long", year: "numeric",
     })
     : "Non indicata";
@@ -1904,27 +1941,31 @@ function apriDettaglioPrenotazione(prenotazione) {
   bookingDetail.origin.textContent = valore(prenotazione.origine);
   bookingDetail.note.textContent = valore(prenotazione.note, "Nessuna nota");
   aggiornaAzioniPrenotazione(prenotazione);
-  bookingModal.hidden = false;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(bookingModal);
+  else bookingModal.hidden = false;
   document.body.classList.add("booking-modal-open");
 }
 
 function chiudiDettaglioPrenotazione() {
   if (!bookingModal) return;
-  bookingModal.hidden = true;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(bookingModal);
+  else bookingModal.hidden = true;
   document.body.classList.remove("booking-modal-open");
 }
 
-function apriBookingModal(id) {
+function apriBookingModal(id, options = {}) {
   const modal = document.getElementById(id);
   if (!modal) return;
-  modal.hidden = false;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(modal, options);
+  else modal.hidden = false;
   document.body.classList.add("booking-modal-open");
 }
 
-function chiudiBookingModal(id) {
+function chiudiBookingModal(id, options = {}) {
   const modal = document.getElementById(id);
   if (!modal) return;
-  modal.hidden = true;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal, options);
+  else modal.hidden = true;
   if (![...document.querySelectorAll(".booking-modal")].some((element) => !element.hidden)) {
     document.body.classList.remove("booking-modal-open");
   }
@@ -1956,9 +1997,12 @@ document.querySelectorAll("[data-booking-close]").forEach((element) => {
   document.querySelectorAll(selector).forEach((element) => element.addEventListener("click", () => chiudiBookingModal(id)));
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  document.querySelectorAll(".booking-modal").forEach((modal) => { modal.hidden = true; });
-  document.body.classList.remove("booking-modal-open");
+  const modal = [...document.querySelectorAll(".booking-modal")].reverse().find((element) => !element.hidden);
+  if (!modal || !window.MelpisDialogFocus) return;
+  window.MelpisDialogFocus.handleKeydown(modal, event, () => {
+    if (modal === bookingModal) chiudiDettaglioPrenotazione();
+    else chiudiBookingModal(modal.id);
+  });
 });
 
 document.getElementById("booking-new-trigger")?.addEventListener("click", () => apriFormPrenotazione());
@@ -1970,12 +2014,12 @@ document.getElementById("booking-edit-btn")?.addEventListener("click", () => {
 });
 document.getElementById("booking-actions-trigger")?.addEventListener("click", () => apriBookingModal("booking-actions-modal"));
 document.getElementById("booking-open-availability")?.addEventListener("click", () => {
-  chiudiBookingModal("booking-actions-modal");
-  apriBookingModal("booking-availability-modal");
+  chiudiBookingModal("booking-actions-modal", { restoreFocus: false });
+  apriBookingModal("booking-availability-modal", { restoreTarget: document.getElementById("booking-actions-trigger") });
 });
 document.getElementById("booking-open-export")?.addEventListener("click", () => {
-  chiudiBookingModal("booking-actions-modal");
-  apriBookingModal("booking-export-modal");
+  chiudiBookingModal("booking-actions-modal", { restoreFocus: false });
+  apriBookingModal("booking-export-modal", { restoreTarget: document.getElementById("booking-actions-trigger") });
 });
 
 function inizializzaCalendarioPrenotazioni() {
@@ -2040,7 +2084,7 @@ function renderTabellaPrenotazioniGiorno(data = null) {
       const dObj = new Date(`${targetDate}T12:00:00`);
       const dateLabel = typeof MelpisI18n !== "undefined"
         ? MelpisI18n.formatDate(dObj, { weekday: "long", day: "numeric", month: "long" })
-        : dObj.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" });
+        : dObj.toLocaleDateString(localeCorrente(), { weekday: "long", day: "numeric", month: "long" });
       titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: dateLabel });
     } catch {
       titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: targetDate });
@@ -2200,7 +2244,7 @@ function aggiornaToolbarCalendario() {
   const label = document.getElementById("booking-selected-date-label");
   const trigger = document.getElementById("booking-date-picker-trigger");
   if (picker) picker.value = dateKey;
-  if (label) label.textContent = bookingCalendar.getDate().toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" });
+  if (label) label.textContent = bookingCalendar.getDate().toLocaleDateString(localeCorrente(), { day: "numeric", month: "short", year: "numeric" });
   if (trigger) {
     trigger.classList.toggle("is-selected", dateKey !== oggiIso());
     trigger.setAttribute("aria-label", `Seleziona la data delle prenotazioni. Giorno selezionato: ${label?.textContent || dateKey}`);
@@ -2222,7 +2266,7 @@ function verificaPrenotazioneAggiornata(prenotazioni) {
 async function aggiornaSemaforo(data = null) {
   if (!availabilityList) return;
   const targetDate = data ? _toDateKey(data) : (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
-  availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString("it-IT", {
+  availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString(localeCorrente(), {
     weekday: "short",
     day: "2-digit",
     month: "2-digit",
@@ -2481,9 +2525,9 @@ function _formatDataRecensione(iso) {
   if (isNaN(d.getTime())) return "Data non valida";
   const oggi = new Date();
   const isOggi = d.toDateString() === oggi.toDateString();
-  const timeStr = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const timeStr = d.toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
   if (isOggi) return `Oggi alle ${timeStr}`;
-  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" }) + `, ${timeStr}`;
+  return d.toLocaleDateString(localeCorrente(), { day: "numeric", month: "short", year: "numeric" }) + `, ${timeStr}`;
 }
 
 function _fonteLabel(fonte) {
@@ -3141,7 +3185,7 @@ async function aggiornaReport(forza = false) {
     reportAi.textContent = report.statistiche?.gestiti_da_ai ?? "0";
     reportUmano.textContent = report.statistiche?.girati_a_umano ?? "0";
     reportAnalisi.textContent = report.analisi_testuale || "";
-    reportTimestamp.textContent = report.generato_il ? "Generato: " + new Date(report.generato_il).toLocaleTimeString("it-IT", {
+    reportTimestamp.textContent = report.generato_il ? "Generato: " + new Date(report.generato_il).toLocaleTimeString(localeCorrente(), {
       hour: "2-digit", minute: "2-digit",
     }) : "";
     if (report.suggerimenti && report.suggerimenti.length > 0) {
@@ -3650,8 +3694,8 @@ async function aggiornaRiepilogo(silent = false) {
       time.classList.add("ticket-item-time");
       const isOggi = _toDateKey(e.timestamp) === oggiKey;
       time.textContent = isOggi
-        ? new Date(e.timestamp).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
-        : new Date(e.timestamp).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) + " " + new Date(e.timestamp).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+        ? new Date(e.timestamp).toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" })
+        : new Date(e.timestamp).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit" }) + " " + new Date(e.timestamp).toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
       testoWrap.appendChild(msg);
       testoWrap.appendChild(time);
       const tags = document.createElement("div");
@@ -3710,14 +3754,6 @@ document.getElementById("priority-inbox-link")?.addEventListener("click", () => 
 document.getElementById("activity-view-all-btn")?.addEventListener("click", () => {
   if (typeof apriView === "function") apriView("inbox");
 });
-document.querySelectorAll(".kpi-action-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    const view = btn.getAttribute("data-view");
-    if (view && typeof apriView === "function") apriView(view);
-  });
-});
-
-
 /* ============================================================
    KNOWLEDGE BASE RISTRUTTURATA (4 CATEGORIE)
    ============================================================ */
@@ -3730,7 +3766,26 @@ document.querySelectorAll(".kb-tab-btn[data-kb-tab]").forEach((btn) => {
     const tabName = btn.dataset.kbTab;
     impostaTabConoscenza(tabName);
   });
+  btn.addEventListener("keydown", gestisciNavigazioneTabConoscenza);
 });
+
+function gestisciNavigazioneTabConoscenza(event) {
+  const tabs = [...document.querySelectorAll(".kb-tab-btn[data-kb-tab]")];
+  const currentIndex = tabs.indexOf(event.currentTarget);
+  if (currentIndex < 0 || !tabs.length) return;
+
+  let nextIndex;
+  if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = tabs.length - 1;
+  else return;
+
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  impostaTabConoscenza(nextTab.dataset.kbTab);
+  nextTab.focus();
+}
 
 function impostaTabConoscenza(tabName) {
   kbActiveTab = tabName;
@@ -3738,6 +3793,7 @@ function impostaTabConoscenza(tabName) {
     const active = b.dataset.kbTab === tabName;
     b.classList.toggle("active", active);
     b.setAttribute("aria-selected", String(active));
+    b.tabIndex = active ? 0 : -1;
   });
 
   const panels = {
@@ -3762,7 +3818,7 @@ function _formatDataOra(isoStr) {
   if (!isoStr) return "N/D";
   try {
     const d = new Date(isoStr);
-    return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch {
     return isoStr;
   }
@@ -4775,7 +4831,7 @@ function _getAvatarInitial(nameOrPhone) {
 function formatInboxDate(value) {
   if (!value) return "";
   const d = new Date(value);
-  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString(localeCorrente(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatRelativeTime(value) {
@@ -4789,7 +4845,7 @@ function formatRelativeTime(value) {
   const diffOre = Math.floor(diffMin / 60);
   if (diffOre < 24 && d.getDate() === now.getDate()) return `${diffOre} ore fa`;
   if (diffOre < 48 && (now.getDate() - d.getDate() === 1 || diffOre < 24)) return "Ieri";
-  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString(localeCorrente(), { day: "2-digit", month: "short" });
 }
 
 function formatSla(sla_due_at, is_overdue) {
@@ -5251,7 +5307,7 @@ function _renderMsgRow(m, ticket) {
     avatar.style.color = colors.text;
     avatar.textContent = _getAvatarInitial(ticket.phone_number || "Cliente");
   } else {
-    avatar.innerHTML = '<img src="logo.webp" alt="Melpis" width="28" height="28" style="border-radius:6px; display:block;">';
+    avatar.innerHTML = '<brand-logo variant="symbol" theme="auto" size="md"></brand-logo>';
   }
 
   // Bubble
@@ -5886,8 +5942,28 @@ notifBell?.addEventListener("click", () => {
    ============================================================ */
 
 (async function avvia() {
+  const pendingInvite = new URLSearchParams(window.location.hash.slice(1)).get("team-invite")
+    || sessionStorage.getItem("melpis_pending_team_invite");
+  if (pendingInvite) {
+    try {
+      // This endpoint authenticates the session without creating a trial organization.
+      const inviteSession = await apiFetch(`${API_BASE}/api/team/organizations`);
+      if (inviteSession.ok && await accettaInvitoDaLink()) return;
+      if (inviteSession.status === 401) {
+        sessionStorage.setItem("melpis_pending_team_invite", pendingInvite);
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        vaiAdAccesso();
+        return;
+      }
+    } catch { /* Il normale caricamento mostrerà l'errore di sessione. */ }
+  }
   const loggato = await caricaSessione();
   if (!loggato) {
+    const pendingToken = new URLSearchParams(window.location.hash.slice(1)).get("team-invite");
+    if (pendingToken) {
+      sessionStorage.setItem("melpis_pending_team_invite", pendingToken);
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
     vaiAdAccesso();
     return;
   }
@@ -5895,6 +5971,7 @@ notifBell?.addEventListener("click", () => {
   document.querySelectorAll(".app-shell").forEach((el) => {
     el.style.visibility = "";
   });
+  if (await accettaInvitoDaLink()) return;
   if (sessionStorage.getItem("melpis_benvenuto")) {
     sessionStorage.removeItem("melpis_benvenuto");
     toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
@@ -6131,11 +6208,16 @@ let caricaTimezone;
   const status = document.getElementById("settings-timezone-status");
   if (!select || !saveBtn) return;
   let caricato = false;
+  saveBtn.disabled = true;
 
   async function carica() {
+    if (status) {
+      status.textContent = t("settings:timezone_section.load_loading");
+      status.style.color = "";
+    }
     try {
       const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (caricato) return;
       caricato = true;
@@ -6154,28 +6236,35 @@ let caricaTimezone;
         opt.selected = true;
         select.appendChild(opt);
       }
-    } catch { /* silenzioso: la vista riproverà al prossimo switch */ }
+      saveBtn.disabled = false;
+      if (status) status.textContent = "";
+    } catch {
+      saveBtn.disabled = true;
+      if (status) {
+        status.textContent = t("settings:timezone_section.load_error");
+        status.style.color = "var(--red)";
+      }
+    }
   }
 
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
-    if (status) { status.textContent = "Salvo…"; status.style.color = ""; }
+    if (status) { status.textContent = t("settings:timezone_section.save_loading"); status.style.color = ""; }
     try {
       const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timezone: select.value }),
       });
-      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (status) { status.textContent = data.detail || "Salvataggio non riuscito"; status.style.color = "var(--red)"; }
+        if (status) { status.textContent = t("settings:timezone_section.save_error"); status.style.color = "var(--red)"; }
         return;
       }
-      if (status) securityStatus(status, "Fuso orario aggiornato");
+      if (status) securityStatus(status, t("settings:timezone_section.save_success"));
     } catch {
-      if (status) { status.textContent = "Errore di connessione"; status.style.color = "var(--red)"; }
+      if (status) { status.textContent = t("settings:timezone_section.connection_error"); status.style.color = "var(--red)"; }
     } finally {
-      saveBtn.disabled = false;
+      saveBtn.disabled = !caricato;
     }
   });
 
@@ -6239,13 +6328,6 @@ let caricaConfigurazioneAI;
   let currentRules = [];
 
   const VERTICALI_VALIDI = ["ristorante", "parrucchiere", "hotel_bnb", "centro_estetico", "studio_medico_dentista"];
-
-  const REGOLE_DEFAULT_BASE = [
-    "Allergie gravi, intolleranze alimentari o requisiti medici specifici",
-    "Lamentele, reclami formali o clienti insoddisfatti",
-    "Richieste speciali fuori listino o non coperte dal menu/documenti",
-    "Richieste di sconti personalizzati, convenzioni o accordi commerciali riservati",
-  ];
 
   function renderRules() {
     if (!rulesContainer) return;
@@ -6329,9 +6411,29 @@ let caricaConfigurazioneAI;
   });
 
   async function carica() {
+    let caricamentoRiuscito = false;
+    // A new visit always starts with an empty form so a failed or partial response
+    // cannot leave values from a previously loaded profile visible.
+    if (saveStatus) {
+      saveStatus.textContent = t("settings:ai_configuration.load_loading");
+      saveStatus.style.color = "";
+    }
+    if (saveBtn) saveBtn.disabled = true;
+    dbProfileRecord = {};
+    if (nomeInput) nomeInput.value = "";
+    if (vertSelect) vertSelect.selectedIndex = 0;
+    if (descTextarea) descTextarea.value = "";
+    if (orariTextarea) orariTextarea.value = "";
+    if (tonoSelect) tonoSelect.selectedIndex = 0;
+    if (tonoCustom) tonoCustom.value = "";
+    document.querySelectorAll(".ai-cfg-lang-opt").forEach((cb) => { cb.checked = false; });
+    aggiornaSelectLinguaDefault("it");
+    currentRules = [];
+    renderRules();
+
     try {
       const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const prof = data.profilo || {};
       dbProfileRecord = prof;
@@ -6343,9 +6445,9 @@ let caricaConfigurazioneAI;
       if (cName) cName.textContent = businessName;
 
       // Identità
-      if (nomeInput && prof.nome_attivita) nomeInput.value = prof.nome_attivita;
+      if (nomeInput) nomeInput.value = prof.nome_attivita || "";
       if (vertSelect && VERTICALI_VALIDI.includes(prof.verticale)) vertSelect.value = prof.verticale;
-      if (descTextarea && prof.descrizione) descTextarea.value = prof.descrizione;
+      if (descTextarea) descTextarea.value = prof.descrizione || "";
       if (orariTextarea && prof.orari) {
         orariTextarea.value = prof.orari;
         const kbOrari = document.getElementById("kb-orari-input");
@@ -6365,31 +6467,39 @@ let caricaConfigurazioneAI;
       }
 
       // Multilingua
-      const supportate = prof.lingue_supportate || ["it"];
+      const supportate = Array.isArray(prof.lingue_supportate) ? prof.lingue_supportate : [];
       document.querySelectorAll(".ai-cfg-lang-opt").forEach((cb) => {
         cb.checked = supportate.includes(cb.value);
       });
       aggiornaSelectLinguaDefault(prof.lingua_default || "it");
 
       // Regole escalation
-      if (Array.isArray(prof.regole_escalation) && prof.regole_escalation.length > 0) {
+      if (Array.isArray(prof.regole_escalation)) {
         currentRules = [...prof.regole_escalation];
       } else {
-        currentRules = [...REGOLE_DEFAULT_BASE];
+        currentRules = [];
       }
       renderRules();
+      caricamentoRiuscito = true;
+      if (saveStatus) saveStatus.textContent = "";
     } catch (err) {
       console.error("Impossibile caricare la configurazione AI:", err);
+      if (saveStatus) {
+        saveStatus.textContent = t("settings:ai_configuration.load_error");
+        saveStatus.style.color = "var(--red)";
+      }
+    } finally {
+      if (saveBtn) saveBtn.disabled = !caricamentoRiuscito;
     }
   }
 
   function raccogliPayload() {
-    const nome = (nomeInput?.value || "").trim() || dbProfileRecord?.nome_attivita || "La tua attività";
+    const nome = (nomeInput?.value || "").trim();
     const verticaleSelezionato = VERTICALI_VALIDI.includes(vertSelect?.value)
       ? vertSelect.value
       : (VERTICALI_VALIDI.includes(dbProfileRecord?.verticale) ? dbProfileRecord.verticale : "ristorante");
     const descrizione = (descTextarea?.value || "").trim();
-    const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "Martedì - Domenica: 12:00-15:00 / 19:30-23:30";
+    const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "";
 
     let tono = tonoSelect ? tonoSelect.value : (dbProfileRecord?.tono || "professionale_caloroso");
     if (tonoCustom && tonoCustom.value.trim()) {
@@ -6413,7 +6523,7 @@ let caricaConfigurazioneAI;
       orari,
       descrizione,
       tono,
-      servizi: Array.isArray(dbProfileRecord?.servizi) && dbProfileRecord.servizi.length ? dbProfileRecord.servizi : ["Servizio al tavolo", "Menu alla carta"],
+      servizi: Array.isArray(dbProfileRecord?.servizi) ? dbProfileRecord.servizi : [],
       regole_escalation: regoleSelezionate.length ? regoleSelezionate : currentRules,
       whatsapp_collegato: Boolean(dbProfileRecord?.whatsapp_collegato),
       documenti_importati: Boolean(dbProfileRecord?.documenti_importati),
@@ -6528,7 +6638,7 @@ async function caricaAudit({ append = false } = {}) {
     eventi.forEach((ev) => {
       const item = document.createElement("div");
       item.className = "audit-item";
-      const quando = new Date(ev.created_at).toLocaleString("it-IT", {
+      const quando = new Date(ev.created_at).toLocaleString(localeCorrente(), {
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
       });
       const dettagli = ev.details && Object.keys(ev.details).length
@@ -7205,7 +7315,7 @@ async function caricaStatoCalendar() {
       if (calIdMeta) calIdMeta.textContent = calId;
       if (syncModeMeta) syncModeMeta.textContent = d.sync_enabled ? "Bidirezionale automatica" : "In pausa";
       if (help) help.textContent = d.last_sync_at
-        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString(localeCorrente())}`
         : "Sincronizzazione attiva: le prenotazioni confermate vengono sincronizzate con Google Calendar.";
       if (btnConnect) btnConnect.hidden = true;
       if (btnTest) btnTest.hidden = false;
@@ -7296,6 +7406,20 @@ async function caricaStatoReviews() {
   const btnConnect = document.getElementById("integ-reviews-connect");
   const btnSync = document.getElementById("integ-reviews-sync");
   const btnDisconnect = document.getElementById("integ-reviews-disconnect");
+  const summaryStatus = document.getElementById("reviews-google-summary-status");
+
+  const setSummaryStatus = (connected) => {
+    if (!summaryStatus) return;
+    const state = connected === true ? "connected" : connected === false ? "disconnected" : "unavailable";
+    summaryStatus.dataset.state = state;
+    summaryStatus.classList.toggle("ready", state === "connected");
+    summaryStatus.classList.toggle("manual", state !== "connected");
+    summaryStatus.textContent = state === "connected"
+      ? _tDash("reviews.google_connected", "Connesso")
+      : state === "disconnected"
+        ? _tDash("reviews.google_disconnected", "Non collegato")
+        : _tDash("reviews.google_status_unavailable", "Stato non disponibile");
+  };
 
   if (!stato || !sub) return;
 
@@ -7311,10 +7435,12 @@ async function caricaStatoReviews() {
         _aggiornaBadgeStato(stato, "error");
         sub.textContent = errMsg;
       }
+      setSummaryStatus(null);
       return;
     }
     const d = await res.json();
     if (d.connected) {
+      setSummaryStatus(true);
       _aggiornaBadgeStato(stato, "connected");
       const acc = d.account_name || "Account Google collegato";
       const loc = d.location_name || "Sede predefinita";
@@ -7323,13 +7449,14 @@ async function caricaStatoReviews() {
       if (locationMeta) locationMeta.textContent = loc;
       if (help) {
         help.textContent = d.last_sync_at
-          ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+          ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString(localeCorrente())}`
           : "Account collegato: pronto alla sincronizzazione delle recensioni.";
       }
       if (btnConnect) btnConnect.hidden = true;
       if (btnSync) btnSync.hidden = false;
       if (btnDisconnect) btnDisconnect.hidden = false;
     } else {
+      setSummaryStatus(false);
       _aggiornaBadgeStato(stato, "disconnected");
       sub.textContent = "Nessun account Google collegato";
       if (accountMeta) accountMeta.textContent = "Nessun account";
@@ -7342,9 +7469,16 @@ async function caricaStatoReviews() {
       if (btnDisconnect) btnDisconnect.hidden = true;
     }
   } catch {
+    setSummaryStatus(null);
     _aggiornaBadgeStato(stato, "error", "Errore di rete");
     sub.textContent = "Errore di connessione con il server";
   }
+}
+
+// The Reviews overview badge reflects the same tenant-scoped status endpoint as
+// the integration settings page; it must never claim a static connection.
+if (document.getElementById("reviews-google-summary-status")) {
+  void caricaStatoReviews();
 }
 
 document.getElementById("integ-reviews-connect")?.addEventListener("click", async () => {
@@ -7556,7 +7690,7 @@ async function caricaStatoBooking() {
 
       if (metaSyncEl) {
         if (d.last_sync) {
-          const sDate = d.last_sync.updated_at ? new Date(d.last_sync.updated_at).toLocaleString("it-IT") : "";
+          const sDate = d.last_sync.updated_at ? new Date(d.last_sync.updated_at).toLocaleString(localeCorrente()) : "";
           if (d.last_sync.status === "synced") {
             metaSyncEl.textContent = `Sincronizzato (${d.last_sync.external_booking_id || "OK"}) ${sDate ? "· " + sDate : ""}`;
           } else if (d.last_sync.status === "failed") {
@@ -7982,7 +8116,7 @@ async function caricaStatoAirtable() {
       const lastUpdated = connections[0]?.updated_at;
       if (lastUpdateEl) {
         lastUpdateEl.textContent = lastUpdated
-          ? new Date(lastUpdated).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          ? new Date(lastUpdated).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
           : "—";
       }
 
@@ -7995,7 +8129,7 @@ async function caricaStatoAirtable() {
             const safeId = DOMPurify.sanitize(c.base_id);
             const safeVerticale = c.verticale ? `<span class="badge-status-honest" style="margin-left: 6px;">${DOMPurify.sanitize(c.verticale)}</span>` : "";
             const formattedDate = c.updated_at
-              ? new Date(c.updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+              ? new Date(c.updated_at).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric" })
               : "";
 
             return `
@@ -8110,7 +8244,7 @@ async function caricaEventiWebhookAirtable() {
         const safeStatus = DOMPurify.sanitize(ev.status || "pending");
         const dt = ev.created_at || ev.event_timestamp;
         const formattedDate = dt
-          ? new Date(dt).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          ? new Date(dt).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
           : "—";
 
         const statusClass = safeStatus === "processed" ? "connected" : safeStatus === "failed" ? "disconnected" : "pending";
@@ -8487,6 +8621,40 @@ document.getElementById("report-print")?.addEventListener("click", () => window.
 
 let teamDataCache = null;
 
+async function caricaInvitiTeam() {
+  const list = document.getElementById("team-invitations-list");
+  if (!list || sessione?.ruolo === "staff") return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/team/invitations`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const invitations = data.invitations || [];
+    list.innerHTML = invitations.length ? invitations.map((inv) => `
+      <li data-invitation-id="${_escapeHtml(inv.id)}">
+        <span>${_escapeHtml(inv.email)} · ${_escapeHtml(inv.ruolo)}</span>
+        ${sessione?.ruolo === "owner" || inv.ruolo === "staff" ? `
+          <button type="button" class="team-invite-resend" data-id="${_escapeHtml(inv.id)}">${_escapeHtml(_tDash("team.resend", "Reinvia"))}</button>
+          <button type="button" class="team-invite-revoke" data-id="${_escapeHtml(inv.id)}">${_escapeHtml(_tDash("team.revoke", "Revoca"))}</button>
+        ` : ""}
+      </li>`).join("") : `<li>${_escapeHtml(_tDash("team.pending_empty", "Nessun invito in attesa."))}</li>`;
+  } catch { list.textContent = _tDash("team.pending_unavailable", "Inviti temporaneamente non disponibili."); }
+}
+
+async function caricaOrganizzazioniTeam() {
+  const selector = document.getElementById("team-org-selector");
+  if (!selector) return;
+  const res = await apiFetch(`${API_BASE}/api/team/organizations`);
+  if (!res.ok) return;
+  const data = await res.json();
+  selector.replaceChildren();
+  for (const org of data.organizations || []) {
+    const option = new Option(org.name, org.id);
+    selector.add(option);
+  }
+  selector.value = sessione.organization_id;
+  selector.hidden = selector.options.length < 2;
+}
+
 async function caricaTeam() {
   const tbody = document.getElementById("team-members-tbody");
   const statLimit = document.getElementById("team-stat-limit");
@@ -8499,6 +8667,7 @@ async function caricaTeam() {
   const addCard = document.getElementById("team-add-card");
 
   if (!tbody) return;
+  await Promise.all([caricaInvitiTeam(), caricaOrganizzazioniTeam()]);
 
   const mioRuolo = sessione?.ruolo || "staff";
 
@@ -8608,7 +8777,7 @@ async function caricaTeam() {
       let dateFormatted = "—";
       if (m.joined_at) {
         try {
-          dateFormatted = new Date(m.joined_at).toLocaleDateString("it-IT", {
+          dateFormatted = new Date(m.joined_at).toLocaleDateString(localeCorrente(), {
             day: "2-digit",
             month: "2-digit",
             year: "numeric"
@@ -8700,9 +8869,11 @@ async function aggiungiMembroTeam(e) {
       return;
     }
 
-    toast(`Collaboratore ${email} aggiunto con successo al team!`, "success");
+    toast(_tDash("team.invite_sent", "Invito preparato. L'accesso al team richiede l'accettazione del destinatario."), "success");
+    // A test link is returned only in explicitly enabled non-production mode.
+    if (data.test_link) toast(`Link di test: ${data.test_link}`, "success", 12000);
     if (emailInput) emailInput.value = "";
-    await caricaTeam();
+    await caricaInvitiTeam();
   } catch (err) {
     console.error("Errore aggiunta collaboratore:", err);
     toast("Errore di connessione durante l'aggiunta.", "error");
@@ -8711,7 +8882,7 @@ async function aggiungiMembroTeam(e) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = `
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-        Aggiungi al Team
+        ${_escapeHtml(_tDash("team.add_btn", "Invia invito"))}
       `;
     }
   }
@@ -8772,6 +8943,48 @@ async function gestisciAzioniTeam(e) {
 }
 
 document.getElementById("team-add-form")?.addEventListener("submit", aggiungiMembroTeam);
+document.getElementById("team-org-selector")?.addEventListener("change", (event) => {
+  localStorage.setItem("melpis_selected_organization", event.target.value);
+  window.location.reload();
+});
+document.getElementById("team-invitations-list")?.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-id]");
+  if (!button) return;
+  const action = button.classList.contains("team-invite-revoke") ? "revoke" : "resend";
+  const id = encodeURIComponent(button.dataset.id);
+  button.disabled = true;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/team/invitations/${id}${action === "resend" ? "/resend" : ""}`, {
+      method: action === "resend" ? "POST" : "DELETE"
+    });
+    if (!res.ok) throw new Error("Azione non riuscita");
+    toast(action === "resend"
+      ? _tDash("team.resend_success", "Invito reinviato.")
+      : _tDash("team.revoke_success", "Invito revocato."), "success");
+    await caricaInvitiTeam();
+  } catch { toast(_tDash("team.invite_error", "Impossibile aggiornare l'invito."), "error"); }
+  finally { button.disabled = false; }
+});
+
+async function accettaInvitoDaLink() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const token = params.get("team-invite") || sessionStorage.getItem("melpis_pending_team_invite");
+  if (!token) return false;
+  sessionStorage.removeItem("melpis_pending_team_invite");
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+  const res = await apiFetch(`${API_BASE}/api/team/invitations/accept`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token })
+  });
+  if (!res.ok) {
+    toast(_tDash("team.invite_invalid", "Invito non valido o scaduto. Chiedi un nuovo invito."), "error");
+    return false;
+  }
+  const accepted = await res.json();
+  localStorage.setItem("melpis_selected_organization", accepted.organization_id);
+  window.location.replace("/app/");
+  return true;
+}
 document.getElementById("btn-refresh-team")?.addEventListener("click", caricaTeam);
 document.getElementById("team-limit-upgrade-btn")?.addEventListener("click", () => {
   apriView("account");

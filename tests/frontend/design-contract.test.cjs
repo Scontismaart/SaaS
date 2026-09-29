@@ -95,6 +95,24 @@ test('dashboard keeps a real date input and no overview welcome block', () => {
   assert.equal(document.querySelectorAll('.ai-config-group-title').length, 2);
 });
 
+test('dashboard theme controls inherit colors and Google Reviews has no static connected claim', () => {
+  const document = new JSDOM(read('web/index.html')).window.document;
+  const css = read('web/style.css');
+  assert.equal(document.querySelector('.sidebar-footer-note'), null);
+  assert.ok(document.querySelector('#sidebar-lang-select.sidebar-lang-select'));
+  const status = document.querySelector('#reviews-google-summary-status');
+  assert.ok(status);
+  assert.equal(status.classList.contains('ready'), false);
+  assert.equal(status.dataset.state, 'loading');
+  assert.match(read('web/app.js'), /\/api\/reviews\/google\/status/);
+  assert.match(read('web/app.js'), /setSummaryStatus\(true\)/);
+  assert.match(read('web/app.js'), /setSummaryStatus\(false\)/);
+  assert.match(css, /\.nav-item \.nav-icon[\s\S]*?color:\s*currentColor/);
+  assert.match(css, /\.sidebar-lang-select[\s\S]*?appearance:\s*none/);
+  assert.match(css, /\.priority-item-badge[\s\S]*?background:\s*var\(--dashboard-surface-subtle\)/);
+  assert.match(css, /\.topbar\s*\{\s*position:\s*relative;\s*top:\s*auto;/);
+});
+
 test('theme prepaint honors saved light, dark, system and safe fallback', () => {
   const script = read('web/theme-init.js');
   const resolve = (saved, systemDark, brokenStorage = false) => {

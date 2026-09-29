@@ -8,6 +8,19 @@ const { JSDOM } = require("jsdom");
 
 const { ROUTE_MAP, SUPPORTED_LANGS, generateHreflangs, generateLanguageSelector } = require("../../scripts/build-i18n.js");
 
+test("dashboard overview omits the topbar account avatar and decorative KPI controls", () => {
+  const root = path.resolve(__dirname, "../..");
+  const html = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
+  const appCode = fs.readFileSync(path.join(root, "web/app.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "web/style.css"), "utf8");
+
+  assert.doesNotMatch(html, /topbar-avatar-(?:btn|initial)/);
+  assert.doesNotMatch(html, /class="kpi-action-btn"/);
+  assert.doesNotMatch(appCode, /topbar-avatar-initial|kpi-action-btn/);
+  assert.doesNotMatch(css, /\.topbar-avatar-(?:btn|initial)|\.kpi-action-btn|\.kpi-card::before/);
+  assert.match(html, /class="sidebar-account-btn"/, "sidebar profile access remains available");
+});
+
 test("i18n: mandatory namespaces exist in source locale (it)", () => {
   const required = [
     "common.json", "landing.json", "pricing.json", "sectors.json",
@@ -178,8 +191,32 @@ test("i18n: dashboard bundles stay synchronized and cover visible Settings, AI, 
     "settings:ai_configuration.save_success",
     "settings:ai_configuration.save_error",
     "settings:ai_configuration.connection_error",
+    "settings:ai_configuration.load_loading",
+    "settings:ai_configuration.load_error",
   ]) {
     assert.ok(appCode.includes(`t("${key}")`), `dynamic AI copy uses ${key}`);
+  }
+});
+
+test("i18n: every dashboard runtime _tDash key is translated in all dashboard bundles", () => {
+  const root = path.resolve(__dirname, "../..");
+  const appCode = fs.readFileSync(path.join(root, "web/app.js"), "utf8");
+  const runtimeKeys = new Set(
+    Array.from(appCode.matchAll(/_tDash\(\s*["']([^"']+\.runtime\.[^"']+)/gs), (match) => match[1]),
+  );
+  const resolveKey = (bundle, key) => key.split(".").reduce((value, part) => value && value[part], bundle);
+
+  assert.ok(runtimeKeys.size > 0, "dashboard must expose runtime translation keys");
+  for (const lang of SUPPORTED_LANGS) {
+    const source = JSON.parse(fs.readFileSync(path.join(root, "locales", lang, "dashboard.json"), "utf8"));
+    const served = JSON.parse(fs.readFileSync(path.join(root, "web/locales", lang, "dashboard.json"), "utf8"));
+    const landing = JSON.parse(fs.readFileSync(path.join(root, "web/landing/locales", lang, "dashboard.json"), "utf8"));
+    assert.deepEqual(served, source, `web dashboard bundle is synchronized for ${lang}`);
+    assert.deepEqual(landing, source, `landing dashboard bundle is synchronized for ${lang}`);
+    for (const key of runtimeKeys) {
+      assert.equal(typeof resolveKey(source, key), "string", `${lang} translation exists for ${key}`);
+    }
+    assert.equal(typeof source.knowledge.ask_placeholder, "string", `${lang} translation exists for knowledge.ask_placeholder`);
   }
 });
 

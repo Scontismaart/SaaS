@@ -15,7 +15,6 @@
     "menu_impostazioni": "Impostazioni",
     "menu_piano": "Piano e abbonamento",
     "menu_logout": "Esci",
-    "tagline": "Più tempo per ciò che conta.",
     "nav_aria": "Sezioni del pannello"
   },
   "topbar": {
@@ -82,7 +81,22 @@
     "regenerate_aria": "Rigenera report",
     "empty_report": "Nessun report ancora generato per oggi.",
     "chart_aria": "Andamento dei messaggi",
-    "insights_aria": "Insight principali"
+    "insights_aria": "Insight principali",
+    "runtime": {
+      "error_title": "Qualcosa è andato storto",
+      "retry": "Riprova",
+      "priority_error": "Impossibile caricare le richieste urgenti.",
+      "priority_count": "{{count}} elementi",
+      "no_messages_title": "Nessun messaggio oggi",
+      "no_messages_desc": "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti.",
+      "activity_error": "Impossibile caricare l'attività recente.",
+      "waiting_title": "In attesa di conversazioni",
+      "waiting_desc": "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale.",
+      "try_simulator": "Prova nel simulatore",
+      "review_kind": "Recensione",
+      "message_kind": "Messaggio",
+      "open_review": "Visualizza"
+    }
   },
   "views": {
     "simulator_intro": "Simula una conversazione come farebbe un cliente reale per verificare le risposte e il comportamento del tuo assistente AI.",
@@ -135,11 +149,17 @@
     "capacity_help": "Override per fasce aperte. Imposta 0 per chiudere una fascia.",
     "save_availability": "Salva disponibilità",
     "capacity_status": "Semaforo",
-    "export_csv": "Esporta CSV"
+    "export_csv": "Esporta CSV",
+    "runtime": {
+      "count": "{{count}} prenotazioni",
+      "day_title": "Prenotazioni di {{date}}",
+      "details": "Dettagli",
+      "empty_day": "Nessuna prenotazione per questa data"
+    }
   },
   "team": {
-    "add_title": "Aggiungi un collaboratore",
-    "add_intro": "Associa un operatore o un manager al pannello aziendale della tua attività.",
+    "add_title": "Invita un collaboratore",
+    "add_intro": "Il collaboratore accede solo dopo aver verificato la propria email e accettato l'invito.",
     "email_label": "Email collaboratore",
     "role_label": "Ruolo assegnato",
     "members_title": "Membri del team attivi",
@@ -157,11 +177,36 @@
     "upgrade_btn": "Passa a un piano superiore",
     "staff_role": "Operatore Staff (Inbox, chat clienti e prenotazioni)",
     "manager_role": "Manager (Gestione team, listini e report)",
-    "add_btn": "Aggiungi al Team",
-    "immediate_access": "Accesso immediato:",
-    "access_help_before_link": "Se il collaboratore ha già un profilo Melpis, viene collegato all'istante a questo pannello. Se è un nuovo collega, può creare il proprio account personale su",
-    "access_help_after_link": "con la stessa email e troverà l'accesso già configurato.",
-    "loading_members": "Caricamento membri del team..."
+    "add_btn": "Invia invito",
+    "immediate_access": "Invito protetto:",
+    "access_help_before_link": "Il destinatario può registrarsi su",
+    "access_help_after_link": "con la stessa email; dovrà poi accettare il link ricevuto.",
+    "pending_title": "Inviti in attesa",
+    "pending_empty": "Nessun invito in attesa.",
+    "pending_unavailable": "Inviti temporaneamente non disponibili.",
+    "resend": "Reinvia",
+    "revoke": "Revoca",
+    "organization": "Organizzazione",
+    "invite_sent": "Invito preparato. L'accesso al team richiede l'accettazione del destinatario.",
+    "invite_error": "Impossibile aggiornare l'invito.",
+    "invite_invalid": "Invito non valido o scaduto. Chiedi un nuovo invito.",
+    "resend_success": "Invito reinviato.",
+    "revoke_success": "Invito revocato.",
+    "loading_members": "Caricamento membri del team...",
+    "runtime": {
+      "load_error": "Impossibile caricare i membri del team: {{detail}}",
+      "member_count": "{{count}} membri",
+      "unlimited_accounts": "{{count}} account attivi (illimitati)",
+      "essential_account": "1 / 1 account (Piano Essenziale - Solo titolare)",
+      "account_capacity": "{{used}} / {{limit}} account ({{operators}} di {{max}} collaboratori)",
+      "plan_essential": "Essenziale",
+      "plan_growth": "Crescita (Pro)",
+      "plan_scale": "Scala",
+      "essential_limit_title": "Il piano Essenziale non include collaboratori aggiuntivi",
+      "limit_title": "Limite massimo collaboratori raggiunto per il piano corrente",
+      "essential_limit_banner": "Il piano Essenziale include solo il titolare",
+      "limit_banner": "Limite account raggiunto ({{used}}/{{limit}})"
+    }
   },
   "reviews": {
     "compose_title": "Analizza nuova recensione",
@@ -201,10 +246,29 @@
     "trends_title": "Top Trends & Temi",
     "channels_title": "Canali Collegati",
     "google_sync": "Sincronizzazione recensioni",
+    "google_connected": "Connesso",
+    "google_disconnected": "Non collegato",
+    "google_status_unavailable": "Stato non disponibile",
     "active": "Attivo",
     "import_replies": "Importazione & Risposte",
     "manual": "Manuale",
-    "draft_placeholder": "La bozza di risposta apparirà qui..."
+    "draft_placeholder": "La bozza di risposta apparirà qui...",
+    "runtime": {
+      "ai_reply_label": "Bozza di risposta suggerita:",
+      "copied_toast": "Testo della bozza copiato negli appunti!",
+      "empty_cta": "Incolla una recensione",
+      "empty_desc": "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale.",
+      "empty_title": "Nessuna recensione registrata",
+      "filtered_desc": "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati.",
+      "filtered_title": "Nessun risultato con i filtri attuali",
+      "rating_total": "Basato su {{count}} recensioni",
+      "reset_filters": "Reimposta filtri",
+      "review_count": "{{count}} recensioni",
+      "review_draft": "Rivedi bozza",
+      "status_approved": "Approvata",
+      "status_draft": "Bozza pronta",
+      "status_urgent": "Richiede attenzione"
+    }
   },
   "knowledge": {
     "tabs_aria": "Categorie della Knowledge Base",
@@ -230,7 +294,17 @@
     "text_name_placeholder": "Nome del testo (es. orari_festivi.txt)",
     "save_text": "Salva testo",
     "uploaded_documents": "Documenti caricati",
-    "empty_documents": "Nessun documento caricato."
+    "empty_documents": "Nessun documento caricato.",
+    "ask_placeholder": "Es. «Quanto costa un taglio uomo?» oppure «Quali sono gli orari di apertura?»",
+    "runtime": {
+      "documents_count": "{{active}} documenti attivi su {{total}} totali",
+      "empty_documents": "Nessun file caricato. Usa l'area tratteggiata sopra per caricare PDF, DOCX o immagini.",
+      "empty_faq": "Nessuna FAQ configurata. Clicca su \"+ Nuova FAQ\" per aggiungerne una.",
+      "empty_web": "Nessuna pagina web importata. Inserisci un link sopra per importare listino o info dal tuo sito.",
+      "faq_count": "{{active}} FAQ attive su {{total}} totali (tutte indicizzate)",
+      "last_update": "Ultimo aggiornamento: {{date}}",
+      "web_count": "{{active}} pagine web attive su {{total}} totali"
+    }
   },
   "modals": {
     "confirm_action": "Conferma azione",

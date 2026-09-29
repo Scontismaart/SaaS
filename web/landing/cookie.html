@@ -7,7 +7,7 @@
     <meta name="description" content="Cookie utilizzati dal sito e dalla dashboard Melpis: cookie tecnici di sessione, nessun cookie di profilazione.">
     <meta name="robots" content="noindex, follow">
     <meta name="theme-color" content="#08090c">
-    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
     <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
@@ -201,44 +201,28 @@
     </div>
 
 <main class="legal-main container-narrow">
-
     <h1>Cookie Policy</h1>
-    <p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
-
+    <p class="legal-updated">Ultimo aggiornamento: settembre 2026</p>
     <section>
-        <h2>Come usiamo i cookie</h2>
-        <p>Melpis usa <strong>solo cookie tecnici</strong>, strettamente necessari al funzionamento del servizio. Non usiamo cookie di profilazione né tracciamento pubblicitario. Le statistiche di traffico sono raccolte senza cookie (vedi la sezione dedicata qui sotto).</p>
+        <h2>Cookie e memoria tecnica</h2>
+        <p>Melpis usa cookie e memoria locale necessari a login, sicurezza e preferenze dell'interfaccia. Nella configurazione esaminata non sono presenti cookie di profilazione o analytics. Se in futuro saranno aggiunti strumenti non tecnici, questa informativa e la raccolta del consenso dovranno essere aggiornate prima dell'attivazione.</p>
     </section>
-
     <section>
-        <h2>Cookie tecnici utilizzati</h2>
-        <ul>
-            <li><strong>w_at / wa_rt (o __Host-wa_at / __Host-wa_rt)</strong>: cookie di sessione HttpOnly+Secure che mantengono l'accesso alla dashboard dopo il login. Non contengono dati leggibili da script del browser.</li>
-            <li><strong>wa_csrf (o __Host-wa_csrf)</strong>: token di sicurezza contro gli attacchi CSRF.</li>
-        </ul>
-        <p>Questi cookie sono essenziali: senza di essi non è possibile mantenere la sessione autenticata in modo sicuro. Per questo motivo, come previsto dall'art. 122 del Codice Privacy e dalle linee guida del Garante, non richiedono consenso preventivo.</p>
+        <h2>Cookie utilizzati</h2>
+        <ul><li><strong>wa_at e wa_rt</strong> (o varianti <strong>__Host-</strong>): cookie di autenticazione HttpOnly; Secure quando previsto dal contesto HTTPS.</li><li><strong>wa_csrf</strong> (o <strong>__Host-wa_csrf</strong>): controllo CSRF leggibile dall'applicazione.</li><li><strong>Cookie OAuth temporanei</strong>: conservano i dati necessari a completare l'accesso Google e sono rimossi al termine del flusso.</li><li><strong>melpis_lang</strong>: conserva la lingua scelta.</li></ul>
     </section>
-
     <section>
-        <h2>Archiviazione locale</h2>
-        <p>La dashboard salva nel localStorage del browser unicamente lo stato di lettura delle notifiche dell'interfaccia. Nessun dato personale o di sessione è conservato in localStorage.</p>
+        <h2>Memoria locale</h2>
+        <p>Il browser può conservare lingua, tema, stato di lettura delle notifiche e una bozza dell'onboarding nel localStorage. La bozza può contenere informazioni inserite dall'utente e resta sul dispositivo finché viene completata, eliminata o rimossa dal browser. I token di sessione non sono salvati nel localStorage.</p>
     </section>
-
     <section>
-        <h2>Statistiche di traffico senza cookie</h2>
-        <p>Nel profilo di lancio a costo zero non è attivo alcun servizio esterno di analytics. I log tecnici del server sono usati esclusivamente per sicurezza e funzionamento, con minimizzazione dei dati.</p>
+        <h2>Consenso e gestione</h2>
+        <p>I soli strumenti tecnici necessari e le preferenze richieste non richiedono consenso preventivo ai sensi dell'art. 122 del Codice Privacy e delle <a href="https://www.garanteprivacy.it/faq/cookie" target="_blank" rel="noopener noreferrer">indicazioni del Garante</a>. Non è quindi previsto un banner di consenso per questa configurazione. Puoi cancellare cookie e memoria locale dalle impostazioni del browser; potresti dover accedere di nuovo o perdere preferenze e bozze.</p>
     </section>
-
-    <section>
-        <h2>Gestione dei cookie</h2>
-        <p>Puoi cancellare o bloccare i cookie dalle impostazioni del browser; in tal caso la dashboard richiederà nuovamente il login a ogni visita. Le istruzioni sono disponibili nelle pagine di supporto di <a href="https://support.google.com/chrome/answer/95647" rel="noopener noreferrer" target="_blank">Chrome</a>, <a href="https://support.mozilla.org/kb/cookies-information-websites-store-on-your-computer" rel="noopener noreferrer" target="_blank">Firefox</a> e <a href="https://support.apple.com/guide/safari/manage-cookies-sfri11471/mac" rel="noopener noreferrer" target="_blank">Safari</a>.</p>
-    </section>
-
     <section>
         <h2>Contatti</h2>
-        <p>Per domande sui cookie: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Vedi anche la <a href="/privacy/">Privacy Policy</a>.</p>
+        <p>Per domande: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Vedi anche la <a href="/privacy/">Privacy Policy</a>.</p>
     </section>
-
 </main>
 
 <footer class="site-footer">
@@ -246,7 +230,7 @@
         <div class="footer-top-row">
             <div class="footer-brand-col">
                 <a href="/" class="nav-brand">
-                    <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                    <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
                     <span class="nav-brand-text">Melpis</span>
                 </a>
                 <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>

@@ -7,7 +7,7 @@
     <meta name="description" content="Informativa sul trattamento dei dati personali ai sensi del Regolamento UE 2016/679 (GDPR) per il servizio Melpis.">
     <meta name="robots" content="noindex, follow">
     <meta name="theme-color" content="#08090c">
-    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
     <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
@@ -201,73 +201,37 @@
     </div>
 
 <main class="legal-main container-narrow">
-
-    <h1>Politique de Confidentialité</h1>
-    <p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
+    <h1>Politique de confidentialité</h1>
+    <p class="legal-updated">Dernière mise à jour : septembre 2026</p>
     <div class="legal-disclaimer-callout" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 14px 18px; margin: 20px 0 28px; font-size: 0.90rem; color: #cbd5e1; line-height: 1.5;"><strong style="color: #ffffff;">Avis :</strong> Ce document est fourni à titre de traduction de courtoisie. La version juridiquement contraignante est le <a href="https://melpis.it/privacy/" style="color: #60a5fa; text-decoration: underline;">texte officiel en italien</a>.</div>
-
-    <!-- NOTA PER IL TITOLARE: personalizzare i dati societari (ragione sociale,
-         sede legale, P.IVA, email del DPO/RP) prima della pubblicazione. -->
-
     <section>
-        <h2>1. Titolare del trattamento</h2>
-        <p>{{LEGAL_ENTITY_NAME}} — sede: {{LEGAL_ENTITY_REGISTERED_OFFICE}}, P.IVA: {{LEGAL_ENTITY_VAT_NUMBER}}, email: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>.</p>
+        <h2>Responsable et rôles</h2>
+        <p>{{LEGAL_ENTITY_NAME}} — siège : {{LEGAL_ENTITY_REGISTERED_OFFICE}}, numéro de TVA : {{LEGAL_ENTITY_VAT_NUMBER}}, contact vie privée : <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>.</p><p>Melpis est responsable des données des comptes et du site. Chaque entreprise détermine les finalités et instructions concernant les données de ses clients ; un accord de traitement doit être établi avant tout usage opérationnel.</p>
     </section>
-
     <section>
-        <h2>2. Dati trattati</h2>
-        <p>A seconda dell'uso del servizio, trattiamo le seguenti categorie di dati:</p>
-        <ul>
-            <li><strong>Dati di registrazione</strong>: nome dell'attività, indirizzo email, password (conservata esclusivamente in forma crittografata dal provider di autenticazione Supabase Auth).</li>
-            <li><strong>Dati di fatturazione</strong>: gestiti da Stripe (società terza, titolare autonomo); Melpis non memorizza numeri di carta di credito.</li>
-            <li><strong>Dati dei tuoi clienti</strong>: messaggi WhatsApp ricevuti tramite il tuo numero WhatsApp Business, necessari al funzionamento dell'assistente AI. Il contenuto delle conversazioni è trattato per fornire il servizio ed è eliminato secondo le politiche di retention descritte nella sezione 5.</li>
-            <li><strong>Dati tecnici</strong>: log di sicurezza e di funzionamento (indirizzo IP, timestamp), trattati per finalità di sicurezza informatica.</li>
-        </ul>
+        <h2>Données traitées</h2>
+        <p>Nous traitons les données de compte, d'organisation et d'authentification, paramètres, documents importés, conversations et contacts des canaux connectés, réservations, brouillons, données techniques et journaux de sécurité. Les intégrations Google ou Meta activées utilisent les données nécessaires. N'introduisez pas de données sensibles, notamment médicales, sans évaluation spécifique.</p>
     </section>
-
     <section>
-        <h2>3. Finalità e basi giuridiche</h2>
-        <ul>
-            <li><strong>Erogazione del servizio contrattuale</strong> (risposte automatiche, prenotazioni, report): esecuzione del contratto, art. 6(1)(b) GDPR.</li>
-            <li><strong>Fatturazione e obblighi fiscali</strong>: obbligo legale, art. 6(1)(c) GDPR.</li>
-            <li><strong>Sicurezza informatica e prevenzione abusi</strong>: interesse legittimo, art. 6(1)(f) GDPR.</li>
-            <li><strong>Miglioramento del servizio con dati aggregati e anonimi</strong>: interesse legittimo; i dati anonimi non sono più riconducibili all'interessato.</li>
-        </ul>
-        <p>L'assistente AI non utilizza le conversazioni dei tuoi clienti per addestrare modelli generici.</p>
+        <h2>Finalités et bases légales</h2>
+        <p>Compte et service : exécution du contrat (art. 6(1)(b) RGPD). Sécurité et prévention des abus : intérêt légitime (art. 6(1)(f)). Obligations fiscales applicables : obligation légale (art. 6(1)(c)). Chaque entreprise doit définir la base légale et informer ses propres clients.</p>
     </section>
-
     <section>
-        <h2>4. Fornitori e trasferimenti extra-UE</h2>
-        <p>Ci avvaliamo dei seguenti responsabili esterni, selezionati tra provider che offrono garanzie contrattuali conformi agli artt. 28 e 46 GDPR:</p>
-        <ul>
-            <li><strong>Supabase</strong> — autenticazione e database (Unione Europea).</li>
-            <li><strong>Meta Platforms Ireland Ltd.</strong> — WhatsApp Business API.</li>
-            <li><strong>Stripe Payments Europe</strong> — pagamenti.</li>
-            <li><strong>Groq, Inc.</strong> — inferenza AI nel profilo gratuito configurato, limitando i dati a quanto necessario per la risposta.</li>
-            <li><strong>Oracle Cloud Infrastructure</strong> — hosting previsto per l'applicazione nel profilo Always Free.</li>
-        </ul>
+        <h2>Destinataires et transferts</h2>
+        <p>Selon les fonctions activées, les données peuvent être traitées par les fournisseurs d'infrastructure et de base de données, Supabase pour l'authentification, Meta pour WhatsApp/Instagram, Google pour la connexion ou les intégrations, et le fournisseur d'IA configuré (Groq ou OpenRouter). Le contenu nécessaire peut lui être transmis. Les lieux de traitement, transferts hors EEE et garanties doivent être vérifiés avant le lancement. Aucun hébergement futur n'est présenté comme déjà actif.</p>
     </section>
-
     <section>
-        <h2>5. Conservazione</h2>
-        <p>I dati conversazionali sono conservati per il tempo necessario all'erogazione del servizio e, successivamente, secondo la finestra di retention operativa configurata nel sistema. Alla cancellazione dell'account, i dati dell'organizzazione sono eliminati in modo definitivo e a cascata entro 30 giorni, salvo obblighi di legge su dati fiscali.</p>
+        <h2>Conservation et suppression</h2>
+        <p>Les données sont conservées selon les finalités, paramètres opérationnels et obligations applicables. Demandez fermeture, export ou suppression à <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Sauvegardes, journaux, tiers et obligations légales doivent être pris en compte. Une suppression complète dans un délai fixe et un export ou effacement autonome depuis le tableau de bord ne sont pas garantis.</p>
     </section>
-
     <section>
-        <h2>6. Diritti degli interessati</h2>
-        <p>Puoi esercitare in ogni momento i diritti di accesso, rettifica, cancellazione ("diritto all'oblio"), limitazione, portabilità e opposizione previsti dagli artt. 15–22 GDPR scrivendo a <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. I titolari di account possono inoltre esportare ed eliminare autonomamente i dati dalla dashboard. Hai diritto a proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener noreferrer" target="_blank">garanteprivacy.it</a>).</p>
+        <h2>Droits</h2>
+        <p>Vous pouvez demander accès, rectification, effacement, limitation, portabilité le cas échéant et opposition conformément aux articles 15–22 RGPD à <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Les clients finaux peuvent également contacter leur entreprise responsable. Une réclamation peut être déposée auprès d'une autorité de protection des données.</p>
     </section>
-
     <section>
-        <h2>7. Sicurezza</h2>
-        <p>I dati sono cifrati in transito (TLS) e a riposo. L'autenticazione usa sessioni in cookie HttpOnly+Secure; l'accesso alle funzioni sensibili è protetto da controllo dei ruoli, audit logging e autenticazione a due fattori opzionale.</p>
+        <h2>Sécurité et modifications</h2>
+        <p>Nous utilisons des contrôles d'accès, des cookies de session protégés et des mesures techniques contre les accès non autorisés. Aucun système n'est sans risque. Cette notice évoluera si les traitements, fournisseurs ou paramètres changent.</p>
     </section>
-
-    <section>
-        <h2>8. Modifiche</h2>
-        <p>La presente informativa può essere aggiornata. Le modifiche sostanziali verranno comunicate via email o dall'interno della dashboard con almeno 30 giorni di preavviso.</p>
-    </section>
-
 </main>
 
 <footer class="site-footer">
@@ -275,7 +239,7 @@
         <div class="footer-top-row">
             <div class="footer-brand-col">
                 <a href="/fr/" class="nav-brand">
-                    <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                    <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
                     <span class="nav-brand-text">Melpis</span>
                 </a>
                 <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>

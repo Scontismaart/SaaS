@@ -15,7 +15,6 @@
     "menu_impostazioni": "Settings",
     "menu_piano": "Plan & Billing",
     "menu_logout": "Log out",
-    "tagline": "More time for what matters.",
     "nav_aria": "Dashboard sections"
   },
   "topbar": {
@@ -82,7 +81,22 @@
     "regenerate_aria": "Regenerate report",
     "empty_report": "No report has been generated for today yet.",
     "chart_aria": "Message activity",
-    "insights_aria": "Key insights"
+    "insights_aria": "Key insights",
+    "runtime": {
+      "error_title": "Something went wrong",
+      "retry": "Try again",
+      "priority_error": "Unable to load urgent requests.",
+      "priority_count": "{{count}} items",
+      "no_messages_title": "No messages today",
+      "no_messages_desc": "The assistant is set up and ready to reply to your customers automatically.",
+      "activity_error": "Unable to load recent activity.",
+      "waiting_title": "Waiting for conversations",
+      "waiting_desc": "Customer messages and assistant replies will appear here in real time.",
+      "try_simulator": "Try the simulator",
+      "review_kind": "Review",
+      "message_kind": "Message",
+      "open_review": "View"
+    }
   },
   "views": {
     "simulator_intro": "Simulate a real customer conversation to review your AI assistant's responses and behavior.",
@@ -135,11 +149,17 @@
     "capacity_help": "Override open time slots. Set to 0 to close a slot.",
     "save_availability": "Save availability",
     "capacity_status": "Availability status",
-    "export_csv": "Export CSV"
+    "export_csv": "Export CSV",
+    "runtime": {
+      "count": "{{count}} bookings",
+      "day_title": "Bookings for {{date}}",
+      "details": "Details",
+      "empty_day": "No bookings for this date"
+    }
   },
   "team": {
-    "add_title": "Add a team member",
-    "add_intro": "Give an operator or manager access to your business dashboard.",
+    "add_title": "Invite a team member",
+    "add_intro": "Access starts only after the recipient verifies their email and accepts the invitation.",
     "email_label": "Team member email",
     "role_label": "Assigned role",
     "members_title": "Active team members",
@@ -157,11 +177,36 @@
     "upgrade_btn": "Upgrade your plan",
     "staff_role": "Staff operator (Inbox, customer chats, and bookings)",
     "manager_role": "Manager (team, pricing, and reports)",
-    "add_btn": "Add to team",
-    "immediate_access": "Instant access:",
-    "access_help_before_link": "If the collaborator already has a Melpis profile, they’ll be connected to this dashboard immediately. New colleagues can create their account at",
-    "access_help_after_link": "using the same email to access the configured dashboard.",
-    "loading_members": "Loading team members..."
+    "add_btn": "Send invitation",
+    "immediate_access": "Secure invitation:",
+    "access_help_before_link": "The recipient can sign up at",
+    "access_help_after_link": "with the same email, then accept the invitation link.",
+    "pending_title": "Pending invitations",
+    "pending_empty": "No pending invitations.",
+    "pending_unavailable": "Invitations are temporarily unavailable.",
+    "resend": "Resend",
+    "revoke": "Revoke",
+    "organization": "Organization",
+    "invite_sent": "Invitation prepared. Team access starts after the recipient accepts it.",
+    "invite_error": "Could not update the invitation.",
+    "invite_invalid": "Invitation invalid or expired. Ask for a new invitation.",
+    "resend_success": "Invitation resent.",
+    "revoke_success": "Invitation revoked.",
+    "loading_members": "Loading team members...",
+    "runtime": {
+      "load_error": "Unable to load team members: {{detail}}",
+      "member_count": "{{count}} members",
+      "unlimited_accounts": "{{count}} active accounts (unlimited)",
+      "essential_account": "1 / 1 account (Essential plan - Owner only)",
+      "account_capacity": "{{used}} / {{limit}} accounts ({{operators}} of {{max}} team members)",
+      "plan_essential": "Essential",
+      "plan_growth": "Growth (Pro)",
+      "plan_scale": "Scale",
+      "essential_limit_title": "The Essential plan does not include additional team members",
+      "limit_title": "The current plan's team member limit has been reached",
+      "essential_limit_banner": "The Essential plan includes the owner only",
+      "limit_banner": "Account limit reached ({{used}}/{{limit}})"
+    }
   },
   "reviews": {
     "compose_title": "Analyze a new review",
@@ -201,10 +246,29 @@
     "trends_title": "Top trends and themes",
     "channels_title": "Connected channels",
     "google_sync": "Review synchronization",
+    "google_connected": "Connected",
+    "google_disconnected": "Not connected",
+    "google_status_unavailable": "Status unavailable",
     "active": "Active",
     "import_replies": "Import and replies",
     "manual": "Manual",
-    "draft_placeholder": "The reply draft will appear here..."
+    "draft_placeholder": "The reply draft will appear here...",
+    "runtime": {
+      "ai_reply_label": "Suggested reply draft:",
+      "copied_toast": "Draft text copied to clipboard!",
+      "empty_cta": "Paste a review",
+      "empty_desc": "Paste a review into the form above: AI will assess its sentiment and prepare a professional reply draft.",
+      "empty_title": "No reviews yet",
+      "filtered_desc": "No reviews match the selected filters or search criteria.",
+      "filtered_title": "No results with the current filters",
+      "rating_total": "Based on {{count}} reviews",
+      "reset_filters": "Reset filters",
+      "review_count": "{{count}} reviews",
+      "review_draft": "Review draft",
+      "status_approved": "Approved",
+      "status_draft": "Draft ready",
+      "status_urgent": "Needs attention"
+    }
   },
   "knowledge": {
     "tabs_aria": "Knowledge Base categories",
@@ -230,7 +294,17 @@
     "text_name_placeholder": "Text name (e.g. holiday_hours.txt)",
     "save_text": "Save text",
     "uploaded_documents": "Uploaded documents",
-    "empty_documents": "No documents uploaded."
+    "empty_documents": "No documents uploaded.",
+    "ask_placeholder": "E.g. “How much does a men's haircut cost?” or “What are your opening hours?”",
+    "runtime": {
+      "documents_count": "{{active}} active documents out of {{total}}",
+      "empty_documents": "No files uploaded. Use the dashed area above to upload PDFs, DOCX files, or images.",
+      "empty_faq": "No FAQs configured. Click “+ New FAQ” to add one.",
+      "empty_web": "No web pages imported. Add a link above to import pricing or information from your website.",
+      "faq_count": "{{active}} active FAQs out of {{total}} (all indexed)",
+      "last_update": "Last updated: {{date}}",
+      "web_count": "{{active}} active web pages out of {{total}}"
+    }
   },
   "modals": {
     "confirm_action": "Confirm Action",

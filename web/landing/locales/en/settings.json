@@ -15,7 +15,13 @@
     "title": "Localization & Timezone",
     "description": "The timezone is used for booking reminders, end-of-day reports, and SLA calculations.",
     "label": "Business Timezone",
-    "save_btn": "Save timezone"
+    "save_btn": "Save timezone",
+    "load_loading": "Loading time zone…",
+    "load_error": "Could not load the time zone. Please try again.",
+    "save_loading": "Saving…",
+    "save_success": "Time zone updated",
+    "save_error": "Could not save the time zone",
+    "connection_error": "Connection error"
   },
   "language_section": {
     "title": "Panel Language",
@@ -48,6 +54,7 @@
     "add_rule": "+ Add rule", "save_btn": "Save AI Configuration", "save_loading": "Saving…",
     "save_success": "AI configuration saved and synced!", "save_toast": "AI configuration saved and synced successfully",
     "save_error": "Error while saving", "connection_error": "Could not connect to the server",
+    "load_loading": "Loading AI configuration…", "load_error": "Could not load the AI configuration. Try opening this section again.",
     "rules_empty": "No active rules. Add one using the field below.", "remove_rule": "Remove"
   },
   "assistant_rules": {

@@ -7,7 +7,7 @@
     <meta name="description" content="Cookie utilizzati dal sito e dalla dashboard Melpis: cookie tecnici di sessione, nessun cookie di profilazione.">
     <meta name="robots" content="noindex, follow">
     <meta name="theme-color" content="#08090c">
-    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
     <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
@@ -201,45 +201,29 @@
     </div>
 
 <main class="legal-main container-narrow">
-
     <h1>Cookie-Richtlinie</h1>
-    <p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
+    <p class="legal-updated">Stand: September 2026</p>
     <div class="legal-disclaimer-callout" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 14px 18px; margin: 20px 0 28px; font-size: 0.90rem; color: #cbd5e1; line-height: 1.5;"><strong style="color: #ffffff;">Hinweis:</strong> Dieses Dokument dient als unverbindliche Übersetzung. Rechtlich bindend ist ausschließlich die offizielle <a href="https://melpis.it/cookie/" style="color: #60a5fa; text-decoration: underline;">italienische Fassung</a>.</div>
-
     <section>
-        <h2>Come usiamo i cookie</h2>
-        <p>Melpis usa <strong>solo cookie tecnici</strong>, strettamente necessari al funzionamento del servizio. Non usiamo cookie di profilazione né tracciamento pubblicitario. Le statistiche di traffico sono raccolte senza cookie (vedi la sezione dedicata qui sotto).</p>
+        <h2>Technische Speicherung</h2>
+        <p>Melpis verwendet Cookies und lokale Speicherung für Anmeldung, Sicherheit und Oberflächeneinstellungen. Die geprüfte Konfiguration enthält keine Profiling- oder Analyse-Cookies. Vor Aktivierung künftiger nicht notwendiger Werkzeuge müssen diese Hinweise und die Einwilligungsverwaltung aktualisiert werden.</p>
     </section>
-
     <section>
-        <h2>Cookie tecnici utilizzati</h2>
-        <ul>
-            <li><strong>w_at / wa_rt (o __Host-wa_at / __Host-wa_rt)</strong>: cookie di sessione HttpOnly+Secure che mantengono l'accesso alla dashboard dopo il login. Non contengono dati leggibili da script del browser.</li>
-            <li><strong>wa_csrf (o __Host-wa_csrf)</strong>: token di sicurezza contro gli attacchi CSRF.</li>
-        </ul>
-        <p>Questi cookie sono essenziali: senza di essi non è possibile mantenere la sessione autenticata in modo sicuro. Per questo motivo, come previsto dall'art. 122 del Codice Privacy e dalle linee guida del Garante, non richiedono consenso preventivo.</p>
+        <h2>Verwendete Cookies</h2>
+        <ul><li><strong>wa_at und wa_rt</strong> (oder <strong>__Host-</strong>-Varianten): HttpOnly-Authentifizierung; Secure, wenn es der HTTPS-Kontext verlangt.</li><li><strong>wa_csrf</strong> (oder <strong>__Host-wa_csrf</strong>): für die Anwendung lesbarer CSRF-Schutz.</li><li><strong>Temporäre OAuth-Cookies</strong>: für die Google-Anmeldung, nach dem Ablauf entfernt.</li><li><strong>melpis_lang</strong>: speichert die Sprache.</li></ul>
     </section>
-
     <section>
-        <h2>Archiviazione locale</h2>
-        <p>La dashboard salva nel localStorage del browser unicamente lo stato di lettura delle notifiche dell'interfaccia. Nessun dato personale o di sessione è conservato in localStorage.</p>
+        <h2>Lokale Speicherung</h2>
+        <p>Der Browser kann Sprache, Design, Lesestatus von Benachrichtigungen und einen Onboarding-Entwurf in localStorage speichern. Der Entwurf kann eingegebene Angaben enthalten und bleibt bis Abschluss, Verwerfen oder Browserlöschung auf dem Gerät. Sitzungstoken werden dort nicht gespeichert.</p>
     </section>
-
     <section>
-        <h2>Statistiche di traffico senza cookie</h2>
-        <p>Nel profilo di lancio a costo zero non è attivo alcun servizio esterno di analytics. I log tecnici del server sono usati esclusivamente per sicurezza e funzionamento, con minimizzazione dei dati.</p>
+        <h2>Einwilligung und Kontrolle</h2>
+        <p>Notwendige technische Werkzeuge und angeforderte Einstellungen erfordern nach Art. 122 des italienischen Datenschutzkodex und den <a href="https://www.garanteprivacy.it/faq/cookie" target="_blank" rel="noopener noreferrer">Hinweisen der Behörde</a> keine vorherige Einwilligung. Daher gibt es für diese Konfiguration kein Einwilligungsbanner. Im Browser können Sie Cookies und lokale Daten löschen; dadurch können Anmeldung, Einstellungen oder Entwürfe verloren gehen.</p>
     </section>
-
     <section>
-        <h2>Gestione dei cookie</h2>
-        <p>Puoi cancellare o bloccare i cookie dalle impostazioni del browser; in tal caso la dashboard richiederà nuovamente il login a ogni visita. Le istruzioni sono disponibili nelle pagine di supporto di <a href="https://support.google.com/chrome/answer/95647" rel="noopener noreferrer" target="_blank">Chrome</a>, <a href="https://support.mozilla.org/kb/cookies-information-websites-store-on-your-computer" rel="noopener noreferrer" target="_blank">Firefox</a> e <a href="https://support.apple.com/guide/safari/manage-cookies-sfri11471/mac" rel="noopener noreferrer" target="_blank">Safari</a>.</p>
+        <h2>Kontakt</h2>
+        <p>Fragen: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Siehe <a href="/de/datenschutz/">Datenschutzerklärung</a>.</p>
     </section>
-
-    <section>
-        <h2>Contatti</h2>
-        <p>Per domande sui cookie: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Vedi anche la <a href="/de/datenschutz/">Privacy Policy</a>.</p>
-    </section>
-
 </main>
 
 <footer class="site-footer">
@@ -247,7 +231,7 @@
         <div class="footer-top-row">
             <div class="footer-brand-col">
                 <a href="/de/" class="nav-brand">
-                    <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                    <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
                     <span class="nav-brand-text">Melpis</span>
                 </a>
                 <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>

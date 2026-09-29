@@ -15,7 +15,6 @@
     "menu_impostazioni": "Paramètres",
     "menu_piano": "Formule & Facturation",
     "menu_logout": "Déconnexion",
-    "tagline": "Plus de temps pour l'essentiel.",
     "nav_aria": "Sections du tableau de bord"
   },
   "topbar": {
@@ -82,7 +81,8 @@
     "regenerate_aria": "Générer à nouveau le rapport",
     "empty_report": "Aucun rapport n’a encore été généré aujourd’hui.",
     "chart_aria": "Activité des messages",
-    "insights_aria": "Principaux enseignements"
+    "insights_aria": "Principaux enseignements",
+    "runtime": {"error_title":"Une erreur s’est produite","retry":"Réessayer","priority_error":"Impossible de charger les demandes urgentes.","priority_count":"{{count}} éléments","no_messages_title":"Aucun message aujourd’hui","no_messages_desc":"L’assistant est configuré et prêt à répondre automatiquement à vos clients.","activity_error":"Impossible de charger l’activité récente.","waiting_title":"En attente de conversations","waiting_desc":"Les messages des clients et les réponses de l’assistant apparaîtront ici en temps réel.","try_simulator":"Essayer le simulateur","review_kind":"Avis","message_kind":"Message","open_review":"Voir"}
   },
   "views": {
     "simulator_intro": "Simulez une conversation avec un vrai client pour vérifier les réponses et le comportement de votre assistant IA.",
@@ -135,11 +135,12 @@
     "capacity_help": "Remplacez la capacité des créneaux ouverts. Indiquez 0 pour fermer un créneau.",
     "save_availability": "Enregistrer la disponibilité",
     "capacity_status": "État de disponibilité",
-    "export_csv": "Exporter en CSV"
+    "export_csv": "Exporter en CSV",
+    "runtime": {"count":"{{count}} réservations","day_title":"Réservations du {{date}}","details":"Détails","empty_day":"Aucune réservation à cette date"}
   },
   "team": {
-    "add_title": "Ajouter un membre",
-    "add_intro": "Donnez à un opérateur ou à un responsable l’accès au tableau de bord de votre entreprise.",
+    "add_title": "Inviter un membre",
+    "add_intro": "L'accès commence après vérification de l'adresse e-mail et acceptation de l'invitation.",
     "email_label": "E-mail du membre",
     "role_label": "Rôle attribué",
     "members_title": "Membres actifs de l’équipe",
@@ -157,11 +158,23 @@
     "upgrade_btn": "Passer à une offre supérieure",
     "staff_role": "Opérateur (Inbox, chats clients et réservations)",
     "manager_role": "Responsable (équipe, tarifs et rapports)",
-    "add_btn": "Ajouter à l’équipe",
-    "immediate_access": "Accès immédiat :",
-    "access_help_before_link": "Si le collaborateur possède déjà un profil Melpis, il sera immédiatement relié à ce tableau de bord. Un nouveau collègue peut créer son compte sur",
-    "access_help_after_link": "avec la même adresse e-mail pour accéder au tableau de bord configuré.",
-    "loading_members": "Chargement des membres de l’équipe..."
+    "add_btn": "Envoyer l'invitation",
+    "immediate_access": "Invitation sécurisée :",
+    "access_help_before_link": "Le destinataire peut créer son compte sur",
+    "access_help_after_link": "avec la même adresse e-mail, puis accepter le lien reçu.",
+    "pending_title": "Invitations en attente",
+    "pending_empty": "Aucune invitation en attente.",
+    "pending_unavailable": "Les invitations sont temporairement indisponibles.",
+    "resend": "Renvoyer",
+    "revoke": "Révoquer",
+    "organization": "Organisation",
+    "invite_sent": "Invitation préparée. L'accès commence après son acceptation.",
+    "invite_error": "Impossible de modifier l'invitation.",
+    "invite_invalid": "Invitation invalide ou expirée. Demandez-en une autre.",
+    "resend_success": "Invitation renvoyée.",
+    "revoke_success": "Invitation révoquée.",
+    "loading_members": "Chargement des membres de l’équipe...",
+    "runtime": {"load_error":"Impossible de charger les membres de l’équipe : {{detail}}","member_count":"{{count}} membres","unlimited_accounts":"{{count}} comptes actifs (illimités)","essential_account":"1 / 1 compte (offre Essentiel, titulaire uniquement)","account_capacity":"{{used}} / {{limit}} comptes ({{operators}} sur {{max}} collaborateurs)","plan_essential":"Essentiel","plan_growth":"Croissance (Pro)","plan_scale":"Échelle","essential_limit_title":"L’offre Essentiel n’inclut pas de collaborateurs supplémentaires","limit_title":"La limite de collaborateurs de l’offre actuelle est atteinte","essential_limit_banner":"L’offre Essentiel est réservée au titulaire","limit_banner":"Limite de comptes atteinte ({{used}}/{{limit}})"}
   },
   "reviews": {
     "compose_title": "Analyser un nouvel avis",
@@ -201,10 +214,14 @@
     "trends_title": "Tendances et thèmes clés",
     "channels_title": "Canaux connectés",
     "google_sync": "Synchronisation des avis",
+    "google_connected": "Connecté",
+    "google_disconnected": "Non connecté",
+    "google_status_unavailable": "État indisponible",
     "active": "Actif",
     "import_replies": "Importation et réponses",
     "manual": "Manuel",
-    "draft_placeholder": "Le brouillon de réponse apparaîtra ici..."
+    "draft_placeholder": "Le brouillon de réponse apparaîtra ici...",
+    "runtime": {"ai_reply_label":"Brouillon de réponse suggéré :","copied_toast":"Texte du brouillon copié dans le presse-papiers !","empty_cta":"Coller un avis","empty_desc":"Collez un avis dans le formulaire ci-dessus : l’IA évaluera le sentiment et préparera un brouillon de réponse professionnel.","empty_title":"Aucun avis pour le moment","filtered_desc":"Aucun avis ne correspond aux filtres ou critères de recherche sélectionnés.","filtered_title":"Aucun résultat avec les filtres actuels","rating_total":"Basé sur {{count}} avis","reset_filters":"Réinitialiser les filtres","review_count":"{{count}} avis","review_draft":"Relire le brouillon","status_approved":"Approuvé","status_draft":"Brouillon prêt","status_urgent":"À traiter"}
   },
   "knowledge": {
     "tabs_aria": "Catégories de la base de connaissances",
@@ -230,7 +247,9 @@
     "text_name_placeholder": "Nom du texte (ex. horaires_fetes.txt)",
     "save_text": "Enregistrer le texte",
     "uploaded_documents": "Documents téléversés",
-    "empty_documents": "Aucun document téléversé."
+    "empty_documents": "Aucun document téléversé.",
+    "ask_placeholder":"Ex. : « Combien coûte une coupe homme ? » ou « Quels sont vos horaires d’ouverture ? »",
+    "runtime": {"documents_count":"{{active}} documents actifs sur {{total}}","empty_documents":"Aucun fichier téléversé. Utilisez la zone en pointillés ci-dessus pour ajouter des PDF, DOCX ou images.","empty_faq":"Aucune FAQ configurée. Cliquez sur « + Nouvelle FAQ » pour en ajouter une.","empty_web":"Aucune page web importée. Ajoutez un lien ci-dessus pour importer les tarifs ou les informations de votre site.","faq_count":"{{active}} FAQ actives sur {{total}} (toutes indexées)","last_update":"Dernière mise à jour : {{date}}","web_count":"{{active}} pages web actives sur {{total}}"}
   },
   "modals": {
     "confirm_action": "Confirmer l'opération",

@@ -1,0 +1,2 @@
+# Fixture uses a deliberately non-secret GHCR image digest in a release preflight test.
+414f9c95620968672acba491784d6f469830defd:tests/unit/test_release_preflight.py:generic-api-key:203

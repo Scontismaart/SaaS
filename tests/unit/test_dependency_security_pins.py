@@ -1,14 +1,13 @@
 """Regression checks for dependency versions required by security advisories."""
 
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_weasyprint_pin_contains_ssrf_fix() -> None:
-    """CVE-2026-55073 / GHSA-r543-q48m-4c9j is fixed in WeasyPrint 70."""
+    """GHSA-jf6q-chmf-3h3v (URL fetcher bypass) is fixed in WeasyPrint 70."""
     requirements = (ROOT / "requirements.txt").read_text(encoding="utf-8")
     match = re.search(r"(?m)^weasyprint==(\d+)\.(\d+)(?:\.(\d+))?$", requirements)
 

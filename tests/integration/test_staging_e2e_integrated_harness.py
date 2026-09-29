@@ -823,7 +823,12 @@ async def test_e2e_d_health_probes_under_concurrent_load_and_crash_simulation():
     app.state.inbound_task = mock_inbound
     app.state.retry_task = mock_retry
 
-    with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test_openrouter_key_valid"}):
+    with patch.dict(os.environ, {
+        "GROQ_API_KEY": "test_groq_free_key",
+        "GROQ_FREE_ACCOUNT_CONFIRMED": "true",
+        "LLM_COST_POLICY": "free_only",
+        "OPENROUTER_MODEL": "groq/openai/gpt-oss-20b",
+    }):
         # 1. Carico concorrente di 20 richieste contemporanee sui probe sani
         def _get_live():
             return client.get("/api/health/live")
@@ -854,7 +859,7 @@ async def test_e2e_d_health_probes_under_concurrent_load_and_crash_simulation():
         assert resp_live_crash.status_code == 503
         data_crash = resp_live_crash.json()
         assert data_crash["status"] == "unhealthy"
-        assert "Simulated unhandled event loop exception" in data_crash["workers"]["inbound_task"]
+        assert data_crash["workers"]["inbound_task"] == "stopped: worker failure"
 
         # 3. Simulazione Failure del DB su /api/health/ready
         pool.simulate_db_failure = True
@@ -862,7 +867,7 @@ async def test_e2e_d_health_probes_under_concurrent_load_and_crash_simulation():
         assert resp_ready_fail.status_code == 503
         data_ready = resp_ready_fail.json()
         assert data_ready["status"] == "degraded"
-        assert "PostgreSQL" in data_ready["checks"]["database"]
+        assert data_ready["checks"]["database"] == "errore di connessione"
 
         # 4. Ripristino Sano
         mock_inbound.done.return_value = False

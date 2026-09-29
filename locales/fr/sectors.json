@@ -1,0 +1,98 @@
+{
+  "restaurants": {
+    "page_title": "Melpis pour Restaurants · Réservations WhatsApp sans interruption",
+    "meta_description": "Automatisez vos réservations de tables sur WhatsApp 24/7. Gestion des services, rappels anti-no-show et synchronisation Google Calendar pour les restaurateurs.",
+    "hero": {
+      "badge": "Secteur Restauration",
+      "title": "Remplissez votre salle sans interruption pendant le service",
+      "subtitle": "Vos clients vous écrivent à toute heure sur WhatsApp pour réserver une table. Melpis répond immédiatement, vérifie les disponibilités et valide la réservation sur votre planning.",
+      "cta": "Démarrer l'essai gratuit de 7 jours"
+    },
+    "features": [
+      {
+        "title": "Gestion des services et jauges de tables",
+        "desc": "Définissez une capacité maximale par service (ex. 19h30 et 21h30) pour éviter les doublons et les salles surchargées."
+      },
+      {
+        "title": "Rappels automatiques et réduction des no-shows",
+        "desc": "Envoyez un message WhatsApp courtois quelques heures avant le service : le client confirme d'un clic ou libère la table pour d'autres convives."
+      },
+      {
+        "title": "Menus, allergènes et horaires toujours à jour",
+        "desc": "Des réponses impeccables sur les plats sans gluten, les menus du jour et les ouvertures exceptionnelles grâce à votre carte."
+      }
+    ]
+  },
+  "beauty": {
+    "page_title": "Melpis pour Salons de Coiffure & Instituts · Rendez-vous WhatsApp automatiques",
+    "meta_description": "Automatisez vos rendez-vous beauté sur WhatsApp. Choix du collaborateur, soins combinés et rappels automatiques sans quitter votre clientèle.",
+    "hero": {
+      "badge": "Secteur Beauté & Bien-être",
+      "title": "Remplissez votre planning sans interrompre vos prestations avec vos clients",
+      "subtitle": "Fini les interruptions pendant vos soins ou vos coupes pour gérer des messages. Melpis planifie les rendez-vous, vérifie les disponibilités et confirme les créneaux en direct.",
+      "cta": "Configurer votre salon en 5 minutes"
+    },
+    "features": [
+      {
+        "title": "Prise de rendez-vous par collaborateur",
+        "desc": "Vos clients choisissent leur coiffeur ou praticien préféré et consultent son planning en direct."
+      },
+      {
+        "title": "Prestations combinées et durées sur mesure",
+        "desc": "Calcule automatiquement le temps nécessaire pour des prestations consécutives comme couleur + brushing ou soin complet."
+      },
+      {
+        "title": "Relance douce et fidélisation",
+        "desc": "Envoyez des invitations attentionnées pour les retouches régulières ou les soins saisonniers dans le respect des préférences de vos clients."
+      }
+    ]
+  },
+  "medical": {
+    "page_title": "Melpis pour Cabinets Médicaux & Dentaires · Secrétariat Médical sur WhatsApp",
+    "meta_description": "Accueil continu pour professionnels de santé et cabinets dentaires. Triage d'orientation, horaires, prise de rendez-vous et stricte confidentialité des patients.",
+    "hero": {
+      "badge": "Secteur Médical & Santé",
+      "title": "Organisez les rendez-vous de vos patients sans surcharger l'accueil de votre cabinet",
+      "subtitle": "Apportez à vos patients des réponses précises sur les horaires, les consignes d'examens et les disponibilités sans surcharger votre accueil.",
+      "cta": "Découvrir la solution médicale"
+    },
+    "features": [
+      {
+        "title": "Triage préalable et consignes de consultation",
+        "desc": "Transmet immédiatement les instructions pré-visite (jeûne, pièces à apporter) et alerte le secrétariat en cas d'urgence signalée."
+      },
+      {
+        "title": "Traitement confidentiel et sécurisé des données de santé",
+        "desc": "Aucune donnée de santé sensible n'est utilisée pour entraîner des modèles tiers. Chiffrement de bout en bout au repos et en transit."
+      },
+      {
+        "title": "Transmission prioritaire à votre secrétariat",
+        "desc": "Les demandes complexes sont immédiatement transmises à vos équipes avec une fiche synthétique dans la boîte de réception."
+      }
+    ]
+  },
+  "hotels": {
+    "page_title": "Melpis pour Hôtels & Hébergements · Conciergerie WhatsApp 24/7 pour vos voyageurs",
+    "meta_description": "Concierge virtuel WhatsApp pour hôtels de charme, gîtes et chambres d'hôtes. Réponses 24/7 sur les arrivées, services et activités locales.",
+    "hero": {
+      "badge": "Secteur Hôtellerie & Tourisme",
+      "title": "Offrez un accueil cinq étoiles à vos hôtes avec des réponses instantanées 24/7",
+      "subtitle": "Accueillez vos clients avant même leur arrivée. Partagez itinéraire, horaires du petit-déjeuner et bonnes adresses sans file d'attente à la réception.",
+      "cta": "Valoriser le séjour de vos hôtes"
+    },
+    "features": [
+      {
+        "title": "Arrivée simplifiée et guides d'accès",
+        "desc": "Envoyez codes d'accès, coordonnées GPS du parking et plages horaires dès la confirmation de la réservation."
+      },
+      {
+        "title": "Prestations de l'établissement à portée de main",
+        "desc": "Horaires de l'espace détente, location de vélos, table au restaurant et demandes de départ tardif traitées instantanément."
+      },
+      {
+        "title": "Collaboration fluide de vos réceptionnistes",
+        "desc": "Votre personnel peut reprendre la main sur n'importe quel échange d'un simple clic depuis n'importe quel appareil."
+      }
+    ]
+  }
+}

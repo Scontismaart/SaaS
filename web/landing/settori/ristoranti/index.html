@@ -3,28 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Melpis per Ristoranti · Assistente WhatsApp per Prenotazioni e Coperti</title>
-    <meta name="description" content="Automatizza le prenotazioni su WhatsApp per il tuo ristorante o pizzeria. Gestione coperti, turni serali, domande su allergeni e menu con sincronizzazione Google Calendar.">
+    <title>Melpis per Ristoranti e Pizzerie · Prenotazioni WhatsApp senza interruzioni</title>
+    <meta name="description" content="Automatizza le prenotazioni dei tavoli su WhatsApp 24/7. Gestione turni, promemoria anti-no-show e sincronizzazione calendario per la ristorazione.">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://melpis.it/settori/ristoranti/">
     <meta name="theme-color" content="#08090c">
 
     <!-- Open Graph / Social -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Melpis">
     <meta property="og:url" content="https://melpis.it/settori/ristoranti/">
-    <meta property="og:title" content="Melpis per Ristoranti · Assistente WhatsApp per Prenotazioni e Coperti">
-    <meta property="og:description" content="Automatizza le prenotazioni del tuo ristorante su WhatsApp. Gestione turni, risposte sul menu e sincronizzazione automatica dei tavoli.">
+    <meta property="og:title" content="Melpis per Ristoranti e Pizzerie · Prenotazioni WhatsApp senza interruzioni">
+    <meta property="og:description" content="Automatizza le prenotazioni dei tavoli su WhatsApp 24/7. Gestione turni, promemoria anti-no-show e sincronizzazione calendario per la ristorazione.">
     <meta property="og:image" content="https://melpis.it/og-image.jpg">
     <meta property="og:locale" content="it_IT">
 
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Melpis per Ristoranti · Assistente WhatsApp per Prenotazioni">
-    <meta name="twitter:description" content="Gestisci tavoli, turni serali e richieste di menu su WhatsApp con l'assistente AI per ristoranti e pizzerie.">
+    <meta name="twitter:title" content="Melpis per Ristoranti e Pizzerie · Prenotazioni WhatsApp senza interruzioni">
+    <meta name="twitter:description" content="Automatizza le prenotazioni dei tavoli su WhatsApp 24/7. Gestione turni, promemoria anti-no-show e sincronizzazione calendario per la ristorazione.">
     <meta name="twitter:image" content="https://melpis.it/og-image.jpg">
 
-    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
     <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
@@ -123,1442 +122,14 @@
     }
     </script>
 
-    <style>
-        /* ============================================================
-           Melpis Design System — Ristoranti & Pizzerie
-           Dark Obsidian #08090c · Refined Dark Glass · Crisp Typography
-           ============================================================ */
-        :root {
-            --canvas-bg: #08090c;
-            --surface-card: linear-gradient(160deg, #13151c 0%, #0d0f14 100%);
-            --surface-card-hover: linear-gradient(160deg, #191b24 0%, #11131a 100%);
-            --surface-glass: rgba(255, 255, 255, 0.04);
-            --surface-glass-hover: rgba(255, 255, 255, 0.07);
-            --border-main: 1px solid rgba(255, 255, 255, 0.10);
-            --border-subtle: 1px solid rgba(255, 255, 255, 0.08);
-            --border-hover: rgba(255, 255, 255, 0.20);
-            --text-heading: #FFFFFF;
-            --text-body: rgba(255, 255, 255, 0.70);
-            --text-muted: rgba(255, 255, 255, 0.55);
-            --semantic-status: #10b981;
-            --shadow-card: 0 14px 28px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-            --shadow-card-hover: 0 20px 40px -6px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-            --shadow-elevated: 0 35px 90px -15px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-            --radius-main: 20px;
-            --radius-inner: 12px;
-            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-            --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-            --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
-
-            /* Light Section Tokens */
-            --light-bg: #F8F9FA;
-            --light-card: #FFFFFF;
-            --light-text: #0F172A;
-            --light-text-muted: #475569;
-            --light-border: rgba(15, 23, 42, 0.08);
-            --light-border-hover: rgba(15, 23, 42, 0.18);
-        }
-
-        /* Tactile Button Feedback */
-        button:active,
-        .btn-cta-primary:active,
-        .btn-cta-secondary:active,
-        .btn-pill-white:active,
-        .widget-mini-btn:active,
-        .chat-replay-btn:active {
-            transform: scale(0.97);
-            transition: transform 0.08s var(--ease-out);
-        }
-
-        /* Standardized Text Link Styling */
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-        p a, .link-inline {
-            color: #FFFFFF;
-            text-decoration: underline;
-            text-decoration-color: rgba(255, 255, 255, 0.35);
-            text-underline-offset: 3px;
-            transition: text-decoration-color 0.2s ease, color 0.2s ease;
-        }
-        p a:hover, .link-inline:hover {
-            color: #FFFFFF;
-            text-decoration-color: #FFFFFF;
-        }
-
-        html {
-            scroll-behavior: smooth;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-            background-color: var(--canvas-bg);
-            color: var(--text-body);
-        }
-
-        body {
-            background-color: var(--canvas-bg);
-            color: var(--text-body);
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-weight: 400;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        /* Typography Hierarchy */
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            letter-spacing: -0.025em;
-            color: var(--text-heading);
-        }
-
-        .heading-gradient {
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .heading-gradient {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-
-        .display-md {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: clamp(1.85rem, 3.8vw, 2.65rem);
-            font-weight: 700;
-            line-height: 1.18;
-            letter-spacing: -0.025em;
-            margin: 12px 0 0;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 40%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .display-md {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-
-        .center {
-            text-align: center;
-        }
-
-        .eyebrow-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 5px 14px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 9999px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.78);
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-        }
-
-        /* Anchor scroll margins to prevent fixed navbar overlap */
-        #vantaggi, #come-funziona, #faq {
-            scroll-margin-top: 110px;
-        }
-
-        /* ==================== PROMINENT SCROLL REVEAL (Parte 4) ==================== */
-        html.js-ready .reveal {
-            opacity: 0;
-            transform: translateY(48px);
-            transition: opacity 650ms cubic-bezier(0.16, 1, 0.3, 1), transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
-            transition-delay: calc(var(--stagger, 0) * 85ms);
-            will-change: opacity, transform;
-        }
-        html.js-ready .reveal.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        @media (prefers-reduced-motion: reduce) {
-            html.js-ready .reveal {
-                opacity: 1 !important;
-                transform: none !important;
-                transition: none !important;
-            }
-        }
-
-        /* ==================== 2. HERO SECTION (Parte 1) ==================== */
-        .vertical-hero {
-            padding: 42px 0 80px;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            background-color: var(--canvas-bg);
-            background-image: radial-gradient(ellipse 960px 580px at 50% -40px, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 75%);
-        }
-        .hero-contour-bg {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
-            overflow: hidden;
-        }
-        .contour-svg {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0.28;
-        }
-        .hero-vignette-overlay {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(ellipse at 50% 50%, rgba(8, 9, 12, 0.05) 0%, rgba(8, 9, 12, 0.6) 70%, #08090c 100%);
-            pointer-events: none;
-            z-index: 1;
-        }
-        .hero-container {
-            position: relative;
-            z-index: 2;
-        }
-        .vertical-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            border-radius: 9999px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: #FFFFFF;
-            letter-spacing: 0.03em;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
-        .vertical-hero-title {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: clamp(2.2rem, 5vw, 3.5rem);
-            font-weight: 700;
-            line-height: 1.15;
-            letter-spacing: -0.025em;
-            margin: 22px auto 18px;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            max-width: 860px;
-            text-wrap: balance;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .vertical-hero-title {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .vertical-hero-sub {
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 1.12rem;
-            line-height: 1.62;
-            color: var(--text-body);
-            max-width: 720px;
-            margin: 0 auto 32px;
-            text-wrap: pretty;
-        }
-
-        /* Standard Melpis Buttons */
-        .hero-actions-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 14px;
-            flex-wrap: wrap;
-        }
-        .btn-cta-primary,
-        .btn-pill-white,
-        .btn-brand-primary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: #FFFFFF;
-            color: #000000;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-weight: 600;
-            font-size: 0.96rem;
-            padding: 13px 26px;
-            border-radius: 9999px;
-            border: none;
-            box-shadow: 0 4px 24px rgba(255, 255, 255, 0.16);
-            text-decoration: none;
-            cursor: pointer;
-            user-select: none;
-            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, box-shadow 0.2s ease;
-        }
-        .btn-cta-primary:hover,
-        .btn-pill-white:hover,
-        .btn-brand-primary:hover {
-            background: #f1f5f9;
-            transform: scale(1.02);
-            box-shadow: 0 6px 32px rgba(255, 255, 255, 0.26);
-            color: #000000;
-        }
-        .btn-cta-primary:active,
-        .btn-pill-white:active,
-        .btn-brand-primary:active {
-            transform: scale(0.98);
-        }
-
-        .btn-cta-secondary,
-        .btn-brand-secondary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 13px 24px;
-            border-radius: 9999px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            color: #FFFFFF;
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-weight: 500;
-            font-size: 0.95rem;
-            text-decoration: none;
-            cursor: pointer;
-            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .btn-cta-secondary:hover,
-        .btn-brand-secondary:hover {
-            background: rgba(255, 255, 255, 0.10);
-            border-color: rgba(255, 255, 255, 0.28);
-            color: #FFFFFF;
-            transform: scale(1.02);
-        }
-        .btn-cta-secondary:active,
-        .btn-brand-secondary:active {
-            transform: scale(0.98);
-        }
-
-        /* Trust Points Bar */
-        .trust-points-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 24px;
-            margin-top: 24px;
-            font-size: 0.84rem;
-            color: var(--text-muted);
-            flex-wrap: wrap;
-        }
-        .trust-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .trust-item svg {
-            color: var(--semantic-status);
-            flex-shrink: 0;
-        }
-
-        /* Mockup Chat Simulation */
-        .vertical-chat-preview {
-            max-width: 630px;
-            margin: 46px auto 0;
-            background: rgba(14, 16, 22, 0.88);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: var(--radius-main);
-            padding: 24px;
-            text-align: left;
-            box-shadow: 0 35px 90px -15px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.10);
-            position: relative;
-        }
-        .v-chat-header {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            margin-bottom: 20px;
-        }
-        .v-chat-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: linear-gradient(145deg, #222530 0%, #14161f 100%);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            color: #FFFFFF;
-            font-family: 'Inter', sans-serif;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-        }
-        .v-chat-title h4 {
-            margin: 0;
-            font-size: 0.96rem;
-            color: #FFFFFF;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-        }
-        .v-chat-title span {
-            font-size: 0.78rem;
-            color: rgba(255, 255, 255, 0.65);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 3px;
-        }
-        .status-dot-pulse {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--semantic-status);
-            box-shadow: 0 0 8px var(--semantic-status);
-            display: inline-block;
-        }
-        .chat-replay-btn {
-            margin-left: auto;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 5px 10px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            color: rgba(255, 255, 255, 0.65);
-            font-size: 0.74rem;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            cursor: pointer;
-            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-        }
-        .chat-replay-btn:hover {
-            background: rgba(255, 255, 255, 0.10);
-            color: #FFFFFF;
-            border-color: rgba(255, 255, 255, 0.20);
-        }
-        .chat-flow-container {
-            display: flex;
-            flex-direction: column;
-            gap: 13px;
-        }
-        .v-bubble {
-            padding: 12px 18px;
-            border-radius: 16px;
-            font-size: 0.92rem;
-            line-height: 1.5;
-            max-width: 88%;
-            position: relative;
-            word-wrap: break-word;
-            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
-        }
-        .v-bubble:hover {
-            border-color: rgba(255, 255, 255, 0.18);
-            transform: translateY(-1px);
-        }
-        .v-bubble-in {
-            background: #171920;
-            color: #F1F5F9;
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-        }
-        .v-bubble-out {
-            background: #12141a;
-            color: #F8FAFC;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.11);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-        }
-        .v-bubble-tag {
-            font-size: 0.72rem;
-            color: rgba(255, 255, 255, 0.50);
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 600;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            letter-spacing: 0.03em;
-        }
-        .v-bubble-out .v-bubble-tag {
-            color: rgba(255, 255, 255, 0.65);
-        }
-        .v-bubble-typing {
-            align-self: flex-end;
-            background: #12141a;
-            padding: 13px 20px;
-            border-radius: 16px;
-            border-bottom-right-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.09);
-            display: none;
-            gap: 6px;
-            align-items: center;
-        }
-        .typing-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.65);
-            animation: typingBounce 1s infinite ease-in-out;
-        }
-        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typingBounce {
-            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-            40% { transform: translateY(-4px); opacity: 1; }
-        }
-
-        /* Confirmation Card inside Chat */
-        .chat-confirm-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(16, 185, 129, 0.10);
-            border: 1px solid rgba(16, 185, 129, 0.22);
-            border-radius: 8px;
-            padding: 5px 10px;
-            font-size: 0.77rem;
-            color: var(--semantic-status);
-            font-weight: 600;
-            margin-top: 8px;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-        }
-        /* ==================== 3. VANTAGGI ALTERNATING ROWS (Keplero Luxury Style) ==================== */
-        .vantaggi-section {
-            padding: 95px 0 115px;
-            background-color: var(--light-bg);
-            color: var(--light-text);
-            position: relative;
-            z-index: 2;
-        }
-        .vantaggi-section .display-md {
-            color: var(--light-text) !important;
-            background: none !important;
-            -webkit-text-fill-color: initial !important;
-        }
-        .vantaggi-section .eyebrow-pill {
-            background: rgba(15, 23, 42, 0.05) !important;
-            border: 1px solid rgba(15, 23, 42, 0.12) !important;
-            color: #334155 !important;
-        }
-        .vantaggi-rows-container {
-            display: flex;
-            flex-direction: column;
-            gap: 88px;
-            margin-top: 56px;
-        }
-        .vantaggi-row {
-            display: grid;
-            grid-template-columns: 1fr 1.15fr;
-            align-items: center;
-            gap: 64px;
-            position: relative;
-        }
-        .vantaggi-row.is-reversed {
-            grid-template-columns: 1.15fr 1fr;
-        }
-        .vantaggi-row.is-reversed .vantaggi-text-col {
-            order: 2;
-        }
-        .vantaggi-row.is-reversed .vantaggi-visual-col {
-            order: 1;
-        }
-
-        /* Text Column */
-        .vantaggi-text-col {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .vantaggi-outline-icon {
-            width: 32px;
-            height: 32px;
-            color: #0F172A;
-            margin-bottom: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .vantaggi-eyebrow {
-            font-size: 0.74rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #059669;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            margin-bottom: 8px;
-            display: inline-block;
-        }
-        .vantaggi-text-col h3 {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: clamp(1.65rem, 2.4vw, 2.15rem);
-            font-weight: 700;
-            color: #0F172A;
-            line-height: 1.22;
-            letter-spacing: -0.025em;
-            margin: 0 0 16px;
-            text-wrap: balance;
-        }
-        .vantaggi-text-col p {
-            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-            font-size: 1.05rem;
-            line-height: 1.72;
-            color: #475569;
-            margin: 0;
-            text-wrap: pretty;
-            max-width: 500px;
-        }
-
-        /* Mockup Visual Column - Layered Stage */
-        .vantaggi-visual-col {
-            position: relative;
-            width: 100%;
-        }
-        .vantaggi-stage-canvas {
-            background: linear-gradient(145deg, #F8FAFC 0%, #EEF2F6 100%);
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 26px;
-            padding: 34px 28px 30px;
-            position: relative;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 16px 36px -12px rgba(15, 23, 42, 0.07);
-            overflow: hidden;
-            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s var(--ease-out);
-        }
-        .vantaggi-row:hover .vantaggi-stage-canvas {
-            border-color: rgba(15, 23, 42, 0.15);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 22px 46px -12px rgba(15, 23, 42, 0.11);
-            transform: translateY(-2px);
-        }
-
-        /* Layered Panels Architecture */
-        .layer-card-back {
-            position: relative;
-            background: rgba(255, 255, 255, 0.72);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(15, 23, 42, 0.06);
-            border-radius: 14px;
-            padding: 12px 18px;
-            margin-bottom: -14px;
-            margin-left: 18px;
-            margin-right: 18px;
-            z-index: 1;
-            box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.03);
-            transition: transform 0.25s var(--ease-out);
-        }
-        .vantaggi-row:hover .layer-card-back {
-            transform: translateY(-2px);
-        }
-        .layer-card-front {
-            position: relative;
-            z-index: 2;
-            padding: 20px 22px;
-            background: #FFFFFF;
-            border: 1px solid rgba(15, 23, 42, 0.09);
-            border-radius: 18px;
-            box-shadow: 0 14px 32px -6px rgba(15, 23, 42, 0.09), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
-            transition: box-shadow 0.25s ease;
-        }
-        .vantaggi-row:hover .layer-card-front {
-            box-shadow: 0 18px 40px -8px rgba(15, 23, 42, 0.12), 0 3px 8px -1px rgba(15, 23, 42, 0.04);
-        }
-        .layer-floating-pill {
-            position: relative;
-            z-index: 3;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: #FFFFFF;
-            border: 1px solid rgba(15, 23, 42, 0.10);
-            border-radius: 9999px;
-            padding: 7px 15px;
-            font-size: 0.77rem;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-weight: 600;
-            color: #0F172A;
-            box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
-            margin-top: -12px;
-            margin-left: auto;
-            margin-right: 14px;
-            transition: transform 0.25s var(--ease-out);
-        }
-        .vantaggi-row:hover .layer-floating-pill {
-            transform: translateY(-2px);
-        }
-
-        /* Mockup Interior Details */
-        .v-meta-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.76rem;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            color: #64748B;
-        }
-        .v-live-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            font-weight: 600;
-            color: #334155;
-        }
-        .pulse-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 8px #10b981;
-            display: inline-block;
-        }
-        .v-metric-badge {
-            color: #047857;
-            font-weight: 700;
-            font-size: 0.74rem;
-            background: rgba(16, 185, 129, 0.10);
-            padding: 3px 8px;
-            border-radius: 6px;
-            border: 1px solid rgba(16, 185, 129, 0.24);
-        }
-
-        /* Chat simulation inside Mockup 1 */
-        .v-chat-in {
-            background: #F1F5F9;
-            border: 1px solid rgba(15, 23, 42, 0.06);
-            border-radius: 14px;
-            border-bottom-left-radius: 4px;
-            padding: 11px 15px;
-            font-size: 0.88rem;
-            color: #1E293B;
-            line-height: 1.45;
-            margin-bottom: 12px;
-        }
-        .v-chat-out {
-            background: #F8FAFC;
-            border: 1px solid rgba(15, 23, 42, 0.08);
-            border-radius: 14px;
-            border-bottom-right-radius: 4px;
-            padding: 11px 15px;
-            font-size: 0.88rem;
-            color: #0F172A;
-            line-height: 1.45;
-        }
-        .v-chat-author {
-            font-size: 0.70rem;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            color: #64748B;
-            display: block;
-            margin-bottom: 4px;
-        }
-        .v-chat-out-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-        .widget-tag-success {
-            font-size: 0.68rem;
-            color: #047857;
-            font-weight: 700;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            background: rgba(16, 185, 129, 0.12);
-            padding: 2px 7px;
-            border-radius: 4px;
-            border: 1px solid rgba(16, 185, 129, 0.25);
-        }
-
-        /* Mockup 2: Turni Matrix */
-        .turni-capienza-light {
-            color: #0F172A;
-            font-weight: 700;
-        }
-        .turni-list-light {
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
-        .turno-row-light {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 14px;
-            border-radius: 10px;
-            background: #F8FAFC;
-            border: 1px solid rgba(15, 23, 42, 0.06);
-            transition: background 0.15s ease, border-color 0.15s ease;
-        }
-        .turno-row-light:hover {
-            background: #F1F5F9;
-            border-color: rgba(15, 23, 42, 0.12);
-        }
-        .turno-info-light {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            font-size: 0.84rem;
-        }
-        .turno-info-light strong {
-            color: #0F172A;
-            font-weight: 600;
-        }
-        .turno-info-light span {
-            color: #64748B;
-            font-size: 0.72rem;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-        }
-        .turno-badge-light {
-            font-size: 0.74rem;
-            font-weight: 700;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            padding: 4px 10px;
-            border-radius: 6px;
-        }
-        .badge-amber-light {
-            background: rgba(245, 158, 11, 0.10);
-            color: #B45309;
-            border: 1px solid rgba(245, 158, 11, 0.28);
-        }
-        .badge-emerald-light {
-            background: rgba(16, 185, 129, 0.10);
-            color: #047857;
-            border: 1px solid rgba(16, 185, 129, 0.28);
-        }
-
-        /* Mockup 3: PDF Document Verification */
-        .doc-file-pill-light {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.77rem;
-            color: #1E293B;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-weight: 600;
-        }
-        .doc-badge-light {
-            margin-left: auto;
-            font-size: 0.68rem;
-            color: #047857;
-            background: rgba(16, 185, 129, 0.12);
-            padding: 2px 7px;
-            border-radius: 4px;
-            border: 1px solid rgba(16, 185, 129, 0.25);
-            font-weight: 700;
-        }
-        .doc-qa-snippet-light {
-            display: flex;
-            flex-direction: column;
-            gap: 9px;
-        }
-        .doc-question-light {
-            font-size: 0.86rem;
-            color: #334155;
-            font-style: italic;
-        }
-        .doc-answer-light {
-            padding: 12px 14px;
-            border-radius: 10px;
-            background: #F8FAFC;
-            border: 1px solid rgba(15, 23, 42, 0.07);
-        }
-        .doc-source-tag-light {
-            display: inline-block;
-            font-size: 0.70rem;
-            color: #64748B;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-        .doc-answer-light p {
-            margin: 0;
-            font-size: 0.86rem;
-            color: #0F172A;
-            line-height: 1.48;
-        }
-
-        /* Mockup 4: Interactive No-Show & Calendar Sync */
-        .noshow-time-light {
-            color: #0F172A;
-            font-weight: 700;
-        }
-        .noshow-prompt-light {
-            font-size: 0.86rem;
-            color: #334155;
-            line-height: 1.48;
-            margin-bottom: 14px;
-        }
-        .noshow-actions-light {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .widget-mini-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(15, 23, 42, 0.12);
-            background: #FFFFFF;
-            color: #334155;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            user-select: none;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-        }
-        .widget-mini-btn:hover {
-            background: #F8FAFC;
-            border-color: rgba(15, 23, 42, 0.22);
-            color: #0F172A;
-        }
-        .widget-mini-btn.widget-btn-confirm {
-            color: #047857;
-            border-color: rgba(16, 185, 129, 0.35);
-            background: rgba(16, 185, 129, 0.08);
-        }
-        .widget-mini-btn.widget-btn-confirm:hover {
-            background: rgba(16, 185, 129, 0.14);
-        }
-        .widget-mini-btn.is-active-confirm {
-            background: #047857 !important;
-            border-color: #047857 !important;
-            color: #FFFFFF !important;
-            box-shadow: 0 4px 12px rgba(4, 120, 87, 0.25) !important;
-        }
-        .widget-mini-btn.is-active-cancel {
-            background: #DC2626 !important;
-            border-color: #DC2626 !important;
-            color: #FFFFFF !important;
-            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25) !important;
-        }
-        .noshow-feedback-light {
-            position: relative;
-            z-index: 3;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            background: #FFFFFF;
-            border: 1px solid rgba(16, 185, 129, 0.30);
-            border-radius: 9999px;
-            padding: 7px 16px;
-            font-size: 0.77rem;
-            font-family: ui-monospace, SFMono-Regular, monospace;
-            font-weight: 600;
-            color: #047857;
-            box-shadow: 0 12px 24px -4px rgba(15, 23, 42, 0.10);
-            margin-top: -12px;
-            margin-left: auto;
-            margin-right: 14px;
-            transition: all 0.25s var(--ease-out);
-        }
-        .noshow-feedback-light.is-cancelled {
-            color: #DC2626;
-            border-color: rgba(220, 38, 38, 0.35);
-            background: #FFF5F5;
-        }
-
-        /* Mobile Breakpoint for Alternating Rows */
-        @media (max-width: 900px) {
-            .vantaggi-rows-container {
-                gap: 56px;
-                margin-top: 40px;
-            }
-            .vantaggi-row,
-            .vantaggi-row.is-reversed {
-                grid-template-columns: 1fr;
-                gap: 24px;
-            }
-            .vantaggi-text-col {
-                order: 1 !important;
-            }
-            .vantaggi-visual-col {
-                order: 2 !important;
-            }
-            .vantaggi-stage-canvas {
-                padding: 24px 18px 20px;
-                border-radius: 20px;
-            }
-            .layer-card-back {
-                margin-left: 10px;
-                margin-right: 10px;
-                padding: 10px 14px;
-            }
-            .layer-card-front {
-                padding: 16px 16px;
-            }
-            .layer-floating-pill,
-            .noshow-feedback-light {
-                margin-right: 8px;
-                font-size: 0.72rem;
-                padding: 6px 12px;
-            }
-        }
-
-        /* ==================== TRANSITION BRIDGE TO LIGHT (Parte 2) ==================== */
-        .transition-bridge-to-light {
-            position: relative;
-            height: 560px;
-            background: linear-gradient(180deg, 
-                #08090c 0%, 
-                #08090c 8%, 
-                #0f1218 16%, 
-                #181c25 26%, 
-                #272e3c 38%, 
-                #3d475a 50%, 
-                #59657b 62%, 
-                #7c89a0 72%, 
-                #a2aec3 81%, 
-                #c5cee0 88%, 
-                #dfe5ee 93%, 
-                #eff2f6 97%, 
-                #f6f8fa 99%, 
-                #F8F9FA 100%
-            );
-            z-index: 2;
-            pointer-events: none;
-            margin-bottom: -1px;
-        }
-
-        @media (max-width: 900px) {
-            .transition-bridge-to-light {
-                height: 420px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .transition-bridge-to-light {
-                height: 320px;
-            }
-        }
-
-        /* ==================== 4. STEPS SECTION (Light Luxury Style) ==================== */
-        .vertical-steps-section {
-            padding: 85px 0 105px;
-            background: var(--light-bg);
-            color: var(--light-text);
-            position: relative;
-            z-index: 2;
-        }
-        .vertical-steps-section .display-md {
-            color: var(--light-text) !important;
-            background: none !important;
-            -webkit-text-fill-color: initial !important;
-        }
-        .vertical-steps-section .eyebrow-pill {
-            background: rgba(15, 23, 42, 0.05) !important;
-            border: 1px solid rgba(15, 23, 42, 0.12) !important;
-            color: #334155 !important;
-        }
-        .steps-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin-top: 44px;
-        }
-        .step-card {
-            background: var(--light-card);
-            border: 1px solid var(--light-border);
-            border-radius: 20px;
-            padding: 36px 30px;
-            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
-            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
-            position: relative;
-        }
-        .step-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.08);
-            border-color: var(--light-border-hover);
-        }
-        .step-card h3 {
-            font-family: 'Inter', sans-serif;
-            font-size: 1.22rem;
-            font-weight: 700;
-            color: var(--light-text);
-            margin: 0 0 12px;
-            letter-spacing: -0.015em;
-        }
-        .step-card p {
-            color: var(--light-text-muted);
-            font-size: 0.96rem;
-            line-height: 1.62;
-            margin: 0;
-            text-wrap: pretty;
-        }
-        .step-pill-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            background: #0F172A;
-            color: #FFFFFF;
-            font-family: 'Inter', sans-serif;
-            font-weight: 800;
-            font-size: 1.05rem;
-            margin-bottom: 22px;
-            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
-            border: none;
-        }
-
-        /* ==================== FAQ & STICKY SLIDE-OVER CTA (Parte 2 & 3) ==================== */
-        .pin-wrap-faq {
-            position: relative;
-            z-index: 1;
-            background: var(--light-bg);
-        }
-        .pin-wrap-faq::after {
-            content: "";
-            display: block;
-            height: var(--slide-hook-cta, 100vh);
-        }
-        .faq-section {
-            background: var(--light-bg) !important;
-            color: var(--light-text) !important;
-            padding: 95px 0 100px !important;
-            position: sticky !important;
-            top: var(--slide-pin-faq, 0px) !important;
-            z-index: 1 !important;
-        }
-        .faq-section .display-md {
-            color: var(--light-text) !important;
-            background: none !important;
-            -webkit-text-fill-color: initial !important;
-        }
-        .faq-section .eyebrow-pill {
-            background: rgba(15, 23, 42, 0.05) !important;
-            border: 1px solid rgba(15, 23, 42, 0.12) !important;
-            color: #334155 !important;
-        }
-        .faq-list {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-            margin-top: 46px;
-            max-width: 820px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .faq-item {
-            background: var(--light-card) !important;
-            border: 1px solid var(--light-border) !important;
-            border-radius: 18px !important;
-            padding: 24px 28px;
-            cursor: pointer;
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.03) !important;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-            overflow: hidden;
-        }
-        .faq-item:hover {
-            border-color: var(--light-border-hover) !important;
-            box-shadow: 0 8px 26px -4px rgba(0, 0, 0, 0.07) !important;
-        }
-        .faq-quest {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            font-size: 1.05rem;
-            color: var(--light-text) !important;
-            letter-spacing: -0.015em;
-            list-style: none;
-            user-select: none;
-        }
-        .faq-quest::-webkit-details-marker { display: none; }
-        .faq-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: rgba(15, 23, 42, 0.05) !important;
-            border: 1px solid rgba(15, 23, 42, 0.10) !important;
-            color: var(--light-text) !important;
-            font-size: 1.15rem;
-            font-weight: 400;
-            transition: transform 300ms var(--ease-out), background 0.2s ease, color 0.2s ease;
-            flex-shrink: 0;
-        }
-        .faq-item[open] .faq-icon {
-            transform: rotate(45deg);
-            background: #0F172A !important;
-            border-color: #0F172A !important;
-            color: #FFFFFF !important;
-        }
-        .faq-ans {
-            display: grid;
-            grid-template-rows: 0fr;
-            transition: grid-template-rows 0.3s var(--ease-smooth);
-        }
-        .faq-item[open] .faq-ans {
-            grid-template-rows: 1fr;
-        }
-        .faq-ans-inner {
-            overflow: hidden;
-        }
-        .faq-ans-inner p {
-            color: var(--light-text-muted) !important;
-            font-size: 0.96rem;
-            line-height: 1.62;
-            margin-top: 14px;
-            margin-bottom: 0;
-            text-wrap: pretty;
-        }
-
-        /* Sticky Slide-Over Final CTA Panel (Parte 3) */
-        .final-cta-section {
-            position: relative !important;
-            z-index: 10 !important;
-            margin-top: calc(-1 * var(--slide-hook-cta, 100vh)) !important;
-            background: #08090c !important;
-            border-top: 1px solid rgba(255, 255, 255, 0.14) !important;
-            border-radius: 36px 36px 0 0 !important;
-            box-shadow: 0 -30px 80px rgba(0, 0, 0, 0.50), 0 -1px 0 rgba(255, 255, 255, 0.10) !important;
-            padding: 105px 0 115px !important;
-            min-height: 100vh !important;
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: center !important;
-            overflow: hidden;
-        }
-        .site-footer {
-            position: relative !important;
-            z-index: 10 !important;
-            background: #08080C !important;
-        }
-        .final-cta-container {
-            position: relative;
-            z-index: 2;
-        }
-        .final-cta-box {
-            background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.08) 0%, rgba(13, 15, 20, 0.96) 75%);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 28px;
-            padding: 72px 40px;
-            text-align: center;
-            box-shadow: 0 35px 80px -20px rgba(0, 0, 0, 0.90), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-            max-width: 980px;
-            margin: 0 auto;
-        }
-        .final-cta-title {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: clamp(2rem, 4.4vw, 3rem);
-            font-weight: 700;
-            line-height: 1.15;
-            color: #FFFFFF;
-            background: linear-gradient(135deg, #FFFFFF 5%, #E2E8F0 38%, #8E9BAE 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 18px;
-            letter-spacing: -0.03em;
-            text-wrap: balance;
-        }
-        @supports not (-webkit-background-clip: text) {
-            .final-cta-title {
-                color: #FFFFFF;
-                background: none;
-            }
-        }
-        .final-cta-sub {
-            font-size: 1.12rem;
-            color: rgba(255, 255, 255, 0.72);
-            max-width: 640px;
-            margin: 0 auto 36px;
-            line-height: 1.62;
-            text-wrap: pretty;
-        }
-
-        /* Responsive adjustments for Sticky Slide */
-        @media (max-width: 768px) {
-            .faq-section {
-                position: relative !important;
-                top: auto !important;
-                padding: 70px 0 60px !important;
-            }
-            .final-cta-section {
-                border-radius: 24px 24px 0 0 !important;
-                padding: 70px 0 85px !important;
-            }
-            .final-cta-box {
-                padding: 48px 24px;
-            }
-        }
-
-        /* Footer Alignment */
-        .site-footer,
-        .footer-section {
-            background: #08080C;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-            padding: 70px 0 40px;
-            color: var(--text-muted);
-            font-size: 0.88rem;
-        }
-        .footer-top-row,
-        .footer-top-grid {
-            display: flex;
-            justify-content: space-between;
-            gap: 40px;
-            margin-bottom: 50px;
-        }
-        .footer-brand-col {
-            max-width: 320px;
-        }
-        .footer-tagline {
-            margin-top: 12px;
-            color: var(--text-muted);
-            font-size: 0.88rem;
-            line-height: 1.55;
-        }
-        .footer-links-grid,
-        .footer-nav-cols {
-            display: flex;
-            gap: 60px;
-            flex-wrap: wrap;
-        }
-        .footer-col {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .footer-col h4 {
-            color: #FFFFFF;
-            font-size: 0.90rem;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-        .footer-col a {
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-        .footer-col a:hover {
-            color: #FFFFFF;
-        }
-        .footer-bottom-row {
-            padding-top: 30px;
-            border-top: 1px solid rgba(255, 255, 255, 0.04);
-            color: rgba(255, 255, 255, 0.45);
-            font-size: 0.80rem;
-        }
-
-        /* Entrance Animations & Motion (Parte 4 - Prominenti) */
-        @keyframes heroFadeUp {
-            0% {
-                opacity: 0;
-                transform: translateY(48px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .hero-animate-1 { animation: heroFadeUp 0.65s var(--ease-out) 0.05s backwards; }
-        .hero-animate-2 { animation: heroFadeUp 0.65s var(--ease-out) 0.14s backwards; }
-        .hero-animate-3 { animation: heroFadeUp 0.65s var(--ease-out) 0.22s backwards; }
-        .hero-animate-4 { animation: heroFadeUp 0.65s var(--ease-out) 0.30s backwards; }
-        .hero-animate-5 { animation: heroFadeUp 0.65s var(--ease-out) 0.38s backwards; }
-        .hero-animate-6 { animation: heroFadeUp 0.65s var(--ease-out) 0.46s backwards; }
-
-        /* Responsive Breakpoints (360px - 1024px) */
-        @media (max-width: 900px) {
-            .vantaggi-bento-grid {
-                grid-template-columns: 1fr;
-            }
-            .bento-card-main,
-            .bento-card-side,
-            .bento-card-full {
-                grid-column: span 1;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .footer-top-row,
-            .footer-top-grid {
-                flex-direction: column;
-                gap: 32px;
-            }
-            .footer-links-grid,
-            .footer-nav-cols {
-                gap: 32px;
-            }
-            .hero-actions-row {
-                flex-direction: column;
-                width: 100%;
-            }
-            .btn-cta-primary,
-            .btn-cta-secondary,
-            .btn-brand-primary,
-            .btn-brand-secondary {
-                width: 100%;
-            }
-            .vertical-chat-preview {
-                padding: 18px 14px;
-            }
-            .v-bubble {
-                max-width: 92%;
-                font-size: 0.88rem;
-            }
-            .final-cta-box {
-                padding: 42px 20px;
-            }
-            .trust-points-row {
-                gap: 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .trust-points-row {
-                flex-direction: column;
-                align-items: center;
-                gap: 10px;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            html.js-ready .reveal {
-                opacity: 1 !important;
-                transform: none !important;
-                transition: none !important;
-            }
-            .hero-animate-1,
-            .hero-animate-2,
-            .hero-animate-3,
-            .hero-animate-4,
-            .hero-animate-5,
-            .hero-animate-6 {
-                animation: none !important;
-                opacity: 1 !important;
-                transform: none !important;
-            }
-            .btn-cta-primary,
-            .btn-cta-secondary,
-            .btn-brand-primary,
-            .btn-brand-secondary,
-            .btn-pill-white,
-            .bento-card,
-            .faq-item {
-                transform: none !important;
-                transition: none !important;
-            }
-            .v-bubble-typing {
-                display: none !important;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/inline-assets/style-c2a1acc942a336c1ea214f46dff44439b5deb41d341e35b9e4cc1b1aa3b1d7ac.css">
+    <link rel="canonical" href="https://melpis.it/settori/ristoranti/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/">
 </head>
 <body>
 
@@ -1660,6 +231,20 @@
                     <span>Inizia gratis</span>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                 </a>
+                
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">IT</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/settori/ristoranti/" class="lang-option-link is-active" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/industries/restaurants/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/sectores/restaurantes/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/secteurs/restaurants/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/branchen/restaurants/" class="lang-option-link" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
                 <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
                     <span></span><span></span>
                 </button>
@@ -1713,158 +298,65 @@
             <a href="/documentazione/" class="mobile-link">Documentazione</a>
             <a href="/prezzi/" class="mobile-link">Prezzi</a>
             <a href="/accedi/" class="mobile-link mobile-login">Accedi al pannello</a>
-        <a href="/registrati/" class="btn-cta-primary w-full" style="margin-top: 8px;">
+        <a href="/registrati/" class="btn-cta-primary w-full is-5313025c2edb">
             <span>Inizia la prova di 7 giorni</span>
         </a>
+
+            <div class="mobile-lang-section">
+                <span class="mobile-lang-title">Lingua / Language</span>
+                <div class="mobile-lang-grid">
+                <a href="/settori/ristoranti/" class="mobile-lang-chip is-active" hreflang="it">Italiano</a>
+                <a href="/en/industries/restaurants/" class="mobile-lang-chip" hreflang="en">English</a>
+                <a href="/es/sectores/restaurantes/" class="mobile-lang-chip" hreflang="es">Español</a>
+                <a href="/fr/secteurs/restaurants/" class="mobile-lang-chip" hreflang="fr">Français</a>
+                <a href="/de/branchen/restaurants/" class="mobile-lang-chip" hreflang="de">Deutsch</a>
+                </div>
+            </div>
         </div>
     </div>
 
 <main id="main-content">
         <!-- ==================== 2. HERO SECTION ==================== -->
         <section class="vertical-hero">
-            <!-- Topographic Contour Lines Background -->
-            <div class="hero-contour-bg" aria-hidden="true">
-                <svg class="contour-svg" viewBox="0 0 1440 900" fill="none" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
-  <path d="M 1153 380 C 1155 388, 1155 400, 1148 406 C 1141 412, 1123 415, 1112 417 C 1101 419, 1091 416, 1080 416 C 1069 416, 1059 419, 1048 417 C 1037 415, 1019 412, 1012 406 C 1005 400, 1005 388, 1007 380 C 1009 372, 1019 365, 1026 359 C 1033 353, 1039 347, 1048 343 C 1057 339, 1069 333, 1080 333 C 1091 333, 1103 339, 1112 343 C 1121 347, 1127 353, 1134 359 C 1141 365, 1151 372, 1153 380 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1226 380 C 1231 396, 1230 420, 1216 432 C 1203 445, 1168 452, 1145 455 C 1122 458, 1102 452, 1080 452 C 1058 452, 1038 458, 1015 455 C 992 452, 958 445, 944 432 C 931 420, 929 396, 934 380 C 939 365, 959 352, 972 339 C 986 327, 997 314, 1015 305 C 1033 296, 1058 286, 1080 286 C 1102 286, 1127 296, 1145 305 C 1163 314, 1175 327, 1188 339 C 1202 352, 1221 365, 1226 380 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1299 380 C 1306 403, 1303 439, 1283 458 C 1263 477, 1211 487, 1177 492 C 1143 497, 1112 488, 1080 488 C 1048 488, 1017 497, 983 492 C 949 487, 897 477, 877 458 C 857 439, 854 403, 861 380 C 868 357, 899 337, 919 318 C 939 299, 956 281, 983 268 C 1010 255, 1048 240, 1080 240 C 1112 240, 1150 255, 1177 268 C 1204 281, 1221 299, 1241 318 C 1261 337, 1292 357, 1299 380 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1372 380 C 1381 411, 1378 459, 1351 484 C 1324 509, 1255 523, 1210 530 C 1165 537, 1123 524, 1080 524 C 1037 524, 995 537, 950 530 C 905 523, 836 509, 809 484 C 782 459, 779 411, 788 380 C 797 349, 838 322, 865 297 C 892 272, 914 247, 950 230 C 986 213, 1037 193, 1080 193 C 1123 193, 1174 213, 1210 230 C 1246 247, 1268 272, 1295 297 C 1322 322, 1363 349, 1372 380 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1445 380 C 1457 419, 1453 480, 1419 511 C 1385 542, 1299 559, 1242 567 C 1186 575, 1134 560, 1080 560 C 1026 560, 975 575, 918 567 C 862 559, 775 542, 741 511 C 707 480, 704 419, 716 380 C 728 341, 777 308, 811 277 C 845 246, 873 215, 918 193 C 963 171, 1026 146, 1080 146 C 1134 146, 1197 171, 1242 193 C 1287 215, 1315 245, 1349 276 C 1383 307, 1433 341, 1445 380 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1517 380 C 1531 427, 1528 500, 1487 537 C 1447 574, 1342 594, 1274 604 C 1206 614, 1145 596, 1080 596 C 1015 596, 954 614, 886 604 C 818 594, 714 574, 673 537 C 633 500, 629 427, 643 380 C 657 333, 717 293, 757 256 C 798 219, 832 182, 886 156 C 940 130, 1015 99, 1080 99 C 1145 99, 1220 130, 1274 156 C 1328 182, 1363 219, 1403 256 C 1444 293, 1503 333, 1517 380 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1590 380 C 1607 435, 1602 519, 1555 563 C 1508 607, 1386 631, 1307 642 C 1228 654, 1156 632, 1080 632 C 1004 632, 932 654, 853 642 C 774 631, 652 607, 605 563 C 558 519, 554 435, 570 380 C 587 325, 657 279, 704 235 C 751 191, 790 149, 853 118 C 916 88, 1004 52, 1080 52 C 1156 52, 1244 88, 1307 118 C 1370 149, 1409 191, 1456 235 C 1503 279, 1574 325, 1590 380 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1663 380 C 1682 443, 1676 539, 1622 589 C 1568 639, 1429 666, 1339 679 C 1249 692, 1166 668, 1080 668 C 994 668, 911 692, 821 679 C 731 666, 592 639, 538 589 C 484 539, 478 443, 497 380 C 516 318, 596 264, 650 214 C 704 164, 749 116, 821 81 C 893 46, 994 6, 1080 6 C 1166 6, 1267 46, 1339 81 C 1411 116, 1456 164, 1510 214 C 1564 264, 1644 318, 1663 380 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1736 380 C 1757 450, 1751 559, 1690 615 C 1629 671, 1474 702, 1372 717 C 1270 732, 1177 704, 1080 704 C 983 704, 890 732, 788 717 C 686 702, 531 671, 470 615 C 409 559, 403 450, 424 380 C 445 310, 535 250, 596 194 C 657 138, 707 82, 788 43 C 869 4, 983 -41, 1080 -41 C 1177 -41, 1291 4, 1372 43 C 1453 82, 1503 138, 1564 194 C 1625 250, 1715 310, 1736 380 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1809 380 C 1832 458, 1826 579, 1758 641 C 1691 703, 1517 738, 1404 754 C 1291 771, 1188 740, 1080 740 C 972 740, 869 771, 756 754 C 643 738, 470 703, 402 641 C 335 579, 328 458, 351 380 C 374 302, 475 235, 542 173 C 610 111, 666 50, 756 6 C 846 -37, 972 -88, 1080 -88 C 1188 -88, 1314 -37, 1404 6 C 1494 50, 1551 111, 1618 173 C 1686 235, 1786 302, 1809 380 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1882 380 C 1908 466, 1900 598, 1826 667 C 1752 736, 1560 774, 1436 792 C 1312 810, 1199 776, 1080 776 C 961 776, 848 810, 724 792 C 600 774, 408 736, 334 667 C 260 598, 252 466, 278 380 C 304 294, 414 221, 488 152 C 562 83, 625 16, 724 -32 C 823 -80, 961 -135, 1080 -135 C 1199 -135, 1337 -80, 1436 -32 C 1535 16, 1598 83, 1672 152 C 1746 221, 1856 294, 1882 380 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1955 380 C 1983 474, 1975 618, 1894 693 C 1813 768, 1605 809, 1469 829 C 1333 849, 1210 812, 1080 812 C 950 812, 827 849, 691 829 C 555 809, 347 768, 266 693 C 185 618, 177 474, 205 380 C 233 287, 354 207, 435 132 C 516 57, 584 -17, 691 -69 C 799 -121, 950 -182, 1080 -182 C 1210 -182, 1362 -121, 1469 -69 C 1577 -17, 1644 57, 1725 132 C 1806 207, 1927 287, 1955 380 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 2028 380 C 2059 481, 2050 638, 1962 719 C 1874 800, 1648 845, 1501 866 C 1354 888, 1220 848, 1080 848 C 940 848, 806 888, 659 866 C 512 845, 286 800, 198 719 C 110 638, 102 481, 132 380 C 163 279, 293 192, 381 111 C 469 30, 543 -49, 659 -106 C 776 -162, 940 -228, 1080 -228 C 1220 -228, 1385 -162, 1501 -106 C 1618 -49, 1691 30, 1779 111 C 1867 192, 1998 279, 2028 380 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 2101 380 C 2134 489, 2124 658, 2029 745 C 1935 832, 1692 881, 1534 904 C 1376 927, 1231 884, 1080 884 C 929 884, 784 927, 626 904 C 468 881, 226 832, 131 745 C 37 658, 26 489, 59 380 C 92 271, 233 177, 327 90 C 422 3, 501 -83, 626 -144 C 752 -205, 929 -275, 1080 -275 C 1231 -275, 1409 -205, 1534 -144 C 1660 -83, 1739 3, 1833 90 C 1928 177, 2068 271, 2101 380 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 2174 380 C 2209 497, 2198 679, 2097 772 C 1996 866, 1736 916, 1566 941 C 1397 966, 1242 920, 1080 920 C 918 920, 764 966, 594 941 C 425 916, 164 866, 63 772 C -38 679, -48 497, -13 380 C 22 263, 172 163, 273 69 C 374 -24, 460 -116, 594 -181 C 729 -246, 918 -322, 1080 -322 C 1242 -322, 1432 -246, 1566 -181 C 1701 -116, 1786 -24, 1887 69 C 1988 163, 2139 263, 2174 380 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 2246 380 C 2284 505, 2273 698, 2165 798 C 2057 898, 1779 953, 1598 979 C 1417 1005, 1253 956, 1080 956 C 907 956, 743 1005, 562 979 C 381 953, 103 898, -5 798 C -113 698, -123 505, -86 380 C -48 255, 112 149, 220 49 C 328 -51, 419 -149, 562 -219 C 705 -289, 907 -369, 1080 -369 C 1253 -369, 1455 -289, 1598 -219 C 1741 -149, 1832 -51, 1940 49 C 2048 149, 2209 255, 2246 380 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 316 720 C 318 729, 308 743, 298 750 C 288 757, 268 757, 255 760 C 242 763, 233 764, 220 766 C 207 768, 190 773, 177 770 C 164 767, 148 758, 142 750 C 136 742, 139 729, 141 720 C 143 711, 146 702, 152 694 C 158 686, 166 675, 177 670 C 188 666, 207 665, 220 667 C 233 669, 244 676, 255 680 C 266 685, 278 687, 288 694 C 298 701, 314 711, 316 720 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 411 720 C 414 739, 395 767, 375 780 C 355 793, 316 795, 290 800 C 264 805, 246 809, 220 812 C 194 815, 160 824, 134 819 C 108 814, 77 797, 65 780 C 53 764, 58 739, 61 720 C 64 701, 71 684, 83 667 C 95 651, 111 630, 134 621 C 157 612, 194 611, 220 614 C 246 617, 267 631, 290 640 C 313 649, 337 654, 357 667 C 377 680, 408 701, 411 720 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 507 720 C 512 748, 484 789, 453 809 C 423 829, 363 833, 324 841 C 285 849, 259 854, 220 859 C 181 864, 130 877, 91 869 C 52 861, 5 834, -13 809 C -31 784, -23 748, -18 720 C -13 692, -3 666, 15 641 C 33 616, 57 585, 91 571 C 125 558, 181 555, 220 560 C 259 565, 290 586, 324 599 C 358 613, 395 621, 425 641 C 456 661, 502 692, 507 720 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 603 720 C 609 757, 571 812, 530 839 C 489 866, 411 870, 359 881 C 307 892, 272 899, 220 905 C 168 911, 100 929, 48 918 C -4 907, -66 872, -90 839 C -114 806, -103 757, -97 720 C -91 683, -78 648, -54 615 C -30 582, 2 540, 48 522 C 94 504, 168 501, 220 507 C 272 513, 313 541, 359 559 C 405 577, 453 588, 494 615 C 535 642, 597 683, 603 720 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 698 720 C 706 767, 659 836, 608 869 C 557 903, 459 907, 394 921 C 329 935, 285 943, 220 951 C 155 959, 70 982, 5 968 C -60 954, -138 910, -168 869 C -198 828, -185 767, -177 720 C -169 673, -152 629, -122 588 C -92 547, -52 494, 5 472 C 62 450, 155 446, 220 454 C 285 462, 337 497, 394 519 C 451 541, 511 555, 562 588 C 613 622, 690 673, 698 720 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 794 720 C 803 776, 746 859, 685 899 C 624 939, 507 945, 429 961 C 352 977, 298 988, 220 997 C 142 1007, 40 1034, -38 1018 C -115 1002, -209 949, -245 899 C -281 849, -265 776, -256 720 C -247 664, -226 612, -190 562 C -154 512, -106 449, -38 422 C 30 395, 142 392, 220 401 C 298 411, 361 452, 429 479 C 497 506, 569 522, 630 562 C 691 602, 785 664, 794 720 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 890 720 C 901 786, 834 882, 763 929 C 692 976, 555 982, 464 1001 C 374 1020, 311 1032, 220 1043 C 129 1054, 10 1086, -81 1067 C -171 1048, -281 987, -323 929 C -365 871, -346 786, -335 720 C -324 655, -301 594, -259 536 C -217 478, -161 404, -81 373 C -1 342, 129 337, 220 348 C 311 359, 384 408, 464 439 C 544 470, 628 489, 699 536 C 770 583, 879 655, 890 720 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 985 720 C 997 795, 921 906, 840 959 C 759 1013, 601 1019, 498 1041 C 395 1063, 324 1076, 220 1089 C 116 1102, -21 1139, -124 1117 C -227 1095, -352 1025, -400 959 C -448 893, -426 795, -414 720 C -402 645, -375 575, -327 509 C -279 443, -215 359, -124 323 C -33 287, 116 282, 220 295 C 324 308, 407 363, 498 399 C 589 435, 686 456, 767 509 C 848 563, 973 645, 985 720 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1081 720 C 1095 804, 1009 928, 918 988 C 827 1048, 649 1057, 533 1082 C 417 1107, 337 1122, 220 1136 C 103 1150, -51 1192, -167 1167 C -283 1142, -423 1063, -478 988 C -532 914, -508 804, -494 720 C -480 636, -450 558, -396 483 C -341 409, -270 313, -167 273 C -64 233, 103 227, 220 241 C 337 255, 430 318, 533 358 C 636 398, 745 423, 836 483 C 927 543, 1067 636, 1081 720 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1177 720 C 1192 814, 1097 951, 995 1018 C 894 1085, 697 1095, 568 1122 C 439 1149, 350 1166, 220 1182 C 90 1198, -81 1243, -210 1216 C -339 1189, -494 1101, -555 1018 C -615 935, -588 814, -573 720 C -558 627, -524 540, -464 457 C -403 374, -324 269, -210 224 C -96 179, 90 172, 220 188 C 350 204, 454 273, 568 318 C 682 363, 803 390, 904 457 C 1006 524, 1162 627, 1177 720 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1272 720 C 1289 823, 1185 974, 1073 1048 C 962 1122, 745 1132, 603 1162 C 461 1192, 363 1211, 220 1228 C 77 1245, -111 1296, -253 1266 C -395 1236, -566 1139, -633 1048 C -699 957, -669 823, -652 720 C -635 617, -598 521, -532 430 C -465 339, -378 223, -253 174 C -128 125, 77 118, 220 135 C 363 152, 478 229, 603 278 C 728 327, 861 356, 972 430 C 1084 504, 1255 617, 1272 720 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1368 720 C 1386 832, 1272 998, 1150 1078 C 1028 1158, 792 1169, 637 1202 C 482 1235, 376 1255, 220 1274 C 65 1293, -141 1348, -296 1315 C -451 1282, -637 1177, -710 1078 C -783 979, -750 832, -732 720 C -714 608, -674 503, -601 404 C -528 305, -433 179, -296 125 C -159 71, 65 63, 220 82 C 376 101, 500 184, 637 238 C 774 292, 919 324, 1041 404 C 1163 484, 1350 608, 1368 720 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1470 850 C 1469 862, 1450 875, 1437 883 C 1424 891, 1408 895, 1393 900 C 1379 905, 1366 913, 1350 915 C 1334 917, 1311 917, 1296 912 C 1282 907, 1270 893, 1263 883 C 1256 873, 1254 862, 1252 850 C 1251 838, 1247 823, 1254 813 C 1261 803, 1280 792, 1296 788 C 1312 784, 1334 789, 1350 791 C 1366 793, 1377 796, 1393 800 C 1409 804, 1433 805, 1446 813 C 1459 821, 1472 838, 1470 850 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1591 850 C 1588 874, 1550 901, 1524 917 C 1498 934, 1465 938, 1436 949 C 1407 960, 1382 977, 1350 981 C 1318 985, 1271 986, 1242 975 C 1213 964, 1191 938, 1176 917 C 1161 896, 1156 874, 1153 850 C 1150 827, 1144 797, 1159 776 C 1174 755, 1210 732, 1242 725 C 1274 718, 1318 729, 1350 733 C 1382 737, 1404 744, 1436 751 C 1468 758, 1515 760, 1541 776 C 1567 793, 1594 827, 1591 850 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 1711 850 C 1707 885, 1649 925, 1610 950 C 1571 975, 1522 983, 1479 999 C 1436 1015, 1399 1040, 1350 1046 C 1302 1052, 1231 1053, 1188 1037 C 1145 1021, 1112 981, 1090 950 C 1068 919, 1060 885, 1055 850 C 1051 815, 1041 771, 1063 740 C 1085 709, 1140 674, 1188 663 C 1236 652, 1302 668, 1350 674 C 1399 680, 1431 690, 1479 701 C 1527 712, 1598 715, 1637 740 C 1676 765, 1716 815, 1711 850 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1832 850 C 1826 897, 1749 951, 1697 984 C 1645 1017, 1580 1028, 1522 1049 C 1464 1070, 1415 1104, 1350 1112 C 1285 1121, 1192 1121, 1134 1100 C 1076 1079, 1033 1026, 1003 984 C 974 942, 963 897, 957 850 C 951 803, 939 745, 968 703 C 998 661, 1070 615, 1134 600 C 1198 585, 1285 607, 1350 615 C 1415 624, 1458 636, 1522 651 C 1586 666, 1680 670, 1732 703 C 1784 736, 1838 803, 1832 850 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 1952 850 C 1945 909, 1849 976, 1784 1017 C 1720 1059, 1637 1072, 1565 1099 C 1493 1126, 1431 1167, 1350 1177 C 1269 1188, 1151 1189, 1079 1162 C 1007 1135, 953 1069, 916 1017 C 879 965, 865 909, 858 850 C 851 792, 835 718, 872 666 C 909 614, 999 556, 1079 538 C 1159 520, 1269 546, 1350 556 C 1431 567, 1485 583, 1565 601 C 1645 619, 1764 625, 1828 666 C 1893 708, 1959 792, 1952 850 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 2072 850 C 2063 920, 1948 1000, 1871 1050 C 1794 1100, 1695 1116, 1608 1148 C 1521 1180, 1447 1230, 1350 1243 C 1253 1256, 1112 1257, 1025 1225 C 938 1193, 873 1113, 829 1050 C 785 988, 769 920, 760 850 C 751 780, 733 692, 777 629 C 821 567, 930 497, 1025 475 C 1121 453, 1253 485, 1350 498 C 1447 511, 1513 530, 1608 552 C 1704 574, 1846 579, 1923 629 C 2000 679, 2081 780, 2072 850 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 2193 850 C 2183 932, 2048 1026, 1958 1084 C 1868 1142, 1753 1161, 1652 1198 C 1551 1235, 1464 1293, 1350 1308 C 1237 1323, 1072 1324, 971 1287 C 870 1250, 794 1157, 742 1084 C 691 1011, 672 932, 662 850 C 652 768, 630 666, 681 593 C 733 520, 860 439, 971 413 C 1083 387, 1237 424, 1350 439 C 1464 454, 1541 476, 1652 502 C 1764 528, 1929 535, 2019 593 C 2109 651, 2203 768, 2193 850 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 2313 850 C 2301 944, 2148 1051, 2045 1117 C 1942 1183, 1811 1205, 1695 1248 C 1579 1291, 1480 1357, 1350 1374 C 1220 1391, 1033 1393, 917 1350 C 801 1307, 714 1200, 655 1117 C 596 1034, 576 944, 564 850 C 552 757, 526 639, 585 556 C 644 473, 790 379, 917 350 C 1045 321, 1220 363, 1350 380 C 1480 397, 1568 423, 1695 452 C 1823 481, 2012 490, 2115 556 C 2218 622, 2325 757, 2313 850 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 2434 850 C 2421 955, 2247 1076, 2131 1151 C 2015 1226, 1868 1250, 1738 1298 C 1608 1346, 1496 1420, 1350 1439 C 1204 1458, 993 1460, 863 1412 C 733 1364, 635 1245, 569 1151 C 503 1057, 478 955, 465 850 C 452 745, 424 613, 490 519 C 556 425, 720 321, 863 288 C 1006 255, 1204 302, 1350 321 C 1496 340, 1595 369, 1738 402 C 1881 435, 2094 444, 2210 519 C 2326 594, 2447 745, 2434 850 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 216 140 C 213 150, 199 159, 190 167 C 181 175, 173 182, 161 188 C 149 194, 134 201, 120 201 C 106 201, 89 195, 77 189 C 65 183, 58 175, 50 167 C 42 159, 30 150, 27 140 C 24 130, 24 114, 32 106 C 40 98, 62 93, 77 91 C 92 89, 106 93, 120 93 C 134 93, 146 90, 161 92 C 176 94, 199 98, 208 106 C 217 114, 219 130, 216 140 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 313 140 C 307 160, 278 178, 260 194 C 242 210, 226 225, 203 236 C 180 247, 148 262, 120 262 C 92 263, 57 250, 34 239 C 11 228, -3 211, -20 194 C -37 178, -61 160, -67 140 C -73 120, -73 89, -56 72 C -39 56, 5 45, 34 41 C 63 37, 92 46, 120 46 C 148 47, 174 40, 203 44 C 232 48, 278 56, 296 72 C 314 88, 319 120, 313 140 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 409 140 C 400 171, 358 197, 330 221 C 303 245, 279 266, 244 283 C 209 300, 162 321, 120 322 C 78 323, 26 305, -9 288 C -44 271, -65 246, -90 221 C -115 196, -151 171, -160 140 C -169 110, -169 63, -144 38 C -119 13, -53 -1, -9 -8 C 35 -14, 78 -2, 120 -1 C 162 0, 200 -9, 244 -3 C 288 4, 357 14, 384 38 C 412 62, 418 110, 409 140 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 505 140 C 493 181, 437 216, 400 248 C 364 280, 333 309, 286 331 C 239 354, 176 382, 120 383 C 64 384, -4 361, -51 338 C -98 316, -126 281, -160 248 C -194 215, -241 181, -253 140 C -265 99, -266 37, -232 4 C -198 -29, -110 -49, -51 -58 C 8 -66, 64 -48, 120 -47 C 176 -46, 227 -59, 286 -51 C 345 -42, 436 -28, 472 4 C 509 36, 517 99, 505 140 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 601 140 C 586 191, 516 235, 470 275 C 424 315, 385 351, 327 379 C 269 407, 190 443, 120 444 C 50 445, -36 415, -94 387 C -152 359, -188 316, -230 275 C -272 234, -331 191, -346 140 C -361 89, -362 12, -320 -29 C -278 -70, -167 -96, -94 -107 C -21 -118, 50 -95, 120 -94 C 190 -93, 254 -110, 327 -99 C 400 -88, 514 -69, 560 -29 C 606 11, 616 89, 601 140 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 698 140 C 680 201, 595 254, 540 302 C 485 350, 438 393, 368 427 C 298 461, 204 503, 120 505 C 36 507, -67 471, -137 437 C -207 403, -249 352, -300 302 C -350 253, -422 201, -440 140 C -458 79, -458 -13, -408 -63 C -357 -112, -225 -144, -137 -157 C -49 -170, 36 -143, 120 -141 C 204 -139, 280 -160, 368 -147 C 456 -134, 593 -111, 648 -63 C 703 -15, 716 79, 698 140 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 794 140 C 773 211, 674 273, 610 329 C 546 385, 492 435, 410 474 C 328 513, 218 563, 120 565 C 22 567, -98 525, -180 486 C -262 447, -311 387, -370 329 C -429 271, -512 211, -533 140 C -554 69, -555 -39, -496 -97 C -437 -155, -283 -191, -180 -206 C -77 -221, 22 -190, 120 -188 C 218 -186, 307 -209, 410 -194 C 513 -179, 672 -153, 736 -97 C 800 -41, 815 69, 794 140 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-  <path d="M 890 140 C 866 221, 753 292, 680 356 C 607 420, 544 477, 451 522 C 358 567, 232 624, 120 626 C 8 628, -130 581, -223 536 C -316 491, -373 422, -440 356 C -507 290, -602 221, -626 140 C -650 59, -651 -65, -584 -131 C -517 -197, -340 -239, -223 -256 C -106 -273, 8 -237, 120 -235 C 232 -233, 334 -259, 451 -242 C 568 -225, 751 -195, 824 -131 C 897 -67, 914 59, 890 140 Z" stroke="rgba(255, 255, 255, 0.080)" stroke-width="1" fill="none" />
-  <path d="M 986 140 C 959 231, 832 311, 750 383 C 668 455, 597 519, 492 570 C 387 621, 246 685, 120 687 C -6 690, -161 636, -266 585 C -371 534, -434 457, -510 383 C -586 309, -693 231, -720 140 C -747 49, -749 -91, -673 -165 C -597 -239, -398 -285, -266 -305 C -134 -324, -6 -284, 120 -282 C 246 -279, 360 -309, 492 -290 C 624 -270, 831 -237, 913 -165 C 995 -93, 1013 49, 986 140 Z" stroke="rgba(255, 255, 255, 0.050)" stroke-width="1" fill="none" />
-  <path d="M 1083 140 C 1053 241, 912 329, 820 409 C 729 489, 651 562, 534 618 C 417 675, 261 745, 120 748 C -20 751, -192 692, -309 635 C -426 579, -496 492, -580 409 C -664 327, -783 241, -813 140 C -843 39, -845 -116, -761 -199 C -677 -281, -456 -333, -309 -355 C -162 -377, -20 -332, 120 -329 C 261 -326, 387 -360, 534 -338 C 681 -316, 910 -279, 1001 -199 C 1093 -119, 1113 39, 1083 140 Z" stroke="rgba(255, 255, 255, 0.065)" stroke-width="1" fill="none" />
-</svg>
-                <div class="hero-vignette-overlay"></div>
-            </div>
+            <div class="hero-bg-overlay" aria-hidden="true"></div>
 
             <div class="container hero-container">
-                <nav class="sector-breadcrumb" aria-label="Percorso">
-                    <a href="/" class="bc-link">Home</a>
-                    <span class="bc-sep">/</span>
-                    <a href="/#panoramica" class="bc-link">Settori</a>
-                    <span class="bc-sep">/</span>
-                    <span class="bc-current">Ristoranti e Pizzerie</span>
-                </nav>
-                <div class="vertical-pill hero-animate-1">Soluzione per Ristoranti &amp; Pizzerie</div>
-                <h1 class="vertical-hero-title hero-animate-2">
-                    Riempi i tavoli del tuo locale.<br>
-                    Senza interruzioni durante il servizio.
-                </h1>
-                <p class="vertical-hero-sub hero-animate-3">
-                    Melpis risponde ai clienti su WhatsApp anche nei momenti di punta del servizio. Conferma i coperti in base ai tuoi turni, risponde alle domande sul menu e sincronizza ogni prenotazione sul tuo Google Calendar.
-                </p>
+                <div class="hero-two-col-grid">
+                    <div class="hero-text-col">
+                        <h1 class="vertical-hero-title hero-animate-1">
+                            Riempi i tavoli del tuo locale.<br>Senza interruzioni durante il servizio.
+                        </h1>
+                        <p class="vertical-hero-sub hero-animate-3">
+                            Melpis risponde ai clienti su WhatsApp anche nei momenti di punta del servizio. Conferma i coperti in base ai tuoi turni, risponde alle domande sul menu e sincronizza ogni prenotazione.
+                        </p>
 
-                <div class="hero-actions-row hero-animate-4">
-                    <a href="/registrati/" class="btn-cta-primary">
-                        <span>Inizia la prova di 7 giorni</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-                    </a>
-                    <a href="#come-funziona" class="btn-cta-secondary">
-                        <span>Scopri come funziona</span>
-                    </a>
-                </div>
-
-                <!-- Trust Points Strip -->
-                <div class="trust-points-row hero-animate-5">
-                    <span class="trust-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        Nessuna carta di credito richiesta
-                    </span>
-                    <span class="trust-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        7 giorni di prova completa
-                    </span>
-                    <span class="trust-item">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        Meta Cloud API ufficiale
-                    </span>
-                </div>
-
-                <!-- Chat Simulation Box with Realistic Typing Sequence -->
-                <div class="vertical-chat-preview hero-animate-6" id="chatPreviewWidget" role="region" aria-label="Simulazione conversazione WhatsApp">
-                    <div class="v-chat-header">
-                        <div class="v-chat-avatar">O</div>
-                        <div class="v-chat-title">
-                            <h4>Osteria Bella Vista · WhatsApp <span class="status-dot-pulse"></span></h4>
-                            <span>Assistente AI attivo · Risposta istantanea</span>
-                        </div>
-                        <button type="button" class="chat-replay-btn" id="chatReplayBtn" title="Rigioca simulazione" aria-label="Rigioca simulazione">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/></svg>
-                            <span>Rigioca</span>
-                        </button>
-                    </div>
-                    
-                    <div class="chat-flow-container">
-                        <div class="v-bubble v-bubble-in" id="chatBubble1">
-                            <span class="v-bubble-tag">Cliente · 19:42</span>
-                            Buonasera! Avete un tavolo per 4 domani alle 20:30? Uno dei ragazzi è celiaco, avete opzioni per lui?
+                        <div class="hero-actions-row hero-animate-4">
+                            <a href="/registrati/" class="btn-cta-primary">
+                                <span>Inizia la prova di 7 giorni</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                            </a>
+                            <a href="#come-funziona" class="btn-cta-secondary">
+                                <span>Scopri come funziona</span>
+                            </a>
                         </div>
 
-                        <div class="v-bubble v-bubble-typing" id="chatBubbleTyping">
-                            <span class="typing-dot"></span>
-                            <span class="typing-dot"></span>
-                            <span class="typing-dot"></span>
-                        </div>
-
-                        <div class="v-bubble v-bubble-out" id="chatBubble2">
-                            <span class="v-bubble-tag">Melpis per Osteria Bella Vista · 19:42</span>
-                            Buonasera! Certamente, per domani sera alle 20:30 abbiamo disponibilità per 4 persone. Abbiamo pane e primi piatti senza glutine preparati separatamente. Per bloccare il tavolo mi conferma il nome di riferimento?
-                        </div>
-
-                        <div class="v-bubble v-bubble-in" id="chatBubble3">
-                            <span class="v-bubble-tag">Cliente · 19:43</span>
-                            Perfetto! A nome Marco Rossi, grazie mille.
-                        </div>
-
-                        <div class="v-bubble v-bubble-out" id="chatBubble4">
-                            <span class="v-bubble-tag">Melpis · Prenotazione confermata</span>
-                            Tavolo confermato per domani alle 20:30 (4 coperti, nota celiachia registrata). A presto Marco! 🍽️
-                            <br>
-                            <span class="chat-confirm-pill">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
-                                Google Calendar sincronizzato
+                        <!-- Trust Points Strip -->
+                        <div class="trust-points-row hero-animate-5">
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                Nessuna carta di credito richiesta
+                            </span>
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                7 giorni di prova completa
+                            </span>
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Meta Cloud API ufficiale
                             </span>
                         </div>
                     </div>
+                    <div class="hero-visual-spacer" aria-hidden="true"></div>
                 </div>
             </div>
         </section>
@@ -1883,7 +375,7 @@
                 <div class="vantaggi-rows-container">
 
                     <!-- Riga 1: Automazione WhatsApp (Testo Sinistra, Mockup Destra) -->
-                    <div class="vantaggi-row reveal" style="--stagger: 0;">
+                    <div class="vantaggi-row reveal is-67d149738738">
                         <div class="vantaggi-text-col">
                             <div class="vantaggi-outline-icon" aria-hidden="true">
                                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><polyline points="9 11 12 14 15 11"/></svg>
@@ -1925,7 +417,7 @@
                     </div>
 
                     <!-- Riga 2: Rotazione Sala & Doppi Turni (Mockup Sinistra, Testo Destra) -->
-                    <div class="vantaggi-row is-reversed reveal" style="--stagger: 1;">
+                    <div class="vantaggi-row is-reversed reveal is-e41c74dd16b9">
                         <div class="vantaggi-text-col">
                             <div class="vantaggi-outline-icon" aria-hidden="true">
                                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1963,7 +455,7 @@
                                     </div>
                                 </div>
                                 <!-- Layer 3: Proposta Alternativa (Floating) -->
-                                <div class="layer-floating-pill" style="margin-left: 14px; margin-right: auto;">
+                                <div class="layer-floating-pill is-d5d72fc39ecd">
                                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
                                     <span>Turno 19:45 pieno → Proposto turno 21:30 (Accettato)</span>
                                 </div>
@@ -1972,7 +464,7 @@
                     </div>
 
                     <!-- Riga 3: Menu, Allergeni e Carta Vini da PDF (Testo Sinistra, Mockup Destra) -->
-                    <div class="vantaggi-row reveal" style="--stagger: 2;">
+                    <div class="vantaggi-row reveal is-74101b6fa846">
                         <div class="vantaggi-text-col">
                             <div class="vantaggi-outline-icon" aria-hidden="true">
                                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -2011,7 +503,7 @@
                     </div>
 
                     <!-- Riga 4: Promemoria Anti No-Show & Interattività (Mockup Sinistra, Testo Destra) -->
-                    <div class="vantaggi-row is-reversed reveal" style="--stagger: 3;">
+                    <div class="vantaggi-row is-reversed reveal is-ed5894c12a96">
                         <div class="vantaggi-text-col">
                             <div class="vantaggi-outline-icon" aria-hidden="true">
                                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
@@ -2061,23 +553,23 @@
         <!-- ==================== 4. COME FUNZIONA IN 3 PASSAGGI (Light Luxury) ==================== -->
         <section class="vertical-steps-section" id="come-funziona" data-navbar-theme="light">
             <div class="container">
-                <div class="center reveal" style="--stagger: 0;">
+                <div class="center reveal is-67d149738738">
                     <span class="eyebrow-pill">Semplicità di attivazione</span>
                     <h2 class="display-md">Pronto per il tuo servizio in 3 passaggi</h2>
                 </div>
 
                 <div class="steps-grid">
-                    <div class="step-card reveal" style="--stagger: 0;">
+                    <div class="step-card reveal is-67d149738738">
                         <div class="step-pill-number">1</div>
                         <h3>Collega il tuo WhatsApp</h3>
                         <p>Connetti il tuo numero WhatsApp Business tramite l'infrastruttura ufficiale Meta Cloud API in totale sicurezza e nel pieno rispetto delle linee guida.</p>
                     </div>
-                    <div class="step-card reveal" style="--stagger: 1;">
+                    <div class="step-card reveal is-e41c74dd16b9">
                         <div class="step-pill-number">2</div>
                         <h3>Carica menu, orari e turni</h3>
                         <p>Carica il PDF del tuo menu, la lista degli allergeni, gli orari di apertura e le preferenze di prenotazione. Melpis risponderà solo ed esclusivamente in base a questi dati.</p>
                     </div>
-                    <div class="step-card reveal" style="--stagger: 2;">
+                    <div class="step-card reveal is-74101b6fa846">
                         <div class="step-pill-number">3</div>
                         <h3>I tavoli si confermano in automatico</h3>
                         <p>Ogni tavolo confermato compare direttamente sul tuo Google Calendar e nella Inbox di Melpis, con note su allergie, seggiolini per bambini o preferenze di sala.</p>
@@ -2090,29 +582,29 @@
         <div class="pin-wrap-faq">
             <section class="faq-section" id="faq" data-navbar-theme="light">
                 <div class="container">
-                    <div class="center reveal" style="--stagger: 0;">
+                    <div class="center reveal is-67d149738738">
                         <span class="eyebrow-pill">Domande Frequenti</span>
                         <h2 class="display-md">Tutto quello che serve sapere per il tuo locale</h2>
                     </div>
 
                     <div class="faq-list">
-                        <details class="faq-item reveal" style="--stagger: 0;">
+                        <details class="faq-item reveal is-67d149738738">
                             <summary class="faq-quest"><span>Come gestisce i doppi turni serali (es. 19:45 e 21:30)?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
                             <div class="faq-ans"><div class="faq-ans-inner"><p>Dalla dashboard imposti la durata media della permanenza al tavolo e gli orari di inizio turno. Quando un cliente richiede un orario specifico, Melpis verifica la capienza dello slot e propone automaticamente l'alternativa migliore se il primo turno è al completo.</p></div></div>
                         </details>
-                        <details class="faq-item reveal" style="--stagger: 1;">
+                        <details class="faq-item reveal is-e41c74dd16b9">
                             <summary class="faq-quest"><span>Cosa succede se un cliente chiede ingredienti particolari o dichiara intolleranze?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
                             <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis risponde basandosi direttamente sul PDF del tuo menu e sulla lista allergeni che carichi nella dashboard. Se un cliente segnala un'intolleranza complessa o chiede modifiche non previste, l'assistente registra la nota nella prenotazione e può inoltrare l'avviso al tuo staff.</p></div></div>
                         </details>
-                        <details class="faq-item reveal" style="--stagger: 2;">
+                        <details class="faq-item reveal is-74101b6fa846">
                             <summary class="faq-quest"><span>In che modo l'assistente aiuta a ridurre i no-show nei fine settimana?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
                             <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis può inviare promemoria automatici e cordiali su WhatsApp alcune ore prima dell'orario di arrivo, consentendo ai clienti di confermare con un tap o disdire tempestivamente, liberando il tavolo per altri ospiti.</p></div></div>
                         </details>
-                        <details class="faq-item reveal" style="--stagger: 3;">
+                        <details class="faq-item reveal is-ed5894c12a96">
                             <summary class="faq-quest"><span>Possiamo intervenire manualmente sulle prenotazioni o fermare le richieste quando la sala è piena?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
                             <div class="faq-ans"><div class="faq-ans-inner"><p>Sì. Con la funzione Presa in Carico puoi subentrare in qualsiasi conversazione con un solo click. Inoltre puoi bloccare temporaneamente le prenotazioni per la serata impostando la sala come esaurita con un semplice interruttore.</p></div></div>
                         </details>
-                        <details class="faq-item reveal" style="--stagger: 4;">
+                        <details class="faq-item reveal is-01ea3a07975d">
                             <summary class="faq-quest"><span>Come funziona la prova gratuita di 7 giorni per il mio locale?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
                             <div class="faq-ans"><div class="faq-ans-inner"><p>Puoi registrarti inserendo nome locale ed email, senza carta di credito. Hai 7 giorni completi per caricare il tuo menu, testare le risposte e verificare la gestione dei coperti prima di decidere se confermare il servizio.</p></div></div>
                         </details>
@@ -2124,10 +616,10 @@
         <!-- ==================== 6. FINAL CALL TO ACTION (Sticky Slide-Over Dark Panel) ==================== -->
         <section class="final-cta-section" id="finalCta">
             <div class="container final-cta-container">
-                <div class="final-cta-box reveal" style="--stagger: 0;">
+                <div class="final-cta-box reveal is-67d149738738">
                     <h2 class="final-cta-title">Dedica più tempo ai piatti e alla sala.<br>Alle prenotazioni pensa Melpis.</h2>
                     <p class="final-cta-sub">Configura Melpis in pochi passaggi e provalo gratis per 7 giorni senza carta di credito.</p>
-                    <a href="/registrati/" class="btn-cta-primary" style="padding: 15px 32px; font-size: 1.05rem;">
+                    <a href="/registrati/" class="btn-cta-primary is-05cfc5041a64">
                         <span>Attiva la prova per il tuo locale</span>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                     </a>
@@ -2142,7 +634,7 @@
             <div class="footer-top-row footer-top-grid">
                 <div class="footer-brand-col">
                     <a href="/" class="nav-brand">
-                        <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
                         <span class="nav-brand-text">Melpis</span>
                     </a>
                     <p class="footer-tagline">L'assistente AI per le comunicazioni e le prenotazioni della tua attività.</p>
@@ -2171,240 +663,13 @@
                 </div>
             </div>
             <div class="footer-bottom-row">
-                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+                <p>© 2026 Melpis. Tutti i diritti riservati. API Meta Cloud ufficiale &amp; Sicurezza dei dati.</p>
             </div>
         </div>
     </footer>
 
     <!-- Interactive Script: Scroll Reveal, Mobile Nav, and Animated Chat Sequence -->
-    <script>
-        (function() {
-            var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            if (!reduceMotion && 'IntersectionObserver' in window) {
-                document.documentElement.classList.add('js-ready');
-            }
-
-                                    // Unified Navbar Controller with Adaptive Theme & Sticky Scroll
-            var header = document.getElementById('mainHeader');
-            var dropdown = document.getElementById('navDropdownSettori');
-            var trigger = document.getElementById('settoriDropdownTrigger');
-            var hamburger = document.getElementById('navHamburger');
-            var overlay = document.getElementById('mobileOverlay');
-            var accordionBtn = document.getElementById('mobileSettoriBtn');
-            var accordionWrap = document.getElementById('mobileSettoriAccordion');
-            var lightSections = document.querySelectorAll('[data-navbar-theme="light"]');
-
-            if (header) {
-                var updateNavbarState = function() {
-                    var scrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
-                    header.classList.toggle('is-scrolled', scrollY > 15);
-
-                    if (lightSections.length > 0) {
-                        var headerRect = header.getBoundingClientRect();
-                        var headerMidY = headerRect.top + (headerRect.height / 2);
-                        var isOverLight = false;
-
-                        for (var i = 0; i < lightSections.length; i++) {
-                            var secRect = lightSections[i].getBoundingClientRect();
-                            if (secRect.top <= headerMidY && secRect.bottom >= headerMidY) {
-                                isOverLight = true;
-                                break;
-                            }
-                        }
-                        header.classList.toggle('nav-theme-light', isOverLight);
-                    }
-                };
-
-                window.addEventListener('scroll', updateNavbarState, { passive: true });
-                window.addEventListener('resize', updateNavbarState, { passive: true });
-                updateNavbarState();
-            }
-
-            if (dropdown && trigger) {
-                var setDropdown = function(open) {
-                    dropdown.classList.toggle('is-open', open);
-                    trigger.setAttribute('aria-expanded', String(open));
-                };
-
-                trigger.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDropdown(!dropdown.classList.contains('is-open'));
-                });
-
-                document.addEventListener('click', function(e) {
-                    if (!dropdown.contains(e.target)) {
-                        setDropdown(false);
-                    }
-                });
-
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
-                        setDropdown(false);
-                        trigger.focus();
-                    }
-                });
-
-                dropdown.addEventListener('focusout', function() {
-                    setTimeout(function() {
-                        if (!dropdown.contains(document.activeElement)) {
-                            setDropdown(false);
-                        }
-                    }, 10);
-                });
-            }
-
-            if (hamburger && overlay) {
-                var setNav = function(open) {
-                    overlay.classList.toggle('open', open);
-                    overlay.setAttribute('aria-hidden', String(!open));
-                    hamburger.setAttribute('aria-expanded', String(open));
-                    document.body.style.overflow = open ? 'hidden' : '';
-                };
-
-                hamburger.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    setNav(!overlay.classList.contains('open'));
-                });
-
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && overlay.classList.contains('open')) {
-                        setNav(false);
-                    }
-                });
-
-                overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-cta-primary, .btn-pill-cta').forEach(function(link) {
-                    link.addEventListener('click', function() {
-                        setNav(false);
-                    });
-                });
-            }
-
-            if (accordionBtn && accordionWrap) {
-                accordionBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var isExpanded = accordionWrap.classList.toggle('is-expanded');
-                    accordionBtn.setAttribute('aria-expanded', String(isExpanded));
-                });
-            }
-
-        })();
-
-            // 3. Ambient Mouse Spotlight on Bento Cards (Keplero / Lemni Micro-Interaction)
-            var bentoCards = document.querySelectorAll('.bento-card');
-            bentoCards.forEach(function(card) {
-                card.addEventListener('mousemove', function(e) {
-                    var rect = card.getBoundingClientRect();
-                    var x = e.clientX - rect.left;
-                    var y = e.clientY - rect.top;
-                    card.style.setProperty('--mouse-x', x + 'px');
-                    card.style.setProperty('--mouse-y', y + 'px');
-                });
-            });
-
-            // 4. Interactive No-Show Action Demo
-            var btnConfirm = document.getElementById('demoBtnConfirm');
-            var btnCancel = document.getElementById('demoBtnCancel');
-            var feedbackBox = document.getElementById('noshowFeedback');
-            var feedbackText = document.getElementById('noshowFeedbackText');
-
-            if (btnConfirm && btnCancel && feedbackBox && feedbackText) {
-                btnConfirm.addEventListener('click', function() {
-                    btnConfirm.classList.add('is-active-confirm');
-                    btnCancel.classList.remove('is-active-cancel');
-                    feedbackBox.classList.remove('is-cancelled');
-                    feedbackText.textContent = "Presenza confermata dall'ospite · Sincronizzato con Google Calendar";
-                });
-
-                btnCancel.addEventListener('click', function() {
-                    btnCancel.classList.add('is-active-cancel');
-                    btnConfirm.classList.remove('is-active-confirm');
-                    feedbackBox.classList.add('is-cancelled');
-                    feedbackText.textContent = "Tavolo liberato con anticipo · Notificato per la lista d'attesa";
-                });
-            }
-
-            // 5. Realistic Animated Chat Sequence with Replay
-            var chatWidget = document.getElementById('chatPreviewWidget');
-            var bTyping = document.getElementById('chatBubbleTyping');
-            var b2 = document.getElementById('chatBubble2');
-            var b3 = document.getElementById('chatBubble3');
-            var b4 = document.getElementById('chatBubble4');
-            var replayBtn = document.getElementById('chatReplayBtn');
-            var chatTimers = [];
-
-            function clearChatTimers() {
-                chatTimers.forEach(function(t) { clearTimeout(t); });
-                chatTimers = [];
-            }
-
-            function playChatSimulation() {
-                clearChatTimers();
-                if (!b2 || !b3 || !b4) return;
-
-                if (bTyping) {
-                    bTyping.style.display = 'none';
-                    bTyping.style.opacity = '0';
-                }
-                [b2, b3, b4].forEach(function(b) {
-                    b.style.opacity = '0';
-                    b.style.transform = 'translateY(10px)';
-                    b.style.transition = 'opacity 280ms cubic-bezier(0.16, 1, 0.3, 1), transform 280ms cubic-bezier(0.16, 1, 0.3, 1)';
-                });
-
-                chatTimers.push(setTimeout(function() {
-                    if (bTyping) {
-                        bTyping.style.display = 'inline-flex';
-                        setTimeout(function() { bTyping.style.opacity = '1'; }, 20);
-                    }
-                }, 400));
-
-                chatTimers.push(setTimeout(function() {
-                    if (bTyping) bTyping.style.display = 'none';
-                    b2.style.opacity = '1';
-                    b2.style.transform = 'translateY(0)';
-                }, 1300));
-
-                chatTimers.push(setTimeout(function() {
-                    b3.style.opacity = '1';
-                    b3.style.transform = 'translateY(0)';
-                }, 2100));
-
-                chatTimers.push(setTimeout(function() {
-                    b4.style.opacity = '1';
-                    b4.style.transform = 'translateY(0)';
-                }, 2900));
-            }
-
-            if (!reduceMotion && 'IntersectionObserver' in window && chatWidget && b2 && b3 && b4) {
-                [b2, b3, b4].forEach(function(b) {
-                    b.style.opacity = '0';
-                    b.style.transform = 'translateY(10px)';
-                });
-
-                var hasAnimatedChat = false;
-                var chatObserver = new IntersectionObserver(function(entries) {
-                    entries.forEach(function(entry) {
-                        if (entry.isIntersecting && !hasAnimatedChat) {
-                            hasAnimatedChat = true;
-                            playChatSimulation();
-                            chatObserver.unobserve(chatWidget);
-                        }
-                    });
-                }, { threshold: 0.25 });
-
-                chatObserver.observe(chatWidget);
-
-                if (replayBtn) {
-                    replayBtn.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        playChatSimulation();
-                    });
-                }
-            }
-        })();
-    </script>
+    <script src="/inline-assets/script-2b37cde15b5cc021bc9917aa23c79240ad8f447dbdbacebd4344d0c48e2c2f55.js" defer></script>
     <script src="/app.js" defer></script>
 </body>
 </html>

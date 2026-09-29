@@ -22,13 +22,14 @@ def is_org_suspended(subscription_status: str | None, trial_end=None) -> bool:
       come sospesa sarebbe un falso positivo che bloccherebbe il servizio
       che sta effettivamente pagando.
     """
-    if subscription_status == "canceled":
-        return True
+    # Existing commercial policy: past_due remains usable while Stripe retries
+    # collection. unpaid/canceled terminate that grace period. Unknown states
+    # never grant access; a trial requires a verifiable future end date.
     if subscription_status in ("active", "past_due"):
         return False
-    if not trial_end:
-        return False
-    if isinstance(trial_end, datetime) and trial_end.tzinfo is None:
+    if subscription_status != "trialing" or not isinstance(trial_end, datetime):
+        return True
+    if trial_end.tzinfo is None:
         trial_end = trial_end.replace(tzinfo=timezone.utc)
     return trial_end <= datetime.now(timezone.utc)
 

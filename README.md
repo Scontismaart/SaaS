@@ -13,11 +13,11 @@ Il sistema è composto da 4 servizi Docker, tutti dalla stessa immagine:
 - **worker-retry** — ritenta le consegne fallite dei messaggi in uscita.
 - **supervisor** — rete di sicurezza indipendente: libera i claim stale (reaper) anche quando i worker che li avevano presi in carico sono morti.
 
-Il database è **Supabase Postgres** con estensione **pgvector** per il retrieval di documenti (RAG) con embedding. Il routing LLM usa **OpenRouter** come provider primario e **Groq** come fallback, limitato a provider whitelistati che non addestrano sui dati. Google OAuth gestisce Calendar (sync prenotazioni) e Reviews (automazione recensioni Google Business Profile); Meta Cloud API fornisce i canali WhatsApp e Instagram. L'immagine Docker gira con utente **non-root**.
+Il database è **Supabase Postgres** con estensione **pgvector**. Il profilo di lancio usa solo modelli ammessi sul tier **Groq FREE**, con attestazione esplicita dell'account e nessun fallback a pagamento. Meta opera esclusivamente in sandbox. L'immagine Docker gira con utente **non-root**.
 
 ## Setup sviluppo
 
-Prerequisiti: **Python 3.11+**, **Docker Desktop** (per i test con testcontainers), **Node.js** (per il check di sintassi del dashboard).
+Prerequisiti: **Python 3.12**, **Docker Desktop** (per PostgreSQL locale) e **Node.js** (lint e test frontend).
 
 1. Copiare `.env.example` in `.env` e compilare le variabili richieste. In particolare:
    - `ENCRYPTION_KEY`: generare una chiave Fernet con `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
@@ -38,12 +38,12 @@ Su Unix: `PYTHONUTF8=1 python -m pytest -q`. Alcuni test richiedono Docker (Post
 
 ## Deploy
 
-- `docs/DEPLOY.md` — guida al deploy su VPS + Coolify: env dal secret manager, immagine non-root verificata, scenari di backup.
+- `docs/DEPLOY.md` — deploy sandbox a costo zero, preflight, rollback e verifiche esterne.
 - `docs/CHECKLIST-PRE-LANCIO.md` — cosa verificare prima di andare in produzione.
 
 ## Documentazione
 
-- `docs/DEPLOY.md` — deploy production-ready su VPS + Coolify con env da secret manager.
+- `docs/DEPLOY.md` — deploy a costo zero con immagini immutabili e TLS.
 - `docs/CHECKLIST-PRE-LANCIO.md` — checklist viva delle verifiche pre-lancio.
 - `docs/GUARDRAILS.md` — controlli di qualità e sicurezza sulla risposta (intent classifier, validatore post-LLM, cache FAQ, A/B test prompt).
 - `docs/SETUP-INSTAGRAM.md` — setup del canale Instagram DM riusando la stessa app Meta del WhatsApp Cloud API.
@@ -51,4 +51,4 @@ Su Unix: `PYTHONUTF8=1 python -m pytest -q`. Alcuni test richiedono Docker (Post
 
 ## Note sicurezza
 
-I segreti vanno solo nel file `.env`, che è in `.gitignore` ed escluso dall'immagine via `.dockerignore`. Non committare mai chiavi reali. I provider LLM sono whitelistati a quelli che non addestrano sui dati dei clienti (il progetto nega comunque sempre l'uso dati per training).
+I segreti vanno solo nel file `.env`, che è in `.gitignore` ed escluso dall'immagine. Non committare chiavi reali. Il profilo di lancio ammette soltanto i modelli Groq elencati dal controllo costo; l'operatore deve verificare account FREE e condizioni dei dati prima di abilitarlo.

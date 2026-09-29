@@ -19,39 +19,66 @@ from src.models.schemas import OnboardingProfileInput
 
 pytestmark = pytest.mark.usefixtures("reset_db")
 
-API_KEY = "test-reviews-lingue-api-key-12345"
+TEST_SESSION = "test-reviews-lingue-jwt-session"
 ENCRYPTION_KEY = "Y2xvbmUtZmVybmV0LWtleS0zMi1ieXRlcy1sb25nISE="
 
 
 @pytest.fixture(autouse=True)
 def set_env(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "")
-    monkeypatch.setenv("API_KEY_SERVICE", API_KEY)
     monkeypatch.setenv("ENCRYPTION_KEY", ENCRYPTION_KEY)
+    monkeypatch.setenv("GOOGLE_BUSINESS_ENABLED", "true")
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "client-test.apps.googleusercontent.com")
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "secret-test")
     monkeypatch.setenv("GOOGLE_REVIEWS_REDIRECT_URI", "http://test/api/reviews/google/oauth2callback")
     monkeypatch.setenv("FRONTEND_URL", "http://test/settings")
+    from src.core.rate_limit import reset_memory_rate_limiter
+    reset_memory_rate_limiter()
+    monkeypatch.setattr(
+        "src.core.documenti.rag_context.vettorizza",
+        lambda texts, tipo="query": [[0.1] * 384 for _ in texts],
+    )
 
 
 @pytest.fixture
-async def async_client(repo, pg_pool):
+async def async_client(repo, pg_pool, sample_org):
+    from fastapi import Depends, HTTPException
     from src.api.main import app
+    from src.core.auth.dependencies import get_current_user, get_organization_context, get_token
     from src.core.reviews.google_service import GoogleBusinessService
     app.state.repo = repo
     app.state.pool = pg_pool
     service = GoogleBusinessService(repo=repo, encryption_key=ENCRYPTION_KEY)
     app.state.reviews_service = service
+    await pg_pool.execute(
+        "UPDATE organizations SET subscription_status = 'active', plan = 'business' WHERE id = $1",
+        sample_org["id"],
+    )
+
+    async def fixed_test_identity(token=Depends(get_token)):
+        if token != TEST_SESSION:
+            raise HTTPException(401, "Test session required")
+        return {
+            "source": "jwt",
+            "aal": "aal2",
+            "organization_id": str(sample_org["id"]),
+            "ruolo": "owner",
+            "auth_user_id": "00000000-0000-0000-0000-000000000001",
+            "user_id": "00000000-0000-0000-0000-000000000001",
+        }
+
+    app.dependency_overrides[get_current_user] = fixed_test_identity
+    app.dependency_overrides[get_organization_context] = fixed_test_identity
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
-        yield c, service
+        try:
+            yield c, service
+        finally:
+            app.dependency_overrides.clear()
 
 
 def _headers(org_id):
-    return {
-        "X-API-Key": API_KEY,
-        "X-Organization-Id": str(org_id),
-    }
+    return {"Authorization": f"Bearer {TEST_SESSION}"}
 
 
 def _profilo_onboarding(**overrides):
@@ -79,7 +106,7 @@ class _FakeBozza:
 
 # ── /api/recensione ───────────────────────────────────────────
 
-async def test_api_recensione_propaga_le_lingue_dell_org(async_client, repo, sample_org):
+async def test_api_recensione_propaga_le_lingue_dell_org(async_client, repo, sample_org, monkeypatch):
     client, _ = async_client
     await onboarding.save_profile(
         sample_org["id"],
@@ -89,14 +116,22 @@ async def test_api_recensione_propaga_le_lingue_dell_org(async_client, repo, sam
 
     captured = {}
 
+    from types import SimpleNamespace
+    async def knowledge(*_args, **_kwargs):
+        return SimpleNamespace(testo="Knowledge verificata", chunks=[{}])
+    monkeypatch.setattr("src.core.documenti.rag_context.recupera_contesto_documenti", knowledge)
+
     def fake_genera(**kwargs):
         captured.update(kwargs)
+        kwargs["usage_sink"].setdefault("attempts", []).append({"model": "groq/openai/gpt-oss-20b", "reason": "test",
+                                     "prompt_tokens": 100, "completion_tokens": 20,
+                                     "total_tokens": 120, "latency_ms": 10})
         return _FakeBozza()
 
     with patch("src.api.main.genera_risposta_recensione", side_effect=fake_genera):
         resp = await client.post(
             "/api/recensione",
-            json={"testo": "Ottimo servizio!"},
+            json={"testo": "Ottimo servizio!", "external_id": "lingue-review-1"},
             headers=_headers(sample_org["id"]),
         )
 
@@ -105,18 +140,25 @@ async def test_api_recensione_propaga_le_lingue_dell_org(async_client, repo, sam
     assert captured["lingua_default"] == "de"
 
 
-async def test_api_recensione_senza_profilo_usa_default(async_client, repo, sample_org):
+async def test_api_recensione_senza_profilo_usa_default(async_client, repo, sample_org, monkeypatch):
     client, _ = async_client
     captured = {}
+    from types import SimpleNamespace
+    async def knowledge(*_args, **_kwargs):
+        return SimpleNamespace(testo="Knowledge verificata", chunks=[{}])
+    monkeypatch.setattr("src.core.documenti.rag_context.recupera_contesto_documenti", knowledge)
 
     def fake_genera(**kwargs):
         captured.update(kwargs)
+        kwargs["usage_sink"].setdefault("attempts", []).append({"model": "groq/openai/gpt-oss-20b", "reason": "test",
+                                     "prompt_tokens": 100, "completion_tokens": 20,
+                                     "total_tokens": 120, "latency_ms": 10})
         return _FakeBozza()
 
     with patch("src.api.main.genera_risposta_recensione", side_effect=fake_genera):
         resp = await client.post(
             "/api/recensione",
-            json={"testo": "Ottimo servizio!"},
+            json={"testo": "Ottimo servizio!", "external_id": "lingue-review-2"},
             headers=_headers(sample_org["id"]),
         )
 
@@ -146,7 +188,7 @@ async def _inserisci_credenziali(pg_pool, org_id):
         )
 
 
-async def test_sync_google_propaga_le_lingue_dell_org(async_client, pg_pool, sample_org, repo):
+async def test_sync_google_propaga_le_lingue_dell_org(async_client, pg_pool, sample_org, repo, monkeypatch):
     client, service = async_client
     await _inserisci_credenziali(pg_pool, sample_org["id"])
     await onboarding.save_profile(
@@ -155,6 +197,10 @@ async def test_sync_google_propaga_le_lingue_dell_org(async_client, pg_pool, sam
         repo,
     )
 
+    from types import SimpleNamespace
+    async def knowledge(*_args, **_kwargs):
+        return SimpleNamespace(testo="Knowledge verificata", chunks=[{}])
+    monkeypatch.setattr("src.core.documenti.rag_context.recupera_contesto_documenti", knowledge)
     service._build_service = AsyncMock(return_value=MagicMock())
     service._list_reviews = AsyncMock(
         return_value=[
@@ -168,17 +214,21 @@ async def test_sync_google_propaga_le_lingue_dell_org(async_client, pg_pool, sam
     )
     captured = {}
     service._genera_bozza = AsyncMock(
-        side_effect=lambda *a, **kw: captured.update(kw) or _FakeBozza()
+        side_effect=lambda *a, **kw: (kw["usage_sink"].setdefault("attempts", []).append({
+            "model": "groq/openai/gpt-oss-20b", "reason": "test", "prompt_tokens": 100,
+            "completion_tokens": 20, "total_tokens": 120, "latency_ms": 10,
+        }) or captured.update(kw) or _FakeBozza())
     )
 
     resp = await client.post("/api/reviews/google/sync", headers=_headers(sample_org["id"]))
     assert resp.status_code == 200
-    assert resp.json() == {"nuove": 1}
+    assert resp.json()["nuove"] == 1
+    assert resp.json()["parziale"] is False
     assert captured["lingue_supportate"] == ["it", "en"]
     assert captured["lingua_default"] == "en"
 
 
-async def test_sync_google_senza_profilo_usa_default(async_client, pg_pool, sample_org):
+async def test_sync_google_senza_profilo_usa_default(async_client, pg_pool, sample_org, monkeypatch):
     client, service = async_client
     await _inserisci_credenziali(pg_pool, sample_org["id"])
 
@@ -194,8 +244,15 @@ async def test_sync_google_senza_profilo_usa_default(async_client, pg_pool, samp
         ]
     )
     captured = {}
+    from types import SimpleNamespace
+    async def knowledge(*_args, **_kwargs):
+        return SimpleNamespace(testo="Knowledge verificata", chunks=[{}])
+    monkeypatch.setattr("src.core.documenti.rag_context.recupera_contesto_documenti", knowledge)
     service._genera_bozza = AsyncMock(
-        side_effect=lambda *a, **kw: captured.update(kw) or _FakeBozza()
+        side_effect=lambda *a, **kw: (kw["usage_sink"].setdefault("attempts", []).append({
+            "model": "groq/openai/gpt-oss-20b", "reason": "test", "prompt_tokens": 100,
+            "completion_tokens": 20, "total_tokens": 120, "latency_ms": 10,
+        }) or captured.update(kw) or _FakeBozza())
     )
 
     resp = await client.post("/api/reviews/google/sync", headers=_headers(sample_org["id"]))

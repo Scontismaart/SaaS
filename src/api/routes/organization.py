@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from src.api.dependencies import get_repo, require_ruolo
 from src.api.routes.common import audit_event, get_billing_snapshot, record_ai_usage
 from src.core.onboarding import (
+    ProfileCacheInvalidationError,
     generate_preview,
     get_profile,
     list_verticals,
@@ -76,7 +77,14 @@ async def onboarding_salva_profilo(
             detail="Nessuna organizzazione collegata: inserisci API key e Organization ID.",
         )
     repo = get_repo(request)
-    profilo_salvato = await save_profile(org_id, profilo, repo)
+    try:
+        profilo_salvato = await save_profile(org_id, profilo, repo)
+    except ProfileCacheInvalidationError as exc:
+        logger.error("FAQ cache invalidation failed after profile save org=%s", org_id)
+        raise HTTPException(
+            status_code=503,
+            detail="Profilo salvato, ma non è stato possibile aggiornare la cache FAQ. Riprova.",
+        ) from exc
 
     if profilo.orari:
         try:

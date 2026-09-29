@@ -35,8 +35,14 @@ def crea_review_task(
     testo: str,
     stelle: int | None = None,
     autore: str = "",
+    profilo_attivita: dict | None = None,
+    contesto_documenti: str = "",
 ) -> Task:
-    descrizione = costruisci_user_prompt_review(testo, stelle, autore)
+    descrizione = costruisci_user_prompt_review(
+        testo, stelle, autore,
+        profilo_attivita=profilo_attivita,
+        contesto_documenti=contesto_documenti,
+    )
 
     return Task(
         description=descrizione,
@@ -57,10 +63,14 @@ def crea_review_crew(
     model: str | None = None,
     lingue_supportate: list[str] | None = None,
     lingua_default: str = LINGUA_DEFAULT,
+    profilo_attivita: dict | None = None,
+    contesto_documenti: str = "",
 ) -> Crew:
     agent = crea_review_agent(model=model, lingue_supportate=lingue_supportate,
                               lingua_default=lingua_default)
-    task = crea_review_task(agent, testo, stelle, autore)
+    task = crea_review_task(
+        agent, testo, stelle, autore, profilo_attivita, contesto_documenti
+    )
 
     return Crew(
         agents=[agent],

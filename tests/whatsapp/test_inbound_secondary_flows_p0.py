@@ -1,9 +1,10 @@
 """
 Test per Difetto 1 (SEC-002 incompleto) - Send-then-mark su tutti i flussi secondari.
 Verifica che:
-1. Se l'invio a Meta fallisce durante quota_exceeded, wants_human, fast_reply, faq_cache, org_suspended,
-   il messaggio NON viene marcato come risolto (try_mark_replied non viene eseguito / replied_at rimane NULL),
-   preservando il messaggio per il retry del worker.
+1. Le escalation gia' persistite (quota_exceeded, wants_human) vengano finalizzate anche se il messaggio
+   di cortesia Meta fallisce, evitando retry ciechi e ticket duplicati.
+2. Se l'invio a Meta fallisce prima di un side-effect persistito (fast_reply, faq_cache, org_suspended),
+   il messaggio NON viene marcato come risolto e resta disponibile per il retry del worker.
 2. Quando l'invio a Meta ha successo, tutti i flussi passano per _finalize_message marcando il messaggio
    come risolto.
 3. I flussi senza side-effect esterni (opt_out, feedback_emoji) finalizzano immediatamente in modo sicuro.
@@ -40,8 +41,8 @@ def fake_tenant():
 
 
 @pytest.mark.asyncio
-async def test_quota_exceeded_meta_failure_does_not_mark_replied(base_app_config, fake_tenant):
-    """Se Meta fallisce durante quota_exceeded, il messaggio non deve essere marcato replied."""
+async def test_quota_exceeded_meta_failure_finalizes_persisted_escalation(base_app_config, fake_tenant):
+    """Un ticket quota gia' persistito non deve essere duplicato da un retry cieco."""
     msg_id = uuid.uuid4()
     org_id = fake_tenant.organization_id
     msg = {
@@ -59,6 +60,7 @@ async def test_quota_exceeded_meta_failure_does_not_mark_replied(base_app_config
     mock_repo.pool = None
 
     mock_service = AsyncMock()
+    mock_service.check_opt_out = AsyncMock(return_value={"is_opt_out": False})
     mock_service.send_whatsapp_message = AsyncMock(side_effect=Exception("Meta 503 Service Unavailable"))
 
     with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant)):
@@ -67,14 +69,15 @@ async def test_quota_exceeded_meta_failure_does_not_mark_replied(base_app_config
 
     # Verifica che Meta sia stato tentato
     mock_service.send_whatsapp_message.assert_awaited_once()
-    # Verifica che try_mark_replied NON sia stato chiamato (il messaggio non e' perso)
-    mock_repo.try_mark_replied.assert_not_awaited()
+    mock_repo.try_mark_replied.assert_awaited_once_with(
+        msg_id, handling_type="quota_exceeded", organization_id=org_id
+    )
     mock_repo.mark_message_sent.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_wants_human_meta_failure_does_not_mark_replied(base_app_config, fake_tenant):
-    """Se Meta fallisce durante escalation umana, il messaggio non deve essere marcato replied."""
+async def test_wants_human_meta_failure_finalizes_persisted_escalation(base_app_config, fake_tenant):
+    """Un'escalation gia' persistita non deve produrre ticket duplicati."""
     msg_id = uuid.uuid4()
     org_id = fake_tenant.organization_id
     msg = {
@@ -101,7 +104,9 @@ async def test_wants_human_meta_failure_does_not_mark_replied(base_app_config, f
         await processor._process_one(msg)
 
     mock_service.send_whatsapp_message.assert_awaited_once()
-    mock_repo.try_mark_replied.assert_not_awaited()
+    mock_repo.try_mark_replied.assert_awaited_once_with(
+        msg_id, handling_type="escalated", organization_id=org_id
+    )
     mock_repo.mark_message_sent.assert_not_awaited()
 
 

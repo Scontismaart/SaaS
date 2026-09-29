@@ -19,10 +19,7 @@ from src.models.schemas import CanaleMessaggio, MessaggioInput, ProfiloAttivita
 
 # Test LIVE: eseguono inferenza LLM reale. Fuori da CI/locale senza chiavi
 # provider (MISTRAL_API_KEY / GROQ_API_KEY) la suite viene saltata.
-pytestmark = pytest.mark.skipif(
-    not (os.getenv("MISTRAL_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("OPENROUTER_API_KEY")),
-    reason="test live LLM: richiede una chiave provider (MISTRAL/GROQ/OPENROUTER)",
-)
+pytestmark = pytest.mark.live_llm
 
 
 # =====================================================================

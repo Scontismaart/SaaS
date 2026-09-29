@@ -1,0 +1,11 @@
+{
+  "name": "Melpis",
+  "short_name": "Melpis",
+  "start_url": "/app/",
+  "display": "standalone",
+  "background_color": "#0D0F12",
+  "theme_color": "#0D0F12",
+  "icons": [
+    { "src": "/brand/melpis-app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurazione Listino Servizi e Conflitti di Prezzo — Documentazione Melpis</title>
+    <meta name="description" content="Come gestire il listino prezzi dei servizi in Melpis e come funziona il guardrail deterministico anti-allucinazione sui prezzi.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/configurazione-ai/listino-servizi-e-prezzi/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link is-active">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Configurazione AI</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Listino Servizi</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Configurazione Listino Servizi e Conflitti di Prezzo</h1>
+                    <p class="docs-article-subtitle">Come impostare i servizi con durate e tariffe ufficiali e come il guardrail deterministico impedisce all'AI di sbagliare i prezzi.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Il modulo <strong>Servizi &amp; Listino</strong> permette di definire il catalogo ufficiale delle prestazioni erogate dalla tua attività: nome del servizio, prezzo fisso o intervallo tariffario, durata in minuti per il calcolo degli slot di calendario e descrizione. Grazie al guardrail deterministico di Melpis, l'AI non potrà mai comunicare al cliente un prezzo diverso da quello ufficialmente inserito.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Avere a portata di mano l'elenco dei servizi con i relativi prezzi IVA inclusa e i tempi effettivi di esecuzione.</li>
+                        <li>Ruolo di <strong>Owner</strong> o <strong>Manager</strong> nel pannello Melpis.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Accedi a Catalogo &rarr; Servizi</h3>
+                                <p class="docs-step-text">Nel pannello di controllo clicca su <strong>Servizi</strong>. Visualizzerai l'elenco di tutte le prestazioni attive, con prezzo e durata stimata.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Aggiungi un nuovo servizio</h3>
+                                <p class="docs-step-text">Clicca sul pulsante <strong>Nuovo Servizio</strong> e compila i campi:
+                                <ul>
+                                    <li><strong>Nome</strong>: denominazione chiara e riconoscibile (es. <em>"Taglio Uomo e Shampoo"</em> o <em>"Prima Visita Odontoiatrica"</em>).</li>
+                                    <li><strong>Tipo Prezzo</strong>: scegli tra <em>Fisso</em> (es. € 25,00) oppure <em>Range</em> (es. da € 50 a € 80).</li>
+                                    <li><strong>Durata (minuti)</strong>: essenziale per il calcolo della disponibilità su Google Calendar (es. 30, 45, 60 minuti).</li>
+                                    <li><strong>Descrizione</strong>: cosa include il servizio ed eventuali raccomandazioni (es. <em>"Include consulenza morfologica e piega finale"</em>).</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Attiva o Disattiva servizi stagionali</h3>
+                                <p class="docs-step-text">Se un trattamento o un piatto è temporaneamente sospeso, disattiva il selettore <strong>Attivo</strong>. L'assistente informerà i clienti che la prestazione non è al momento prenotabile, senza cancellarla dalla memoria del sistema.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-warning">
+                        <div class="docs-callout-title">⚠️ Il Guardrail sui prezzi (Invariant 5)</div>
+                        <p class="docs-callout-text">I modelli di linguaggio naturale tendono talvolta a inventare sconti ("allucinazioni") se messi sotto pressione dall'utente. Melpis include un <strong>PriceValidator deterministico</strong>: qualsiasi cifra in euro generata dall'AI viene verificata a posteriori sul database. Se l'importo non corrisponde a un servizio registrato, la risposta viene bloccata e la chat passa immediatamente al personale umano.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>Quando un cliente chiede <em>"Quanto costa una piega?"</em> o <em>"Quanto dura la prima seduta?"</em>, l'assistente consulta prioritariamente la tabella dei servizi certificati.</li>
+                        <li>In fase di prenotazione, la durata del servizio selezionato determina automaticamente la lunghezza del blocco orario riservato sul calendario (es. 45 minuti).</li>
+                        <li>Il riepilogo inviato su WhatsApp riporta chiaramente il nome del servizio e il prezzo confermato.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Prezzi variabili non standardizzati</strong>: Se un servizio richiede necessariamente un preventivo personalizzato dopo una visita dal vivo, imposta il prezzo a <em>"Su valutazione"</em> oppure definisci una regola nel prompt per invitare a prenotare la valutazione conoscitiva.</li>
+                        <li><strong>Valute multiple</strong>: Melpis opera con valuta predefinita in Euro (€).</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'AI blocca la conversazione con alert "Verifica Prezzo Richiesta"</summary>
+                            <div class="docs-accordion-content">
+                                <p>Questo accade se hai descritto un prezzo all'interno del prompt personalizzato o in un PDF ma tale servizio non è presente nella tabella ufficiale <strong>Servizi</strong>. Per risolvere, inserisci la voce nel listino con la tariffa esatta: il validatore la riconoscerà all'istante.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Le prenotazioni si sovrappongono sul calendario</summary>
+                            <div class="docs-accordion-content">
+                                <p>Verifica la durata impostata sul servizio: se è impostata a 0 minuti, l'evento non occuperà spazio sul calendario. Imposta sempre una durata realistica minima (almeno 15 o 30 minuti).</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>Il guardrail post-LLM è implementato in <code>src/ai/guardrails/price_validator.py</code>. Prima che il testo della risposta venga passato all'API Meta, una regex individua ogni pattern numerico associato a valuta (es. <code>€\s*(\d+)</code> o <code>(\d+)\s*euro</code>):</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/ai/guardrails/price_validator.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>def validate_pricing(response_text: str, allowed_prices: set[float]) -> bool:
+    extracted_prices = extract_currency_amounts(response_text)
+    for price in extracted_prices:
+        if price not in allowed_prices:
+            # Rilevata allucinazione economica: blocca l'invio
+            logger.warning(f"Price hallucination detected: {price} not in {allowed_prices}")
+            return False
+    return True</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-related-card">
+                            <div class="docs-related-tag">Prenotazioni</div>
+                            <div class="docs-related-title">Gestione Prenotazioni e Durate</div>
+                        </a>
+                        <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-related-card">
+                            <div class="docs-related-tag">Controllo</div>
+                            <div class="docs-related-title">Regole di Escalation Umana</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-related-card">
+                            <div class="docs-related-tag">FAQ</div>
+                            <div class="docs-related-title">FAQ e Cache a Zero Token</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

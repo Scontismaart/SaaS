@@ -8,8 +8,10 @@ from src.whatsapp.repository import Repository
 from src.whatsapp.service import WhatsAppService
 from src.whatsapp.retry_worker import RetryWorker
 from src.core.logging_filter import configure_logging
+from src.core.observability import configure_error_reporting
 
 configure_logging(level=logging.INFO)
+configure_error_reporting()
 
 
 async def main():

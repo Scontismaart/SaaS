@@ -11,10 +11,7 @@ from src.agents.prompts import (
     formatta_disponibilita,
 )
 
-REQUIRES_OPENROUTER = pytest.mark.skipif(
-    not os.getenv("OPENROUTER_API_KEY") or os.getenv("CI") == "true" or os.getenv("SKIP_LIVE_TESTS") == "true",
-    reason="Richiede OPENROUTER_API_KEY per invocare la crew LLM reale (disabilitato in CI o test offline)",
-)
+REQUIRES_OPENROUTER = pytest.mark.live_llm
 
 
 def test_estrai_date_da_testo():

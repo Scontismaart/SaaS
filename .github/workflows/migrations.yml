@@ -112,6 +112,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Generate ephemeral test encryption key
+        run: |
+          python - <<'PY'
+          import os
+          from cryptography.fernet import Fernet
+
+          key = Fernet.generate_key().decode("ascii")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"ENCRYPTION_KEY={key}\n")
+          print(f"::add-mask::{key}")
+          PY
+
       - name: Run tests with service container
         env:
           CI: true
@@ -120,5 +132,4 @@ jobs:
           PGDATABASE: test
           PGHOST: localhost
           PGPORT: 5432
-          ENCRYPTION_KEY: C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=
         run: pytest -v --tb=short -x

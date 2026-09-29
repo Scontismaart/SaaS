@@ -11,8 +11,13 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PASSWORD_MIN = 10;
 
 /* ── Link incrociati e Google, preservando ?next= ────────── */
-document.getElementById("link-accedi")?.setAttribute("href", urlConNext("/accedi/"));
-document.getElementById("success-login-link")?.setAttribute("href", urlConNext("/accedi/"));
+const loginLink = document.getElementById("link-accedi");
+const loginBase = loginLink ? (loginLink.getAttribute("href") || "/accedi/").split("?")[0] : "/accedi/";
+loginLink?.setAttribute("href", urlConNext(loginBase));
+
+const successLoginLink = document.getElementById("success-login-link");
+const successLoginBase = successLoginLink ? (successLoginLink.getAttribute("href") || "/accedi/").split("?")[0] : "/accedi/";
+successLoginLink?.setAttribute("href", urlConNext(successLoginBase));
 collegaGoogle();
 
 /* ── Strength meter: feedback live, niente librerie esterne ─ */
@@ -50,7 +55,7 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
   e.preventDefault();
   const errEl = document.getElementById("register-error");
   const okEl = document.getElementById("register-success");
-  errEl.textContent = "";
+  clearAuthFieldError(e.currentTarget, errEl);
   okEl.hidden = true;
 
   const nomeAttivita = document.getElementById("reg-nome").value.trim();
@@ -60,11 +65,11 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
 
   // Stesse regole del server (register.py): messaggi chiari ma che non
   // rivelano nulla sugli account esistenti.
-  if (!nomeAttivita) { errEl.textContent = "Inserisci il nome della tua attività."; return; }
-  if (!EMAIL_RE.test(email)) { errEl.textContent = "Inserisci un indirizzo email valido."; return; }
-  if (password.length < PASSWORD_MIN) { errEl.textContent = `La password deve avere almeno ${PASSWORD_MIN} caratteri.`; return; }
-  if (!/[^A-Za-z0-9]/.test(password)) { errEl.textContent = "La password deve includere almeno un carattere speciale (es. ! @ # $ %)."; return; }
-  if (!termini) { errEl.textContent = "Per continuare devi accettare Privacy Policy e Termini di Servizio."; return; }
+  if (!nomeAttivita) return showAuthFieldError(errEl, getAuthMessage("enter_business_name"), document.getElementById("reg-nome"));
+  if (!EMAIL_RE.test(email)) return showAuthFieldError(errEl, getAuthMessage("invalid_email"), document.getElementById("reg-email"));
+  if (password.length < PASSWORD_MIN) return showAuthFieldError(errEl, getAuthMessage("password_too_short"), document.getElementById("reg-password"));
+  if (!/[^A-Za-z0-9]/.test(password)) return showAuthFieldError(errEl, getAuthMessage("password_special"), document.getElementById("reg-password"));
+  if (!termini) return showAuthFieldError(errEl, getAuthMessage("accept_terms"), document.getElementById("reg-termini"));
 
   const btn = document.getElementById("register-save");
   btn.disabled = true;
@@ -77,7 +82,7 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.detail || "Registrazione non riuscita. Riprova tra poco.");
+      throw new Error(data.detail || getAuthMessage("register_failed"));
     }
     if (data.email_verified) {
       // Sessione attiva (auto-confirm): le cookie sono già impostate.
@@ -87,9 +92,13 @@ document.getElementById("form-register")?.addEventListener("submit", async (e) =
     }
     // Verifica email obbligatoria: nessuna sessione finché non conferma.
     okEl.hidden = false;
+    okEl.focus();
   } catch (err) {
-    errEl.textContent = err.message;
+    showAuthFieldError(errEl, err.message);
   } finally {
     btn.disabled = false;
   }
+});
+document.getElementById("form-register")?.addEventListener("input", (e) => {
+  if (e.target.matches("input")) clearAuthFieldError(e.currentTarget, document.getElementById("register-error"));
 });

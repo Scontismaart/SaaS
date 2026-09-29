@@ -5,7 +5,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from src.core.auth.dependencies import require_ruolo
+from src.core.auth.dependencies import require_mfa, require_ruolo
+from src.core.channels.sandbox_policy import assert_recipient_allowed
 from src.whatsapp.repository import Repository as WhatsAppRepository
 
 logger = logging.getLogger(__name__)
@@ -20,9 +21,9 @@ def _get_wrepo(request: Request) -> WhatsAppRepository:
 
 
 class WhatsAppAccountRequest(BaseModel):
-    phone_number_id: str = Field(min_length=1, max_length=64, description="Phone Number ID da Meta Business Suite")
-    waba_id: str = Field(min_length=1, max_length=64, description="WhatsApp Business Account ID")
-    access_token: str = Field(min_length=1, description="System User Access Token di Meta")
+    phone_number_id: str = Field(min_length=1, max_length=64, pattern=r"^[0-9]+$", description="Phone Number ID da Meta Business Suite")
+    waba_id: str = Field(min_length=1, max_length=64, pattern=r"^[0-9]+$", description="WhatsApp Business Account ID")
+    access_token: str = Field(min_length=1, max_length=8192, description="System User Access Token di Meta")
     display_phone_number: Optional[str] = Field(default=None, max_length=32)
 
 
@@ -73,7 +74,8 @@ async def get_whatsapp_settings(
 async def connect_whatsapp_account(
     body: WhatsAppAccountRequest,
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Collega il numero WhatsApp Business dell'attività verificando le credenziali su Meta."""
     org_id = user["organization_id"]
@@ -89,30 +91,41 @@ async def connect_whatsapp_account(
         async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:
             res = await client.get(
                 f"https://graph.facebook.com/v21.0/{phone_number_id}",
-                params={"fields": "display_phone_number,verified_name,code_verification_status", "access_token": access_token},
+                params={"fields": "display_phone_number,verified_name,code_verification_status"},
+                headers={"Authorization": f"Bearer {access_token}"},
             )
             if res.status_code == 200:
                 data = res.json()
+                if not isinstance(data, dict) or str(data.get("id", "")) != phone_number_id:
+                    raise HTTPException(503, "Risposta Meta non valida. Configurazione non salvata.")
                 verified_name = data.get("verified_name")
                 if data.get("display_phone_number"):
                     display_phone_number = data.get("display_phone_number")
+                ownership = await client.get(
+                    f"https://graph.facebook.com/v21.0/{waba_id}/phone_numbers",
+                    params={"fields": "id", "limit": 100},
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                if ownership.status_code != 200:
+                    raise HTTPException(503, "Verifica dell'account Meta non disponibile. Configurazione non salvata.")
+                numbers = ownership.json().get("data", [])
+                if not any(str(number.get("id")) == phone_number_id for number in numbers if isinstance(number, dict)):
+                    raise HTTPException(400, "Il numero non appartiene all'account WhatsApp indicato.")
             elif res.status_code in (400, 401, 403):
-                err_data = res.json().get("error", {})
-                err_msg = err_data.get("message", "Credenziali non valide su Meta.")
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Verifica Meta non riuscita: {err_msg}. Controlla Phone Number ID e Token.",
+                    detail="Verifica Meta non riuscita. Controlla Phone Number ID e Token.",
                 )
-    except httpx.RequestError as e:
-        logger.warning("meta_graph_verification_timeout error=%s", e)
-        # In caso di timeout o offline di Meta, procediamo se il token ha un formato plausibile
-        if len(access_token) < 20:
-            raise HTTPException(status_code=400, detail="Il formato del token d'accesso non sembra valido.")
+            else:
+                raise HTTPException(503, "Verifica Meta temporaneamente non disponibile. Riprova.")
+    except (httpx.RequestError, ValueError):
+        logger.warning("meta_graph_verification_unavailable org_id=%s", org_id)
+        raise HTTPException(503, "Verifica Meta temporaneamente non disponibile. Riprova.")
 
     try:
         await wrepo.save_tenant_config(org_id, phone_number_id, waba_id, access_token)
-    except Exception as e:
-        logger.error("whatsapp_save_failed error=%s org_id=%s", e, org_id)
+    except Exception:
+        logger.error("whatsapp_save_failed org_id=%s", org_id)
         raise HTTPException(status_code=500, detail="Impossibile salvare la configurazione WhatsApp.")
 
     # Tentativo di sottoscrizione automatica WABA al webhook dell'app
@@ -120,10 +133,10 @@ async def connect_whatsapp_account(
         async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
             await client.post(
                 f"https://graph.facebook.com/v21.0/{waba_id}/subscribed_apps",
-                params={"access_token": access_token},
+                headers={"Authorization": f"Bearer {access_token}"},
             )
-    except Exception as e:
-        logger.warning("waba_subscribed_apps_warning error=%s", e)
+    except Exception:
+        logger.warning("waba_subscribed_apps_warning org_id=%s", org_id)
 
     return {
         "ok": True,
@@ -140,7 +153,8 @@ async def connect_whatsapp_account(
 @router.delete("/account")
 async def disconnect_whatsapp_account(
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Disconnette il numero WhatsApp Business dell'organizzazione."""
     org_id = user["organization_id"]
@@ -174,6 +188,13 @@ async def send_test_message(
     to_phone = (body.to_phone or "").strip().replace(" ", "").replace("-", "")
 
     if to_phone:
+        try:
+            assert_recipient_allowed("whatsapp", to_phone)
+        except ValueError:
+            raise HTTPException(
+                status_code=403,
+                detail="Destinatario non autorizzato per il messaggio di test.",
+            )
         # Invio messaggio reale tramite Cloud API
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:

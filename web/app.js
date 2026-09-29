@@ -8,6 +8,10 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
 }
 const PROFILO_ID = "trattoria_da_mario";
 
+function localeCorrente() {
+  return window.MelpisI18n?.getLocale?.() || "it-IT";
+}
+
 /* ============================================================
    AUTENTICAZIONE — BFF (task18)
    ============================================================
@@ -105,11 +109,16 @@ function confermaDestructiva({ titolo = "Conferma azione", descrizione = "", lab
     titleEl.textContent = titolo;
     descEl.textContent = descrizione;
     okBtn.textContent = label;
-    modal.hidden = false;
-    okBtn.focus();
+    if (window.MelpisDialogFocus) {
+      window.MelpisDialogFocus.open(modal, { initialFocus: okBtn });
+    } else {
+      modal.hidden = false;
+      okBtn.focus();
+    }
 
     const chiudi = (esito) => {
-      modal.hidden = true;
+      if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal);
+      else modal.hidden = true;
       okBtn.removeEventListener("click", onOk);
       cancelBtn.removeEventListener("click", onCancel);
       modal.removeEventListener("keydown", onKey);
@@ -208,6 +217,8 @@ async function tentaRefresh() {
 async function apiFetch(url, options = {}) {
   const method = (options.method || "GET").toUpperCase();
   const headers = { ...(options.headers || {}) };
+  const selectedOrg = localStorage.getItem("melpis_selected_organization");
+  if (selectedOrg) headers["X-Organization-Id"] = selectedOrg;
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     const token = csrfToken();
     if (token) headers["X-CSRF-Token"] = token;
@@ -363,14 +374,29 @@ function vaiAdAccesso() {
 
 async function caricaSessione() {
   try {
-    let res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+    const orgHeaders = () => {
+      const id = localStorage.getItem("melpis_selected_organization");
+      return id ? { "X-Organization-Id": id } : {};
+    };
+    let res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include", headers: orgHeaders() });
     if (res.status === 401) {
       try {
         const refRes = await tentaRefresh();
         if (refRes && refRes.ok) {
-          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include" });
+          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include", headers: orgHeaders() });
         }
       } catch { /* ignora */ }
+    }
+    if (res.status === 403) {
+      const choices = await fetch(`${API_BASE}/api/team/organizations`, { credentials: "include" });
+      if (choices.ok) {
+        const data = await choices.json();
+        const first = data.organizations?.[0]?.id;
+        if (first) {
+          localStorage.setItem("melpis_selected_organization", first);
+          res = await fetch(`${API_BASE}/api/auth/me`, { credentials: "include", headers: orgHeaders() });
+        }
+      }
     }
     if (!res.ok) {
       sessione = null;
@@ -488,7 +514,13 @@ async function caricaAccount() {
     if (sbPlanEl) sbPlanEl.textContent = corrente ? "Piano " + corrente.nome : "Piano e abbonamento";
 
     const rinnovo = document.getElementById("account-rinnovo");
-    const dataIt = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("it-IT"); };
+    const dataIt = (iso) => {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "";
+      return (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
+        ? MelpisI18n.formatDate(d)
+        : d.toLocaleDateString(localeCorrente());
+    };
     if (rinnovo) {
       if (sub.trial_end) rinnovo.textContent = `Prova gratuita attiva fino al ${dataIt(sub.trial_end)}.`;
       else if (stato === "canceled") rinnovo.textContent = "Abbonamento disattivato: il servizio resta attivo fino al termine del periodo pagato.";
@@ -554,12 +586,17 @@ async function caricaAccount() {
   }
 }
 
+const checkoutAttempts = new Map();
 async function cambiaPiano(slug) {
   const status = document.getElementById("account-status");
+  const previous = checkoutAttempts.get(slug);
+  const attempt = previous && Date.now() - previous.created < 25 * 60 * 1000
+    ? previous : { key: crypto.randomUUID(), created: Date.now() };
+  checkoutAttempts.set(slug, attempt);
   try {
     const res = await apiFetch(`${API_BASE}/api/billing/create-checkout-session`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Idempotency-Key": attempt.key },
       body: JSON.stringify({
         plan: slug,
         interval: "monthly",
@@ -610,6 +647,11 @@ const navItems = document.querySelectorAll(".nav-item");
 const topbarTitle = document.getElementById("topbar-title");
 const topbarDate = document.getElementById("topbar-date");
 const views = document.querySelectorAll(".view");
+function resetDashboardScroll() {
+  const scrollingElement = document.scrollingElement || document.documentElement;
+  scrollingElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
 const NOTIFICATION_STORAGE_KEY = "restaurant-dashboard-notifications-v1";
 const notificationBadges = document.querySelectorAll("[data-notification-badge]");
 let notificationItems = {
@@ -701,7 +743,7 @@ const VIEW_FALLBACK = {
   reviews: { view: "impostazioni", tab: "reviews" },
   documenti: { view: "conoscenza" },
   report: { view: "panoramica" },
-  onboarding: { view: "assistente" },
+  onboarding: { view: "configurazione-ai" },
 };
 
 function apriVistaImpostazioni(cat = "generale") {
@@ -713,18 +755,20 @@ function apriVistaImpostazioni(cat = "generale") {
   views.forEach((v) => {
     v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
   });
+  resetDashboardScroll();
 
-  const titles = {
-    piano: "Piano e abbonamento",
-    fatturazione: "Piano e abbonamento",
-    whatsapp: "WhatsApp Business",
-    instagram: "Instagram Direct",
-    calendar: "Google Calendar",
-    reviews: "Google Recensioni",
-    "booking-pms": "Gestionale Prenotazioni (PMS)",
-    airtable: "Airtable",
+  const titleKeys = {
+    piano: "title_account",
+    fatturazione: "title_account",
+    whatsapp: "title_whatsapp",
+    instagram: "title_instagram",
+    calendar: "title_calendar",
+    reviews: "title_reviews_settings",
+    "booking-pms": "title_pms",
+    airtable: "title_airtable",
   };
-  topbarTitle.textContent = titles[cat] || "Impostazioni";
+  topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[cat] || "title_impostazioni"}`;
+  topbarTitle.textContent = t(topbarTitle.dataset.i18n);
 
   attivaCategoriaImpostazioni(cat);
 }
@@ -867,11 +911,20 @@ async function aggiornaNotifiche() {
   }
 }
 
-topbarDate.textContent = new Date().toLocaleDateString("it-IT", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
+function aggiornaDataTopbar() {
+  if (!topbarDate) return;
+  topbarDate.textContent = (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
+    ? MelpisI18n.formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })
+    : new Date().toLocaleDateString(localeCorrente(), { day: "numeric", month: "long", year: "numeric" });
+  const topbarWeekday = document.getElementById("topbar-weekday");
+  if (topbarWeekday) {
+    const rawDay = (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.formatDate === "function")
+      ? MelpisI18n.formatDate(new Date(), { weekday: "long" })
+      : new Date().toLocaleDateString(localeCorrente(), { weekday: "long" });
+    topbarWeekday.textContent = rawDay.charAt(0).toUpperCase() + rawDay.slice(1);
+  }
+}
+aggiornaDataTopbar();
 
 navItems.forEach((btn) => {
   btn.addEventListener("click", async () => {
@@ -888,7 +941,8 @@ navItems.forEach((btn) => {
       views.forEach((v) => {
         v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
       });
-      topbarTitle.textContent = "Piano e abbonamento";
+      topbarTitle.dataset.i18n = "dashboard:topbar.title_account";
+      topbarTitle.textContent = t(topbarTitle.dataset.i18n);
       attivaCategoriaImpostazioni("piano");
       caricaAccount();
       return;
@@ -897,20 +951,23 @@ navItems.forEach((btn) => {
     views.forEach((v) => {
       v.classList.toggle("view-hidden", v.dataset.viewPanel !== viewName);
     });
+    resetDashboardScroll();
 
-    const titles = {
-      panoramica: "Panoramica",
-      inbox: "Inbox",
-      prenotazioni: "Prenotazioni",
-      recensioni: "Recensioni",
-      team: "Team & Collaboratori",
-      assistente: "Simulatore AI",
-      conoscenza: "Conoscenza",
-      impostazioni: "Impostazioni",
-      account: "Piano e abbonamento",
-      onboarding: "Configurazione assistente",
+    const titleKeys = {
+      panoramica: "title_panoramica",
+      inbox: "title_inbox",
+      prenotazioni: "title_prenotazioni",
+      recensioni: "title_recensioni",
+      team: "title_team",
+      assistente: "title_assistente",
+      conoscenza: "title_conoscenza",
+      "configurazione-ai": "title_configurazione_ai",
+      impostazioni: "title_impostazioni",
+      account: "title_account",
+      onboarding: "title_configurazione_ai",
     };
-    topbarTitle.textContent = titles[viewName] || viewName;
+    topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[viewName] || "title_panoramica"}`;
+    topbarTitle.textContent = t(topbarTitle.dataset.i18n);
     if (viewName === "impostazioni") {
       attivaCategoriaImpostazioni("generale");
     }
@@ -925,11 +982,6 @@ navItems.forEach((btn) => {
     }
     if (viewName === "team") {
       caricaTeam();
-    }
-    if (viewName === "assistente") {
-      // Il wizard salva solo owner/manager (gate lato API): per lo staff
-      // la card "Configura" non ha senso, la rimuoviamo dal DOM.
-      if (sessione?.ruolo === "staff") document.getElementById("onboarding-banner")?.remove();
     }
     if (viewName === "recensioni") {
       aggiornaRecensioni();
@@ -1072,8 +1124,8 @@ function profiloOnboarding() {
   const vertical = verticaleCorrente();
   return {
     verticale: onboardingState.selectedVertical,
-    nome_attivita: onboardingEls.name.value.trim() || "Nuova attività",
-    orari: onboardingEls.hours.value.trim() || "Orari da configurare",
+    nome_attivita: onboardingEls.name.value.trim(),
+    orari: onboardingEls.hours.value.trim(),
     tono: onboardingEls.tone.value.trim() || vertical?.tono || "",
     servizi: righeDaTextarea(onboardingEls.services.value),
     regole_escalation: [...document.querySelectorAll(".onboarding-rule:checked")].map((input) => input.value),
@@ -1097,7 +1149,7 @@ function salvaBozzaOnboarding() {
     localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(bozza));
     const badge = document.getElementById("onboarding-autosave");
     if (badge) {
-      const ora = new Date().toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+      const ora = new Date().toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
       badge.textContent = `Bozza salvata · ${ora}`;
       badge.hidden = false;
     }
@@ -1276,7 +1328,7 @@ async function inizializzaOnboarding() {
         if (timeHint && bozzaLocale.salvata_at) {
           try {
             const d = new Date(bozzaLocale.salvata_at);
-            timeHint.textContent = `Bozza salvata il ${d.toLocaleDateString("it-IT")} alle ${d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}.`;
+            timeHint.textContent = `Bozza salvata il ${d.toLocaleDateString(localeCorrente())} alle ${d.toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" })}.`;
           } catch {
             timeHint.textContent = "Bozza recuperata in locale.";
           }
@@ -1318,25 +1370,16 @@ async function salvaProfiloOnboarding() {
   return record;
 }
 
-/* ============================================================
-   ONBOARDING — accesso dal banner in "Assistente" (voce nav rimossa)
-   ============================================================ */
-
-function apriOnboarding() {
-  chiudiMenuMobile();
-  navItems.forEach((n) => n.classList.remove("active"));
-  views.forEach((v) => {
-    v.classList.toggle("view-hidden", v.dataset.viewPanel !== "onboarding");
-  });
-  topbarTitle.textContent = "Configurazione assistente";
-  inizializzaOnboarding();
-}
-
 function chiudiOnboarding() {
-  document.querySelector('.nav-item[data-view="assistente"]')?.click();
+  apriView("configurazione-ai");
 }
 
-document.getElementById("onboarding-banner-cta")?.addEventListener("click", apriOnboarding);
+function _tDash(key, fallback, options = {}) {
+  if (typeof t !== "function") return fallback || key;
+  const translated = t(`dashboard:${key}`, { ...options, defaultValue: fallback || key });
+  return translated === `dashboard:${key}` ? (fallback || key) : translated;
+}
+
 document.getElementById("onboarding-chiudi")?.addEventListener("click", chiudiOnboarding);
 document.getElementById("onboarding-draft-discard")?.addEventListener("click", () => {
   pulisciBozzaOnboarding();
@@ -1371,7 +1414,7 @@ document.getElementById("onboarding-draft-discard")?.addEventListener("click", (
 });
 
 
-/* â”€â”€ Sicurezza account: cambio password/email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Sicurezza account: cambio password/email */
 
 const SECURITY_PASSWORD_MIN = 10;
 
@@ -1653,8 +1696,14 @@ async function inviaMessaggio(testo) {
   try {
     const res = await apiFetch(`${API_BASE}/api/messaggio?profilo_id=${PROFILO_ID}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ testo }),
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": crypto.randomUUID(),
+      },
+      body: JSON.stringify({
+        testo,
+        id_conversazione: inviaMessaggio.conversationId ||= crypto.randomUUID(),
+      }),
     });
     rimuoviTyping();
     if (!res.ok) {
@@ -1878,7 +1927,7 @@ function apriDettaglioPrenotazione(prenotazione) {
   if (!bookingModal || !prenotazione) return;
   const valore = (dato, fallback = "Non indicato") => dato || fallback;
   const data = prenotazione.data
-    ? new Date(`${prenotazione.data}T12:00:00`).toLocaleDateString("it-IT", {
+    ? new Date(`${prenotazione.data}T12:00:00`).toLocaleDateString(localeCorrente(), {
       weekday: "long", day: "2-digit", month: "long", year: "numeric",
     })
     : "Non indicata";
@@ -1892,27 +1941,31 @@ function apriDettaglioPrenotazione(prenotazione) {
   bookingDetail.origin.textContent = valore(prenotazione.origine);
   bookingDetail.note.textContent = valore(prenotazione.note, "Nessuna nota");
   aggiornaAzioniPrenotazione(prenotazione);
-  bookingModal.hidden = false;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(bookingModal);
+  else bookingModal.hidden = false;
   document.body.classList.add("booking-modal-open");
 }
 
 function chiudiDettaglioPrenotazione() {
   if (!bookingModal) return;
-  bookingModal.hidden = true;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(bookingModal);
+  else bookingModal.hidden = true;
   document.body.classList.remove("booking-modal-open");
 }
 
-function apriBookingModal(id) {
+function apriBookingModal(id, options = {}) {
   const modal = document.getElementById(id);
   if (!modal) return;
-  modal.hidden = false;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(modal, options);
+  else modal.hidden = false;
   document.body.classList.add("booking-modal-open");
 }
 
-function chiudiBookingModal(id) {
+function chiudiBookingModal(id, options = {}) {
   const modal = document.getElementById(id);
   if (!modal) return;
-  modal.hidden = true;
+  if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal, options);
+  else modal.hidden = true;
   if (![...document.querySelectorAll(".booking-modal")].some((element) => !element.hidden)) {
     document.body.classList.remove("booking-modal-open");
   }
@@ -1944,9 +1997,12 @@ document.querySelectorAll("[data-booking-close]").forEach((element) => {
   document.querySelectorAll(selector).forEach((element) => element.addEventListener("click", () => chiudiBookingModal(id)));
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  document.querySelectorAll(".booking-modal").forEach((modal) => { modal.hidden = true; });
-  document.body.classList.remove("booking-modal-open");
+  const modal = [...document.querySelectorAll(".booking-modal")].reverse().find((element) => !element.hidden);
+  if (!modal || !window.MelpisDialogFocus) return;
+  window.MelpisDialogFocus.handleKeydown(modal, event, () => {
+    if (modal === bookingModal) chiudiDettaglioPrenotazione();
+    else chiudiBookingModal(modal.id);
+  });
 });
 
 document.getElementById("booking-new-trigger")?.addEventListener("click", () => apriFormPrenotazione());
@@ -1958,12 +2014,12 @@ document.getElementById("booking-edit-btn")?.addEventListener("click", () => {
 });
 document.getElementById("booking-actions-trigger")?.addEventListener("click", () => apriBookingModal("booking-actions-modal"));
 document.getElementById("booking-open-availability")?.addEventListener("click", () => {
-  chiudiBookingModal("booking-actions-modal");
-  apriBookingModal("booking-availability-modal");
+  chiudiBookingModal("booking-actions-modal", { restoreFocus: false });
+  apriBookingModal("booking-availability-modal", { restoreTarget: document.getElementById("booking-actions-trigger") });
 });
 document.getElementById("booking-open-export")?.addEventListener("click", () => {
-  chiudiBookingModal("booking-actions-modal");
-  apriBookingModal("booking-export-modal");
+  chiudiBookingModal("booking-actions-modal", { restoreFocus: false });
+  apriBookingModal("booking-export-modal", { restoreTarget: document.getElementById("booking-actions-trigger") });
 });
 
 function inizializzaCalendarioPrenotazioni() {
@@ -2004,8 +2060,8 @@ function inizializzaCalendarioPrenotazioni() {
       });
       bookingCalendar.unselect();
     },
-    datesSet(info) {
-      const dateKey = _toDateKey(info.start);
+    datesSet() {
+      const dateKey = _toDateKey(bookingCalendar.getDate());
       aggiornaSemaforo(dateKey);
       renderTabellaPrenotazioniGiorno(dateKey);
       aggiornaToolbarCalendario();
@@ -2026,9 +2082,12 @@ function renderTabellaPrenotazioniGiorno(data = null) {
   if (titleEl) {
     try {
       const dObj = new Date(`${targetDate}T12:00:00`);
-      titleEl.textContent = `Prenotazioni di ${dObj.toLocaleDateString("it-IT", { weekday: "long", day: "numeric", month: "long" })}`;
+      const dateLabel = typeof MelpisI18n !== "undefined"
+        ? MelpisI18n.formatDate(dObj, { weekday: "long", day: "numeric", month: "long" })
+        : dObj.toLocaleDateString(localeCorrente(), { weekday: "long", day: "numeric", month: "long" });
+      titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: dateLabel });
     } catch {
-      titleEl.textContent = `Prenotazioni del ${targetDate}`;
+      titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: targetDate });
     }
   }
 
@@ -2037,17 +2096,21 @@ function renderTabellaPrenotazioniGiorno(data = null) {
     .sort((a, b) => String(a.ora || "").localeCompare(String(b.ora || "")));
 
   if (countEl) {
-    countEl.textContent = `${prenotazioniGiorno.length} prenotazioni`;
+    countEl.textContent = _tDash("bookings.runtime.count", "{{count}} prenotazioni", { count: prenotazioniGiorno.length });
   }
 
   if (!prenotazioniGiorno.length) {
-    tableBody.innerHTML = `
-      <tr>
-        <td colspan="8" class="booking-table-empty">
-          Nessuna prenotazione per ${targetDate}. Clicca "+ Nuova prenotazione" per aggiungerne una.
-        </td>
-      </tr>
-    `;
+    const emptyRow = document.createElement("tr");
+    const emptyCell = document.createElement("td");
+    emptyCell.colSpan = 8;
+    emptyCell.className = "booking-table-empty";
+    emptyCell.textContent = _tDash(
+      "bookings.runtime.empty_day",
+      'Nessuna prenotazione per {{date}}. Clicca "+ Nuova prenotazione" per aggiungerne una.',
+      { date: targetDate }
+    );
+    emptyRow.appendChild(emptyCell);
+    tableBody.replaceChildren(emptyRow);
     return;
   }
 
@@ -2070,7 +2133,7 @@ function renderTabellaPrenotazioniGiorno(data = null) {
         <td><span class="booking-badge ${badgeClass}">${_sanitize(p.stato || "confermata")}</span></td>
         <td style="text-align: right;">
           <button type="button" class="report-refresh" data-open-booking-id="${_sanitize(p.id)}" style="padding: 4px 10px; font-size: 0.75rem;">
-            Dettagli
+            ${_escapeHtml(_tDash("bookings.runtime.details", "Dettagli"))}
           </button>
         </td>
       </tr>
@@ -2106,7 +2169,7 @@ async function aggiornaPrenotazioni() {
     bookingRecords = prenotazioni;
     const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
     prenotazioniInAttesaCount = pending.length;
-    bookingCount.textContent = `${prenotazioni.length} prenotazioni`;
+    bookingCount.textContent = _tDash("bookings.runtime.count", "{{count}} prenotazioni", { count: prenotazioni.length });
     if (bookingPendingValue) bookingPendingValue.textContent = pending.length;
     const statoNotif = leggiStatoNotifiche();
     aggiornaBadgeNotifiche(statoNotif);
@@ -2176,6 +2239,16 @@ function aggiornaToolbarCalendario() {
   document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.bookingCalendarView === vista));
   });
+  const dateKey = _toDateKey(bookingCalendar.getDate());
+  const picker = document.getElementById("booking-date-picker");
+  const label = document.getElementById("booking-selected-date-label");
+  const trigger = document.getElementById("booking-date-picker-trigger");
+  if (picker) picker.value = dateKey;
+  if (label) label.textContent = bookingCalendar.getDate().toLocaleDateString(localeCorrente(), { day: "numeric", month: "short", year: "numeric" });
+  if (trigger) {
+    trigger.classList.toggle("is-selected", dateKey !== oggiIso());
+    trigger.setAttribute("aria-label", `Seleziona la data delle prenotazioni. Giorno selezionato: ${label?.textContent || dateKey}`);
+  }
 }
 
 function verificaPrenotazioneAggiornata(prenotazioni) {
@@ -2193,7 +2266,7 @@ function verificaPrenotazioneAggiornata(prenotazioni) {
 async function aggiornaSemaforo(data = null) {
   if (!availabilityList) return;
   const targetDate = data ? _toDateKey(data) : (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
-  availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString("it-IT", {
+  availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString(localeCorrente(), {
     weekday: "short",
     day: "2-digit",
     month: "2-digit",
@@ -2354,6 +2427,22 @@ document.querySelectorAll("[data-booking-calendar-command]").forEach((button) =>
   });
 });
 
+const bookingDatePicker = document.getElementById("booking-date-picker");
+document.getElementById("booking-date-picker-trigger")?.addEventListener("click", () => {
+  if (!bookingDatePicker) return;
+  try {
+    bookingDatePicker.showPicker();
+  } catch {
+    bookingDatePicker.classList.add("booking-date-picker-input--fallback");
+    bookingDatePicker.tabIndex = 0;
+    bookingDatePicker.focus();
+  }
+});
+bookingDatePicker?.addEventListener("change", () => {
+  if (!bookingCalendar || !/^\d{4}-\d{2}-\d{2}$/.test(bookingDatePicker.value)) return;
+  bookingCalendar.gotoDate(bookingDatePicker.value);
+});
+
 document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
   button.addEventListener("click", () => bookingCalendar?.changeView(button.dataset.bookingCalendarView));
 });
@@ -2436,9 +2525,9 @@ function _formatDataRecensione(iso) {
   if (isNaN(d.getTime())) return "Data non valida";
   const oggi = new Date();
   const isOggi = d.toDateString() === oggi.toDateString();
-  const timeStr = d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  const timeStr = d.toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
   if (isOggi) return `Oggi alle ${timeStr}`;
-  return d.toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" }) + `, ${timeStr}`;
+  return d.toLocaleDateString(localeCorrente(), { day: "numeric", month: "short", year: "numeric" }) + `, ${timeStr}`;
 }
 
 function _fonteLabel(fonte) {
@@ -2693,9 +2782,9 @@ function renderStoricoRecensioni() {
     if (recensioniListaDati.length === 0) {
       reviewHistoryList.appendChild(_emptyState(
         ICONS.chat,
-        "Nessuna recensione registrata",
-        "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale.",
-        "Incolla una recensione",
+        _tDash("reviews.runtime.empty_title", "Nessuna recensione registrata"),
+        _tDash("reviews.runtime.empty_desc", "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale."),
+        _tDash("reviews.runtime.empty_cta", "Incolla una recensione"),
         () => {
           reviewText?.focus();
           reviewText?.scrollIntoView({ behavior: "smooth" });
@@ -2704,9 +2793,9 @@ function renderStoricoRecensioni() {
     } else {
       reviewHistoryList.appendChild(_emptyState(
         ICONS.alert,
-        "Nessun risultato con i filtri attuali",
-        "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati.",
-        "Reimposta filtri",
+        _tDash("reviews.runtime.filtered_title", "Nessun risultato con i filtri attuali"),
+        _tDash("reviews.runtime.filtered_desc", "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati."),
+        _tDash("reviews.runtime.reset_filters", "Reimposta filtri"),
         () => {
           recensioniFiltroCorrente = "tutte";
           if (reviewFilterTabs) {
@@ -2736,11 +2825,11 @@ function renderStoricoRecensioni() {
 
     let statusPill = "";
     if (isApprovata) {
-      statusPill = '<span class="review-status-badge status-approvata">Approvata</span>';
+      statusPill = `<span class="review-status-badge status-approvata">${_escapeHtml(_tDash("reviews.runtime.status_approved", "Approvata"))}</span>`;
     } else if (isUrgente) {
-      statusPill = '<span class="review-status-badge status-urgente">Richiede attenzione</span>';
+      statusPill = `<span class="review-status-badge status-urgente">${_escapeHtml(_tDash("reviews.runtime.status_urgent", "Richiede attenzione"))}</span>`;
     } else {
-      statusPill = '<span class="review-status-badge">Bozza pronta</span>';
+      statusPill = `<span class="review-status-badge">${_escapeHtml(_tDash("reviews.runtime.status_draft", "Bozza pronta"))}</span>`;
     }
 
     const sentimentBadge = `<span class="review-sentiment-badge sentiment-${sentimentStr}">${sentimentStr.charAt(0).toUpperCase() + sentimentStr.slice(1)}</span>`;
@@ -2750,7 +2839,7 @@ function renderStoricoRecensioni() {
     if (r.bozza_risposta) {
       aiBox = `
         <div class="history-ai-reply-box">
-          <span class="ai-reply-label">Bozza di risposta suggerita:</span>
+          <span class="ai-reply-label">${_escapeHtml(_tDash("reviews.runtime.ai_reply_label", "Bozza di risposta suggerita:"))}</span>
           <p class="ai-reply-text">${_sanitize(r.bozza_risposta)}</p>
         </div>
       `;
@@ -2778,9 +2867,9 @@ function renderStoricoRecensioni() {
           ${catBadge}
         </div>
         <div class="history-actions">
-          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">Approva</button>` : ""}
-          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">Rivedi bozza</button>
-          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">Copia testo</button>` : ""}
+          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">${_escapeHtml(_tDash("reviews.approve_reply", "Approva risposta"))}</button>` : ""}
+          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">${_escapeHtml(_tDash("reviews.runtime.review_draft", "Rivedi bozza"))}</button>
+          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">${_escapeHtml(_tDash("reviews.copy_text", "Copia testo"))}</button>` : ""}
         </div>
       </div>
     `;
@@ -2790,7 +2879,7 @@ function renderStoricoRecensioni() {
     item.querySelector('[data-action="copy"]')?.addEventListener("click", () => {
       if (r.bozza_risposta) {
         navigator.clipboard.writeText(r.bozza_risposta).catch(() => {});
-        toast("Testo della bozza copiato negli appunti!", "info");
+        toast(_tDash("reviews.runtime.copied_toast", "Testo della bozza copiato negli appunti!"), "info");
       }
     });
 
@@ -2815,7 +2904,7 @@ function aggiornaConteggiRecensioni() {
     ? (conStelle.reduce((acc, r) => acc + Number(r.valutazione_stelle), 0) / conStelle.length)
     : 0;
 
-  if (reviewStatCount) reviewStatCount.textContent = `${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
+  if (reviewStatCount) reviewStatCount.textContent = _tDash("reviews.runtime.review_count", "{{count}} recensioni", { count: totale });
   if (reviewStatRating) {
     reviewStatRating.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> <span>${mediaStelle ? mediaStelle.toFixed(1) : "0.0"}</span>`;
   }
@@ -2823,7 +2912,7 @@ function aggiornaConteggiRecensioni() {
   // Sidebar rating & sentiment
   if (sidebarRatingNum) sidebarRatingNum.textContent = mediaStelle ? mediaStelle.toFixed(1) : "--";
   if (sidebarRatingStars) sidebarRatingStars.textContent = _stelleVisual(Math.round(mediaStelle));
-  if (sidebarRatingTotal) sidebarRatingTotal.textContent = `Basato su ${totale} ${totale === 1 ? "recensione" : "recensioni"}`;
+  if (sidebarRatingTotal) sidebarRatingTotal.textContent = _tDash("reviews.runtime.rating_total", "Basato su {{count}} recensioni", { count: totale });
 
   // Distribuzione sentiment
   const pos = recensioniListaDati.filter(r => r.sentiment === "positiva" || r.sentiment === "positivo" || (r.valutazione_stelle && r.valutazione_stelle >= 4)).length;
@@ -3028,7 +3117,7 @@ const reportTimestamp = document.getElementById("report-timestamp");
 const reportRefresh = document.getElementById("report-refresh");
 const reportEmptyHint = document.getElementById("report-empty-hint");
 
-/* â”€â”€ Export CSV prenotazioni (endpoint /api/report/csv) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* Export CSV prenotazioni (endpoint /api/report/csv) */
 
 async function scaricaCsvPrenotazioni(da, a) {
   const params = new URLSearchParams();
@@ -3096,7 +3185,7 @@ async function aggiornaReport(forza = false) {
     reportAi.textContent = report.statistiche?.gestiti_da_ai ?? "0";
     reportUmano.textContent = report.statistiche?.girati_a_umano ?? "0";
     reportAnalisi.textContent = report.analisi_testuale || "";
-    reportTimestamp.textContent = report.generato_il ? "Generato: " + new Date(report.generato_il).toLocaleTimeString("it-IT", {
+    reportTimestamp.textContent = report.generato_il ? "Generato: " + new Date(report.generato_il).toLocaleTimeString(localeCorrente(), {
       hour: "2-digit", minute: "2-digit",
     }) : "";
     if (report.suggerimenti && report.suggerimenti.length > 0) {
@@ -3180,12 +3269,12 @@ function _errorState(messaggio, retryFn) {
   wrap.setAttribute("role", "alert");
   wrap.innerHTML =
     '<div class="empty-state-icon error" aria-hidden="true">' + ICONS.alert + "</div>" +
-    '<span class="empty-state-title">Qualcosa è andato storto</span>' +
+    '<span class="empty-state-title">' + _sanitize(_tDash("overview.runtime.error_title", "Qualcosa è andato storto")) + "</span>" +
     '<span class="empty-state-sub">' + _sanitize(messaggio) + "</span>";
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "review-analyze";
-  btn.textContent = "Riprova";
+  btn.textContent = _tDash("overview.runtime.retry", "Riprova");
   btn.addEventListener("click", retryFn);
   wrap.appendChild(btn);
   return wrap;
@@ -3238,12 +3327,17 @@ async function aggiornaPrioritari(silent = false) {
     if (!res.ok) {
       if (!silent) {
         priorityList.innerHTML = "";
-        priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", () => aggiornaPrioritari()));
+        priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), () => aggiornaPrioritari()));
       }
       return;
     }
     const rawEventi = await res.json().catch(() => []);
     const eventi = Array.isArray(rawEventi) ? rawEventi : [];
+    const countBadge = document.getElementById("priority-count-badge");
+    if (countBadge) {
+      countBadge.textContent = eventi.length ? _tDash("overview.runtime.priority_count", "{{count}} elementi", { count: eventi.length }) : "";
+      countBadge.hidden = !eventi.length;
+    }
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
       const cfg = await caricaStatoOnboarding();
@@ -3305,8 +3399,8 @@ async function aggiornaPrioritari(silent = false) {
       } else {
         li.appendChild(_emptyState(
           ICONS.check,
-          "Nessun messaggio oggi",
-          "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti."
+          _tDash("overview.runtime.no_messages_title", "Nessun messaggio oggi"),
+          _tDash("overview.runtime.no_messages_desc", "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti.")
         ));
       }
       priorityList.appendChild(li);
@@ -3346,7 +3440,7 @@ async function aggiornaPrioritari(silent = false) {
   } catch (err) {
     console.error("Impossibile aggiornare gli eventi prioritari:", err);
     priorityList.innerHTML = "";
-    priorityList.appendChild(_errorState("Impossibile caricare le richieste urgenti.", aggiornaPrioritari));
+    priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), aggiornaPrioritari));
   }
 }
 
@@ -3357,55 +3451,24 @@ async function aggiornaPrioritari(silent = false) {
 function generaSparklineSvg(dataPoints, strokeColor, gradientId) {
   const pts = Array.isArray(dataPoints) && dataPoints.length === 7 ? dataPoints : [0, 0, 0, 0, 0, 0, 0];
   const maxVal = Math.max(...pts, 1);
-  const width = 120;
-  const height = 28;
-  const padX = 4;
-  const padY = 4;
-  const availW = width - padX * 2;
-  const availH = height - padY * 2;
-
+  const width = 84;
+  const height = 24;
+  const barWidth = 3;
+  const gap = 5;
   const allZero = pts.every((v) => v === 0);
 
-  if (allZero) {
-    const yBaseline = height - padY - 2;
-    return `
-      <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
-        <line x1="${padX}" y1="${yBaseline}" x2="${width - padX}" y2="${yBaseline}" stroke="var(--line-strong)" stroke-width="1.5" stroke-dasharray="3,3" />
-      </svg>
-    `;
-  }
-
-  const coords = pts.map((val, i) => {
-    const x = padX + i * (availW / (pts.length - 1));
-    const y = height - padY - (val / maxVal) * availH;
-    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) };
+  let barsHtml = "";
+  pts.forEach((val, i) => {
+    const x = i * (barWidth + gap) + 4;
+    const h = allZero ? (3 + (i % 3) * 4) : Math.max(3, (val / maxVal) * (height - 4));
+    const y = height - h;
+    const opacity = allZero ? (0.22 + (i / 7) * 0.32) : (0.4 + (val / maxVal) * 0.6);
+    barsHtml += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="1.5" fill="${strokeColor}" fill-opacity="${opacity.toFixed(2)}" />`;
   });
 
-  let pathD = `M ${coords[0].x} ${coords[0].y}`;
-  for (let i = 1; i < coords.length; i++) {
-    const prev = coords[i - 1];
-    const curr = coords[i];
-    const cpX1 = prev.x + (curr.x - prev.x) / 2;
-    const cpY1 = prev.y;
-    const cpX2 = prev.x + (curr.x - prev.x) / 2;
-    const cpY2 = curr.y;
-    pathD += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${curr.x} ${curr.y}`;
-  }
-
-  const fillD = `${pathD} L ${coords[coords.length - 1].x} ${height} L ${coords[0].x} ${height} Z`;
-  const lastPt = coords[coords.length - 1];
-
   return `
-    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" style="width:100%;height:100%;">
-      <defs>
-        <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.3" />
-          <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.0" />
-        </linearGradient>
-      </defs>
-      <path d="${fillD}" fill="url(#${gradientId})" />
-      <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-      <circle cx="${lastPt.x}" cy="${lastPt.y}" r="2.5" fill="${strokeColor}" />
+    <svg viewBox="0 0 ${width} ${height}" class="kpi-sparkline-bars" style="width:100%;height:100%;">
+      ${barsHtml}
     </svg>
   `;
 }
@@ -3513,7 +3576,7 @@ async function aggiornaRiepilogo(silent = false) {
     if (!res.ok) {
       if (!silent) {
         ticketList.innerHTML = "";
-        ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", () => aggiornaRiepilogo()));
+        ticketList.appendChild(_errorState(_tDash("overview.runtime.activity_error", "Impossibile caricare l'attività recente."), () => aggiornaRiepilogo()));
       }
       return;
     }
@@ -3596,9 +3659,10 @@ async function aggiornaRiepilogo(silent = false) {
     const valAiEl = document.getElementById("sparkline-ai-val");
     const valUmanoEl = document.getElementById("sparkline-umano-val");
 
-    if (valTotEl) valTotEl.textContent = `${totSettimana} sett.`;
-    if (valAiEl) valAiEl.textContent = `${aiSettimana} sett.`;
-    if (valUmanoEl) valUmanoEl.textContent = `${umanoSettimana} sett.`;
+    const sparklineUnit = t("dashboard:kpi.sparkline_unit");
+    if (valTotEl) valTotEl.textContent = `${totSettimana} ${sparklineUnit}`;
+    if (valAiEl) valAiEl.textContent = `${aiSettimana} ${sparklineUnit}`;
+    if (valUmanoEl) valUmanoEl.textContent = `${umanoSettimana} ${sparklineUnit}`;
 
     ticketList.innerHTML = "";
     const eventiDaMostrare = eventiOggi.length > 0 ? eventiOggi.slice().reverse() : storico.slice(0, 15);
@@ -3606,9 +3670,9 @@ async function aggiornaRiepilogo(silent = false) {
     if (eventiDaMostrare.length === 0) {
       ticketList.appendChild(_emptyState(
         ICONS.chat,
-        "In attesa di conversazioni",
-        "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale.",
-        "Prova nel simulatore",
+        _tDash("overview.runtime.waiting_title", "In attesa di conversazioni"),
+        _tDash("overview.runtime.waiting_desc", "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale."),
+        _tDash("overview.runtime.try_simulator", "Prova nel simulatore"),
         () => document.querySelector('[data-view="assistente"]')?.click()
       ));
       return;
@@ -3630,15 +3694,17 @@ async function aggiornaRiepilogo(silent = false) {
       time.classList.add("ticket-item-time");
       const isOggi = _toDateKey(e.timestamp) === oggiKey;
       time.textContent = isOggi
-        ? new Date(e.timestamp).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })
-        : new Date(e.timestamp).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" }) + " " + new Date(e.timestamp).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+        ? new Date(e.timestamp).toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" })
+        : new Date(e.timestamp).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit" }) + " " + new Date(e.timestamp).toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
       testoWrap.appendChild(msg);
       testoWrap.appendChild(time);
       const tags = document.createElement("div");
       tags.classList.add("ticket-item-tags");
       const tipoBadge = document.createElement("span");
       tipoBadge.classList.add("ticket-tag", `ticket-tag-${e.tipo_evento}`);
-      tipoBadge.textContent = e.tipo_evento === "recensione" ? "Recensione" : "Messaggio";
+      tipoBadge.textContent = e.tipo_evento === "recensione"
+        ? _tDash("overview.runtime.review_kind", "Recensione")
+        : _tDash("overview.runtime.message_kind", "Messaggio");
       tags.appendChild(tipoBadge);
       if (e.tipo_evento === "recensione" && e.dettagli?.stelle) {
         const stelleTag = document.createElement("span");
@@ -3652,7 +3718,7 @@ async function aggiornaRiepilogo(silent = false) {
       if (e.tipo_evento === "recensione") {
         const viewBtn = document.createElement("button");
         viewBtn.classList.add("ticket-copy-btn");
-        viewBtn.textContent = "Visualizza";
+        viewBtn.textContent = _tDash("overview.runtime.open_review", "Visualizza");
         viewBtn.addEventListener("click", () => {
           apriView("recensioni");
           setTimeout(() => {
@@ -3682,6 +3748,12 @@ async function aggiornaRiepilogo(silent = false) {
   }
 }
 
+document.getElementById("priority-inbox-link")?.addEventListener("click", () => {
+  if (typeof apriView === "function") apriView("inbox");
+});
+document.getElementById("activity-view-all-btn")?.addEventListener("click", () => {
+  if (typeof apriView === "function") apriView("inbox");
+});
 /* ============================================================
    KNOWLEDGE BASE RISTRUTTURATA (4 CATEGORIE)
    ============================================================ */
@@ -3694,7 +3766,26 @@ document.querySelectorAll(".kb-tab-btn[data-kb-tab]").forEach((btn) => {
     const tabName = btn.dataset.kbTab;
     impostaTabConoscenza(tabName);
   });
+  btn.addEventListener("keydown", gestisciNavigazioneTabConoscenza);
 });
+
+function gestisciNavigazioneTabConoscenza(event) {
+  const tabs = [...document.querySelectorAll(".kb-tab-btn[data-kb-tab]")];
+  const currentIndex = tabs.indexOf(event.currentTarget);
+  if (currentIndex < 0 || !tabs.length) return;
+
+  let nextIndex;
+  if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = tabs.length - 1;
+  else return;
+
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  impostaTabConoscenza(nextTab.dataset.kbTab);
+  nextTab.focus();
+}
 
 function impostaTabConoscenza(tabName) {
   kbActiveTab = tabName;
@@ -3702,6 +3793,7 @@ function impostaTabConoscenza(tabName) {
     const active = b.dataset.kbTab === tabName;
     b.classList.toggle("active", active);
     b.setAttribute("aria-selected", String(active));
+    b.tabIndex = active ? 0 : -1;
   });
 
   const panels = {
@@ -3726,7 +3818,7 @@ function _formatDataOra(isoStr) {
   if (!isoStr) return "N/D";
   try {
     const d = new Date(isoStr);
-    return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch {
     return isoStr;
   }
@@ -3884,16 +3976,16 @@ async function caricaFAQ() {
     const statusUpdatedText = document.getElementById("kb-faq-updated-text");
     const attive = items.filter((d) => d.is_active).length;
     if (statusBarText) {
-      statusBarText.textContent = `${attive} FAQ attive su ${items.length} totali (tutte indicizzate)`;
+      statusBarText.textContent = _tDash("knowledge.runtime.faq_count", "{{active}} FAQ attive su {{total}} totali (tutte indicizzate)", { active: attive, total: items.length });
     }
     if (statusUpdatedText && items.length > 0) {
       const lastUpdate = items[0].updated_at || items[0].caricato_il;
-      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(lastUpdate)}`;
+      statusUpdatedText.textContent = _tDash("knowledge.runtime.last_update", "Ultimo aggiornamento: {{date}}", { date: _formatDataOra(lastUpdate) });
     }
 
     kbFAQList.innerHTML = "";
     if (items.length === 0) {
-      kbFAQList.innerHTML = '<p class="doc-library-empty">Nessuna FAQ configurata. Clicca su "+ Nuova FAQ" per aggiungerne una.</p>';
+      kbFAQList.innerHTML = '<p class="doc-library-empty">' + _escapeHtml(_tDash("knowledge.runtime.empty_faq", 'Nessuna FAQ configurata. Clicca su "+ Nuova FAQ" per aggiungerne una.')) + "</p>";
       return;
     }
 
@@ -4122,15 +4214,15 @@ async function caricaDocumenti() {
     const statusUpdatedText = document.getElementById("kb-doc-updated-text");
     const attivi = items.filter((d) => d.is_active && d.stato !== "errore").length;
     if (statusBarText) {
-      statusBarText.textContent = `${attivi} documenti attivi su ${items.length} totali`;
+      statusBarText.textContent = _tDash("knowledge.runtime.documents_count", "{{active}} documenti attivi su {{total}} totali", { active: attivi, total: items.length });
     }
     if (statusUpdatedText && items.length > 0) {
-      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(items[0].updated_at || items[0].caricato_il)}`;
+      statusUpdatedText.textContent = _tDash("knowledge.runtime.last_update", "Ultimo aggiornamento: {{date}}", { date: _formatDataOra(items[0].updated_at || items[0].caricato_il) });
     }
 
     docLibrary.innerHTML = "";
     if (items.length === 0) {
-      docLibrary.innerHTML = '<p class="doc-library-empty">Nessun file caricato. Usa l\'area tratteggiata sopra per caricare PDF, DOCX o immagini.</p>';
+      docLibrary.innerHTML = '<p class="doc-library-empty">' + _escapeHtml(_tDash("knowledge.runtime.empty_documents", "Nessun file caricato. Usa l'area tratteggiata sopra per caricare PDF, DOCX o immagini.")) + "</p>";
       return;
     }
 
@@ -4296,15 +4388,15 @@ async function caricaPagineWeb() {
     const statusUpdatedText = document.getElementById("kb-web-updated-text");
     const attive = items.filter((d) => d.is_active && d.stato !== "errore").length;
     if (statusBarText) {
-      statusBarText.textContent = `${attive} pagine web attive su ${items.length} totali`;
+      statusBarText.textContent = _tDash("knowledge.runtime.web_count", "{{active}} pagine web attive su {{total}} totali", { active: attive, total: items.length });
     }
     if (statusUpdatedText && items.length > 0) {
-      statusUpdatedText.textContent = `Ultimo aggiornamento: ${_formatDataOra(items[0].updated_at || items[0].caricato_il)}`;
+      statusUpdatedText.textContent = _tDash("knowledge.runtime.last_update", "Ultimo aggiornamento: {{date}}", { date: _formatDataOra(items[0].updated_at || items[0].caricato_il) });
     }
 
     kbWebList.innerHTML = "";
     if (items.length === 0) {
-      kbWebList.innerHTML = '<p class="doc-library-empty">Nessuna pagina web importata. Inserisci un link sopra per importare listino o info dal tuo sito.</p>';
+      kbWebList.innerHTML = '<p class="doc-library-empty">' + _escapeHtml(_tDash("knowledge.runtime.empty_web", "Nessuna pagina web importata. Inserisci un link sopra per importare listino o info dal tuo sito.")) + "</p>";
       return;
     }
 
@@ -4670,12 +4762,13 @@ async function aggiornaConoscenzaCompleta() {
 }
 
 /* ============================================================
-   INBOX (HITL) — Layout a 3 colonne
+   INBOX (HITL) — Layout a 2 colonne
    ============================================================ */
 
 let inboxState = {
-  mainFilter: "all",
-  quickFilter: "all",
+  channelFilter: "all",
+  statusFilter: "all",
+  search: "",
   selectedTicketId: null,
   tickets: [],
   team: [],
@@ -4738,7 +4831,7 @@ function _getAvatarInitial(nameOrPhone) {
 function formatInboxDate(value) {
   if (!value) return "";
   const d = new Date(value);
-  return d.toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString(localeCorrente(), { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatRelativeTime(value) {
@@ -4752,7 +4845,7 @@ function formatRelativeTime(value) {
   const diffOre = Math.floor(diffMin / 60);
   if (diffOre < 24 && d.getDate() === now.getDate()) return `${diffOre} ore fa`;
   if (diffOre < 48 && (now.getDate() - d.getDate() === 1 || diffOre < 24)) return "Ieri";
-  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+  return d.toLocaleDateString(localeCorrente(), { day: "2-digit", month: "short" });
 }
 
 function formatSla(sla_due_at, is_overdue) {
@@ -4847,8 +4940,8 @@ async function caricaInbox(silent = false) {
     const data = await ticketsRes.json();
     const newTickets = data.tickets || [];
 
-    const prevSig = (inboxState.tickets || []).map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
-    const newSig = newTickets.map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
+    const prevSig = (inboxState.tickets || []).map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.escalation_failed}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
+    const newSig = newTickets.map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.escalation_failed}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
 
     inboxState.tickets = newTickets;
 
@@ -4901,38 +4994,35 @@ async function caricaInbox(silent = false) {
 function getFilteredTickets() {
   let list = [...inboxState.tickets];
 
-  // 1. Filtro Principale (Colonna 1)
-  const mf = inboxState.mainFilter;
-  if (mf === "ai_managed") {
-    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
-  } else if (mf === "pending_staff") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
-  } else if (mf === "escalated") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
-  } else if (mf === "channel_whatsapp") {
+  // 1. Filtro Canale
+  const ch = inboxState.channelFilter;
+  if (ch === "whatsapp") {
     list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
-  } else if (mf === "channel_instagram") {
+  } else if (ch === "instagram") {
     list = list.filter((t) => (t.canale || "").toLowerCase() === "instagram");
-  } else if (mf === "status_open") {
-    list = list.filter((t) => t.ticket_status !== "RESOLVED");
-  } else if (mf === "status_pending") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF");
-  } else if (mf === "status_resolved") {
+  }
+
+  // 2. Filtro Stato & Gestione
+  const st = inboxState.statusFilter;
+  if (st === "ai") {
+    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
+  } else if (st === "human") {
+    list = list.filter((t) => t.ticket_status === "CLAIMED" || t.ticket_status === "PENDING_STAFF");
+  } else if (st === "escalated") {
+    list = list.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+  } else if (st === "resolved") {
     list = list.filter((t) => t.ticket_status === "RESOLVED");
   }
 
-  // 2. Quick Filter (Colonna 2 chips)
-  const qf = inboxState.quickFilter;
-  if (qf === "whatsapp") {
-    list = list.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp");
-  } else if (qf === "instagram") {
-    list = list.filter((t) => (t.canale || "").toLowerCase() === "instagram");
-  } else if (qf === "ai") {
-    list = list.filter((t) => t.ticket_status === "AI_ACTIVE");
-  } else if (qf === "human") {
-    list = list.filter((t) => t.ticket_status === "CLAIMED");
-  } else if (qf === "escalated") {
-    list = list.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue);
+  // 3. Ricerca veloce per numero, testo o operatore
+  if (inboxState.search) {
+    const q = inboxState.search.toLowerCase().trim();
+    list = list.filter((t) => {
+      const phone = (t.phone_number || "").toLowerCase();
+      const preview = (t.last_message_preview || "").toLowerCase();
+      const name = (t.assigned_nome || "").toLowerCase();
+      return phone.includes(q) || preview.includes(q) || name.includes(q);
+    });
   }
 
   return list;
@@ -4943,17 +5033,19 @@ function aggiornaContatoriFiltri() {
   const countAll = all.length;
   const countWa = all.filter((t) => (t.canale || "whatsapp").toLowerCase() === "whatsapp").length;
   const countIg = all.filter((t) => (t.canale || "").toLowerCase() === "instagram").length;
-  const countEscalated = all.filter((t) => t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue).length;
+  const countEscalated = all.filter((t) => t.escalation_failed || t.ticket_status === "PENDING_STAFF" || t.priorita === "alta" || t.is_overdue).length;
 
   const elAll = document.getElementById("chip-cnt-all");
   const elWa = document.getElementById("chip-cnt-wa");
   const elIg = document.getElementById("chip-cnt-ig");
   const elEsc = document.getElementById("chip-cnt-escalated");
+  const elTotal = document.getElementById("inbox-total-count");
 
   if (elAll) elAll.textContent = countAll;
   if (elWa) elWa.textContent = countWa;
   if (elIg) elIg.textContent = countIg;
   if (elEsc) elEsc.textContent = countEscalated;
+  if (elTotal) elTotal.textContent = countAll;
 }
 
 function renderInboxConversazioni() {
@@ -4995,16 +5087,16 @@ function renderInboxConversazioni() {
           "Non ci sono conversazioni corrispondenti ai filtri attivi.",
           "Mostra tutte",
           () => {
-            inboxState.mainFilter = "all";
-            inboxState.quickFilter = "all";
+            inboxState.channelFilter = "all";
+            inboxState.statusFilter = "all";
             inboxState.search = "";
             const searchInput = document.getElementById("inbox-search-input");
             if (searchInput) searchInput.value = "";
-            document.querySelectorAll(".inbox-nav-filter").forEach((b) => {
-              b.classList.toggle("active", b.dataset.inboxMainFilter === "all");
+            document.querySelectorAll("[data-inbox-channel]").forEach((b) => {
+              b.classList.toggle("active", b.dataset.inboxChannel === "all");
             });
-            document.querySelectorAll(".inbox-quick-filter-chip").forEach((b) => {
-              b.classList.toggle("active", b.dataset.inboxQuickFilter === "all");
+            document.querySelectorAll("[data-inbox-status]").forEach((b) => {
+              b.classList.toggle("active", b.dataset.inboxStatus === "all");
             });
             renderInboxConversazioni();
           }
@@ -5084,12 +5176,22 @@ function renderInboxConversazioni() {
       statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg>';
     }
 
-    statusPill.innerHTML = `${statusIcon} <span>${statusText}</span>`;
+    statusPill.innerHTML = statusIcon;
+    const statusLabel = document.createElement("span");
+    statusLabel.textContent = statusText;
+    statusPill.append(" ", statusLabel);
 
     metaLine.appendChild(channelIcon);
     metaLine.appendChild(channelName);
     metaLine.appendChild(sep);
     metaLine.appendChild(statusPill);
+    if (t.escalation_failed) {
+      const alert = document.createElement("span");
+      alert.className = "conv-status-pill status-pending_staff";
+      alert.textContent = "Escalation non riuscita: intervento richiesto";
+      alert.setAttribute("role", "alert");
+      metaLine.appendChild(alert);
+    }
 
     // Preview
     const previewEl = document.createElement("p");
@@ -5205,7 +5307,7 @@ function _renderMsgRow(m, ticket) {
     avatar.style.color = colors.text;
     avatar.textContent = _getAvatarInitial(ticket.phone_number || "Cliente");
   } else {
-    avatar.innerHTML = '<img src="logo.webp" alt="Melpis" width="28" height="28" style="border-radius:6px; display:block;">';
+    avatar.innerHTML = '<brand-logo variant="symbol" theme="auto" size="md"></brand-logo>';
   }
 
   // Bubble
@@ -5473,7 +5575,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
 
         threadContainer.innerHTML = "";
         if (!messages.length) {
-          threadContainer.innerHTML = '<p class="inbox-empty" style="text-align:center; padding:30px 0;">Nessun messaggio in questa conversazione.</p>';
+          threadContainer.innerHTML = '<div class="inbox-empty-thread"><div class="inbox-empty-thread-icon"><svg viewBox="0 0 24 24" fill="none" width="28" height="28" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg></div><p class="inbox-empty-text">Nessun messaggio in questa conversazione.</p></div>';
         } else {
           messages.forEach((m) => {
             const row = _renderMsgRow(m, ticket);
@@ -5600,35 +5702,34 @@ async function inviaRispostaInbox() {
 /* ---------- Setup Event Listeners Inbox ---------- */
 
 function inizializzaEventiInbox() {
-  // 1. Filtri Principali (Colonna 1)
-  document.querySelectorAll("[data-inbox-main-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      inboxState.mainFilter = btn.dataset.inboxMainFilter;
-      document.querySelectorAll("[data-inbox-main-filter]").forEach((b) => b.classList.toggle("active", b === btn));
-
-      // Aggiorna label mobile
-      const activeLabel = document.getElementById("inbox-mobile-active-label");
-      if (activeLabel) activeLabel.textContent = btn.querySelector(".inbox-nav-text")?.textContent || "Filtri";
-
-      // Chiudi drawer mobile/tablet se aperto
-      document.getElementById("inbox-filters-panel")?.classList.remove("open");
-      const backdrop = document.getElementById("inbox-filter-backdrop");
-      if (backdrop) backdrop.hidden = true;
-
-      renderInboxConversazioni();
-    });
-  });
-
-  // 2. Quick Filters (Colonna 2 chips)
-  document.querySelectorAll("[data-quick-filter]").forEach((chip) => {
+  // 1. Filtri Canale
+  document.querySelectorAll("[data-inbox-channel]").forEach((chip) => {
     chip.addEventListener("click", () => {
-      inboxState.quickFilter = chip.dataset.quickFilter;
-      document.querySelectorAll("[data-quick-filter]").forEach((c) => c.classList.toggle("active", c === chip));
+      inboxState.channelFilter = chip.dataset.inboxChannel;
+      document.querySelectorAll("[data-inbox-channel]").forEach((c) => c.classList.toggle("active", c === chip));
       renderInboxConversazioni();
     });
   });
 
-  // 3. Form Invio Risposta
+  // 2. Filtri Stato & Gestione
+  document.querySelectorAll("[data-inbox-status]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      inboxState.statusFilter = chip.dataset.inboxStatus;
+      document.querySelectorAll("[data-inbox-status]").forEach((c) => c.classList.toggle("active", c === chip));
+      renderInboxConversazioni();
+    });
+  });
+
+  // 3. Ricerca Conversazioni
+  const searchInput = document.getElementById("inbox-search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      inboxState.search = searchInput.value;
+      renderInboxConversazioni();
+    });
+  }
+
+  // 4. Form Invio Risposta
   const replyForm = document.getElementById("inbox-reply-form");
   if (replyForm) {
     replyForm.addEventListener("submit", (e) => {
@@ -5655,37 +5756,11 @@ function inizializzaEventiInbox() {
     });
   }
 
-  // 4. Mobile Controls (Back button & Filter drawer toggle)
+  // 5. Mobile Controls (Torna alla lista dalla chat)
   const backBtn = document.getElementById("inbox-back-to-list");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
       document.querySelector(".inbox-view")?.classList.remove("show-detail");
-    });
-  }
-
-  const filterToggle = document.getElementById("inbox-filter-toggle");
-  const filterClose = document.getElementById("inbox-filters-close");
-  const filterBackdrop = document.getElementById("inbox-filter-backdrop");
-  const filterPanel = document.getElementById("inbox-filters-panel");
-
-  if (filterToggle && filterPanel) {
-    filterToggle.addEventListener("click", () => {
-      filterPanel.classList.add("open");
-      if (filterBackdrop) filterBackdrop.hidden = false;
-    });
-  }
-
-  if (filterClose && filterPanel) {
-    filterClose.addEventListener("click", () => {
-      filterPanel.classList.remove("open");
-      if (filterBackdrop) filterBackdrop.hidden = true;
-    });
-  }
-
-  if (filterBackdrop && filterPanel) {
-    filterBackdrop.addEventListener("click", () => {
-      filterPanel.classList.remove("open");
-      filterBackdrop.hidden = true;
     });
   }
 }
@@ -5867,8 +5942,28 @@ notifBell?.addEventListener("click", () => {
    ============================================================ */
 
 (async function avvia() {
+  const pendingInvite = new URLSearchParams(window.location.hash.slice(1)).get("team-invite")
+    || sessionStorage.getItem("melpis_pending_team_invite");
+  if (pendingInvite) {
+    try {
+      // This endpoint authenticates the session without creating a trial organization.
+      const inviteSession = await apiFetch(`${API_BASE}/api/team/organizations`);
+      if (inviteSession.ok && await accettaInvitoDaLink()) return;
+      if (inviteSession.status === 401) {
+        sessionStorage.setItem("melpis_pending_team_invite", pendingInvite);
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        vaiAdAccesso();
+        return;
+      }
+    } catch { /* Il normale caricamento mostrerà l'errore di sessione. */ }
+  }
   const loggato = await caricaSessione();
   if (!loggato) {
+    const pendingToken = new URLSearchParams(window.location.hash.slice(1)).get("team-invite");
+    if (pendingToken) {
+      sessionStorage.setItem("melpis_pending_team_invite", pendingToken);
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
     vaiAdAccesso();
     return;
   }
@@ -5876,6 +5971,7 @@ notifBell?.addEventListener("click", () => {
   document.querySelectorAll(".app-shell").forEach((el) => {
     el.style.visibility = "";
   });
+  if (await accettaInvitoDaLink()) return;
   if (sessionStorage.getItem("melpis_benvenuto")) {
     sessionStorage.removeItem("melpis_benvenuto");
     toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
@@ -5932,13 +6028,13 @@ notifBell?.addEventListener("click", () => {
   }
 
   /* Navigazione statica "Vai a": la ricerca non indicizza solo dati, deve
-     risolvere anche le destinazioni del menu (es. "audit" â†’ Impostazioni â€º
+     risolvere anche le destinazioni del menu (es. "audit" → Impostazioni ›
      Audit). DEBITO TECNICO NOTO: la lista è statica — se aggiungi un tab o
      una vista, aggiorna questa mappa (nessun modo automatico per rilevarlo). */
   const VAI_A = [
-    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni â€º Audit", view: "impostazioni", tab: "audit" },
-    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni â€º Integrazioni", view: "impostazioni", tab: "integrazioni" },
-    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione â€º Generale", view: "impostazioni", tab: "generale" },
+    { q: ["audit", "log", "registro", "storico azioni"], gruppo: "Gestione", titolo: "Audit", sub: "Impostazioni › Audit", view: "impostazioni", tab: "audit" },
+    { q: ["integrazioni", "whatsapp", "instagram", "webhook", "collega", "canali"], gruppo: "Gestione", titolo: "Integrazioni", sub: "Impostazioni › Integrazioni", view: "impostazioni", tab: "integrazioni" },
+    { q: ["fuso", "timezone", "password", "email account"], gruppo: "Gestione", titolo: "Impostazioni generali", sub: "Gestione › Generale", view: "impostazioni", tab: "generale" },
     { q: ["fattur", "abbonament", "piano", "rinnovo", "pagament", "upgrade", "downgrade", "cancellazion", "prezz"], gruppo: "Account", titolo: "Piano e abbonamento", sub: "Account", view: "account" },
     { q: ["menu", "conoscenza", "allergeni", "carta dei vini", "documenti", "pdf", "knowledge"], gruppo: "Assistente", titolo: "Conoscenza", sub: "Assistente › Conoscenza", view: "conoscenza" },
     { q: ["configurazione", "personalità", "regole", "tono", "lingue", "istruzioni", "identità", "orari", "escalation"], gruppo: "Assistente", titolo: "Configurazione AI", sub: "Assistente › Configurazione AI", view: "configurazione-ai" },
@@ -5979,7 +6075,7 @@ notifBell?.addEventListener("click", () => {
       ).slice(0, 5);
       if (hits.length) {
         blocchi.push(`<span class="gs-gruppo-titolo">Prenotazioni</span>` + hits.map((p) =>
-          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} Â· ${p.stato || ""}`, "prenotazioni")
+          riga("Prenotazioni", p.nome_cliente || "Cliente", `${p.data || ""} ${String(p.ora || "").slice(0, 5)} · ${p.stato || ""}`, "prenotazioni")
         ).join(""));
       }
     }
@@ -6060,8 +6156,8 @@ notifBell?.addEventListener("click", () => {
   const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   function risolviTema(preferenza) {
-    if (preferenza === "dark") return "dark";
     if (preferenza === "light") return "light";
+    if (preferenza === "dark") return "dark";
     return mediaQuery.matches ? "dark" : "light";
   }
 
@@ -6083,11 +6179,11 @@ notifBell?.addEventListener("click", () => {
     applica(nuovaPreferenza);
   }
 
-  const salvato = localStorage.getItem(KEY) || "system";
+  const salvato = localStorage.getItem(KEY) || "dark";
   applica(salvato);
 
   mediaQuery.addEventListener("change", () => {
-    if ((localStorage.getItem(KEY) || "system") === "system") {
+    if ((localStorage.getItem(KEY) || "dark") === "system") {
       applica("system");
     }
   });
@@ -6112,11 +6208,16 @@ let caricaTimezone;
   const status = document.getElementById("settings-timezone-status");
   if (!select || !saveBtn) return;
   let caricato = false;
+  saveBtn.disabled = true;
 
   async function carica() {
+    if (status) {
+      status.textContent = t("settings:timezone_section.load_loading");
+      status.style.color = "";
+    }
     try {
       const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (caricato) return;
       caricato = true;
@@ -6135,32 +6236,70 @@ let caricaTimezone;
         opt.selected = true;
         select.appendChild(opt);
       }
-    } catch { /* silenzioso: la vista riproverà al prossimo switch */ }
+      saveBtn.disabled = false;
+      if (status) status.textContent = "";
+    } catch {
+      saveBtn.disabled = true;
+      if (status) {
+        status.textContent = t("settings:timezone_section.load_error");
+        status.style.color = "var(--red)";
+      }
+    }
   }
 
   saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
-    if (status) { status.textContent = "Salvoâ€¦"; status.style.color = ""; }
+    if (status) { status.textContent = t("settings:timezone_section.save_loading"); status.style.color = ""; }
     try {
       const res = await apiFetch(`${API_BASE}/api/impostazioni/organizzazione`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ timezone: select.value }),
       });
-      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (status) { status.textContent = data.detail || "Salvataggio non riuscito"; status.style.color = "var(--red)"; }
+        if (status) { status.textContent = t("settings:timezone_section.save_error"); status.style.color = "var(--red)"; }
         return;
       }
-      if (status) securityStatus(status, "Fuso orario aggiornato");
+      if (status) securityStatus(status, t("settings:timezone_section.save_success"));
     } catch {
-      if (status) { status.textContent = "Errore di connessione"; status.style.color = "var(--red)"; }
+      if (status) { status.textContent = t("settings:timezone_section.connection_error"); status.style.color = "var(--red)"; }
     } finally {
-      saveBtn.disabled = false;
+      saveBtn.disabled = !caricato;
     }
   });
 
   caricaTimezone = carica;
+})();
+
+/* ============================================================
+   INTERNAZIONALIZZAZIONE — Selettori lingua Dashboard
+   ============================================================ */
+
+(function inizializzaLinguaDashboard() {
+  const sidebarSelect = document.getElementById("sidebar-lang-select");
+  const settingsSelect = document.getElementById("settings-lang-select");
+
+  function syncSelects(lang) {
+    if (sidebarSelect && sidebarSelect.value !== lang) sidebarSelect.value = lang;
+    if (settingsSelect && settingsSelect.value !== lang) settingsSelect.value = lang;
+  }
+
+  // Inizializza lingua corrente
+  if (typeof MelpisI18n !== "undefined" && typeof MelpisI18n.getLanguage === "function") {
+    syncSelects(MelpisI18n.getLanguage());
+  }
+
+  window.addEventListener("melpis:lang-changed", (e) => {
+    if (e && e.detail && e.detail.language) {
+      syncSelects(e.detail.language);
+    }
+    if (typeof aggiornaDataTopbar === "function") {
+      aggiornaDataTopbar();
+    }
+    if (typeof toast === "function") {
+      toast(typeof t === "function" ? t("dashboard.toast.saved") : "Lingua aggiornata", "success");
+    }
+  });
 })();
 
 /* ============================================================
@@ -6190,18 +6329,14 @@ let caricaConfigurazioneAI;
 
   const VERTICALI_VALIDI = ["ristorante", "parrucchiere", "hotel_bnb", "centro_estetico", "studio_medico_dentista"];
 
-  const REGOLE_DEFAULT_BASE = [
-    "Allergie gravi, intolleranze alimentari o requisiti medici specifici",
-    "Lamentele, reclami formali o clienti insoddisfatti",
-    "Richieste speciali fuori listino o non coperte dal menu/documenti",
-    "Richieste di sconti personalizzati, convenzioni o accordi commerciali riservati",
-  ];
-
   function renderRules() {
     if (!rulesContainer) return;
     rulesContainer.innerHTML = "";
     if (!currentRules.length) {
-      rulesContainer.innerHTML = '<p class="settings-help-sm">Nessuna regola attiva. Aggiungine una con il campo sottostante.</p>';
+      const empty = document.createElement("p");
+      empty.className = "settings-help-sm";
+      empty.textContent = t("settings:ai_configuration.rules_empty");
+      rulesContainer.appendChild(empty);
       return;
     }
     currentRules.forEach((rule, idx) => {
@@ -6215,8 +6350,8 @@ let caricaConfigurazioneAI;
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "settings-rule-remove-btn";
-      delBtn.title = "Rimuovi questa regola";
-      delBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>Elimina</span>';
+      delBtn.title = t("settings:ai_configuration.remove_rule");
+      delBtn.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> <span>' + _escapeHtml(t("settings:ai_configuration.remove_rule")) + '</span>';
       delBtn.addEventListener("click", () => {
         currentRules.splice(idx, 1);
         renderRules();
@@ -6276,9 +6411,29 @@ let caricaConfigurazioneAI;
   });
 
   async function carica() {
+    let caricamentoRiuscito = false;
+    // A new visit always starts with an empty form so a failed or partial response
+    // cannot leave values from a previously loaded profile visible.
+    if (saveStatus) {
+      saveStatus.textContent = t("settings:ai_configuration.load_loading");
+      saveStatus.style.color = "";
+    }
+    if (saveBtn) saveBtn.disabled = true;
+    dbProfileRecord = {};
+    if (nomeInput) nomeInput.value = "";
+    if (vertSelect) vertSelect.selectedIndex = 0;
+    if (descTextarea) descTextarea.value = "";
+    if (orariTextarea) orariTextarea.value = "";
+    if (tonoSelect) tonoSelect.selectedIndex = 0;
+    if (tonoCustom) tonoCustom.value = "";
+    document.querySelectorAll(".ai-cfg-lang-opt").forEach((cb) => { cb.checked = false; });
+    aggiornaSelectLinguaDefault("it");
+    currentRules = [];
+    renderRules();
+
     try {
       const res = await apiFetch(`${API_BASE}/api/onboarding/profilo`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const prof = data.profilo || {};
       dbProfileRecord = prof;
@@ -6290,9 +6445,9 @@ let caricaConfigurazioneAI;
       if (cName) cName.textContent = businessName;
 
       // Identità
-      if (nomeInput && prof.nome_attivita) nomeInput.value = prof.nome_attivita;
+      if (nomeInput) nomeInput.value = prof.nome_attivita || "";
       if (vertSelect && VERTICALI_VALIDI.includes(prof.verticale)) vertSelect.value = prof.verticale;
-      if (descTextarea && prof.descrizione) descTextarea.value = prof.descrizione;
+      if (descTextarea) descTextarea.value = prof.descrizione || "";
       if (orariTextarea && prof.orari) {
         orariTextarea.value = prof.orari;
         const kbOrari = document.getElementById("kb-orari-input");
@@ -6312,31 +6467,39 @@ let caricaConfigurazioneAI;
       }
 
       // Multilingua
-      const supportate = prof.lingue_supportate || ["it"];
+      const supportate = Array.isArray(prof.lingue_supportate) ? prof.lingue_supportate : [];
       document.querySelectorAll(".ai-cfg-lang-opt").forEach((cb) => {
         cb.checked = supportate.includes(cb.value);
       });
       aggiornaSelectLinguaDefault(prof.lingua_default || "it");
 
       // Regole escalation
-      if (Array.isArray(prof.regole_escalation) && prof.regole_escalation.length > 0) {
+      if (Array.isArray(prof.regole_escalation)) {
         currentRules = [...prof.regole_escalation];
       } else {
-        currentRules = [...REGOLE_DEFAULT_BASE];
+        currentRules = [];
       }
       renderRules();
+      caricamentoRiuscito = true;
+      if (saveStatus) saveStatus.textContent = "";
     } catch (err) {
       console.error("Impossibile caricare la configurazione AI:", err);
+      if (saveStatus) {
+        saveStatus.textContent = t("settings:ai_configuration.load_error");
+        saveStatus.style.color = "var(--red)";
+      }
+    } finally {
+      if (saveBtn) saveBtn.disabled = !caricamentoRiuscito;
     }
   }
 
   function raccogliPayload() {
-    const nome = (nomeInput?.value || "").trim() || dbProfileRecord?.nome_attivita || "La tua attività";
+    const nome = (nomeInput?.value || "").trim();
     const verticaleSelezionato = VERTICALI_VALIDI.includes(vertSelect?.value)
       ? vertSelect.value
       : (VERTICALI_VALIDI.includes(dbProfileRecord?.verticale) ? dbProfileRecord.verticale : "ristorante");
     const descrizione = (descTextarea?.value || "").trim();
-    const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "Martedì - Domenica: 12:00-15:00 / 19:30-23:30";
+    const orari = (orariTextarea?.value || "").trim() || dbProfileRecord?.orari || "";
 
     let tono = tonoSelect ? tonoSelect.value : (dbProfileRecord?.tono || "professionale_caloroso");
     if (tonoCustom && tonoCustom.value.trim()) {
@@ -6360,7 +6523,7 @@ let caricaConfigurazioneAI;
       orari,
       descrizione,
       tono,
-      servizi: Array.isArray(dbProfileRecord?.servizi) && dbProfileRecord.servizi.length ? dbProfileRecord.servizi : ["Servizio al tavolo", "Menu alla carta"],
+      servizi: Array.isArray(dbProfileRecord?.servizi) ? dbProfileRecord.servizi : [],
       regole_escalation: regoleSelezionate.length ? regoleSelezionate : currentRules,
       whatsapp_collegato: Boolean(dbProfileRecord?.whatsapp_collegato),
       documenti_importati: Boolean(dbProfileRecord?.documenti_importati),
@@ -6371,7 +6534,7 @@ let caricaConfigurazioneAI;
 
   async function eseguiSalvataggio() {
     if (saveBtn) saveBtn.disabled = true;
-    if (saveStatus) { saveStatus.textContent = "Salvataggio in corso…"; saveStatus.style.color = ""; }
+    if (saveStatus) { saveStatus.textContent = t("settings:ai_configuration.save_loading"); saveStatus.style.color = ""; }
 
     try {
       const payload = raccogliPayload();
@@ -6384,7 +6547,7 @@ let caricaConfigurazioneAI;
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         if (saveStatus) {
-          saveStatus.textContent = err.detail || "Errore durante il salvataggio";
+          saveStatus.textContent = err.detail || t("settings:ai_configuration.save_error");
           saveStatus.style.color = "var(--red)";
         }
         return;
@@ -6405,11 +6568,11 @@ let caricaConfigurazioneAI;
         kbOrari.value = payload.orari;
       }
 
-      if (saveStatus) securityStatus(saveStatus, "Configurazione AI salvata e sincronizzata!");
-      toast("Configurazione AI salvata e sincronizzata con successo", "success");
+      if (saveStatus) securityStatus(saveStatus, t("settings:ai_configuration.save_success"));
+      toast(t("settings:ai_configuration.save_toast"), "success");
     } catch {
       if (saveStatus) {
-        saveStatus.textContent = "Errore di connessione con il server";
+        saveStatus.textContent = t("settings:ai_configuration.connection_error");
         saveStatus.style.color = "var(--red)";
       }
     } finally {
@@ -6421,6 +6584,8 @@ let caricaConfigurazioneAI;
     e.preventDefault();
     eseguiSalvataggio();
   });
+
+  window.addEventListener("melpis:lang-changed", renderRules);
 
   caricaConfigurazioneAI = carica;
 })();
@@ -6473,11 +6638,11 @@ async function caricaAudit({ append = false } = {}) {
     eventi.forEach((ev) => {
       const item = document.createElement("div");
       item.className = "audit-item";
-      const quando = new Date(ev.created_at).toLocaleString("it-IT", {
+      const quando = new Date(ev.created_at).toLocaleString(localeCorrente(), {
         day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
       });
       const dettagli = ev.details && Object.keys(ev.details).length
-        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" Â· ")
+        ? Object.entries(ev.details).map(([k, v]) => `${k}: ${v}`).join(" · ")
         : "";
       item.innerHTML = `
         <div class="audit-main">
@@ -6500,7 +6665,7 @@ async function caricaAudit({ append = false } = {}) {
       btn.textContent = "Carica altri eventi";
       btn.addEventListener("click", () => {
         btn.disabled = true;
-        btn.textContent = "Caricoâ€¦";
+        btn.textContent = "Carico…";
         caricaAudit({ append: true });
       });
       list.appendChild(btn);
@@ -6876,6 +7041,7 @@ document.getElementById("wa-connect-form")?.addEventListener("submit", async (e)
       submitBtn.disabled = false;
       submitBtn.textContent = "Verifica e Salva Collegamento";
     }
+    document.getElementById("wa-access-token").value = "";
   }
 });
 
@@ -7073,6 +7239,7 @@ document.getElementById("ig-connect-form")?.addEventListener("submit", async (e)
       submitBtn.disabled = false;
       submitBtn.textContent = "Collega Instagram Direct";
     }
+    document.getElementById("ig-token-input").value = "";
   }
 });
 
@@ -7148,7 +7315,7 @@ async function caricaStatoCalendar() {
       if (calIdMeta) calIdMeta.textContent = calId;
       if (syncModeMeta) syncModeMeta.textContent = d.sync_enabled ? "Bidirezionale automatica" : "In pausa";
       if (help) help.textContent = d.last_sync_at
-        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+        ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString(localeCorrente())}`
         : "Sincronizzazione attiva: le prenotazioni confermate vengono sincronizzate con Google Calendar.";
       if (btnConnect) btnConnect.hidden = true;
       if (btnTest) btnTest.hidden = false;
@@ -7239,6 +7406,20 @@ async function caricaStatoReviews() {
   const btnConnect = document.getElementById("integ-reviews-connect");
   const btnSync = document.getElementById("integ-reviews-sync");
   const btnDisconnect = document.getElementById("integ-reviews-disconnect");
+  const summaryStatus = document.getElementById("reviews-google-summary-status");
+
+  const setSummaryStatus = (connected) => {
+    if (!summaryStatus) return;
+    const state = connected === true ? "connected" : connected === false ? "disconnected" : "unavailable";
+    summaryStatus.dataset.state = state;
+    summaryStatus.classList.toggle("ready", state === "connected");
+    summaryStatus.classList.toggle("manual", state !== "connected");
+    summaryStatus.textContent = state === "connected"
+      ? _tDash("reviews.google_connected", "Connesso")
+      : state === "disconnected"
+        ? _tDash("reviews.google_disconnected", "Non collegato")
+        : _tDash("reviews.google_status_unavailable", "Stato non disponibile");
+  };
 
   if (!stato || !sub) return;
 
@@ -7254,10 +7435,12 @@ async function caricaStatoReviews() {
         _aggiornaBadgeStato(stato, "error");
         sub.textContent = errMsg;
       }
+      setSummaryStatus(null);
       return;
     }
     const d = await res.json();
     if (d.connected) {
+      setSummaryStatus(true);
       _aggiornaBadgeStato(stato, "connected");
       const acc = d.account_name || "Account Google collegato";
       const loc = d.location_name || "Sede predefinita";
@@ -7266,13 +7449,14 @@ async function caricaStatoReviews() {
       if (locationMeta) locationMeta.textContent = loc;
       if (help) {
         help.textContent = d.last_sync_at
-          ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString("it-IT")}`
+          ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString(localeCorrente())}`
           : "Account collegato: pronto alla sincronizzazione delle recensioni.";
       }
       if (btnConnect) btnConnect.hidden = true;
       if (btnSync) btnSync.hidden = false;
       if (btnDisconnect) btnDisconnect.hidden = false;
     } else {
+      setSummaryStatus(false);
       _aggiornaBadgeStato(stato, "disconnected");
       sub.textContent = "Nessun account Google collegato";
       if (accountMeta) accountMeta.textContent = "Nessun account";
@@ -7285,9 +7469,16 @@ async function caricaStatoReviews() {
       if (btnDisconnect) btnDisconnect.hidden = true;
     }
   } catch {
+    setSummaryStatus(null);
     _aggiornaBadgeStato(stato, "error", "Errore di rete");
     sub.textContent = "Errore di connessione con il server";
   }
+}
+
+// The Reviews overview badge reflects the same tenant-scoped status endpoint as
+// the integration settings page; it must never claim a static connection.
+if (document.getElementById("reviews-google-summary-status")) {
+  void caricaStatoReviews();
 }
 
 document.getElementById("integ-reviews-connect")?.addEventListener("click", async () => {
@@ -7499,7 +7690,7 @@ async function caricaStatoBooking() {
 
       if (metaSyncEl) {
         if (d.last_sync) {
-          const sDate = d.last_sync.updated_at ? new Date(d.last_sync.updated_at).toLocaleString("it-IT") : "";
+          const sDate = d.last_sync.updated_at ? new Date(d.last_sync.updated_at).toLocaleString(localeCorrente()) : "";
           if (d.last_sync.status === "synced") {
             metaSyncEl.textContent = `Sincronizzato (${d.last_sync.external_booking_id || "OK"}) ${sDate ? "· " + sDate : ""}`;
           } else if (d.last_sync.status === "failed") {
@@ -7862,6 +8053,10 @@ document.getElementById("booking-config-form")?.addEventListener("submit", async
       submitBtn.disabled = false;
       submitBtn.textContent = "Salva Configurazione";
     }
+    for (const id of ["calcom-api-key", "simplybook-api-key", "apaleo-client-secret", "beds24-invite-code", "zak-api-key"]) {
+      const input = document.getElementById(id);
+      if (input) input.value = "";
+    }
   }
 });
 
@@ -7921,7 +8116,7 @@ async function caricaStatoAirtable() {
       const lastUpdated = connections[0]?.updated_at;
       if (lastUpdateEl) {
         lastUpdateEl.textContent = lastUpdated
-          ? new Date(lastUpdated).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+          ? new Date(lastUpdated).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
           : "—";
       }
 
@@ -7934,7 +8129,7 @@ async function caricaStatoAirtable() {
             const safeId = DOMPurify.sanitize(c.base_id);
             const safeVerticale = c.verticale ? `<span class="badge-status-honest" style="margin-left: 6px;">${DOMPurify.sanitize(c.verticale)}</span>` : "";
             const formattedDate = c.updated_at
-              ? new Date(c.updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+              ? new Date(c.updated_at).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric" })
               : "";
 
             return `
@@ -8049,7 +8244,7 @@ async function caricaEventiWebhookAirtable() {
         const safeStatus = DOMPurify.sanitize(ev.status || "pending");
         const dt = ev.created_at || ev.event_timestamp;
         const formattedDate = dt
-          ? new Date(dt).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          ? new Date(dt).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })
           : "—";
 
         const statusClass = safeStatus === "processed" ? "connected" : safeStatus === "failed" ? "disconnected" : "pending";
@@ -8181,6 +8376,7 @@ document.getElementById("airtable-connect-form")?.addEventListener("submit", asy
       submitBtn.disabled = false;
       submitBtn.textContent = "Verifica e Connetti Base";
     }
+    document.getElementById("airtable-token").value = "";
   }
 });
 
@@ -8357,6 +8553,7 @@ document.getElementById("airtable-webhook-sub-form")?.addEventListener("submit",
       submitBtn.disabled = false;
       submitBtn.textContent = "Registra Sottoscrizione Webhook";
     }
+    document.getElementById("airtable-sub-mac-secret").value = "";
   }
 });
 
@@ -8388,7 +8585,7 @@ document.getElementById("report-print")?.addEventListener("click", () => window.
         <h3>Scorciatoie da tastiera</h3>
         <dl>
           <dt>/</dt><dd>ricerca globale</dd>
-          <dt>1 â€“ 9</dt><dd>vai alle viste in ordine di menu</dd>
+          <dt>1 – 9</dt><dd>vai alle viste in ordine di menu</dd>
           <dt>0</dt><dd>vista Audit</dd>
           <dt>?</dt><dd>questo pannello</dd>
           <dt>Esc</dt><dd>chiudi pannelli e ricerca</dd>
@@ -8424,6 +8621,40 @@ document.getElementById("report-print")?.addEventListener("click", () => window.
 
 let teamDataCache = null;
 
+async function caricaInvitiTeam() {
+  const list = document.getElementById("team-invitations-list");
+  if (!list || sessione?.ruolo === "staff") return;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/team/invitations`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const invitations = data.invitations || [];
+    list.innerHTML = invitations.length ? invitations.map((inv) => `
+      <li data-invitation-id="${_escapeHtml(inv.id)}">
+        <span>${_escapeHtml(inv.email)} · ${_escapeHtml(inv.ruolo)}</span>
+        ${sessione?.ruolo === "owner" || inv.ruolo === "staff" ? `
+          <button type="button" class="team-invite-resend" data-id="${_escapeHtml(inv.id)}">${_escapeHtml(_tDash("team.resend", "Reinvia"))}</button>
+          <button type="button" class="team-invite-revoke" data-id="${_escapeHtml(inv.id)}">${_escapeHtml(_tDash("team.revoke", "Revoca"))}</button>
+        ` : ""}
+      </li>`).join("") : `<li>${_escapeHtml(_tDash("team.pending_empty", "Nessun invito in attesa."))}</li>`;
+  } catch { list.textContent = _tDash("team.pending_unavailable", "Inviti temporaneamente non disponibili."); }
+}
+
+async function caricaOrganizzazioniTeam() {
+  const selector = document.getElementById("team-org-selector");
+  if (!selector) return;
+  const res = await apiFetch(`${API_BASE}/api/team/organizations`);
+  if (!res.ok) return;
+  const data = await res.json();
+  selector.replaceChildren();
+  for (const org of data.organizations || []) {
+    const option = new Option(org.name, org.id);
+    selector.add(option);
+  }
+  selector.value = sessione.organization_id;
+  selector.hidden = selector.options.length < 2;
+}
+
 async function caricaTeam() {
   const tbody = document.getElementById("team-members-tbody");
   const statLimit = document.getElementById("team-stat-limit");
@@ -8436,6 +8667,7 @@ async function caricaTeam() {
   const addCard = document.getElementById("team-add-card");
 
   if (!tbody) return;
+  await Promise.all([caricaInvitiTeam(), caricaOrganizzazioniTeam()]);
 
   const mioRuolo = sessione?.ruolo || "staff";
 
@@ -8459,7 +8691,9 @@ async function caricaTeam() {
     const res = await apiFetch(`${API_BASE}/api/team/members`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      tbody.innerHTML = `<tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--red);">Impossibile caricare i membri del team: ${_estraiMessaggioErroreApi(res, err, "Errore")}</td></tr>`;
+      const detail = _estraiMessaggioErroreApi(res, err, "Errore");
+      const message = _tDash("team.runtime.load_error", "Impossibile caricare i membri del team: {{detail}}", { detail });
+      tbody.innerHTML = `<tr><td colspan="5" style="padding: 24px; text-align: center; color: var(--red);">${_escapeHtml(message)}</td></tr>`;
       return;
     }
     const data = await res.json();
@@ -8468,25 +8702,27 @@ async function caricaTeam() {
     const { members, total, users_limit, can_add_more } = data;
 
     // Aggiorna contatori e badge
-    if (countBadge) countBadge.textContent = `${total} membr${total === 1 ? 'o' : 'i'}`;
+    if (countBadge) countBadge.textContent = _tDash("team.runtime.member_count", "{{count}} membri", { count: total });
 
     if (statLimit) {
       if (users_limit === null) {
-        statLimit.textContent = `${total} account attivi (illimitati)`;
+        statLimit.textContent = _tDash("team.runtime.unlimited_accounts", "{{count}} account attivi (illimitati)", { count: total });
       } else if (users_limit === 1) {
-        statLimit.textContent = `1 / 1 account (Piano Essenziale - Solo titolare)`;
+        statLimit.textContent = _tDash("team.runtime.essential_account", "1 / 1 account (Piano Essenziale - Solo titolare)");
       } else {
         const operatori = Math.max(0, total - 1);
         const maxOperatori = users_limit - 1;
-        statLimit.textContent = `${total} / ${users_limit} account (${operatori} di ${maxOperatori} collaboratori)`;
+        statLimit.textContent = _tDash("team.runtime.account_capacity", "{{used}} / {{limit}} account ({{operators}} di {{max}} collaboratori)", {
+          used: total, limit: users_limit, operators: operatori, max: maxOperatori
+        });
       }
     }
 
     // Aggiorna piano visualizzato
     if (statPlan) {
-      let nomePiano = "Essenziale";
-      if (users_limit === 3) nomePiano = "Crescita (Pro)";
-      else if (users_limit === null) nomePiano = "Scala";
+      let nomePiano = _tDash("team.runtime.plan_essential", "Essenziale");
+      if (users_limit === 3) nomePiano = _tDash("team.runtime.plan_growth", "Crescita (Pro)");
+      else if (users_limit === null) nomePiano = _tDash("team.runtime.plan_scale", "Scala");
       statPlan.textContent = nomePiano;
     }
 
@@ -8496,12 +8732,12 @@ async function caricaTeam() {
         limitBanner.hidden = false;
         submitBtn.disabled = true;
         submitBtn.title = users_limit === 1
-          ? "Il piano Essenziale non include collaboratori aggiuntivi"
-          : "Limite massimo collaboratori raggiunto per il piano corrente";
+          ? _tDash("team.runtime.essential_limit_title", "Il piano Essenziale non include collaboratori aggiuntivi")
+          : _tDash("team.runtime.limit_title", "Limite massimo collaboratori raggiunto per il piano corrente");
         if (limitTitle) {
           limitTitle.textContent = users_limit === 1
-            ? "Il piano Essenziale include solo il titolare"
-            : `Limite account raggiunto (${total}/${users_limit})`;
+            ? _tDash("team.runtime.essential_limit_banner", "Il piano Essenziale include solo il titolare")
+            : _tDash("team.runtime.limit_banner", "Limite account raggiunto ({{used}}/{{limit}})", { used: total, limit: users_limit });
         }
         if (limitDesc) {
           if (users_limit === 1) {
@@ -8541,7 +8777,7 @@ async function caricaTeam() {
       let dateFormatted = "—";
       if (m.joined_at) {
         try {
-          dateFormatted = new Date(m.joined_at).toLocaleDateString("it-IT", {
+          dateFormatted = new Date(m.joined_at).toLocaleDateString(localeCorrente(), {
             day: "2-digit",
             month: "2-digit",
             year: "numeric"
@@ -8633,9 +8869,11 @@ async function aggiungiMembroTeam(e) {
       return;
     }
 
-    toast(`Collaboratore ${email} aggiunto con successo al team!`, "success");
+    toast(_tDash("team.invite_sent", "Invito preparato. L'accesso al team richiede l'accettazione del destinatario."), "success");
+    // A test link is returned only in explicitly enabled non-production mode.
+    if (data.test_link) toast(`Link di test: ${data.test_link}`, "success", 12000);
     if (emailInput) emailInput.value = "";
-    await caricaTeam();
+    await caricaInvitiTeam();
   } catch (err) {
     console.error("Errore aggiunta collaboratore:", err);
     toast("Errore di connessione durante l'aggiunta.", "error");
@@ -8644,7 +8882,7 @@ async function aggiungiMembroTeam(e) {
       submitBtn.disabled = false;
       submitBtn.innerHTML = `
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-        Aggiungi al Team
+        ${_escapeHtml(_tDash("team.add_btn", "Invia invito"))}
       `;
     }
   }
@@ -8705,6 +8943,48 @@ async function gestisciAzioniTeam(e) {
 }
 
 document.getElementById("team-add-form")?.addEventListener("submit", aggiungiMembroTeam);
+document.getElementById("team-org-selector")?.addEventListener("change", (event) => {
+  localStorage.setItem("melpis_selected_organization", event.target.value);
+  window.location.reload();
+});
+document.getElementById("team-invitations-list")?.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-id]");
+  if (!button) return;
+  const action = button.classList.contains("team-invite-revoke") ? "revoke" : "resend";
+  const id = encodeURIComponent(button.dataset.id);
+  button.disabled = true;
+  try {
+    const res = await apiFetch(`${API_BASE}/api/team/invitations/${id}${action === "resend" ? "/resend" : ""}`, {
+      method: action === "resend" ? "POST" : "DELETE"
+    });
+    if (!res.ok) throw new Error("Azione non riuscita");
+    toast(action === "resend"
+      ? _tDash("team.resend_success", "Invito reinviato.")
+      : _tDash("team.revoke_success", "Invito revocato."), "success");
+    await caricaInvitiTeam();
+  } catch { toast(_tDash("team.invite_error", "Impossibile aggiornare l'invito."), "error"); }
+  finally { button.disabled = false; }
+});
+
+async function accettaInvitoDaLink() {
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const token = params.get("team-invite") || sessionStorage.getItem("melpis_pending_team_invite");
+  if (!token) return false;
+  sessionStorage.removeItem("melpis_pending_team_invite");
+  history.replaceState(null, "", window.location.pathname + window.location.search);
+  const res = await apiFetch(`${API_BASE}/api/team/invitations/accept`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token })
+  });
+  if (!res.ok) {
+    toast(_tDash("team.invite_invalid", "Invito non valido o scaduto. Chiedi un nuovo invito."), "error");
+    return false;
+  }
+  const accepted = await res.json();
+  localStorage.setItem("melpis_selected_organization", accepted.organization_id);
+  window.location.replace("/app/");
+  return true;
+}
 document.getElementById("btn-refresh-team")?.addEventListener("click", caricaTeam);
 document.getElementById("team-limit-upgrade-btn")?.addEventListener("click", () => {
   apriView("account");

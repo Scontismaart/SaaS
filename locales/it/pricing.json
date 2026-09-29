@@ -1,0 +1,105 @@
+{
+  "page_title": "Piani e Prezzi · Assistente WhatsApp AI | Melpis",
+  "meta_description": "Piani e prezzi trasparenti per attivare l'assistente WhatsApp AI nella tua attività. Prova gratuita di 7 giorni senza carta di credito, disdici quando vuoi.",
+  "hero": {
+    "badge": "Prezzi trasparenti",
+    "title": "Un piano per ogni fase della tua attività",
+    "subtitle": "Attiva il tuo assistente WhatsApp AI in pochi minuti. Prova gratis per 7 giorni, senza carta di credito e senza vincoli contrattuali.",
+    "monthly_toggle": "Mensile",
+    "annual_toggle": "Annuale",
+    "annual_discount": "2 mesi gratis"
+  },
+  "plans": {
+    "essential": {
+      "name": "Essenziale",
+      "badge": "",
+      "tagline": "Per liberi professionisti e piccole attività che vogliono automatizzare le domande frequenti e orari.",
+      "price_monthly": 29,
+      "price_annual": 24,
+      "period": "/mese",
+      "cta": "Inizia con Essenziale",
+      "features": [
+        "1 numero WhatsApp Business ufficiale",
+        "Fino a 500 messaggi AI/mese",
+        "Orari, listino e risposte automatiche 24/7",
+        "Inbox condivisa web da qualsiasi dispositivo",
+        "Notifiche di escalation via email",
+        "Supporto via ticket entro 24h"
+      ]
+    },
+    "growth": {
+      "name": "Crescita",
+      "badge": "Più scelto",
+      "tagline": "Per ristoranti, saloni e studi medici che gestiscono prenotazioni e appuntamenti continui.",
+      "price_monthly": 69,
+      "price_annual": 59,
+      "period": "/mese",
+      "cta": "Prova Crescita gratis",
+      "features": [
+        "Tutto ciò che è incluso in Essenziale",
+        "Fino a 2.000 messaggi AI/mese",
+        "Sincronizzazione bidirezionale Google Calendar",
+        "Gestione prenotazioni e promemoria no-show",
+        "Fino a 3 operatori contemporanei nella Inbox",
+        "Addestramento AI con documenti PDF e listini",
+        "Supporto prioritario WhatsApp ed email"
+      ]
+    },
+    "scale": {
+      "name": "Scala",
+      "badge": "Massima potenza",
+      "tagline": "Per hotel, cliniche o attività ad alto volume con richieste complesse e più sedi.",
+      "price_monthly": 149,
+      "price_annual": 129,
+      "period": "/mese",
+      "cta": "Passa a Scala",
+      "features": [
+        "Tutto ciò che è incluso in Crescita",
+        "Fino a 10.000 messaggi AI/mese",
+        "Operatori illimitati con permessi dedicati",
+        "Integrazione Instagram Direct inclusa",
+        "Webhook personalizzati e integrazione PMS/Airtable",
+        "Log di audit di sicurezza e accordo sul trattamento dati (DPA)",
+        "Account manager dedicato e onboarding assistito"
+      ]
+    }
+  },
+  "guarantee": {
+    "title": "Garanzia di trasparenza",
+    "items": [
+      {
+        "title": "Nessuna carta richiesta per la prova",
+        "desc": "Inizi in 60 secondi con email e nome attività. Nessun addebito a sorpresa."
+      },
+      {
+        "title": "Disdici in un clic quando vuoi",
+        "desc": "Nessun contratto pluriennale vincolante. Puoi cancellare direttamente dalla dashboard."
+      },
+      {
+        "title": "Meta Cloud API ufficiale inclusa",
+        "desc": "Connessione ufficiale tramite Meta Cloud API: riduce al minimo il rischio di blocchi rispetto a tool non ufficiali."
+      }
+    ]
+  },
+  "faq": {
+    "title": "Domande frequenti sui prezzi",
+    "items": [
+      {
+        "q": "Come viene espressa la quota mensile?",
+        "a": "La quota del piano è espressa in messaggi al mese, non in conversazioni di 24 ore. Puoi controllare il consumo nella dashboard."
+      },
+      {
+        "q": "Cosa succede quando raggiungo il limite di messaggi del piano?",
+        "a": "L'assistente AI interrompe le nuove risposte automatiche e le richieste passano a un operatore. Puoi fare l'upgrade del piano per aumentare la quota."
+      },
+      {
+        "q": "Posso cambiare piano o disdire successivamente?",
+        "a": "Certamente. Puoi effettuare l'upgrade o il downgrade in ogni momento direttamente dal portale Stripe integrato nelle impostazioni."
+      },
+      {
+        "q": "I costi dei messaggi Meta sono inclusi?",
+        "a": "Sì, per tutte le conversazioni di servizio avviate dai clienti (Customer-Initiated) non ci sono costi aggiuntivi di invio da parte nostra."
+      }
+    ]
+  }
+}

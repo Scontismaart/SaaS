@@ -1,6 +1,6 @@
 from datetime import date, time
 import pytest
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 pytestmark = pytest.mark.asyncio
 
@@ -87,8 +87,11 @@ async def test_deposito_genera_payment_link(booking_service, repo, sample_org):
         sample_org["id"], nome_cliente="Mario", telefono="+393331234567",
         data="2026-08-01", ora="20:00", coperti=8,
     )
-    with patch("stripe.PaymentLink.create") as mock_create:
-        mock_create.return_value = type("obj", (), {"url": "https://pay.stripe.com/test_123"})()
+    stripe = MagicMock()
+    stripe.checkout.Session.create = MagicMock()
+    session = type("obj", (), {"id": "cs_test_deposit", "url": "https://pay.stripe.com/test_123"})()
+    with patch("src.core.billing.routes._get_stripe", return_value=stripe), \
+         patch("src.core.billing.routes._stripe_call", AsyncMock(return_value=session)):
         confirmed = await booking_service.confirm(sample_org["id"], b["id"])
     assert confirmed["payment_status"] == "pending"
     assert confirmed["payment_link"] == "https://pay.stripe.com/test_123"

@@ -30,6 +30,7 @@ def test_conoscenza_summary_unauthorized(client):
 def test_ui_summary_authorized(client):
     mock_org_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "staff",
@@ -55,6 +56,7 @@ def test_ui_summary_authorized(client):
 def test_chiedi_documenti_rag_blocked_by_plan(client):
     mock_org_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "owner",
@@ -62,7 +64,9 @@ def test_chiedi_documenti_rag_blocked_by_plan(client):
     }
     mock_repo = AsyncMock()
     # Plan 'starter' does not have RAG
-    mock_repo.get_organization_billing.return_value = {"plan": "starter"}
+    mock_repo.get_organization_billing.return_value = {
+        "plan": "starter", "subscription_status": "active"
+    }
 
     app.dependency_overrides[get_organization_context] = lambda: mock_user
     with patch.object(app.state, "repo", mock_repo, create=True):
@@ -74,6 +78,7 @@ def test_chiedi_documenti_rag_blocked_by_plan(client):
 
 def test_carica_documento_empty_text_400(client):
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "owner",
@@ -90,13 +95,14 @@ def test_carica_file_documento_success(client):
     mock_org_id = str(uuid.uuid4())
     mock_doc_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "owner",
         "email": "owner@example.com",
     }
     mock_repo = AsyncMock()
-    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    mock_repo.get_organization_billing.return_value = {"plan": "business", "subscription_status": "active"}
     mock_repo.create_document.return_value = {"id": mock_doc_id}
     mock_repo.add_chunk.return_value = {"id": str(uuid.uuid4())}
     mock_repo.faq_cache_invalidate.return_value = None
@@ -121,13 +127,14 @@ def test_carica_file_documento_success(client):
 
 def test_carica_file_documento_empty_file_400(client):
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "owner",
         "email": "owner@example.com",
     }
     mock_repo = AsyncMock()
-    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    mock_repo.get_organization_billing.return_value = {"plan": "business", "subscription_status": "active"}
     app.dependency_overrides[get_organization_context] = lambda: mock_user
     with patch.object(app.state, "repo", mock_repo, create=True):
         res = client.post(
@@ -141,13 +148,14 @@ def test_carica_file_documento_empty_file_400(client):
 
 def test_carica_file_documento_too_large_413(client):
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "owner",
         "email": "owner@example.com",
     }
     mock_repo = AsyncMock()
-    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    mock_repo.get_organization_billing.return_value = {"plan": "business", "subscription_status": "active"}
     app.dependency_overrides[get_organization_context] = lambda: mock_user
     with patch.object(app.state, "repo", mock_repo, create=True):
         # 20MB + 10 bytes
@@ -161,16 +169,39 @@ def test_carica_file_documento_too_large_413(client):
     app.dependency_overrides.pop(get_organization_context, None)
 
 
+@pytest.mark.asyncio
+async def test_carica_file_documento_caps_read_before_size_check():
+    from src.api.routes.knowledge import carica_file_documento
+
+    mock_repo = AsyncMock()
+    mock_file = MagicMock()
+    mock_file.filename = "huge.txt"
+    mock_file.read = AsyncMock(return_value=b"X" * (20 * 1024 * 1024 + 1))
+    mock_request = MagicMock()
+    user = {"organization_id": str(uuid.uuid4())}
+
+    with patch("src.api.routes.knowledge.get_repo", return_value=mock_repo), \
+         patch("src.api.routes.knowledge.check_feature_blocked_by_plan", new_callable=AsyncMock, return_value=None):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc:
+            await carica_file_documento(mock_request, mock_file, user)
+
+    assert exc.value.status_code == 413
+    mock_file.read.assert_awaited_once_with(20 * 1024 * 1024 + 1)
+
+
 def test_chiedi_documenti_success(client):
     mock_org_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "owner",
         "email": "owner@example.com",
     }
     mock_repo = AsyncMock()
-    mock_repo.get_organization_billing.return_value = {"plan": "business"}
+    mock_repo.get_organization_billing.return_value = {"plan": "business", "subscription_status": "active"}
     mock_repo.record_ai_usage.return_value = None
 
     mock_qa_output = {
@@ -182,7 +213,8 @@ def test_chiedi_documenti_success(client):
 
     app.dependency_overrides[get_organization_context] = lambda: mock_user
     with patch.object(app.state, "repo", mock_repo, create=True), \
-         patch("src.api.routes.knowledge.rispondi", new_callable=AsyncMock, return_value=mock_qa_output):
+         patch("src.api.routes.knowledge.rispondi", new_callable=AsyncMock, return_value=mock_qa_output), \
+         patch("src.api.routes.knowledge.record_ai_usage", new_callable=AsyncMock):
         res = client.post(
             "/api/documenti/chiedi",
             json={"domanda": "Quanto costa il corso VIP?", "k": 3},
@@ -199,6 +231,7 @@ def test_elimina_documento_api_success(client):
     mock_org_id = str(uuid.uuid4())
     mock_doc_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "owner",
@@ -225,6 +258,7 @@ def test_toggle_documento_api_success(client):
     mock_org_id = str(uuid.uuid4())
     mock_doc_id = str(uuid.uuid4())
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": mock_org_id,
         "ruolo": "owner",

@@ -10,9 +10,16 @@ from src.whatsapp.inbound_processor import InboundProcessor
 from src.core.bookings import BookingService
 from src.core.db.repositories.booking_repo import BookingRepository
 from src.core.db.repositories.organization_repo import OrganizationRepository
+from src.core.workers.webhook_inbox_worker import WebhookInboxWorker
 from src.core.logging_filter import configure_logging
 
 configure_logging(level=logging.INFO)
+
+
+async def process_cycle(inbox_worker, processor):
+    """Drain durable ingress before claiming messages for AI processing."""
+    await inbox_worker.process_next_batch()
+    await processor.process_next_batch()
 
 
 async def main():
@@ -34,8 +41,12 @@ async def main():
         app_config=app_config,
     )
     processor = InboundProcessor(app_config, repo, service, booking_service=booking_service)
+    inbox_worker = WebhookInboxWorker(repo)
     while True:
-        await processor.process_next_batch()
+        # Commit authenticated Meta payloads into tenant-scoped messages before
+        # the AI queue is claimed. The webhook endpoint itself only persists
+        # into the durable inbox and acknowledges Meta quickly.
+        await process_cycle(inbox_worker, processor)
         await asyncio.sleep(1)
 
 

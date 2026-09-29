@@ -179,6 +179,11 @@ class CoreRepository(TenantScopedRepository):
             organization_id, stato=stato, fonte=fonte, page=page, limit=limit
         )
 
+    async def count_reviews(self, organization_id, stato=None, fonte=None):
+        return await self._review_repo.count_reviews(
+            organization_id, stato=stato, fonte=fonte
+        )
+
     async def update_review(self, organization_id, review_id, **kwargs):
         return await self._review_repo.update_review(organization_id, review_id, **kwargs)
 
@@ -365,6 +370,33 @@ class CoreRepository(TenantScopedRepository):
     async def get_messages_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
         return await self._msg_repo.get_messages_by_org(organization_id)
 
+    async def reserve_simulation_request(
+        self, organization_id, auth_user_id, request_id, payload_hash
+    ) -> dict:
+        return await self._msg_repo.reserve_simulation_request(
+            organization_id, auth_user_id, request_id, payload_hash
+        )
+
+    async def complete_simulation_request(
+        self, organization_id, auth_user_id, request_id, payload_hash, claim_token, response
+    ) -> bool:
+        return await self._msg_repo.complete_simulation_request(
+            organization_id, auth_user_id, request_id, payload_hash, claim_token, response
+        )
+
+    async def fail_simulation_request(
+        self, organization_id, auth_user_id, request_id, payload_hash, claim_token
+    ) -> bool:
+        return await self._msg_repo.fail_simulation_request(
+            organization_id, auth_user_id, request_id, payload_hash, claim_token
+        )
+
+    async def get_simulation_requests_by_org(self, organization_id) -> list[dict]:
+        return await self._msg_repo.get_simulation_requests_by_org(organization_id)
+
+    async def purge_simulation_requests(self, retention_days: int = 30) -> int:
+        return await self._msg_repo.purge_simulation_requests(retention_days)
+
     async def get_organization_owners(self, org_id: str) -> list[dict]:
         return await self._org_repo.get_organization_owners(org_id)
 
@@ -378,7 +410,7 @@ class CoreRepository(TenantScopedRepository):
         self,
         auth_user_id: str,
         nome_attivita: str,
-        trial_days: int = 14,
+        trial_days: int = 7,
     ) -> dict:
         return await self._org_repo.create_organization_with_owner(
             auth_user_id, nome_attivita, trial_days=trial_days

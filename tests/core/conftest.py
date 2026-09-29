@@ -102,7 +102,7 @@ async def reset_db(pg_pool):
                 onboarding_profiles,
                 contact_consent_log, message_delivery_attempts,
                 messages, conversations, contacts, whatsapp_templates,
-                whatsapp_accounts, organizations,
+                whatsapp_accounts, simulation_requests, organizations,
                 instagram_accounts,
                 faq_cache, message_feedback,
                 processed_stripe_events,
@@ -111,6 +111,7 @@ async def reset_db(pg_pool):
                 google_business_credentials,
                 oauth_nonces,
                 outbound_dedup,
+                meta_webhook_inbox,
                 weekly_report_log
             CASCADE
         """)

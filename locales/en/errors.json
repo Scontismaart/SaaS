@@ -1,0 +1,17 @@
+{
+  "required_field": "This field is required.",
+  "invalid_email": "Please enter a valid email address.",
+  "password_too_short": "Password must be at least 10 characters long.",
+  "password_missing_requirements": "Password must meet all required security criteria.",
+  "passwords_do_not_match": "The passwords entered do not match.",
+  "terms_required": "You must accept the Terms of Service and Privacy Policy to proceed.",
+  "network_error": "Unable to reach the server. Please check your connection and try again.",
+  "session_expired": "Session expired. Please log in again.",
+  "unauthorized": "Unauthorized access. Please log in.",
+  "forbidden": "You do not have permission to perform this action.",
+  "not_found": "The requested resource could not be found.",
+  "rate_limit": "Too many requests. Please wait a moment before trying again.",
+  "server_error": "Internal server error. Please try again later.",
+  "invalid_credentials": "Incorrect email or password.",
+  "email_already_exists": "An account with this email address already exists."
+}

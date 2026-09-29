@@ -9,24 +9,28 @@
 /* ── Messaggi d'errore da query string (?errore=google) ──── */
 if (AUTH_PARAMS.get("errore") === "google") {
   mostraErrorePagina(
-    "Accesso con Google non riuscito o annullato. Riprova oppure usa email e password."
+    getAuthMessage("google_error")
   );
 }
 
 /* ── Link incrociati e pulsante Google, preservando ?next= ─ */
-document.getElementById("link-registrati")?.setAttribute("href", urlConNext("/registrati/"));
+const regLink = document.getElementById("link-registrati");
+const regBase = regLink ? (regLink.getAttribute("href") || "/registrati/").split("?")[0] : "/registrati/";
+regLink?.setAttribute("href", urlConNext(regBase));
 collegaGoogle();
 
 /* ── Login email/password ────────────────────────────────── */
 document.getElementById("form-login")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = document.getElementById("accesso-email").value.trim();
-  const password = document.getElementById("accesso-password").value;
+  const emailEl = document.getElementById("accesso-email");
+  const passwordEl = document.getElementById("accesso-password");
+  const email = emailEl.value.trim();
+  const password = passwordEl.value;
   const errEl = document.getElementById("accesso-error");
-  if (!email || !password) {
-    errEl.textContent = "Compila entrambi i campi.";
-    return;
-  }
+  clearAuthFieldError(e.currentTarget, errEl);
+  if (!email) return showAuthFieldError(errEl, getAuthMessage("enter_email"), emailEl);
+  if (!emailEl.checkValidity()) return showAuthFieldError(errEl, getAuthMessage("invalid_email"), emailEl);
+  if (!password) return showAuthFieldError(errEl, getAuthMessage("empty_fields"), passwordEl);
   const btn = document.getElementById("accesso-save");
   btn.disabled = true;
   try {
@@ -38,14 +42,17 @@ document.getElementById("form-login")?.addEventListener("submit", async (e) => {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || "Credenziali non valide.");
+      throw new Error(err.detail || getAuthMessage("invalid_credentials"));
     }
     vaiADestinazione();
   } catch (err) {
-    errEl.textContent = err.message;
+    showAuthFieldError(errEl, err.message);
   } finally {
     btn.disabled = false;
   }
+});
+document.getElementById("form-login")?.addEventListener("input", (e) => {
+  if (e.target.matches("input")) clearAuthFieldError(e.currentTarget, document.getElementById("accesso-error"));
 });
 
 /* ============================================================
@@ -89,9 +96,8 @@ if (RECOVERY_TOKEN) {
   document.getElementById("forgot-link-row").hidden = true;
   document.getElementById("google-btn").hidden = true;
   document.querySelector(".accedi-divider").hidden = true;
-  document.getElementById("accesso-title").textContent = "Nuova password";
-  document.getElementById("accesso-help").textContent =
-    "Scegli una nuova password per il tuo account.";
+  document.getElementById("accesso-title").textContent = getAuthMessage("new_password_title");
+  document.getElementById("accesso-help").textContent = getAuthMessage("new_password_help");
   document.getElementById("form-reset").hidden = false;
 
   document.getElementById("form-reset").addEventListener("submit", async (e) => {
@@ -99,7 +105,7 @@ if (RECOVERY_TOKEN) {
     const status = document.getElementById("reset-status");
     const pwd = document.getElementById("reset-password").value;
     if (!pwd) {
-      status.textContent = "Inserisci la nuova password.";
+      showAuthFieldError(status, getAuthMessage("enter_new_password"), document.getElementById("reset-password"));
       return;
     }
     const btn = document.getElementById("reset-save");
@@ -111,19 +117,17 @@ if (RECOVERY_TOKEN) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Aggiornamento non riuscito.");
+        throw new Error(err.detail || getAuthMessage("update_failed"));
       }
-      status.textContent =
-        "Password aggiornata. Ora puoi accedere con la nuova password.";
+      status.textContent = getAuthMessage("password_updated");
       document.getElementById("form-reset").hidden = true;
       document.getElementById("form-login").hidden = false;
       document.getElementById("forgot-link-row").hidden = false;
-      document.getElementById("accesso-title").textContent = "Accedi a Melpis";
-      document.getElementById("accesso-help").textContent =
-        "Gestisci assistente, prenotazioni e documenti da un unico pannello.";
+      document.getElementById("accesso-title").textContent = getAuthMessage("login_title");
+      document.getElementById("accesso-help").textContent = getAuthMessage("login_help");
       document.getElementById("accesso-password").focus();
     } catch (err) {
-      status.textContent = err.message;
+      showAuthFieldError(status, err.message);
     } finally {
       btn.disabled = false;
     }
@@ -139,9 +143,8 @@ if (RECOVERY_TOKEN) {
     document.querySelector(".accedi-divider").hidden = true;
     document.getElementById("google-btn").hidden = true;
     document.getElementById("forgot-link-row").hidden = true;
-    document.getElementById("accesso-title").textContent = "Recupera password";
-    document.getElementById("accesso-help").textContent =
-      "Ti invieremo un link per impostare una nuova password.";
+    document.getElementById("accesso-title").textContent = getAuthMessage("forgot_password_title");
+    document.getElementById("accesso-help").textContent = getAuthMessage("forgot_password_help");
     formRecover.hidden = false;
     document.getElementById("recover-email").focus();
   });
@@ -156,7 +159,7 @@ if (RECOVERY_TOKEN) {
     const status = document.getElementById("recover-status");
     const email = document.getElementById("recover-email").value.trim();
     if (!email) {
-      status.textContent = "Inserisci la tua email.";
+      showAuthFieldError(status, getAuthMessage("enter_email"), document.getElementById("recover-email"));
       return;
     }
     const btn = document.getElementById("recover-save");
@@ -165,16 +168,15 @@ if (RECOVERY_TOKEN) {
       const res = await postAuth("/api/auth/recover", { email });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || "Richiesta non riuscita.");
+        throw new Error(err.detail || getAuthMessage("update_failed"));
       }
       const body = await res.json().catch(() => ({}));
       // Messaggio neutro: non rivela se l'email è registrata o meno.
       status.textContent =
-        body.message ||
-        "Se l'email e' registrata riceverai un link di recupero.";
+        body.message || getAuthMessage("recovery_sent");
       formRecover.querySelector(".onboarding-actions").hidden = true;
     } catch (err) {
-      status.textContent = err.message;
+      showAuthFieldError(status, err.message);
     } finally {
       btn.disabled = false;
     }

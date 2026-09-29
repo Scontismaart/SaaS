@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from src.core.auth.dependencies import require_ruolo
+from src.core.auth.dependencies import require_mfa, require_ruolo
 from src.instagram.repository import InstagramRepository
 
 router = APIRouter(prefix="/api/instagram", tags=["instagram"])
@@ -15,8 +15,8 @@ def _get_igrepo(request: Request) -> InstagramRepository:
 
 
 class InstagramAccountRequest(BaseModel):
-    ig_user_id: str = Field(min_length=1, description="IG professional account id (recipient.id nei webhook)")
-    access_token: str = Field(min_length=1)
+    ig_user_id: str = Field(min_length=1, max_length=64, pattern=r"^[0-9]+$", description="IG professional account id (recipient.id nei webhook)")
+    access_token: str = Field(min_length=1, max_length=8192)
 
 
 class InstagramAccountResponse(BaseModel):
@@ -29,7 +29,8 @@ class InstagramAccountResponse(BaseModel):
 async def save_account(
     body: InstagramAccountRequest,
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Collega l'account Instagram del locale all'organizzazione. Il token
     page e' cifrato Fernet a riposo (stesso pattern whatsapp_accounts)."""
@@ -37,8 +38,8 @@ async def save_account(
     igrepo = _get_igrepo(request)
     try:
         row = await igrepo.save_instagram_account(org_id, body.ig_user_id.strip(), body.access_token.strip())
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except RuntimeError:
+        raise HTTPException(status_code=500, detail="Impossibile salvare la configurazione Instagram.")
     return InstagramAccountResponse(
         ig_user_id=row["ig_user_id"],
         created_at=row["created_at"].isoformat(),
@@ -66,7 +67,8 @@ async def get_account(
 @router.delete("/account")
 async def delete_account(
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     org_id = user["organization_id"]
     igrepo = _get_igrepo(request)

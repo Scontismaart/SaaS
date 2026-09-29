@@ -596,10 +596,7 @@ class TestTeamAndAssign:
         assert response.status_code == 409
 
 async def _make_api_key_client(app, org_id):
-    """Simula il path reale X-API-Key: get_organization_context per source
-    api_key NON propaga user_id (dependencies.py). Oggi le route inbox che
-    indicizzano user["user_id"] vanno in KeyError 500: devono invece
-    rispondere 403 esplicito finche' la UI non passa a JWT."""
+    """Simula una credenziale di servizio sulle API utente: deve fallire chiusa."""
     from src.core.auth.dependencies import get_organization_context
 
     async def fake_get_organization_context():
@@ -616,8 +613,7 @@ async def _make_api_key_client(app, org_id):
 
 
 class TestApiKeySenzaUserId:
-    """La UI transitoria usa X-API-Key: claim/release/resolve/reply devono
-    fallire in modo controllato (403) invece di KeyError 500."""
+    """Una service API key non e' mai una sessione utente dell'inbox."""
 
     async def test_claim_without_user_id_403(self, async_client):
         repo, pg_pool, app = async_client
@@ -642,8 +638,7 @@ class TestApiKeySenzaUserId:
                 f"/api/inbox/claim/{conv['id']}",
                 json={"expected_version": 2},
             )
-        assert response.status_code == 403
-        assert "JWT" in response.json()["detail"]
+        assert response.status_code == 401
 
     async def test_release_resolve_reply_without_user_id_403(self, async_client):
         repo, pg_pool, app = async_client
@@ -662,23 +657,19 @@ class TestApiKeySenzaUserId:
 
         async with await _make_api_key_client(app, org["id"]) as client:
             release = await client.post(f"/api/inbox/release/{conv['id']}")
-            assert release.status_code == 403
-            assert "JWT" in release.json()["detail"]
+            assert release.status_code == 401
 
             resolve = await client.post(f"/api/inbox/resolve/{conv['id']}")
-            assert resolve.status_code == 403
-            assert "JWT" in resolve.json()["detail"]
+            assert resolve.status_code == 401
 
             reply = await client.post(
                 f"/api/inbox/reply/{conv['id']}",
                 json={"content": "test", "idempotency_key": "api-key-no-user"},
             )
-            assert reply.status_code == 403
-            assert "JWT" in reply.json()["detail"]
+            assert reply.status_code == 401
 
-    async def test_list_and_get_still_work_for_api_key(self, async_client):
-        """Il service role puo' continuare a LEGGERE l'inbox: il 403 tocca
-        solo le azioni che richiedono l'identita' di un operatore."""
+    async def test_list_and_get_are_forbidden_for_api_key(self, async_client):
+        """Anche le letture tenant-scoped richiedono membership utente."""
         repo, pg_pool, app = async_client
         org = await pg_pool.fetchrow(
             "INSERT INTO organizations (id, name) VALUES ($1, 'ApiKey Org 3') RETURNING id",
@@ -695,10 +686,10 @@ class TestApiKeySenzaUserId:
 
         async with await _make_api_key_client(app, org["id"]) as client:
             listing = await client.get("/api/inbox/tickets")
-            assert listing.status_code == 200
+            assert listing.status_code == 401
 
             single = await client.get(f"/api/inbox/tickets/{conv['id']}")
-            assert single.status_code == 200
+            assert single.status_code == 401
 
 class TestReplyDispatchPerCanale:
     """Punto 10: la reply manuale di un ticket Instagram esce su Instagram

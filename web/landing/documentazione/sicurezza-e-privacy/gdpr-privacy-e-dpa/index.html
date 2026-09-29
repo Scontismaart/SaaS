@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy, GDPR, Accordo DPA e Gestione Opt-Out — Documentazione Melpis</title>
+    <meta name="description" content="Come Melpis garantisce la conformità al Regolamento GDPR europeo: scaricamento accordo DPA, gestione automatica dell'opt-out e conservazione dati.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link is-active">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Sicurezza e GDPR</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Privacy e DPA</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Privacy, GDPR, Accordo DPA e Gestione Opt-Out</h1>
+                    <p class="docs-article-subtitle">Come Melpis rispetta il Regolamento UE 2016/679 (GDPR), protegge i dati personali e gestisce l'opt-out a prova di errore.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>La gestione della privacy in Melpis è progettata secondo il principio di <strong>Privacy by Design e by Default</strong>. Come titolare di un'attività locale che dialoga con clienti su WhatsApp, sei legalmente il <em>Titolare del Trattamento</em>, mentre Melpis opera come <em>Responsabile del Trattamento</em> (Art. 28 GDPR). Melpis mette a disposizione l'accordo DPA formale precompilato, gestisce automaticamente le richieste di opt-out con blocco deterministico, applica la cancellazione periodica dei dati e anonimizza i numeri telefonici nei log tecnici.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Solo l'utente con ruolo di <strong>Owner</strong> può sottoscrivere o scaricare il documento DPA.</li>
+                        <li>Verifica di aver inserito i dati anagrafici e la ragione sociale esatta della tua azienda nelle impostazioni generali.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Scaricamento dell'Accordo DPA (Art. 28)</h3>
+                                <p class="docs-step-text">Accedi a <strong>Impostazioni &rarr; Privacy &amp; GDPR</strong>. Clicca su <strong>Scarica Accordo DPA</strong>. Il sistema genera un PDF precompilato con i dati della tua azienda e le clausole standard dell'Unione Europea per la nomina di Melpis a Responsabile del Trattamento, da allegare al tuo Registro dei Trattamenti.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Funzionamento dell'Opt-Out Deterministico (Fail-Closed)</h3>
+                                <p class="docs-step-text">In ossequio al Non-Negotiable Invariant 6, quando un cliente scrive parole come <em>"STOP"</em>, <em>"BASTA"</em>, <em>"CANCELLAMI"</em>, <em>"NON VOGLIO PIÙ MESSAGGI"</em>:
+                                <ul>
+                                    <li>L'evento di consenso viene immediatamente registrato sul database con timestamp notarizzato.</li>
+                                    <li>Lo stato del contatto diventa <code>opted_out = true</code>.</li>
+                                    <li>Il sistema invia una sola conferma cortese: <em>"Hai confermato la revoca del consenso. Non riceverai più messaggi promozionali."</em></li>
+                                    <li><strong>Qualsiasi invio promozionale futuro viene bloccato a livello di kernel applicativo</strong>: né l'AI né un operatore umano potranno inviare campagne di marketing a quel numero.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Politica di Conservazione dei Dati (Retention)</h3>
+                                <p class="docs-step-text">Per evitare l'accumulo ingiustificato di dati personali storici:
+                                <ul>
+                                    <li><strong>60 Giorni (Soft-Delete)</strong>: le conversazioni concluse da oltre 60 giorni vengono archiviate e rese inaccessibili alla normale interfaccia di chat.</li>
+                                    <li><strong>90 Giorni (Hard-Delete)</strong>: dopo 90 giorni i messaggi testuali vengono definitivamente cancellati dal database PostgreSQL tramite worker asincrono schedulato, mantenendo solo statistiche aggregate e anonimizzate per i report di vendita.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Esercizio dei Diritti degli Interessati (Export e Oblio)</h3>
+                                <p class="docs-step-text">Se un cliente esercita il diritto all'oblio (Art. 17 GDPR), puoi aprire la sua scheda nella rubrica e cliccare su <strong>Elimina Dati Cliente</strong>. L'operazione rimuove all'istante cronologia, numeri di telefono e recapiti.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-warning">
+                        <div class="docs-callout-title">⚠️ Divieto Sanitario Airtable (Invariant 6)</div>
+                        <p class="docs-callout-text">Se la tua attività è classificata come <code>studio_medico_dentista</code>, l'integrazione di esportazione su Airtable è <strong>disabilitata e bloccata a livello di codice</strong> con un errore 403 (<code>AirtableMedicalPolicyError</code>). I dati sanitari e i motivi di visita medica non possono essere trasferiti su fogli di calcolo cloud di terze parti non certificati per dati sanitari europei.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>Tutti gli eventi di consenso, revoca e cancellazione vengono memorizzati in una tabella di audit dedicata (<code>audit_events</code>) per consentirti di dimostrare la piena conformità all'autorità Garante della Privacy in caso di ispezione.</li>
+                        <li>Nei log di sistema non compare mai il numero di telefono in chiaro (viene impiegato un hash crittografico parziale).</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Dati memorizzati da Meta</strong>: I messaggi inviati e ricevuti tramite WhatsApp e Instagram transitano sui server di Meta Platforms Ireland Ltd., che agisce come titolare autonomo del servizio di connettività secondo le sue Condizioni per le Imprese.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Un cliente che aveva fatto opt-out vuole tornare a prenotare su WhatsApp</summary>
+                            <div class="docs-accordion-content">
+                                <p>Se il cliente scrive spontaneamente su WhatsApp una frase affermativa come <em>"START"</em>, <em>"RICOMINCIA"</em> o effettua esplicitamente una nuova richiesta di prenotazione, il sistema gli chiede conferma di riattivazione del servizio prima di riprendere le conversazioni regolari.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Dove trovo l'elenco dei contatti che hanno revocato il consenso?</summary>
+                            <div class="docs-accordion-content">
+                                <p>In <em>Impostazioni &rarr; Privacy &amp; GDPR &rarr; Registro Consensi</em> puoi visualizzare e scaricare in formato CSV l'elenco di tutti gli eventi di consenso e opt-out registrati dalla piattaforma.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>La gestione dell'opt-out è implementata in <code>src/core/optout.py</code> secondo il modello fail-closed deterministico:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/core/optout.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>async def process_potential_optout(org_id: str, phone: str, text: str) -> bool:
+    if not is_optout_keyword(text):
+        return False
+
+    async with db.transaction():
+        # 1. Persistenza evento consenso
+        await db.execute(
+            "INSERT INTO consent_events (organization_id, phone_hash, action, created_at) VALUES ($1, $2, 'OPTOUT', NOW())",
+            org_id, hash_phone(phone)
+        )
+        # 2. Aggiornamento stato effettivo
+        await db.execute(
+            "UPDATE customers SET marketing_consent = false WHERE organization_id = $1 AND phone = $2",
+            org_id, phone
+        )
+        # 3. Audit trail immutabile
+        await record_audit_log(org_id, "CONSENT_REVOKED", f"Opt-out registrato per contatto {mask_phone(phone)}")
+
+    return True</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-related-card">
+                            <div class="docs-related-tag">Policy Sanitaria</div>
+                            <div class="docs-related-title">Airtable e Divieto Medico</div>
+                        </a>
+                        <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-related-card">
+                            <div class="docs-related-tag">Sicurezza</div>
+                            <div class="docs-related-title">Team e Permessi RBAC</div>
+                        </a>
+                        <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-related-card">
+                            <div class="docs-related-tag">Architettura</div>
+                            <div class="docs-related-title">Architettura Tecnica e Sicurezza</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

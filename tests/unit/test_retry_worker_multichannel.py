@@ -93,6 +93,7 @@ async def test_instagram_retry_success_via_router(app_config, mock_repo):
         "organization_id": org_id,
         "channel": "instagram",
         "recipient": "ig_user_456",
+        "idempotency_key": "reply:inbound-1",
         "text": "Hello from IG retry",
     })
 
@@ -111,6 +112,7 @@ async def test_instagram_retry_success_via_router(app_config, mock_repo):
         org_id=org_id,
         to_destination="ig_user_456",
         text="Hello from IG retry",
+        idempotency_key="reply:inbound-1",
     )
     mock_repo.update_delivery_attempt.assert_called_once_with(attempt_id, "succeeded")
 
@@ -196,7 +198,7 @@ async def test_whatsapp_facade_delegation(app_config, mock_repo, mock_tenant):
     })
 
     mock_service = AsyncMock()
-    mock_service.attempt_delivery = AsyncMock(return_value={"status": "sent"})
+    mock_service.attempt_delivery = AsyncMock(return_value={"status": "sent", "wam_id": "wamid.test"})
 
     with patch("src.whatsapp.config.load_tenant_config", AsyncMock(return_value=mock_tenant)):
         # Instantiate legacy facade RetryWorker from src.whatsapp.retry_worker

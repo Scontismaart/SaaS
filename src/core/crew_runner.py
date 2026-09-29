@@ -3,7 +3,7 @@ crew_runner.py
 --------------
 Punto d'ingresso unico verso la logica agente. Il backend (FastAPI, prossimo
 step) chiama SOLO questa funzione — non conosce CrewAI, non conosce prompt,
-non conosce OpenRouter. Questo disaccoppiamento è quello che ci permette
+non conosce il provider LLM. Questo disaccoppiamento è quello che ci permette
 di cambiare tutto il resto (UI, canale, provider LLM) senza toccare i
 moduli a monte.
 """
@@ -55,7 +55,7 @@ def _validate_output(risultato) -> RispostaOutput:
         raise RuntimeError(
             "Il modello non ha restituito un output conforme a RispostaOutput. "
             "Riprova, o verifica che il modello configurato in llm_config.py "
-            "sia ancora disponibile su OpenRouter."
+            "sia ancora disponibile sul provider LLM configurato."
         )
     return output
 
@@ -121,7 +121,7 @@ async def genera_risposta_async(
     della chiamata: model_effettivo, fallback_usato, latenza_ms, token.
 
     Audit 3.3: limitata dal semaforo globale LLM_CONCURRENCY_SEM per non
-    saturare il rate-limit/budget condiviso su OpenRouter quando piu'
+    saturare il rate-limit/budget condiviso del provider LLM quando piu'
     tenant generano risposte in parallelo."""
     route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)

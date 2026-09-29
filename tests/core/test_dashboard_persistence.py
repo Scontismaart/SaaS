@@ -59,7 +59,7 @@ async def test_recupera_eventi_dashboard_from_pool():
 @pytest.mark.asyncio
 async def test_recupera_eventi_dashboard_fallback_when_no_pool():
     eventi = await recupera_eventi_dashboard(None, str(uuid.uuid4()))
-    assert isinstance(eventi, list)
+    assert eventi == []
 
 
 @pytest.mark.asyncio
@@ -68,7 +68,24 @@ async def test_recupera_eventi_dashboard_error_handling():
     mock_pool.acquire.side_effect = Exception("DB Connection Error")
 
     eventi = await recupera_eventi_dashboard(mock_pool, str(uuid.uuid4()))
-    assert isinstance(eventi, list)
+    assert eventi == []
+
+
+@pytest.mark.asyncio
+async def test_recupera_eventi_dashboard_invalid_org_does_not_return_shared_demo_history():
+    from src.api.routes.common import get_shared_event_history
+
+    demo = get_shared_event_history()
+    sentinel = EventoDashboard(
+        id="shared-demo", tipo_evento="messaggio", timestamp=datetime.now(timezone.utc),
+        priorita="media", testo_originale="demo", risposta_ai="", gestito_da_ai=True,
+    )
+    demo.append(sentinel)
+    try:
+        assert await recupera_eventi_dashboard(None, str(uuid.uuid4())) == []
+        assert await recupera_eventi_dashboard(MagicMock(), "not-an-org") == []
+    finally:
+        demo.remove(sentinel)
 
 
 import src.api.main as api_main

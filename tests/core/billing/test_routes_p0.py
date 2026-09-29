@@ -2,6 +2,7 @@ import os
 import pytest
 from unittest.mock import MagicMock, patch
 import httpx
+from fastapi import Depends, HTTPException
 from src.api.main import app
 
 API_KEY = "test-api-key-12345"
@@ -14,12 +15,28 @@ def set_env():
     yield
 
 @pytest.fixture
-async def async_client(repo, pg_pool):
+async def async_client(repo, pg_pool, sample_org):
+    from src.core.auth.dependencies import get_current_user, get_organization_context, get_token
+
+    async def fixed_test_identity(token=Depends(get_token)):
+        if token != f"apikey:{API_KEY}":
+            raise HTTPException(401, "Test session required")
+        return {
+            "source": "jwt", "aal": "aal2",
+            "organization_id": str(sample_org["id"]), "ruolo": "owner",
+            "auth_user_id": "billing-p0-owner", "user_id": None,
+        }
+
+    app.dependency_overrides[get_current_user] = fixed_test_identity
+    app.dependency_overrides[get_organization_context] = fixed_test_identity
     app.state.repo = repo
     app.state.pool = pg_pool
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
+        try:
+            yield client
+        finally:
+            app.dependency_overrides.clear()
 
 async def test_cancellation_downgrades_to_readonly(async_client, repo, sample_org):
     # setup organization with active subscription

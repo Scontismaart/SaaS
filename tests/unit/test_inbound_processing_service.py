@@ -92,6 +92,28 @@ async def test_step2_opt_out_fail_closed(base_config, mock_deps):
     mock_deps["repo"].try_mark_replied.assert_awaited_once_with(
         msg["id"], handling_type="opt_out", organization_id=msg["organization_id"]
     )
+    mock_deps["repo"].claim_message_and_check_quota.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_stop_is_recorded_when_quota_is_exhausted(base_config, mock_deps):
+    inbound_svc = InboundProcessingService(
+        app_config=base_config,
+        repo=mock_deps["repo"],
+        service=mock_deps["service"],
+    )
+    msg = {
+        "id": uuid.uuid4(),
+        "organization_id": uuid.uuid4(),
+        "content_text": "STOP",
+        "content": {"from": "+393401122334"},
+    }
+    mock_deps["service"].check_opt_out.return_value = {"is_opt_out": True}
+    mock_deps["repo"].claim_message_and_check_quota.return_value = {"status": "quota_exceeded"}
+    outcome = await inbound_svc.process_message(msg)
+    assert outcome.handling_type == "opt_out"
+    mock_deps["repo"].record_consent_event.assert_awaited_once()
+    mock_deps["repo"].claim_message_and_check_quota.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -306,8 +328,7 @@ async def test_quota_exceeded_escalates_even_if_send_reply_fails(base_config, mo
 
 @pytest.mark.asyncio
 async def test_quota_exceeded_marks_escalation_failed_on_escalate_error(base_config, mock_deps):
-    """Verifica che se escalate_to_human solleva eccezione, il messaggio viene finalizzato con
-    handling_type='escalation_failed' e l'action restituita e' 'error'.
+    """Se la transizione staff fallisce, conserva un marker retryable e non dichiara handled.
     """
     mock_orchestrator = AsyncMock()
 
@@ -341,9 +362,9 @@ async def test_quota_exceeded_marks_escalation_failed_on_escalate_error(base_con
         assert res.action == "error"
         assert res.handling_type == "escalation_failed"
 
-        # Finalized with escalation_failed so it's auditable
-        mock_deps["repo"].try_mark_replied.assert_awaited_once_with(
-            msg["id"], handling_type="escalation_failed", organization_id=msg["organization_id"]
+        mock_deps["repo"].try_mark_replied.assert_not_awaited()
+        mock_deps["repo"].record_processing_failure.assert_awaited_once_with(
+            msg["id"], msg["organization_id"], "escalation_failed"
         )
 
 

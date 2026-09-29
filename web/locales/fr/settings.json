@@ -1,0 +1,93 @@
+{
+  "tabs": {
+    "general": "Général",
+    "assistant": "Assistant & Règles",
+    "channels": "Canaux & WhatsApp",
+    "calendar": "Calendrier & Créneaux",
+    "team": "Équipe & Permissions",
+    "billing": "Abonnement & Formule",
+    "language": "Langue & Région"
+  },
+  "general_section": {
+    "subtitle": "Localisation, fuseau horaire et préférences opérationnelles du panneau."
+  },
+  "timezone_section": {
+    "title": "Localisation et Fuseau Horaire",
+    "description": "Le fuseau horaire est utilisé pour les rappels de réservation, les rapports de fin de journée et le calcul des SLA.",
+    "label": "Fuseau horaire de l'activité",
+    "save_btn": "Enregistrer le fuseau horaire",
+    "load_loading": "Chargement du fuseau horaire…",
+    "load_error": "Impossible de charger le fuseau horaire. Réessayez.",
+    "save_loading": "Enregistrement…",
+    "save_success": "Fuseau horaire mis à jour",
+    "save_error": "Impossible d’enregistrer le fuseau horaire",
+    "connection_error": "Erreur de connexion"
+  },
+  "language_section": {
+    "title": "Langue du tableau de bord",
+    "description": "Sélectionnez la langue d'affichage de l'interface Melpis.",
+    "select_label": "Langue active",
+    "note": "Cette préférence est enregistrée pour votre profil utilisateur."
+  },
+  "appearance": {
+    "title": "Apparence et thème", "description": "Personnalisez l'apparence de l'interface. Le mode système adapte les couleurs aux réglages de votre appareil.",
+    "aria": "Sélection du thème", "light": "Clair", "dark": "Sombre", "system": "Système"
+  },
+  "ai_configuration": {
+    "group_main": "Configuration principale", "identity_title": "Identité de l'entreprise",
+    "identity_help": "Informations essentielles utilisées par l'assistant pour présenter votre entreprise et rédiger ses réponses.",
+    "business_name": "Nom de l'entreprise", "business_name_placeholder": "Ex. Salon Bellavista, Restaurant La Pergola...",
+    "category": "Secteur / Catégorie", "description": "Description pour l'IA",
+    "description_placeholder": "Ex. Un salon de beauté spécialisé dans les coupes modernes, les soins bien-être et les colorations naturelles.",
+    "opening_hours": "Horaires d'ouverture officiels", "opening_hours_placeholder": "Ex. Mar-Sam : 09:00-19:30 | Dim-Lun : fermé",
+    "hours_sync_note": "Les horaires sont synchronisés automatiquement avec la Priorité 1 dans l'onglet Données de l'établissement.",
+    "communication_title": "Ton et style", "communication_help": "Style de communication utilisé par l'assistant dans ses messages aux clients.",
+    "communication_default": "Style de communication par défaut", "tone_professional": "Professionnel et chaleureux (recommandé)",
+    "tone_informal": "Informel et amical", "tone_formal": "Formel et élégant", "custom_style": "Consignes de style personnalisées",
+    "custom_style_placeholder": "Ex. Soyez accueillant et clair, gardez un ton amical, limitez les émojis et soulignez le souci du détail.",
+    "group_advanced": "Langues et règles avancées", "languages_title": "Langues prises en charge",
+    "languages_help": "Détection automatique de la langue du client. L'italien est la langue par défaut.",
+    "enabled_languages": "Langues activées", "italian_default": "Italien (par défaut)",
+    "fallback_default": "Langue par défaut (si le message est ambigu)", "escalation_title": "Règles d'escalade et de sécurité",
+    "escalation_help": "Conditions de transfert immédiat d'une conversation à votre équipe.",
+    "new_rule_placeholder": "Ajouter une règle (ex. demandes d'événements privés ou accords spéciaux)",
+    "add_rule": "+ Ajouter une règle", "save_btn": "Enregistrer la configuration IA", "save_loading": "Enregistrement…",
+    "save_success": "Configuration IA enregistrée et synchronisée !", "save_toast": "Configuration IA enregistrée et synchronisée avec succès",
+    "save_error": "Erreur lors de l'enregistrement", "connection_error": "Impossible de joindre le serveur",
+    "load_loading": "Chargement de la configuration IA…", "load_error": "Impossible de charger la configuration IA. Rouvrez cette section pour réessayer.",
+    "rules_empty": "Aucune règle active. Ajoutez-en une avec le champ ci-dessous.", "remove_rule": "Supprimer"
+  },
+  "assistant_rules": {
+    "title": "Instructions & Comportement de l'IA",
+    "personality_label": "Tonalité et personnalité",
+    "formality_label": "Niveau de politesse",
+    "formality_tu": "Tutoiement (proche et informel)",
+    "formality_lei": "Vouvoiement (courtois et professionnel)",
+    "business_hours_title": "Plages horaires et réponses",
+    "outside_hours_title": "Comportement hors horaires",
+    "auto_reply_outside": "Envoyer une réponse automatique hors horaires d'ouverture",
+    "save_rules_btn": "Enregistrer les règles de l'assistant"
+  },
+  "channels": {
+    "whatsapp_title": "Connexion WhatsApp Business",
+    "phone_number": "Numéro de téléphone relié",
+    "meta_status": "État de la Meta Cloud API",
+    "reconnect_btn": "Reconnecter le canal",
+    "disconnect_btn": "Déconnecter"
+  },
+  "calendar": {
+    "title": "Synchronisation Google Calendar",
+    "status_connected": "Google Calendar connecté",
+    "sync_calendar_name": "Calendrier principal",
+    "slot_duration": "Durée par défaut des créneaux (minutes)",
+    "buffer_time": "Temps de pause entre rendez-vous (minutes)",
+    "save_calendar_btn": "Enregistrer les réglages d'agenda"
+  },
+  "billing": {
+    "current_plan": "Formule actuelle",
+    "status": "État de l'abonnement",
+    "manage_stripe_btn": "Gérer la facturation et les cartes sur Stripe",
+    "upgrade_btn": "Passer à la formule supérieure",
+    "cancel_btn": "Résilier l'abonnement"
+  }
+}

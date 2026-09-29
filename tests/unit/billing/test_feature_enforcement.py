@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timezone, timedelta
 
 import src.api.main as api_main
 
@@ -38,7 +39,7 @@ async def test_blocca_recensioni_su_starter_non_su_pro():
 async def test_trial_senza_piano_accesso_pro():
     # In prova gratuita l'utente beneficia delle feature del piano Pro (Crescita):
     # recensioni abilitate, ma RAG knowledge base bloccata (richiede Scala).
-    repo = FakeRepo({"plan": None, "subscription_status": "trialing"})
+    repo = FakeRepo({"plan": None, "subscription_status": "trialing", "trial_end": datetime.now(timezone.utc) + timedelta(days=3)})
     rag_blocked = await api_main._piano_blocca_feature(repo, "org-1", "rag")
     assert rag_blocked is not None
     assert "Knowledge Base AI" in rag_blocked
@@ -46,9 +47,9 @@ async def test_trial_senza_piano_accesso_pro():
 
 
 @pytest.mark.asyncio
-async def test_billing_assente_consentire_failopen():
+async def test_billing_assente_blocca_failclosed():
     repo = FakeRepo(None)
-    assert await api_main._piano_blocca_feature(repo, "org-1", "rag") is None
+    assert await api_main._piano_blocca_feature(repo, "org-1", "rag") is not None
 
 
 @pytest.mark.asyncio
@@ -107,18 +108,31 @@ async def test_active_trial_allows_pro_features():
 
 
 @pytest.mark.asyncio
-async def test_new_registration_null_status_not_blocked():
+async def test_new_registration_null_status_is_blocked():
     # Scenario: appena creata o snapshot con campi billing nulli (plan=None, status=None, trial_end=None)
     # Deve operare con le feature del piano Pro (recensioni concesse, RAG bloccata che richiede Scala)
     # e non deve mai lanciare erroneamente "Abbonamento sospeso o scaduto".
     repo = FakeRepo({"plan": None, "subscription_status": None, "trial_end": None})
     rag_msg = await api_main._piano_blocca_feature(repo, "org-1", "rag")
     assert rag_msg is not None
-    assert "Knowledge Base AI" in rag_msg
-    assert "sospeso" not in rag_msg.lower()
+    assert "sospeso" in rag_msg.lower()
 
     # Recensioni devono essere permesse (Pro feature)
     reviews_msg = await api_main._piano_blocca_feature(repo, "org-1", "recensioni")
-    assert reviews_msg is None
+    assert reviews_msg is not None
+
+
+@pytest.mark.parametrize("status", [None, "unknown", "incomplete", "incomplete_expired", "paused", "unpaid", "canceled"])
+async def test_all_non_entitled_states_block(status):
+    assert await api_main._piano_blocca_feature(FakeRepo({"plan": "business", "subscription_status": status}), "org-1", "rag")
+
+
+async def test_accounting_hold_blocks_ai_features():
+    repo = FakeRepo({"plan": "business", "subscription_status": "active", "ai_accounting_blocked": True})
+    assert await api_main._piano_blocca_feature(repo, "org-1", "rag")
+
+
+async def test_missing_paid_plan_is_not_a_trial():
+    assert await api_main._piano_blocca_feature(FakeRepo({"plan": None, "subscription_status": "active"}), "org-1", "recensioni")
 
 

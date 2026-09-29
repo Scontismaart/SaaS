@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Im Dashboard anmelden · Melpis</title>
+<meta name="description" content="Melden Sie sich im Melpis-Dashboard an, um Ihren KI-WhatsApp-Assistenten, Terminkalender und Posteingang zu verwalten.">
+<meta name="theme-color" content="#08090c">
+<link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/auth.css?v=dark-luxury-v1">
+    <script id="auth-translations" type="application/json">{"empty_fields":"Bitte füllen Sie beide Felder aus.","google_error":"Anmeldung mit Google fehlgeschlagen oder abgebrochen. Bitte erneut versuchen oder E-Mail/Passwort nutzen.","invalid_credentials":"Ungültige E-Mail-Adresse oder Passwort.","enter_business_name":"Bitte geben Sie Ihren Unternehmensnamen ein.","invalid_email":"Bitte geben Sie eine gültige E-Mail-Adresse ein.","password_too_short":"Das Passwort muss mindestens 10 Zeichen lang sein.","password_special":"Das Passwort muss mindestens ein Sonderzeichen enthalten (z. B. ! @ # $ %).","accept_terms":"Sie müssen der Datenschutzerklärung und den AGB zustimmen.","register_failed":"Registrierung fehlgeschlagen. Bitte versuchen Sie es in Kürze erneut.","new_password_title":"Neues Passwort","new_password_help":"Legen Sie ein neues Passwort für Ihr Konto fest.","enter_new_password":"Geben Sie das neue Passwort ein.","password_updated":"Passwort aktualisiert. Sie können sich jetzt mit Ihrem neuen Passwort anmelden.","login_title":"Bei Melpis anmelden","login_help":"Verwalten Sie Assistenten, Termine und Dokumente über eine zentrale Plattform.","forgot_password_title":"Passwort wiederherstellen","forgot_password_help":"Wir senden Ihnen einen Link, um Ihr Passwort zurückzusetzen.","enter_email":"Geben Sie Ihre E-Mail-Adresse ein.","recovery_sent":"Falls die E-Mail registriert ist, erhalten Sie einen Wiederherstellungslink.","update_failed":"Aktualisierung fehlgeschlagen. Bitte versuchen Sie es erneut."}</script>
+    <link rel="canonical" href="https://melpis.it/de/anmelden/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/accedi/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/login/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/">
+</head>
+<body>
+
+<main class="accedi-page">
+  <div class="accedi-card">
+    <div class="accedi-brand">
+      <img src="/brand/melpis-symbol-dark.svg" alt="Melpis Logo" width="28" height="28" class="is-1a7584936aed">
+      <span class="accedi-brand-name">Melpis</span>
+    </div>
+
+    <h1 id="accesso-title">Bei Melpis anmelden</h1>
+    <p class="accesso-help" id="accesso-help">Verwalten Sie Assistenten, Termine und Dokumente über eine zentrale Plattform. Sichere Sitzung: keine Zugangsdaten im Browser einsehbar.</p>
+
+    <p class="accedi-error" id="accedi-error" role="alert"></p>
+
+    <a class="google-btn" id="google-btn" href="#">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+      Mit Google fortfahren
+    </a>
+
+    <div class="accedi-divider">oder mit E-Mail</div>
+
+    <form id="form-login" novalidate>
+      <label for="accesso-email">E-Mail-Adresse</label>
+      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="accesso-error" placeholder="name@unternehmen.de">
+      <label for="accesso-password">Passwort</label>
+      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" required aria-describedby="accesso-error" placeholder="••••••••">
+      <p class="doc-config-status" id="accesso-error" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="accesso-save">Anmelden</button>
+      </div>
+    </form>
+
+    <!-- Recupero password: visibile dal link "Password dimenticata?" -->
+    <form id="form-recover" hidden novalidate>
+      <p class="doc-config-status">Geben Sie Ihre registrierte E-Mail-Adresse ein: Falls ein Konto existiert, erhalten Sie einen Link zum Zurücksetzen Ihres Passworts.</p>
+      <label for="recover-email">Email</label>
+      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="recover-status" placeholder="name@unternehmen.de">
+      <p class="doc-config-status" id="recover-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="recover-save">Wiederherstellungslink senden</button>
+      </div>
+      <p class="accedi-foot"><a href="#" id="recover-back">← Zurück zur Anmeldung</a></p>
+    </form>
+
+    <!-- Nuova password: visibile solo con link di recovery (#access_token=...&type=recovery) -->
+    <form id="form-reset" hidden novalidate>
+      <p class="doc-config-status">Legen Sie ein neues Passwort fest: mindestens 10 Zeichen mit mindestens einem Sonderzeichen.</p>
+      <label for="reset-password">Neues Passwort</label>
+      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-status" placeholder="••••••••">
+      <p class="doc-config-status" id="reset-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="reset-save">Passwort aktualisieren</button>
+      </div>
+    </form>
+
+    <p class="accedi-foot" id="forgot-link-row"><a href="#" id="forgot-link">Passwort vergessen?</a></p>
+
+    <p class="accedi-foot">Sie haben noch kein Konto? <a id="link-registrati" href="/de/registrieren/">Registrieren</a></p>
+    <p class="accedi-foot"><a href="/de/">← Zurück zur Startseite</a></p>
+  </div>
+</main>
+
+<script src="/config.js"></script>
+<script src="/auth.js?v=2"></script>
+<script src="/login.js?v=2"></script>
+</body>
+</html>

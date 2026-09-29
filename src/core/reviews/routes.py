@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo
@@ -10,6 +12,7 @@ from src.core.reviews.schemas import (
 )
 
 router = APIRouter(prefix="/api/recensioni", tags=["recensioni"])
+logger = logging.getLogger(__name__)
 
 
 def _get_repo(request: Request) -> CoreRepository:
@@ -44,8 +47,8 @@ async def list_reviews(
     request: Request,
     stato: str | None = None,
     fonte: str | None = None,
-    page: int = 1,
-    limit: int = 20,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=20, ge=1, le=100),
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
     repo = _get_repo(request)
@@ -53,10 +56,17 @@ async def list_reviews(
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
-    rows = await repo.list_reviews(org_id, stato=stato, fonte=fonte, page=page, limit=limit)
+    try:
+        rows = await repo.list_reviews(org_id, stato=stato, fonte=fonte, page=page, limit=limit)
+        total = await repo.count_reviews(org_id, stato=stato, fonte=fonte)
+    except Exception as exc:
+        logger.error("Review listing failed org_id=%s", org_id, exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Impossibile recuperare le recensioni."
+        ) from exc
     return ReviewListResponse(
         recensioni=[_to_item(r) for r in rows],
-        total=len(rows),
+        total=total,
     )
 
 

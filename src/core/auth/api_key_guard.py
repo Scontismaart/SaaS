@@ -17,7 +17,7 @@ DEFAULT_ALLOWED_CIDRS = (
 
 def api_key_request_allowed(request: Request) -> bool:
     if request.client is None:
-        return True
+        return False
     ip = get_client_ip(request)
     if not ip:
         return False

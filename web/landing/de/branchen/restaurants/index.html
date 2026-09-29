@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melpis für Restaurants · WhatsApp-Tischreservierungen ohne Stress</title>
+    <meta name="description" content="Automatisieren Sie Tischreservierungen auf WhatsApp rund um die Uhr. Schichtplanung, automatische No-Show-Prävention und Google Calendar Synchronisierung.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Melpis">
+    <meta property="og:url" content="https://melpis.it/settori/ristoranti/">
+    <meta property="og:title" content="Melpis für Restaurants · WhatsApp-Tischreservierungen ohne Stress">
+    <meta property="og:description" content="Automatisieren Sie Tischreservierungen auf WhatsApp rund um die Uhr. Schichtplanung, automatische No-Show-Prävention und Google Calendar Synchronisierung.">
+    <meta property="og:image" content="https://melpis.it/og-image-universal.jpg">
+    <meta property="og:locale" content="de_DE">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Melpis für Restaurants · WhatsApp-Tischreservierungen ohne Stress">
+    <meta name="twitter:description" content="Automatisieren Sie Tischreservierungen auf WhatsApp rund um die Uhr. Schichtplanung, automatische No-Show-Prävention und Google Calendar Synchronisierung.">
+    <meta name="twitter:image" content="https://melpis.it/og-image-universal.jpg">
+
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+
+    <!-- Dati Strutturati Schema.org (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://melpis.it/settori/ristoranti/#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://melpis.it/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Settori",
+              "item": "https://melpis.it/#panoramica"
+            },
+            {
+              "@type": "ListItem",
+              "position": 3,
+              "name": "Ristoranti e Pizzerie",
+              "item": "https://melpis.it/settori/ristoranti/"
+            }
+          ]
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://melpis.it/settori/ristoranti/#app",
+          "name": "Melpis per Ristoranti e Pizzerie",
+          "operatingSystem": "All (Web-based)",
+          "applicationCategory": "BusinessApplication",
+          "description": "Assistente AI WhatsApp per ristoranti: automatizza la conferma prenotazioni, verifica la disponibilità coperti in base ai turni e risponde a domande su menu e allergeni.",
+          "offers": {
+            "@type": "Offer",
+            "price": "29.00",
+            "priceCurrency": "EUR",
+            "priceValidUntil": "2026-12-31",
+            "availability": "https://schema.org/InStock"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://melpis.it/settori/ristoranti/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Come gestisce i doppi turni serali (es. 19:45 e 21:30)?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Dalla dashboard imposti la durata media della permanenza al tavolo e gli orari di inizio turno. Quando un cliente richiede un orario specifico, Melpis verifica la capienza dello slot e propone automaticamente l'alternativa migliore se il primo turno è al completo."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Cosa succede se un cliente chiede ingredienti particolari o dichiara intolleranze?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Melpis risponde basandosi direttamente sul PDF del tuo menu e sulla lista allergeni che carichi nella dashboard. Se un cliente segnala un'intolleranza complessa o chiede modifiche non previste, l'assistente registra la nota nella prenotazione e può inoltrare l'avviso al tuo staff."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "In che modo l'assistente aiuta a ridurre i no-show nei fine settimana?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Melpis può inviare promemoria automatici e cordiali su WhatsApp alcune ore prima dell'orario di arrivo, consentendo ai clienti di confermare con un tap o disdire tempestivamente, liberando il tavolo per altri ospiti."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Possiamo intervenire manualmente sulle prenotazioni o fermare le richieste quando la sala è piena?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sì. Con la funzione Presa in Carico puoi subentrare in qualsiasi conversazione con un solo click. Inoltre puoi bloccare temporaneamente le prenotazioni per la serata impostando la sala come esaurita con un semplice interruttore."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Come funziona la prova gratuita di 7 giorni per il mio locale?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Puoi registrarti inserendo nome locale ed email, senza carta di credito. Hai 7 giorni completi per caricare il tuo menu, testare le risposte e verificare la gestione dei coperti prima di decidere se confermare il servizio."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
+    <link rel="stylesheet" href="/inline-assets/style-c2a1acc942a336c1ea214f46dff44439b5deb41d341e35b9e4cc1b1aa3b1d7ac.css">
+    <link rel="canonical" href="https://melpis.it/de/branchen/restaurants/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/settori/ristoranti/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/restaurants/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/restaurantes/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/restaurants/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/restaurants/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/restaurants/">
+</head>
+<body>
+
+    <!-- Skip Link per Accessibilità Tastiera -->
+    <a href="#main-content" class="skip-link">Zum Hauptinhalt springen</a>
+
+            <!-- ==================== UNIFIED STICKY HEADER ==================== -->
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/de/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <div class="nav-item-dropdown" id="navDropdownSettori">
+                    <button type="button" class="hero-nav-link dropdown-trigger-btn" id="settoriDropdownTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="settoriDropdownPanel">
+                        <span>Branchen</span>
+                        <svg class="dropdown-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="dropdown-menu-panel" id="settoriDropdownPanel" role="region" aria-labelledby="settoriDropdownTrigger">
+                        <div class="dropdown-sectors-list">
+                            <a href="/de/branchen/restaurants/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                        <path d="M15 2v14a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2V2"/>
+                                        <path d="M6 2v20"/>
+                                        <path d="M9 2v4a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Restaurants & Pizzerien</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Tischreservierungen, Schichtverwaltung, Kalendersync</p>
+                                </div>
+                            </a>
+
+                            <a href="/de/branchen/kosmetik-friseure/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Salons & Kosmetikstudios</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Termine nach Mitarbeiter, Kombi-Behandlungen, Erinnerungen</p>
+                                </div>
+                            </a>
+
+                            <a href="/de/branchen/arztpraxen/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
+                                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
+                                        <circle cx="20" cy="10" r="2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Arztpraxen & Zahnärzte</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Patiententriage, vertrauliche Datenverarbeitung, 24/7-Support</p>
+                                </div>
+                            </a>
+
+                            <a href="/de/branchen/hotels/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 21h18"/>
+                                        <path d="M19 21v-4"/>
+                                        <path d="M19 17a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14z"/>
+                                        <path d="M7 10h4"/>
+                                        <path d="M7 14h2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Hotels & Unterkünfte</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Zimmerverfügbarkeit, mehrsprachiger WhatsApp-Concierge, Check-in</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/de/dokumentation/" class="hero-nav-link">Dokumentation</a>
+                <a href="/de/preise/" class="hero-nav-link">Preise</a>
+                <a href="/de/anmelden/" class="hero-nav-link">Anmelden</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/de/registrieren/" class="btn-pill-white">
+                    <span>Kostenlos testen</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+                
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">DE</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/settori/ristoranti/" class="lang-option-link" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/industries/restaurants/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/sectores/restaurantes/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/secteurs/restaurants/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/branchen/restaurants/" class="lang-option-link is-active" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
+                <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
+                    <span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+            <!-- ==================== MOBILE MENU OVERLAY ==================== -->
+    <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true">
+        <div class="mobile-menu-inner">
+            <a href="/de/" class="mobile-link">Home</a>
+            
+            <!-- Mobile Accordion for Settori -->
+            <div class="mobile-accordion" id="mobileSettoriAccordion">
+                <button type="button" class="mobile-accordion-btn" id="mobileSettoriBtn" aria-expanded="false" aria-controls="mobileSettoriList">
+                    <span>Branchen</span>
+                    <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="mobile-accordion-content" id="mobileSettoriList" role="region" aria-labelledby="mobileSettoriBtn">
+                    <a href="/de/branchen/restaurants/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🍽️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Restaurants & Pizzerien</span>
+                            <span class="mobile-sublink-desc">Tavoli, turni e no-show</span>
+                        </div>
+                    </a>
+                    <a href="/de/branchen/kosmetik-friseure/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">✨</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Salons & Kosmetikstudios</span>
+                            <span class="mobile-sublink-desc">Poltrona e promemoria</span>
+                        </div>
+                    </a>
+                    <a href="/de/branchen/arztpraxen/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🩺</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Arztpraxen & Zahnärzte</span>
+                            <span class="mobile-sublink-desc">Triage e segreteria 24/7</span>
+                        </div>
+                    </a>
+                    <a href="/de/branchen/hotels/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🛎️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Hotels & Unterkünfte</span>
+                            <span class="mobile-sublink-desc">Camere e concierge</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <a href="/de/dokumentation/" class="mobile-link">Dokumentation</a>
+            <a href="/de/preise/" class="mobile-link">Preise</a>
+            <a href="/de/anmelden/" class="mobile-link mobile-login">Anmelden</a>
+        <a href="/de/registrieren/" class="btn-cta-primary w-full is-5313025c2edb">
+            <span>7 Tage kostenlos testen</span>
+        </a>
+
+            <div class="mobile-lang-section">
+                <span class="mobile-lang-title">Lingua / Language</span>
+                <div class="mobile-lang-grid">
+                <a href="/settori/ristoranti/" class="mobile-lang-chip" hreflang="it">Italiano</a>
+                <a href="/en/industries/restaurants/" class="mobile-lang-chip" hreflang="en">English</a>
+                <a href="/es/sectores/restaurantes/" class="mobile-lang-chip" hreflang="es">Español</a>
+                <a href="/fr/secteurs/restaurants/" class="mobile-lang-chip" hreflang="fr">Français</a>
+                <a href="/de/branchen/restaurants/" class="mobile-lang-chip is-active" hreflang="de">Deutsch</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<main id="main-content">
+        <!-- ==================== 2. HERO SECTION ==================== -->
+        <section class="vertical-hero">
+            <div class="hero-bg-overlay" aria-hidden="true"></div>
+
+            <div class="container hero-container">
+                <div class="hero-two-col-grid">
+                    <div class="hero-text-col">
+                        <h1 class="vertical-hero-title hero-animate-1">Mehr Gäste an Ihren Tischen ohne Unterbrechungen während des Service</h1>
+                        <p class="vertical-hero-sub hero-animate-3">Gäste schreiben zu jeder Tageszeit auf WhatsApp, um einen Tisch zu reservieren. Melpis antwortet sofort, prüft freie Plätze und trägt die Buchung in Ihren Kalender ein.</p>
+
+                        <div class="hero-actions-row hero-animate-4">
+                            <a href="/de/registrieren/" class="btn-cta-primary">
+                                <span>7 Tage kostenlos testen</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                            </a>
+                            <a href="#come-funziona" class="btn-cta-secondary">
+                                <span>So funktioniert's</span>
+                            </a>
+                        </div>
+
+                        <!-- Trust Points Strip -->
+                        <div class="trust-points-row hero-animate-5">
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                Keine Kreditkarte nötig
+                            </span>
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                7 Tage vollwertige Testphase
+                            </span>
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Offizielle Meta Cloud API
+                            </span>
+                        </div>
+                    </div>
+                    <div class="hero-visual-spacer" aria-hidden="true"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TRANSITION BRIDGE TO LIGHT ==================== -->
+        <div class="transition-bridge-to-light" aria-hidden="true"></div>
+
+        <!-- ==================== 3. VANTAGGI A RIGHE ALTERNATE (Keplero Style) ==================== -->
+        <section class="vantaggi-section" id="vantaggi" data-navbar-theme="light">
+            <div class="container">
+                <div class="center reveal">
+                    <span class="eyebrow-pill">Maßgeschneidert für Gastraum und Küche</span>
+                    <h2 class="display-md">Echte Vorteile für Ihren Gastronomiebetrieb</h2>
+                </div>
+
+                <div class="vantaggi-rows-container">
+
+                    <!-- Riga 1: Automazione WhatsApp (Testo Sinistra, Mockup Destra) -->
+                    <div class="vantaggi-row reveal is-67d149738738">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><polyline points="9 11 12 14 15 11"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">WhatsApp-Automation</span>
+                            <h3>Sofortige Antworten und Tischreservierungen über WhatsApp</h3>
+                            <p>Selbst bei vollem Gastraum und Hochbetrieb in der Küche erhält jeder Gast in unter 3 Sekunden eine Antwort. Melpis prüft freie Plätze, erfasst Sonderwünsche und reserviert zuverlässig.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Header / Stato Connessione (Back) -->
+                                <div class="layer-card-back">
+                                    <div class="v-meta-row">
+                                        <span class="v-live-tag"><span class="pulse-dot"></span> WhatsApp Business API · Connesso</span>
+                                        <span class="v-metric-badge">Risposta: 2.3s</span>
+                                    </div>
+                                </div>
+                                <!-- Layer 2: Conversazione Reale (Front) -->
+                                <div class="layer-card-front">
+                                    <div class="v-chat-in">
+                                        <span class="v-chat-author">Gast · 19:12</span>
+                                        “Guten Abend! Haben Sie heute Abend gegen 20:30 Uhr einen Tisch für 4?”
+                                    </div>
+                                    <div class="v-chat-out">
+                                        <div class="v-chat-out-head">
+                                            <span class="v-chat-author">Melpis für Ihren Betrieb</span>
+                                            <span class="widget-tag-success">✓ Verificato</span>
+                                        </div>
+                                        “Tisch für 4 um 20:30 Uhr bestätigt. Ihr Wunsch nach Innenbereich ist vermerkt.”
+                                    </div>
+                                </div>
+                                <!-- Layer 3: Accent Pill Sincronizzazione (Floating) -->
+                                <div class="layer-floating-pill">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Google Calendar synchronisiert</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riga 2: Rotazione Sala & Doppi Turni (Mockup Sinistra, Testo Destra) -->
+                    <div class="vantaggi-row is-reversed reveal is-e41c74dd16b9">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">Schichtverwaltung</span>
+                            <h3>Zwei Schichten und optimale Auslastung</h3>
+                            <p>Richten Sie Abendschichten ein (z. B. 1. Schicht 19:45 Uhr, 2. Schicht 21:30 Uhr). Ist die erste belegt, schlägt Melpis höflich den zweiten Termin vor.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Header Capienza (Back) -->
+                                <div class="layer-card-back">
+                                    <div class="v-meta-row">
+                                        <span>Stato Turni · Venerdì Sera</span>
+                                        <span class="turni-capienza-light">Capienza 85%</span>
+                                    </div>
+                                </div>
+                                <!-- Layer 2: Lista Turni (Front) -->
+                                <div class="layer-card-front">
+                                    <div class="turni-list-light">
+                                        <div class="turno-row-light">
+                                            <div class="turno-info-light">
+                                                <strong>1° Turno (19:45)</strong>
+                                                <span>Rotazione 90 min</span>
+                                            </div>
+                                            <span class="turno-badge-light badge-amber-light">Completo (14/14)</span>
+                                        </div>
+                                        <div class="turno-row-light">
+                                            <div class="turno-info-light">
+                                                <strong>2° Turno (21:30)</strong>
+                                                <span>Fino a chiusura</span>
+                                            </div>
+                                            <span class="turno-badge-light badge-emerald-light">3 Tavoli Liberi</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Layer 3: Proposta Alternativa (Floating) -->
+                                <div class="layer-floating-pill is-d5d72fc39ecd">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                    <span>Turno 19:45 pieno → Proposto turno 21:30 (Accettato)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riga 3: Menu, Allergeni e Carta Vini da PDF (Testo Sinistra, Mockup Destra) -->
+                    <div class="vantaggi-row reveal is-74101b6fa846">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">Kontextuelle Intelligenz</span>
+                            <h3>Speisekarten, Allergene und Weinauswahl aus PDF</h3>
+                            <p>Laden Sie Speisekarte, Allergene und Öffnungszeiten hoch. Melpis antwortet ausschließlich auf Grundlage dieser verifizierten Unterlagen.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: File PDF Badge (Back) -->
+                                <div class="layer-card-back">
+                                    <div class="doc-file-pill-light">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                        <span>Menu_Autunno_Allergeni.pdf</span>
+                                        <span class="doc-badge-light">Verificato</span>
+                                    </div>
+                                </div>
+                                <!-- Layer 2: Domanda e Risposta Grounded (Front) -->
+                                <div class="layer-card-front">
+                                    <div class="doc-qa-snippet-light">
+                                        <div class="doc-question-light">“Quali primi sono idonei per una persona celiaca?”</div>
+                                        <div class="doc-answer-light">
+                                            <span class="doc-source-tag-light">Estratto da Pag. 4 (Primi)</span>
+                                            <p>Risotto ai funghi porcini e paccheri senza glutine al ragù bianco (cucina separata).</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Layer 3: Badge Accuratezza (Floating) -->
+                                <div class="layer-floating-pill">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Fedele alla Knowledge Base aziendale</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riga 4: Promemoria Anti No-Show & Interattività (Mockup Sinistra, Testo Destra) -->
+                    <div class="vantaggi-row is-reversed reveal is-ed5894c12a96">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">Keine No-Shows</span>
+                            <h3>Interaktive Terminerinnerungen und Kalendersynchronisation</h3>
+                            <p>Versenden Sie automatische WhatsApp-Erinnerungen vor dem Service. Gäste bestätigen oder stornieren mit einem Fingertipp – so wird der Tisch sofort wieder frei.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Meta Promemoria (Back) -->
+                                <div class="layer-card-back">
+                                    <div class="v-meta-row">
+                                        <span>Promemoria automatico inviato alle 17:30 · Tavolo 8</span>
+                                        <span class="noshow-time-light">Cena ore 20:30</span>
+                                    </div>
+                                </div>
+                                <!-- Layer 2: Azioni Interattive Demo (Front) -->
+                                <div class="layer-card-front">
+                                    <div class="noshow-prompt-light">
+                                        “Lieber Marco, wir erinnern an Ihren Tisch für 4 heute um 20:30 Uhr in der Osteria Bella Vista.”
+                                    </div>
+                                    <div class="noshow-actions-light">
+                                        <button type="button" class="widget-mini-btn widget-btn-confirm" id="demoBtnConfirm" aria-label="Conferma presenza">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                            <span>Ich bestätige</span>
+                                        </button>
+                                        <button type="button" class="widget-mini-btn" id="demoBtnCancel" aria-label="Disdici tavolo">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            <span>Stornieren</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Layer 3: Feedback Sincronizzato Interattivo (Floating) -->
+                                <div class="noshow-feedback-light" id="noshowFeedback">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span id="noshowFeedbackText">Termin bestätigt · Zeitfenster reserviert</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 4. COME FUNZIONA IN 3 PASSAGGI (Light Luxury) ==================== -->
+        <section class="vertical-steps-section" id="come-funziona" data-navbar-theme="light">
+            <div class="container">
+                <div class="center reveal is-67d149738738">
+                    <span class="eyebrow-pill">Einfache Einrichtung</span>
+                    <h2 class="display-md">In 3 Schritten startklar für Ihren Service</h2>
+                </div>
+
+                <div class="steps-grid">
+                    <div class="step-card reveal is-67d149738738">
+                        <div class="step-pill-number">1</div>
+                        <h3>WhatsApp verknüpfen</h3>
+                        <p>Verbinden Sie Ihre WhatsApp Business-Nummer über die offizielle Meta Cloud API mit höchster Sicherheit und voller DSGVO-Konformität.</p>
+                    </div>
+                    <div class="step-card reveal is-e41c74dd16b9">
+                        <div class="step-pill-number">2</div>
+                        <h3>Speisekarte, Zeiten &amp; Schichten hochladen</h3>
+                        <p>Laden Sie Ihre Menü-PDF und Allergenliste hoch. Melpis antwortet präzise zu glutenfreien Gerichten, veganen Optionen und Empfehlungen, ohne jemals zu halluzinieren.</p>
+                    </div>
+                    <div class="step-card reveal is-74101b6fa846">
+                        <div class="step-pill-number">3</div>
+                        <h3>Tische bestätigen sich automatisch</h3>
+                        <p>Jede bestätigte Reservierung erscheint direkt in Ihrem Google Calendar und im Melpis-Posteingang, inklusive Hinweisen zu Unverträglichkeiten oder Kinderstühlen.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 5. FAQ VERTICALE RISTORANTI (Light) con Sticky Slide-Over (Parte 2 & 3) ==================== -->
+        <div class="pin-wrap-faq">
+            <section class="faq-section" id="faq" data-navbar-theme="light">
+                <div class="container">
+                    <div class="center reveal is-67d149738738">
+                        <span class="eyebrow-pill">Häufig gestellte Fragen</span>
+                        <h2 class="display-md">Alles Wissenswerte für Ihren Gastronomiebetrieb</h2>
+                    </div>
+
+                    <div class="faq-list">
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Wie handhabt das System Abendschichten (z. B. 19:45 und 21:30 Uhr)?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Im Dashboard legen Sie Schichtzeiten und Verweildauern fest. Fragt ein Gast nach einem Termin, prüft Melpis die Kapazität und bietet bei Vollbelegung die nächste Schicht an.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Was passiert, wenn Gäste nach Allergenen oder Zutaten fragen?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis greift direkt auf Ihre hochgeladene Menü-PDF und Allergentabelle zu. Bei komplexen Sonderwünschen vermerkt der Assistent dies und leitet an Ihr Personal weiter.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Wie hilft Melpis, No-Shows am Wochenende zu reduzieren?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis versendet rechtzeitig vor Beginn interaktive WhatsApp-Erinnerungen. Gäste können mit einem Klick bestätigen oder absagen, sodass Tische nachbesetzt werden.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Können Mitarbeiter manuell eingreifen oder bei Vollbelegung stoppen?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Ja. Mit der Mitarbeiterübernahme können Sie jederzeit die Konversation übernehmen. Zudem lässt sich die Online-Reservierung für den Abend mit einem Klick pausieren.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Wie läuft die 7-tägige kostenlose Testphase für meinen Betrieb ab?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Registrieren Sie sich einfach mit Ihrem Betriebsnamen und E-Mail ohne Kreditkarte. Sie haben 7 Tage lang vollen Zugriff, um das System live zu testen.</p></div></div>
+                        </details>
+                    </div></div>
+                        </details>
+                        <details class="faq-item reveal is-e41c74dd16b9">
+                            <summary class="faq-quest"><span>Cosa succede se un cliente chiede ingredienti particolari o dichiara intolleranze?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis risponde basandosi direttamente sul PDF del tuo menu e sulla lista allergeni che carichi nella dashboard. Se un cliente segnala un'intolleranza complessa o chiede modifiche non previste, l'assistente registra la nota nella prenotazione e può inoltrare l'avviso al tuo staff.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal is-74101b6fa846">
+                            <summary class="faq-quest"><span>In che modo l'assistente aiuta a ridurre i no-show nei fine settimana?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis può inviare promemoria automatici e cordiali su WhatsApp alcune ore prima dell'orario di arrivo, consentendo ai clienti di confermare con un tap o disdire tempestivamente, liberando il tavolo per altri ospiti.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal is-ed5894c12a96">
+                            <summary class="faq-quest"><span>Possiamo intervenire manualmente sulle prenotazioni o fermare le richieste quando la sala è piena?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Sì. Con la funzione Presa in Carico puoi subentrare in qualsiasi conversazione con un solo click. Inoltre puoi bloccare temporaneamente le prenotazioni per la serata impostando la sala come esaurita con un semplice interruttore.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal is-01ea3a07975d">
+                            <summary class="faq-quest"><span>Come funziona la prova gratuita di 7 giorni per il mio locale?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Puoi registrarti inserendo nome locale ed email, senza carta di credito. Hai 7 giorni completi per caricare il tuo menu, testare le risposte e verificare la gestione dei coperti prima di decidere se confermare il servizio.</p></div></div>
+                        </details>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- Close pin-wrap-faq -->
+
+        <!-- ==================== 6. FINAL CALL TO ACTION (Sticky Slide-Over Dark Panel) ==================== -->
+        <section class="final-cta-section" id="finalCta">
+            <div class="container final-cta-container">
+                <div class="final-cta-box reveal is-67d149738738">
+                    <h2 class="final-cta-title">Konzentrieren Sie sich auf Küche und Gäste.<br>Die Reservierungen regelt Melpis.</h2>
+                    <p class="final-cta-sub">Richten Sie Melpis in wenigen Schritten ein und testen Sie es 7 Tage kostenlos ohne Kreditkarte.</p>
+                    <a href="/de/registrieren/" class="btn-cta-primary is-05cfc5041a64">
+                        <span>Testphase für Ihren Betrieb starten</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== 7. FOOTER ==================== -->
+    <footer class="site-footer footer-section">
+        <div class="container">
+            <div class="footer-top-row footer-top-grid">
+                <div class="footer-brand-col">
+                    <a href="/de/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI per le comunicazioni e le prenotazioni della tua attività.</p>
+                </div>
+                <div class="footer-links-grid footer-nav-cols">
+                    <div class="footer-col">
+                        <h4>Branchen</h4>
+                        <a href="/de/branchen/restaurants/">Ristoranti e Pizzerie</a>
+                        <a href="/de/branchen/kosmetik-friseure/">Saloni e Barbershop</a>
+                        <a href="/de/branchen/arztpraxen/">Studi Medici e Dentisti</a>
+                        <a href="/de/branchen/hotels/">Hotel e Ospitalità</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Piattaforma</h4>
+                        <a href="/app/">Pannello di controllo</a>
+                        <a href="/de/anmelden/">Anmelden</a>
+                        <a href="/de/registrieren/">Registrati</a>
+                        <a href="/de/preise/">Preise</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Rechtliches</h4>
+                        <a href="/de/datenschutz/">Privacy Policy</a>
+                        <a href="/de/agb/">Nutzungsbedingungen</a>
+                        <a href="/de/cookies/">Cookie-Einstellungen</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Alle Rechte vorbehalten. API Meta Cloud ufficiale &amp; Sicurezza dei dati.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Script: Scroll Reveal, Mobile Nav, and Animated Chat Sequence -->
+    <script src="/inline-assets/script-2b37cde15b5cc021bc9917aa23c79240ad8f447dbdbacebd4344d0c48e2c2f55.js" defer></script>
+    <script src="/app.js" defer></script>
+</body>
+</html>

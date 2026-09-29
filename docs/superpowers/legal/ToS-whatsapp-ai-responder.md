@@ -2,18 +2,19 @@
 > audit tecnico verificato del codice sorgente e in allineamento con
 > `docs/superpowers/dpa/DPA-whatsapp-ai-responder.md`. Prima di farla accettare
 > a clienti reali va fatta rivedere da un professionista qualificato,
-> in particolare sulle sezioni indicate con [REV]. I segnaposto fra
+> in particolare sulle sezioni indicate con `{{LEGAL_TERMS_REVIEW_APPROVAL}}`. I segnaposto fra
 > parentesi quadre vanno compilati con i dati reali del Fornitore.
 
 # Termini di Servizio — WhatsApp AI Responder
 
-**Versione bozza 0.1 — ultimo aggiornamento [DATA]**
+**Versione bozza 0.1 — ultimo aggiornamento {{LEGAL_DOCUMENT_EFFECTIVE_DATE}}**
 
 ## 1. Definizioni e ambito
 
 1.1 Il presente documento disciplina l'utilizzo della piattaforma SaaS
-"WhatsApp AI Responder" (il "Servizio"), erogata da [RAGIONE SOCIALE
-FORNITORE] ("Fornitore", "noi"), con sede in [INDIRIZZO], P.IVA [P.IVA].
+"WhatsApp AI Responder" (il "Servizio"), erogata da
+{{LEGAL_ENTITY_NAME}} ("Fornitore", "noi"), con sede in
+{{LEGAL_ENTITY_REGISTERED_OFFICE}}, P.IVA {{LEGAL_ENTITY_VAT_NUMBER}}.
 
 1.2 Il Servizio consente al cliente (il "Cliente") di: (a) collegare un
 numero WhatsApp Business; (b) ricevere e gestire i messaggi ricevuti dai
@@ -57,7 +58,7 @@ di parlare con un operatore umano ("OPERATORE").
 
 4.1 Il Servizio è soggetto a canone, secondo i piani e le condizioni esposti
 in sede di sottoscrizione, fatturati tramite Stripe o altro processore di
-pagamento indicato all'Allegato B del DPA. [REV]
+pagamento indicato all'Allegato B del DPA. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 4.2 Il mancato pagamento può comportare la sospensione del Servizio. Le
 condizioni di sospensione e disattivazione sono descritte all'Appendice 1.
@@ -84,7 +85,7 @@ cliente finale scrive "OPERATORE" (o formule equivalenti riconosciute dal
 Servizio).
 
 6.3 Restano a carico del Cliente gli obblighi AI Act non specificamente
-adempiuti dal Servizio (vedi DPA §10.2). [REV]
+adempiuti dal Servizio (vedi DPA §10.2). `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 ## 7. Contenuti del Cliente e diritti di proprietà
 
@@ -100,7 +101,7 @@ revocabile, necessaria a fornire il Servizio.
 8.1 Il Fornitore si impegna a mantenere il Servizio disponibile con la
 diligenza richiesta dalla natura del Servizio. Il Servizio non è soggetto a
 un obbligo di disponibilità ininterrotta e può essere sospeso per
-manutenzione. [REV]
+manutenzione. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 8.2 Il supporto è fornito secondo le modalità indicate in sede di
 sottoscrizione.
@@ -108,7 +109,7 @@ sottoscrizione.
 ## 9. Limitazioni di responsabilità
 
 9.1 Salvo quanto previsto da norme inderogabili, il Fornitore non risponde
-di danni indiretti, conseguenziali o lucro cessante. [REV]
+di danni indiretti, conseguenziali o lucro cessante. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 
 9.2 Restano ferme le responsabilità derivanti dal trattamento di dati
 personali, disciplinate dal DPA e dall'art. 82 GDPR.
@@ -134,24 +135,23 @@ l'aggiornamento costituisce accettazione delle nuove condizioni.
 ## 12. Legge applicabile e foro
 
 12.1 I presenti Termini sono disciplinati dalla legge italiana. Per qualsiasi
-controversia è competente in via esclusiva il Foro di [CITTÀ], salve le
+controversia è competente in via esclusiva il Foro di {{LEGAL_FORUM}}, salve le
 disposizioni inderogabili in materia di protezione dei consumatori ove
 applicabili.
 
 ## 13. Contatti
 
 13.1 Per ogni comunicazione relativa ai presenti Termini, al trattamento dei
-dati o all'esercizio dei diritti, è possibile contattarci tramite i canali
-di supporto del Servizio all'indirizzo segnalato in sede di sottoscrizione.
-[REV]
+dati o all'esercizio dei diritti, è possibile contattarci a
+{{LEGAL_PRIVACY_CONTACT_EMAIL}}.
 
 ---
 
 ## Appendice 1 — Sospensione e disattivazione
 
 - **Inadempimento del pagamento:** il Servizio può essere sospeso dopo
-  [N] giorni dalla scadenza non onorata, con avviso via email, e disattivato
-  dopo ulteriori [M] giorni. [REV]
+  `{{LEGAL_PAYMENT_SUSPENSION_DAYS}}` giorni dalla scadenza non onorata, con avviso via email, e disattivato
+  dopo ulteriori `{{LEGAL_ACCOUNT_TERMINATION_DAYS}}` giorni. `{{LEGAL_TERMS_REVIEW_APPROVAL}}`
 - **Violazione grave:** sospensione immediata in caso di uso illecito del
   Servizio, con comunicazione al Cliente.
 - **Cessazione:** alla cessazione dell'account i messaggi e i dati sono

@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, AsyncMock, patch
 
 from src.api.routes.common import (
@@ -56,7 +57,11 @@ def test_resolve_genera_risposta_recensione_intercepts_mock():
 async def test_check_feature_blocked_by_plan_trial_pro_policy():
     """Un'organizzazione in trial riceve il piano Pro (Crescita): recensioni attive, RAG riservata a Scala."""
     mock_repo = MagicMock()
-    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": None, "subscription_status": "trialing"})
+    mock_repo.get_organization_billing = AsyncMock(return_value={
+        "plan": None,
+        "subscription_status": "trialing",
+        "trial_end": datetime.now(timezone.utc) + timedelta(days=3),
+    })
     rag_blocked = await check_feature_blocked_by_plan(mock_repo, "org-trial", "rag")
     assert rag_blocked is not None
     assert "Crescita non include la Knowledge Base AI" in rag_blocked
@@ -67,7 +72,7 @@ async def test_check_feature_blocked_by_plan_trial_pro_policy():
 async def test_check_feature_blocked_by_plan_starter_blocks_rag():
     """Il piano starter senza has_rag blocca la Knowledge Base."""
     mock_repo = MagicMock()
-    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "starter", "status": "active"})
+    mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "starter", "subscription_status": "active"})
     res = await check_feature_blocked_by_plan(mock_repo, "org-base", "rag")
     assert res is not None
     assert "upgrade" in res.lower()

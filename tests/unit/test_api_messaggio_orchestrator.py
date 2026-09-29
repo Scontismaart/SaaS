@@ -12,8 +12,9 @@ def client():
     return TestClient(app)
 
 
-def test_api_messaggio_with_orchestrator(client):
+def test_api_messaggio_with_orchestrator(client, monkeypatch):
     """Verifica che l'endpoint /api/messaggio deleghi correttamente a ConversationOrchestrator."""
+    monkeypatch.setenv("DEMO_MODE", "true")
     fake_output = OrchestrationOutput(
         response_text="Siamo aperti tutti i giorni dalle 12 alle 23.",
         richiede_umano=False,
@@ -48,8 +49,9 @@ def test_api_messaggio_with_orchestrator(client):
         assert call_req.is_simulation is True
 
 
-def test_api_messaggio_simulation_booking(client):
+def test_api_messaggio_simulation_booking(client, monkeypatch):
     """Verifica che una prenotazione simulata ritorni i dettagli di disponibilità senza creare righe DB."""
+    monkeypatch.setenv("DEMO_MODE", "true")
     fake_pren = DatiPrenotazione(
         nome_cliente="Mario",
         data="2026-09-15",

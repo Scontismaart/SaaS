@@ -98,3 +98,19 @@ async def test_authenticate_and_read_success():
 
     result = await sec.authenticate_and_read(req)
     assert result == body
+
+
+@pytest.mark.asyncio
+async def test_invalid_signature_is_not_logged(caplog):
+    sec = MetaWebhookSecurity(app_secret="configured-secret")
+    req = MagicMock()
+    req.headers = {"X-Hub-Signature-256": "sha256=attacker-controlled-marker"}
+
+    async def fake_stream():
+        yield b"payload"
+
+    req.stream = fake_stream
+    with pytest.raises(HTTPException) as exc:
+        await sec.authenticate_and_read(req)
+    assert exc.value.status_code == 403
+    assert "attacker-controlled-marker" not in caplog.text

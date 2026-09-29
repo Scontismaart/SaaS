@@ -111,6 +111,7 @@ async def test_run_retention_includes_webhook_purge():
         mock_repo.delete_expired_messages = AsyncMock(return_value=5)
         mock_repo.purge_soft_deleted_messages = AsyncMock(return_value=2)
         mock_repo.cleanup_empty_conversations = AsyncMock(return_value=1)
+        mock_repo.purge_simulation_requests = AsyncMock(return_value=0)
         mock_repo_cls.return_value = mock_repo
         mock_purge.return_value = 10
 

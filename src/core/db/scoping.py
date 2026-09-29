@@ -41,12 +41,14 @@ TENANT_SCOPED_TABLES: frozenset[str] = frozenset({
     "audit_log",
     "organization_memberships",
     "outbound_dedup",
+    "meta_webhook_inbox",
     "external_booking_credentials",
     "external_booking_sync",
     "airtable_connections",
     "airtable_field_mappings",
     "airtable_webhooks",
     "airtable_webhook_events",
+    "simulation_requests",
 })
 
 INDIRECT_SCOPED_TABLES: frozenset[str] = frozenset({

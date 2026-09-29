@@ -9,6 +9,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.usefixtures("reset_db")]
 def valid_checkout_event():
     return {
         "id": "evt_checkout_001",
+        "created": 100,
         "type": "checkout.session.completed",
         "data": {
             "object": {
@@ -27,6 +28,7 @@ def valid_checkout_event():
 def valid_invoice_paid_event():
     return {
         "id": "evt_invoice_001",
+        "created": 100,
         "type": "invoice.paid",
         "data": {
             "object": {
@@ -85,6 +87,28 @@ async def test_handle_invoice_paid_resets_usage(repo, sample_org, valid_invoice_
     assert billing["subscription_status"] == "active"
 
 
+async def test_invoice_paid_converts_exhausted_trial_to_paid_quota(repo, sample_org, valid_invoice_paid_event):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test001",
+        "subscription_status": "trialing",
+        "messages_limit": 150,
+        "messages_used_this_period": 150,
+    })
+    event = valid_invoice_paid_event
+    await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == "active"
+    assert billing["messages_limit"] == 500
+    assert billing["messages_used_this_period"] == 0
+
+    duplicate = await handle_stripe_webhook(event, repo, 7)
+    assert duplicate["action"] == "duplicate"
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["messages_limit"] == 500
+    assert billing["messages_used_this_period"] == 0
+
+
 async def test_handle_invoice_paid_sets_period(repo, sample_org, valid_invoice_paid_event):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
@@ -107,6 +131,7 @@ async def test_handle_subscription_updated_changes_plan(repo, sample_org):
     })
     event = {
         "id": "evt_sub_upd_001",
+        "created": 100,
         "type": "customer.subscription.updated",
         "data": {
             "object": {
@@ -124,7 +149,7 @@ async def test_handle_subscription_updated_changes_plan(repo, sample_org):
     await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["plan"] == "pro"
-    assert billing["messages_limit"] == 1200
+    assert billing["messages_limit"] == 2000
 
 
 async def test_handle_subscription_deleted_sets_canceled(repo, sample_org):
@@ -135,6 +160,7 @@ async def test_handle_subscription_deleted_sets_canceled(repo, sample_org):
     })
     event = {
         "id": "evt_sub_del_001",
+        "created": 100,
         "type": "subscription.deleted",
         "data": {
             "object": {
@@ -160,12 +186,13 @@ async def test_handle_subscription_deleted_no_second_notice(repo, sample_org):
     })
     event = {
         "id": "evt_sub_del_002",
+        "created": 100,
         "type": "subscription.deleted",
         "data": {"object": {"id": "sub_test001", "customer": "cus_test001"}},
     }
     result1 = await handle_stripe_webhook(event, repo, 7)
     assert result1["suspension_notice"] is True
-    event2 = {**event, "id": "evt_sub_del_003"}
+    event2 = {**event, "id": "evt_sub_del_003", "created": 101}
     result2 = await handle_stripe_webhook(event2, repo, 7)
     assert result2["action"] == "subscription_deleted"
     assert result2["suspension_notice"] is False
@@ -181,33 +208,53 @@ async def test_reactivation_resets_notification_then_resuspend(repo, sample_org)
     })
     sub_del = {
         "id": "evt_sub_del_100",
+        "created": 100,
         "type": "subscription.deleted",
         "data": {"object": {"id": "sub_test001", "customer": "cus_test001"}},
     }
     result1 = await handle_stripe_webhook(sub_del, repo, 7)
     assert result1["suspension_notice"] is True
 
-    inv_paid = {
-        "id": "evt_inv_paid_100",
-        "type": "invoice.paid",
+    checkout = {
+        "id": "evt_checkout_reactivate_100",
+        "created": 101,
+        "type": "checkout.session.completed",
         "data": {
             "object": {
-                "id": "in_test_100",
+                "id": "cs_reactivate_100",
+                "mode": "subscription",
+                "client_reference_id": str(sample_org["id"]),
                 "customer": "cus_test001",
-                "subscription": "sub_test001",
-                "status": "paid",
-                "period_start": datetime.now(timezone.utc).timestamp(),
-                "period_end": datetime.now(timezone.utc).timestamp() + 2592000,
-                "lines": {"data": [{"price": {"id": ""}, "plan": {"product": "prod_starter"}}]},
+                "subscription": "sub_test002",
             }
         },
     }
-    await handle_stripe_webhook(inv_paid, repo, 7)
+    await handle_stripe_webhook(checkout, repo, 7)
+    invoice_paid = {
+        "id": "evt_invoice_reactivate_100",
+        "created": 102,
+        "type": "invoice.paid",
+        "data": {"object": {
+            "id": "in_reactivate_100",
+            "customer": "cus_test001",
+            "subscription": "sub_test002",
+            "status": "paid",
+            "period_start": datetime.now(timezone.utc).timestamp(),
+            "period_end": datetime.now(timezone.utc).timestamp() + 2592000,
+            "lines": {"data": []},
+        }},
+    }
+    await handle_stripe_webhook(invoice_paid, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["subscription_status"] == "active"
     assert billing["suspension_notified_at"] is None
 
-    sub_del2 = {**sub_del, "id": "evt_sub_del_101"}
+    sub_del2 = {
+        **sub_del,
+        "id": "evt_sub_del_101",
+        "created": 103,
+        "data": {"object": {"id": "sub_test002", "customer": "cus_test001"}},
+    }
     result2 = await handle_stripe_webhook(sub_del2, repo, 7)
     assert result2["suspension_notice"] is True
 
@@ -220,6 +267,7 @@ async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):
     })
     event = {
         "id": "evt_pay_fail_001",
+        "created": 100,
         "type": "invoice.payment_failed",
         "data": {
             "object": {
@@ -236,7 +284,7 @@ async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):
 
 async def test_handle_unknown_event_does_nothing(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
-    event = {"id": "evt_unknown_001", "type": "unknown.event", "data": {"object": {}}}
+    event = {"id": "evt_unknown_001", "created": 100, "type": "unknown.event", "data": {"object": {}}}
     result = await handle_stripe_webhook(event, repo, 7)
     assert result is None
 
@@ -261,9 +309,10 @@ async def test_subscription_updated_same_period_does_not_reset_usage(repo, sampl
     await repo.increment_message_usage(sample_org["id"])
     await repo.increment_message_usage(sample_org["id"])
 
-    def make_event(evt_id):
+    def make_event(evt_id, created):
         return {
             "id": evt_id,
+            "created": created,
             "type": "customer.subscription.updated",
             "data": {
                 "object": {
@@ -278,12 +327,12 @@ async def test_subscription_updated_same_period_does_not_reset_usage(repo, sampl
         }
 
     # Prima chiamata: stesso periodo di quello gia' salvato -> nessun reset.
-    await handle_stripe_webhook(make_event("evt_guard_001"), repo, 7)
+    await handle_stripe_webhook(make_event("evt_guard_001", 100), repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["messages_used_this_period"] == 3
 
     # Seconda chiamata (evento diverso, stesso periodo) -> ancora nessun reset.
-    await handle_stripe_webhook(make_event("evt_guard_002"), repo, 7)
+    await handle_stripe_webhook(make_event("evt_guard_002", 101), repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert billing["messages_used_this_period"] == 3
 
@@ -301,6 +350,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
 
     event1 = {
         "id": "evt_dedup_AAA",
+        "created": 100,
         "type": "invoice.payment_failed",
         "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
     }
@@ -311,6 +361,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
     # diverso: deve essere processato di nuovo, non scartato come duplicato.
     event2 = {
         "id": "evt_dedup_BBB",
+        "created": 101,
         "type": "invoice.payment_failed",
         "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
     }
@@ -318,7 +369,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
     assert result2["action"] == "payment_failed"  # non "duplicate"
 
     # Vero retry dello STESSO evento -> quello si' va deduplicato.
-    result3 = await handle_stripe_webhook(event1, repo, 7)
+    result3 = await handle_stripe_webhook(event2, repo, 7)
     assert result3["action"] == "duplicate"
 
 
@@ -334,6 +385,7 @@ async def test_stripe_atomic_rollback_on_failure(repo, sample_org):
 
     event = {
         "id": "evt_atomic_fail",
+        "created": 100,
         "type": "checkout.session.completed",
         "data": {
             "object": {
@@ -367,6 +419,7 @@ async def test_handle_checkout_completed_without_subscription(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     event = {
         "id": "evt_no_sub_001",
+        "created": 100,
         "type": "checkout.session.completed",
         "data": {
             "object": {

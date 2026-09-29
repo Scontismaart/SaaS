@@ -12,7 +12,7 @@ import logging
 import sys
 from datetime import datetime
 from typing import Any
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
@@ -41,29 +41,29 @@ async def audit_event(
     target_id: str | None = None,
     details: dict | None = None,
 ) -> None:
-    """Registra un'azione sensibile in audit_log.
-    
-    No-op sicuro se il repo o l'organization_id non sono disponibili.
-    Non fa mai fallire la richiesta chiamante in caso di errore di audit.
-    """
+    """Persist an org-scoped audit event before acknowledging the operation."""
     repo = getattr(request.app.state, "repo", None)
     organization_id = user.get("organization_id")
     if repo is None or not organization_id:
-        return
-    try:
-        from src.core.auth.audit import audit_log
-        await audit_log(
-            repo,
-            organization_id=organization_id,
-            action=action,
-            user_id=user.get("user_id"),
-            auth_user_id=user.get("auth_user_id"),
-            target_table=target_table,
-            target_id=target_id,
-            details=details,
-        )
-    except Exception as e:
-        logger.warning("[audit_log] scrittura fallita per action=%s: %s", action, e)
+        raise RuntimeError("Audit storage and organization scope are required")
+    from src.core.db.repositories.billing_repo import BillingRepository
+    await BillingRepository(repo.pool).enqueue_governance(organization_id, "audit", {
+        "action": action, "user_id": user.get("user_id"), "auth_user_id": user.get("auth_user_id"),
+        "target_table": target_table, "target_id": target_id, "details": details or {},
+    })
+
+
+async def enforce_org_rate_limit(
+    organization_id: str | None, operation: str, limit: int, window_seconds: int
+) -> None:
+    """Cap expensive work by a tenant resolved from the authenticated user."""
+    if not organization_id:
+        raise HTTPException(status_code=403, detail="Organizzazione richiesta")
+    from src.core.rate_limit import get_rate_limiter
+
+    limiter = await get_rate_limiter()
+    if await limiter.hit(f"org:{organization_id}:{operation}", limit, window_seconds):
+        raise HTTPException(status_code=429, detail="Troppe richieste. Riprova più tardi.")
 
 
 async def get_billing_snapshot(repo, organization_id: str | None) -> dict | None:
@@ -87,30 +87,21 @@ async def record_ai_usage(
 ) -> None:
     """Traccia il consumo e il costo stimato della generazione AI su database (Invariante 8)."""
     if repo is None or not organization_id:
-        return
-    try:
-        from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
-        route = route_llm(
-            LLMRouteRequest(
-                task_type=task_type,
-                user_text=user_text,
-                remaining_budget_ratio=budget_ratio_from_billing(billing),
-            )
+        raise RuntimeError("AI accounting requires storage and organization scope")
+    from src.core.llm_config import LLMRouteRequest, budget_ratio_from_billing, route_llm
+    from src.core.db.repositories.billing_repo import BillingRepository
+    route = route_llm(
+        LLMRouteRequest(
+            task_type=task_type,
+            user_text=user_text,
+            remaining_budget_ratio=budget_ratio_from_billing(billing),
         )
-        await repo.record_usage(
-            organization_id,
-            "ai_response",
-            quantity=1,
-            metadata={
-                "task_type": task_type,
-                "model": route.model,
-                "tier": route.tier,
-                "reason": route.reason,
-                **(metadata or {}),
-            },
-        )
-    except Exception as e:
-        logger.warning("[llm_routing] usage logging fallito org=%s: %s", organization_id, e)
+    )
+    await BillingRepository(repo.pool).enqueue_governance(organization_id, "usage", {
+        "event_type": "ai_response", "quantity": 1,
+        "metadata": {"task_type": task_type, "model": route.model, "tier": route.tier,
+                     "reason": route.reason, **(metadata or {})},
+    })
 
 
 async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) -> str | None:
@@ -122,13 +113,16 @@ async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) 
     2. Trial attivo: se l'org e' in prova gratuita valida, opera con il tier 'pro' (Crescita).
     3. Piano sconosciuto / anomalo: se plan_slug e' valorizzato ma non corrisponde a una chiave
        in PLANS, blocca l'accesso e logga un warning (fail-closed contro drift di naming).
-    4. Fail-open solo su transient failure di repo/org_id/billing.
+    4. Missing scope, billing or storage always denies privileged features.
     """
     if not repo or not org_id:
-        return None
+        return "Impossibile verificare l'abbonamento. Riprova più tardi."
     billing = await get_billing_snapshot(repo, org_id)
     if not billing:
-        return None
+        return "Impossibile verificare l'abbonamento. Riprova più tardi."
+
+    if billing.get("ai_accounting_blocked"):
+        return "Contabilità AI in aggiornamento. Riprova più tardi."
 
     status = billing.get("subscription_status")
     trial_end = billing.get("trial_end")
@@ -140,9 +134,8 @@ async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) 
 
     # 2. Risoluzione piano effettivo
     plan_slug = billing.get("plan")
-    if not plan_slug or status == "trialing":
-        if not plan_slug:
-            plan_slug = "pro"
+    if status == "trialing" and not plan_slug:
+        plan_slug = "pro"
 
     # 3. Mappatura piano e blocco fail-closed su plan_slug inatteso
     from src.core.billing.plans import PLANS
@@ -154,6 +147,9 @@ async def check_feature_blocked_by_plan(repo, org_id: str | None, feature: str) 
         )
         return f"Configurazione piano '{plan_slug}' non riconosciuta. Contatta l'assistenza per verificare l'abbonamento."
 
+    # Unknown capabilities must not accidentally authorize future features.
+    if feature not in {"rag", "recensioni"}:
+        return "Funzionalità non riconosciuta."
     # 4. Verifica capabilities del piano
     if feature == "rag" and not plan.has_rag:
         return f"Il piano {plan.name} non include la Knowledge Base AI. Effettua l'upgrade al piano Scala per caricare documenti."

@@ -5,6 +5,7 @@ from datetime import date
 from cryptography.fernet import Fernet
 
 from src.core.db.scoping import TenantScopedRepository, system_scope
+from src.core.billing.plans import TRIAL_MESSAGES_LIMIT
 
 
 class OrganizationRepository(TenantScopedRepository):
@@ -190,7 +191,7 @@ class OrganizationRepository(TenantScopedRepository):
         self,
         auth_user_id: str,
         nome_attivita: str,
-        trial_days: int = 14,
+        trial_days: int = 7,
     ) -> dict:
         """Crea organizzazione + membership owner in un'unica transazione."""
         org_id = uuid.uuid4()
@@ -200,16 +201,16 @@ class OrganizationRepository(TenantScopedRepository):
                     INSERT INTO organizations
                         (id, name, subscription_status, trial_start, trial_end, messages_limit, users_limit)
                     VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3), 2000, 3)
+                            NOW() + make_interval(days => $3), $4, 3)
                     RETURNING id
                 )
                 INSERT INTO organization_memberships
                     (organization_id, user_id, ruolo, joined_at)
                 SELECT o.id, up.id, 'owner', NOW()
                 FROM new_org o
-                JOIN user_profiles up ON up.auth_user_id = $4::uuid
+                JOIN user_profiles up ON up.auth_user_id = $5::uuid
                 RETURNING organization_id, user_id
-            """, org_id, nome_attivita, trial_days, uuid.UUID(auth_user_id))
+            """, org_id, nome_attivita, trial_days, TRIAL_MESSAGES_LIMIT, uuid.UUID(auth_user_id))
             if not row:
                 raise RuntimeError(
                     "user_profiles non trovato per l'utente appena registrato"
@@ -246,16 +247,16 @@ class OrganizationRepository(TenantScopedRepository):
                     INSERT INTO organizations
                         (id, name, subscription_status, trial_start, trial_end, messages_limit, users_limit)
                     VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3), 2000, 3)
+                            NOW() + make_interval(days => $3), $4, 3)
                     RETURNING id
                 )
                 INSERT INTO organization_memberships
                     (organization_id, user_id, ruolo, joined_at)
                 SELECT o.id, up.id, 'owner', NOW()
                 FROM new_org o
-                JOIN user_profiles up ON up.auth_user_id = $4::uuid
+                JOIN user_profiles up ON up.auth_user_id = $5::uuid
                 RETURNING organization_id, user_id
-            """, org_id, nome_attivita, trial_days, uid)
+            """, org_id, nome_attivita, trial_days, TRIAL_MESSAGES_LIMIT, uid)
             if not row:
                 raise RuntimeError(
                     "user_profiles non trovato per l'utente OAuth"

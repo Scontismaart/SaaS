@@ -15,7 +15,6 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 from src.api.dependencies import require_ruolo
-from src.api.routes.common import get_shared_event_history
 from src.core.crew_runner_report import genera_report as genera_report_completo
 from src.core.scheduler import get_report_cache, set_report_cache
 from src.models.schemas import EventoDashboard, ReportOutput
@@ -128,14 +127,13 @@ _DASHBOARD_EVENTI_CTE = """\nWITH raw_events AS (
 
 async def recupera_eventi_dashboard(pool, org_id: str | None) -> list[EventoDashboard]:
     """Recupera la lista unificata degli eventi per la dashboard del tenant (event_log + messages + reviews)."""
-    storico = get_shared_event_history()
     if not pool or not org_id:
-        return storico
+        return []
 
     try:
         org_uuid = uuid.UUID(str(org_id))
     except (ValueError, TypeError):
-        return storico
+        return []
 
     try:
         async with pool.acquire() as conn:
@@ -167,7 +165,7 @@ async def recupera_eventi_dashboard(pool, org_id: str | None) -> list[EventoDash
         return eventi
     except Exception as e:
         logger.error("Errore recupero eventi dashboard per org %s: %s", org_id, e)
-        return storico
+        return []
 
 
 async def recupera_eventi_prioritari(pool, org_id: str | None, limite: int) -> list[EventoDashboard]:

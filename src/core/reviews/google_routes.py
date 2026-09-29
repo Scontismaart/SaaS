@@ -12,6 +12,8 @@ from google_auth_oauthlib.flow import Flow
 
 from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo, require_mfa
+from src.core.auth.oauth_callback import safe_oauth_callback
+from src.core.google_feature_flags import google_business_enabled
 from src.core.reviews.google_service import GoogleBusinessService
 
 logger = logging.getLogger(__name__)
@@ -20,7 +22,7 @@ router = APIRouter(prefix="/api/reviews/google", tags=["reviews-google"])
 
 SCOPES = ["https://www.googleapis.com/auth/business.manage"]
 NONCE_TTL_MINUTES = 10
-FRONTEND_REDIRECT = os.getenv("FRONTEND_URL", "/settings")
+FRONTEND_REDIRECT = "/app/"
 
 
 def _get_client_config():
@@ -35,6 +37,8 @@ def _get_client_config():
 
 
 def _make_flow():
+    if not google_business_enabled():
+        raise RuntimeError("Google Business disabled")
     redirect_uri = os.environ["GOOGLE_REVIEWS_REDIRECT_URI"]
     return Flow.from_client_config(
         _get_client_config(),
@@ -44,6 +48,7 @@ def _make_flow():
 
 
 def _get_service(request: Request) -> GoogleBusinessService:
+    _require_business_enabled()
     svc = getattr(request.app.state, "reviews_service", None)
     if svc is None:
         svc = GoogleBusinessService(
@@ -59,6 +64,11 @@ class GoogleReviewsSettingsInput(BaseModel):
     location_name: str | None = None
 
 
+def _require_business_enabled() -> None:
+    if not google_business_enabled():
+        raise HTTPException(status_code=503, detail="Google Business disabled")
+
+
 @router.get("/auth")
 async def google_reviews_auth(
     request: Request,
@@ -68,6 +78,7 @@ async def google_reviews_auth(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
 
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
@@ -93,24 +104,31 @@ async def google_reviews_auth(
 
 
 @router.get("/oauth2callback")
+@safe_oauth_callback("reviews_google")
 async def google_reviews_oauth2callback(request: Request):
+    if not google_business_enabled():
+        return RedirectResponse(
+            url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=disabled"
+        )
     state = request.query_params.get("state", "")
     code = request.query_params.get("code")
     error = request.query_params.get("error")
-
-    if error:
-        logger.warning("business=oauth_error error=%s", error)
-        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason={error}")
 
     if not state or ":" not in state:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
 
     org_id, nonce = state.split(":", 1)
+    try:
+        uuid.UUID(org_id)
+    except ValueError:
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
+    if len(nonce) != 32 or any(c not in "0123456789abcdef" for c in nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
     pool = request.app.state.pool
 
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM oauth_nonces WHERE nonce = $1 AND organization_id = $2",
+            "DELETE FROM oauth_nonces WHERE nonce = $1 AND organization_id = $2 RETURNING *",
             nonce, org_id,
         )
         if not row:
@@ -119,11 +137,13 @@ async def google_reviews_oauth2callback(request: Request):
 
         created_at = row["created_at"]
         if created_at and datetime.now(timezone.utc) - created_at > timedelta(minutes=NONCE_TTL_MINUTES):
-            await conn.execute("DELETE FROM oauth_nonces WHERE nonce = $1", nonce)
             logger.warning("business=nonce_expired org_id=%s", org_id)
             return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=nonce_expired")
 
-        await conn.execute("DELETE FROM oauth_nonces WHERE nonce = $1", nonce)
+    # A provider denial still consumes state: callback nonces are one-shot.
+    if error:
+        logger.warning("business=oauth_error org_id=%s", org_id)
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=provider_denied")
 
     if not code:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=missing_code")
@@ -170,6 +190,7 @@ async def google_reviews_status(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:
@@ -198,17 +219,21 @@ async def google_reviews_sync(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
     service = _get_service(request)
     try:
-        nuove = await service.fetch_reviews(org_id)
-    except Exception as e:
-        logger.exception("business=sync_fail org_id=%s", org_id)
-        raise HTTPException(502, detail=f"Sync Google reviews fallito: {e}")
-    return {"nuove": nuove}
+        result = await service.fetch_reviews(org_id)
+    except Exception:
+        trace_id = getattr(request.state, "trace_id", "unavailable")
+        logger.error("business=sync_fail org_id=%s trace_id=%s", org_id, trace_id)
+        raise HTTPException(502, detail="Sincronizzazione recensioni non completata.")
+    if result.get("parziale"):
+        return {**result, "detail": "Sincronizzazione parziale; alcune recensioni non sono state elaborate."}
+    return result
 
 
 @router.patch("/settings")
@@ -221,6 +246,7 @@ async def google_reviews_settings(
     org_id = user.get("organization_id")
     if not org_id:
         raise HTTPException(400, "X-Organization-Id header required")
+    _require_business_enabled()
     repo = getattr(request.app.state, "repo", None)
     blocco = await check_feature_blocked_by_plan(repo, org_id, "recensioni")
     if blocco:
@@ -239,6 +265,11 @@ async def google_reviews_settings(
         idx += 1
     if not sets:
         raise HTTPException(400, "Nessun campo da aggiornare")
+    sets.extend([
+        "review_page_token = NULL",
+        "review_page_account_name = NULL",
+        "review_page_location_name = NULL",
+    ])
     sets.append("updated_at = NOW()")
     sql = f"UPDATE google_business_credentials SET {', '.join(sets)} WHERE organization_id = $1"
     async with pool.acquire() as conn:

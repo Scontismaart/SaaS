@@ -1,0 +1,102 @@
+x-api: &api
+  image: ${MELPIS_API_IMAGE_REF:?set MELPIS_API_IMAGE_REF to repository@sha256:<64 lowercase hex>}
+  env_file: ${MELPIS_ENV_FILE:-.env.production}
+  restart: unless-stopped
+  networks: [app_internal]
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+services:
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment: [PUBLIC_HOST, CADDY_SITE_MODE]
+    volumes:
+      - ./Caddyfile.${CADDY_SITE_MODE:?set CADDY_SITE_MODE to temporary or final}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [app_internal]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    depends_on:
+      api: {condition: service_healthy}
+      web: {condition: service_started}
+
+  web:
+    image: ${MELPIS_WEB_IMAGE_REF:?set MELPIS_WEB_IMAGE_REF to repository@sha256:<64 lowercase hex>}
+    # Deliberately not .env.production: the web process receives only the
+    # reviewed public legal identity fields that its renderer can use.
+    env_file: [.runtime/legal.env]
+    restart: unless-stopped
+    networks: [app_internal]
+    read_only: true
+    tmpfs: [/var/cache/nginx, /var/run, /run]
+    environment:
+      LEGAL_RENDER_ENABLED: "true"
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETGID, SETUID]
+
+  api:
+    <<: *api
+    command: [uvicorn, src.api.main:app, --host, 0.0.0.0, --port, "8000", --no-proxy-headers]
+    mem_limit: 1536m
+    cpus: 0.75
+    healthcheck:
+      test: [CMD, curl, -fsS, http://localhost:8000/api/health]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    depends_on: [valkey]
+
+  worker-inbound:
+    <<: *api
+    command: [python, run_inbound_processor.py]
+    mem_limit: 1024m
+    cpus: 0.5
+    depends_on: [valkey]
+
+  worker-retry:
+    <<: *api
+    command: [python, run_retry_worker.py]
+    mem_limit: 512m
+    cpus: 0.25
+    depends_on: [valkey]
+
+  supervisor:
+    <<: *api
+    command: [python, run_supervisor.py]
+    mem_limit: 256m
+    cpus: 0.1
+
+  valkey:
+    image: valkey/valkey:8.1.3-alpine
+    command: [valkey-server, --appendonly, "yes", --maxmemory, 96mb, --maxmemory-policy, noeviction]
+    restart: unless-stopped
+    networks: [app_internal]
+    volumes: [valkey_data:/data]
+    mem_limit: 128m
+    cpus: 0.1
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+
+networks:
+  app_internal:
+    internal: false
+    ipam:
+      config: [{subnet: 172.30.0.0/24}]
+
+volumes:
+  caddy_data:
+  caddy_config:
+  valkey_data:

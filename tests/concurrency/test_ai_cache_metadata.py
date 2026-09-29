@@ -240,7 +240,8 @@ async def test_ai_cache_jsonb_preserves_richiede_umano_across_worker_crash_and_r
     # Verifica stato DB dopo il crash:
     # - billed_at DEVE essere popolato
     # - ai_reply_cache DEVE essere JSONB con richiede_umano = true
-    # - sent_at e replied_at DEVONO essere ancora NULL (non completato)
+    # - l'escalation DB è autorevole anche se la courtesy delivery è incerta:
+    #   replied_at chiude l'inbound per impedire un secondo invio.
     async with real_db_pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT billed_at, ai_reply_cache, sent_at, replied_at, status FROM messages WHERE id = $1",
@@ -248,7 +249,7 @@ async def test_ai_cache_jsonb_preserves_richiede_umano_across_worker_crash_and_r
         )
         assert row["billed_at"] is not None
         assert row["sent_at"] is None
-        assert row["replied_at"] is None
+        assert row["replied_at"] is not None
         cache_in_db = row["ai_reply_cache"]
         if isinstance(cache_in_db, str):
             cache_in_db = json.loads(cache_in_db)
@@ -277,13 +278,13 @@ async def test_ai_cache_jsonb_preserves_richiede_umano_across_worker_crash_and_r
     # 1. Verifica che l'LLM NON sia stato rigenerato (costo risparmiato)
     assert llm_call_count["count"] == 1, "L'LLM NON deve essere richiamato nel retry: doveva riusare la cache JSONB!"
 
-    # 2. Verifica che Meta sia stato chiamato con la risposta originale
-    service_worker2.send_whatsapp_message.assert_awaited_once()
+    # 2. Il retry non deve reinviare una courtesy dall'esito ambiguo.
+    service_worker2.send_whatsapp_message.assert_not_awaited()
 
     # 3. Verifica sul DB Postgres reale che:
     #    a) L'escalation a operatore umano sia avvenuta (conversations.ticket_status == 'PENDING_STAFF')
     #    b) Il messaggio sia marcato handled con handling_type == 'escalated'
-    #    c) sent_at e meta_message_id siano stati salvati
+    #    c) nessun provider id inventato sia stato salvato
     async with real_db_pool.acquire() as conn:
         conv_row = await conn.fetchrow("SELECT ticket_status, pending_staff_at FROM conversations WHERE id = $1", conv_id)
         assert conv_row["ticket_status"] == "PENDING_STAFF", (
@@ -297,6 +298,6 @@ async def test_ai_cache_jsonb_preserves_richiede_umano_across_worker_crash_and_r
         )
         assert final_msg["status"] == "handled"
         assert final_msg["handling_type"] == "escalated"
-        assert final_msg["sent_at"] is not None
-        assert final_msg["meta_message_id"] == "meta_wamid_999"
+        assert final_msg["sent_at"] is None
+        assert final_msg["meta_message_id"] is None
         assert final_msg["replied_at"] is not None

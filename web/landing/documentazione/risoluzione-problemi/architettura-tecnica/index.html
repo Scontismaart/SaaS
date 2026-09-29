@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architettura Tecnica, Invarianti e Pipeline di Esecuzione — Documentazione Melpis</title>
+    <meta name="description" content="Architettura tecnica di Melpis per sviluppatori e sysadmin: FastAPI, PostgreSQL asyncpg, pgvector RAG, InboundProcessor SKIP LOCKED e guardrail deterministici.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/risoluzione-problemi/architettura-tecnica/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link is-active">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Troubleshooting</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Architettura Tecnica</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Architettura Tecnica, Invarianti e Pipeline di Esecuzione</h1>
+                    <p class="docs-article-subtitle">Guida approfondita per architetti software, ingegneri e sviluppatori sul funzionamento interno e le garanzie di sicurezza di Melpis.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Questa sezione descrive l'infrastruttura sottostante, il ciclo di vita dell'ingestione asincrona dei webhook, la gestione dell'isolamento multi-tenant a livello applicativo e di database, e gli <strong>11 Invarianti Non Negoziabili</strong> che governano il runtime di Melpis.</p>
+
+                    <h2 id="prima-di-iniziare">Stack Tecnologico</h2>
+                    <ul>
+                        <li><strong>Backend API</strong>: Python 3.11+, FastAPI (asincrono con <code>uvicorn</code>), Pydantic v2.</li>
+                        <li><strong>Database Relazionale &amp; Vettoriale</strong>: PostgreSQL 15+ con estensione <code>pgvector</code> (vettori 384d per RAG e cache semantica), driver ad alte prestazioni <code>asyncpg</code>.</li>
+                        <li><strong>Integrazioni Canali</strong>: Meta Cloud API (WhatsApp Business Graph API v21.0, Instagram Direct Messaging API), Google Calendar API v3, Google Business Profile API.</li>
+                        <li><strong>Orchestratore AI &amp; Provider</strong>: LiteLLM proxy con routing su modelli Llama 3/3.3 ad altissima velocità (Groq LPUs) e fallback su modelli frontier.</li>
+                        <li><strong>Frontend</strong>: Vanilla JavaScript ES6+, zero framework build-step pesanti, Nginx containerizzato.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Gli 11 Invarianti Architetturali Non Negoziabili</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">1. Tenant Isolation Assoluta</h3>
+                                <p class="docs-step-text">Ogni tabella tenant-scoped ha la colonna <code>organization_id</code>. L'isolamento applicativo viene validato in ogni singola query; le policy Row-Level Security (RLS) fungono da defense-in-depth aggiuntiva.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">2. Ambito Dati Provabile</h3>
+                                <p class="docs-step-text">Nessun record può esistere senza un'appartenenza diretta o provabilmente derivabile a una specifica organizzazione.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">3. Latenza Webhook Meta &lt; 200ms</h3>
+                                <p class="docs-step-text">Il webhook di ricezione (<code>POST /webhooks/whatsapp</code>) effettua la verifica della firma HMAC-SHA256, persiste il payload grezzo nella tabella code e restituisce immediatamente <code>HTTP 200 OK</code> a Meta. La generazione AI non blocca mai la risposta al webhook.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">4. Idempotenza Globale</h3>
+                                <p class="docs-step-text">Tutti gli eventi con effetti collaterali esterni (invio messaggi WhatsApp, prenotazioni calendario, escalation, addebiti Stripe) sono protetti da chiavi di idempotenza (<code>idempotency_key = hash(org_id, message_id, action)</code>).</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">5</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">5. Nessuna Azione Privilegiata Diretta da LLM</h3>
+                                <p class="docs-step-text">L'output del modello linguistico non effettua direttamente mutazioni sul database, transazioni finanziarie o conferme vincolanti. Tutte le azioni passano da validatori deterministici rigidi.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">6</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">6. Fail-Closed Opt-Out</h3>
+                                <p class="docs-step-text">Al rilevamento di una parola chiave di disiscrizione (STOP, BASTA), il sistema persiste l'evento, aggiorna lo stato, registra l'audit e blocca irreversibilmente future trasmissioni promozionali verso il contatto.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">7</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">7. Pipeline Guardrail Deterministica</h3>
+                                <p class="docs-step-text">Ogni risposta generata prima di essere inviata al cliente attraversa il PriceValidator, il verificatore di allucinazioni e il filtro di conformità.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">8</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">8. Governance Costi e Kill-Switch Automatico</h3>
+                                <p class="docs-step-text">Ogni chiamata AI registra org_id, modello, token di input/output, latenza e costo stimato. Un kill-switch automatico blocca le chiamate in caso di saturazione del budget mensile.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">9</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">9. Tracciabilità ed Evidenza Strutturata</h3>
+                                <p class="docs-step-text">Tutti i log utilizzano formattazione JSON strutturata con <code>organization_id</code>, <code>conversation_id</code> e <code>trace_id</code>, mascherando i dati sensibili (PII).</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">10</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">10. Protezione Segreti a Riposo</h3>
+                                <p class="docs-step-text">I token API permanenti di Meta, le chiavi Stripe e le chiavi Google sono crittografati a riposo tramite Fernet (AES-128-CBC) e mai esposti nei log applicativi o al frontend.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">11</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">11. Escalation Umana Inderogabile (HITL)</h3>
+                                <p class="docs-step-text">L'assistente garantisce sempre la transizione della chat a un operatore umano qualora richiesto o in caso di dubbio operativo.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Pipeline del Messaggio Inbound</h2>
+                    <p>Il percorso di un messaggio dal cliente finale al telefono fino alla risposta automatizzata segue un ciclo rigoroso:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Flusso di Ingestione (Diagramma a Blocchi)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>[Cliente WhatsApp]
+       │
+       ▼
+[Meta Cloud API] ──(Webhook HTTPS con HMAC-SHA256)──► [FastAPI Endpoint]
+                                                             │ (HTTP 200 immediato < 50ms)
+                                                             ▼
+                                                    [InboundQueue PostgreSQL]
+                                                             │
+                                                             ▼ (SKIP LOCKED Worker)
+                                                    [InboundProcessor]
+                                                             ├── 1. Controllo Opt-Out
+                                                             ├── 2. Verifica Stato Claim (ai_sospesa?)
+                                                             ├── 3. Cache Semantica FAQ (0 token)
+                                                             ├── 4. RAG Retrieval pgvector
+                                                             ├── 5. Generazione LLM LiteLLM
+                                                             ├── 6. Guardrail PriceValidator
+                                                             └── 7. Outbound Meta API Dispatch</code></pre>
+                    </div>
+
+                    <h2 id="limitazioni-reali">Worker Asincroni e SKIP LOCKED</h2>
+                    <p>Per prevenire race condition o doppie risposte quando arrivano più messaggi contemporanei dal medesimo contatto, il worker di elaborazione acquisisce il messaggio utilizzando la clausola PostgreSQL <code>FOR UPDATE SKIP LOCKED</code>:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/whatsapp/inbound_processor.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>async def fetch_next_inbound_message(db_pool):
+    query = """
+        SELECT id, organization_id, payload, channel
+        FROM inbound_messages_queue
+        WHERE status = 'pending'
+        ORDER BY created_at ASC
+        LIMIT 1
+        FOR UPDATE SKIP LOCKED;
+    """
+    async with db_pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(query)
+            if row:
+                await conn.execute("UPDATE inbound_messages_queue SET status = 'processing' WHERE id = $1", row['id'])
+                return row
+    return None</code></pre>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Configurazione di Produzione</h2>
+                    <p>La distribuzione è orchestrata tramite Docker Compose:</p>
+                    <ul>
+                        <li><strong>web</strong>: Reverse proxy Nginx con compressione Gzip, cache header per asset statici e gestione clean routing.</li>
+                        <li><strong>api</strong>: Servizio FastAPI containerizzato con 4 worker <code>uvicorn</code>.</li>
+                        <li><strong>db</strong>: PostgreSQL 15 con estensione <code>pgvector</code> montata su volume persistente ad alte prestazioni.</li>
+                    </ul>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-related-card">
+                            <div class="docs-related-tag">Diagnostica</div>
+                            <div class="docs-related-title">Guida Troubleshooting e Codici Errore</div>
+                        </a>
+                        <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-related-card">
+                            <div class="docs-related-tag">Sicurezza</div>
+                            <div class="docs-related-title">Privacy, GDPR e DPA</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-related-card">
+                            <div class="docs-related-tag">RAG</div>
+                            <div class="docs-related-title">Motore Vettoriale pgvector</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Stack Tecnologico</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Gli 11 Invarianti</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Pipeline Inbound</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Worker Asincroni SKIP LOCKED</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Configurazione di Produzione</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

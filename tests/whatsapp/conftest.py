@@ -50,6 +50,8 @@ async def pg_pool(postgres_container):
             await conn.execute(f.read())
         with open("src/core/db/migrations/013_webhook_idempotency.sql") as f:
             await conn.execute(f.read())
+        with open("src/core/db/migrations/052_webhook_inbox.sql") as f:
+            await conn.execute(f.read())
         # Core tables necessari per 014_contact_fk_strategy (bookings, reviews, booking_settings)
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS bookings (
@@ -97,7 +99,7 @@ async def pg_pool(postgres_container):
             "CREATE TABLE IF NOT EXISTS email_configs (id UUID PRIMARY KEY, organization_id UUID UNIQUE)",
             "CREATE TABLE IF NOT EXISTS usage_events (id UUID PRIMARY KEY, organization_id UUID)",
             "CREATE TABLE IF NOT EXISTS event_log (id UUID PRIMARY KEY, organization_id UUID)",
-            "CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, organization_id UUID, created_at TIMESTAMPTZ DEFAULT NOW())",
+            "CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, organization_id UUID NOT NULL, action TEXT NOT NULL, target_table TEXT, target_id UUID, details JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT NOW())",
         ]:
             await conn.execute(ddl)
         with open("src/core/db/migrations/015_org_fk_strategy.sql") as f:
@@ -132,7 +134,7 @@ async def reset_db(pg_pool):
                 messages, conversations, contacts, whatsapp_templates,
                 whatsapp_accounts, organizations,
                 reviews, bookings, booking_settings,
-                webhook_idempotency
+                webhook_idempotency, meta_webhook_inbox
             CASCADE
         """)
 
@@ -310,7 +312,10 @@ def mock_repo(sample_msg):
     repo.reap_stale_claims = AsyncMock(return_value=[])
     repo.try_mark_replied = AsyncMock(return_value={"id": sample_msg["id"], "status": "handled", "replied_at": datetime.now()})
     repo.update_heartbeat = AsyncMock()
-    repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.get_org_subscription_state = AsyncMock(return_value={
+        "subscription_status": "active", "trial_end": None,
+        "ai_accounting_blocked": False,
+    })
     repo.get_or_create_contact = AsyncMock(return_value={"id": uuid.uuid4()})
     repo.mark_ai_disclosure_sent = AsyncMock(return_value=True)
     repo.faq_cache_lookup = AsyncMock(return_value=None)

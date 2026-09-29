@@ -5,6 +5,7 @@ import uuid
 from typing import Any
 
 from src.core.channels.base import ChannelOutboundPort, OutboundSendResult
+from src.core.channels.delivery import provider_message_id
 
 logger = logging.getLogger(__name__)
 
@@ -61,14 +62,9 @@ class InstagramOutboundAdapter(ChannelOutboundPort):
                 text=text,
                 ig_config=ig_config,
                 handling_type=handling_type,
+                idempotency_key=idempotency_key,
             )
-            msg_id = (
-                res.get("message_id")
-                or res.get("wam_id")
-                or res.get("id")
-                if isinstance(res, dict)
-                else None
-            )
+            msg_id = provider_message_id(res)
             return OutboundSendResult(
                 success=True,
                 channel="instagram",

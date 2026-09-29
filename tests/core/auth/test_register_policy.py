@@ -16,9 +16,6 @@ from src.core.auth.register import (
 )
 from src.core.rate_limit import reset_memory_rate_limiter
 
-pytestmark = pytest.mark.asyncio
-
-
 def test_email_regex_accepts_valid():
     assert _EMAIL_RE.match("titolare@attivita.it")
     assert _EMAIL_RE.match("a.b+tag@sub.domain.com")
@@ -37,6 +34,7 @@ def test_password_policy_constants():
     assert not _SPECIAL_RE.search("abcdefghij")
 
 
+@pytest.mark.asyncio
 async def test_signup_throttle_blocks_after_max():
     from src.core.auth import throttle
 
@@ -63,6 +61,7 @@ async def register_client():
         yield c
 
 
+@pytest.mark.asyncio
 async def test_register_rejects_short_password(register_client):
     resp = await register_client.post(
         "/api/auth/register",
@@ -72,6 +71,7 @@ async def test_register_rejects_short_password(register_client):
     assert "10 caratteri" in resp.json()["detail"]
 
 
+@pytest.mark.asyncio
 async def test_register_rejects_password_without_special_char(register_client):
     resp = await register_client.post(
         "/api/auth/register",
@@ -81,6 +81,7 @@ async def test_register_rejects_password_without_special_char(register_client):
     assert "speciale" in resp.json()["detail"]
 
 
+@pytest.mark.asyncio
 async def test_register_accepts_policy_compliant_password_shape(
     register_client, monkeypatch
 ):

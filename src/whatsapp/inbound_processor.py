@@ -202,6 +202,7 @@ class InboundProcessor:
                 meta_client=None,
                 tenant_config=tenant_config,
                 handling_type=handling_type,
+                idempotency_key=f"reply:{msg['id']}",
             )
         except Exception as e:
             from src.whatsapp.service import WhatsAppService
@@ -240,6 +241,7 @@ class InboundProcessor:
                 text=testo_risposta,
                 ig_config=ig_config,
                 handling_type=handling_type,
+                idempotency_key=f"reply:{msg['id']}",
             )
         except Exception as e:
             logger.error("Invio risposta AI Instagram fallito per messaggio %s: %s", msg["id"], e)

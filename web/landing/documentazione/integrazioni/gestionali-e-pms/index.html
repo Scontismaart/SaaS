@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collegamento Gestionali Esterni e PMS — Documentazione Melpis</title>
+    <meta name="description" content="Guida all'integrazione di gestionali esterni e PMS con Melpis: SimplyBook.me, Apaleo, Cal.com, modalità Authoritative e Shadow.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/integrazioni/gestionali-e-pms/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link is-active">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Canali e Integrazioni</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Gestionali e PMS</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Collegamento Gestionali Esterni e PMS</h1>
+                    <p class="docs-article-subtitle">Integra Melpis con i principali software di prenotazione verticali per saloni, hotel e studi professionali.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Melpis adotta un'architettura a porte e adattatori (Hexagonal Architecture) per sincronizzare gli appuntamenti presi su WhatsApp direttamente con il gestionale specialistico che utilizzi già in azienda.</p>
+                    <p>Gli adattatori verificati e supportati sono:</p>
+                    <ul>
+                        <li><strong>SimplyBook.me</strong> (Produzione): ideale per saloni di parrucchieri, estetiste, barber e centri benessere. Verifica la disponibilità dell'operatore o della cabina e registra la prenotazione.</li>
+                        <li><strong>Apaleo</strong> (Produzione raccomandata per Ospitalità): PMS cloud moderno per hotel, boutique hotel e B&amp;B. Supporta soggiorni multi-notte, tipologie di camera e idempotenza nativa.</li>
+                        <li><strong>Cal.com</strong> (Produzione): ideale per appuntamenti 1:1, consulenze e studi professionali.</li>
+                        <li><strong>Beds24</strong> (Channel manager): sincronizzazione per strutture ricettive.</li>
+                        <li><strong>Motore Locale Melpis</strong> (Default): se non possiedi un gestionale esterno, Melpis utilizza il proprio database PostgreSQL locale con gestione capienze, fasce orarie e semaforo disponibilità.</li>
+                    </ul>
+
+                    <h2 id="modalita-operative">Modalità Operative (BookingMode)</h2>
+                    <p>Ogni integrazione gestionale può funzionare in diverse modalità a seconda delle tue esigenze operative:</p>
+                    <ul>
+                        <li><strong>Modalità Authoritative (Autoritativa)</strong>: il gestionale esterno è l'unica fonte di verità. Se il gestionale è pieno o temporaneamente non raggiungibile, Melpis non inventa disponibilità: imposta la chat come <code>richiede_intervento = True</code> e allerta il personale nella Shared Inbox.</li>
+                        <li><strong>Modalità Shadow (Ombra)</strong>: la prenotazione viene salvata primariamente sul database di Melpis per garantire risposta istantanea al cliente WhatsApp; la chiamata al gestionale esterno avviene asincronamente per audit e monitoraggio.</li>
+                        <li><strong>Modalità Local Only</strong>: nessun provider esterno attivo, tutte le operazioni avvengono all'interno di Melpis.</li>
+                    </ul>
+
+                    <div class="docs-callout docs-callout-warning">
+                        <span class="docs-callout-icon">⚠️</span>
+                        <div class="docs-callout-content">
+                            <div class="docs-callout-title">Stato dell'integrazione WuBook ZaK</div>
+                            <p>L'adattatore WuBook ZaK è presente nel codice come <em>template architetturale</em> ma, per rigorosi vincoli di governance interna, non è ancora certificato per la produzione autoritativa. È consentito unicamente in modalità <strong>shadow</strong> o <strong>local_only</strong>. Per le strutture alberghiere, la soluzione di produzione pienamente raccomandata e certificata è <strong>Apaleo</strong>.</p>
+                        </div>
+                    </div>
+
+                    <h2 id="procedura-passo-passo">Configurazione del Gestionale</h2>
+                    <p>La configurazione delle credenziali del gestionale è un'azione sensibile protetta da autenticazione a due fattori (MFA) e riservata al ruolo <strong>Owner</strong>:</p>
+                    <ol>
+                        <li>Accedi a <span class="docs-ui-path">Impostazioni <span class="docs-ui-arrow">&rarr;</span> Integrazioni <span class="docs-ui-arrow">&rarr;</span> Gestionale (PMS)</span>.</li>
+                        <li>Seleziona il provider (es. <code>SimplyBook</code> o <code>Apaleo</code>).</li>
+                        <li>Inserisci la chiave API e i parametri di connessione (Company Login per SimplyBook o Client ID/Secret per Apaleo).</li>
+                        <li>Seleziona la modalità operativa (<code>authoritative</code> o <code>shadow</code>).</li>
+                        <li>Se la tua attività appartiene al settore medico, spunta <strong>Accordo DPA Sanitario firmato</strong> per consentire la trasmissione sicura delle note prenotazione nel rispetto del GDPR.</li>
+                        <li>Clicca su <strong>Salva credenziali gestionale</strong>.</li>
+                    </ol>
+
+                    <h2 id="sicurezza-e-resilienza">Sicurezza e Circuit Breaker</h2>
+                    <p>Per proteggere la tua attività da rallentamenti dei server dei gestionali esterni, Melpis include:</p>
+                    <ul>
+                        <li><strong>Cifratura Fernet at-rest</strong>: le credenziali del gestionale sono cifrate nel database e non vengono mai mostrate in chiaro al frontend.</li>
+                        <li><strong>Circuit Breaker automatico</strong>: se il gestionale esterno restituisce 5 errori consecutivi, il circuito si apre temporaneamente per 60 secondi, evitando blocchi a catena e indirizzando le richieste di prenotazione allo staff umano.</li>
+                    </ul>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-related-card">
+                            <div class="docs-related-tag">Prenotazioni</div>
+                            <div class="docs-related-title">Gestione Prenotazioni e Semaforo</div>
+                        </a>
+                        <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-related-card">
+                            <div class="docs-related-tag">Alternativa</div>
+                            <div class="docs-related-title">Sincronizzazione Google Calendar</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#modalita-operative" class="docs-toc-link">Modalità Operative</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Configurazione</a></li>
+                    <li class="docs-toc-item"><a href="#sicurezza-e-resilienza" class="docs-toc-link">Sicurezza e Circuit Breaker</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

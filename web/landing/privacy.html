@@ -7,11 +7,17 @@
     <meta name="description" content="Informativa sul trattamento dei dati personali ai sensi del Regolamento UE 2016/679 (GDPR) per il servizio Melpis.">
     <meta name="robots" content="noindex, follow">
     <meta name="theme-color" content="#08090c">
-    <link rel="canonical" href="https://melpis.it/privacy/">
-    <link rel="icon" href="/logo.webp" type="image/webp">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
     <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="canonical" href="https://melpis.it/privacy/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/privacy/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/privacy/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/privacidad/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/confidentialite/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/datenschutz/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/privacy/">
 </head>
 <body class="legal-body">
 
@@ -110,6 +116,20 @@
                     <span>Inizia gratis</span>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
                 </a>
+                
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">IT</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/privacy/" class="lang-option-link is-active" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/privacy/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/privacidad/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/confidentialite/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/datenschutz/" class="lang-option-link" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
                 <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
                     <span></span><span></span>
                 </button>
@@ -163,80 +183,54 @@
             <a href="/documentazione/" class="mobile-link">Documentazione</a>
             <a href="/prezzi/" class="mobile-link">Prezzi</a>
             <a href="/accedi/" class="mobile-link mobile-login">Accedi al pannello</a>
-        <a href="/registrati/" class="btn-cta-primary w-full" style="margin-top: 8px;">
+        <a href="/registrati/" class="btn-cta-primary w-full is-5313025c2edb">
             <span>Inizia la prova di 7 giorni</span>
         </a>
+
+            <div class="mobile-lang-section">
+                <span class="mobile-lang-title">Lingua / Language</span>
+                <div class="mobile-lang-grid">
+                <a href="/privacy/" class="mobile-lang-chip is-active" hreflang="it">Italiano</a>
+                <a href="/en/privacy/" class="mobile-lang-chip" hreflang="en">English</a>
+                <a href="/es/privacidad/" class="mobile-lang-chip" hreflang="es">Español</a>
+                <a href="/fr/confidentialite/" class="mobile-lang-chip" hreflang="fr">Français</a>
+                <a href="/de/datenschutz/" class="mobile-lang-chip" hreflang="de">Deutsch</a>
+                </div>
+            </div>
         </div>
     </div>
 
 <main class="legal-main container-narrow">
-
     <h1>Privacy Policy</h1>
-    <p class="legal-updated">Ultimo aggiornamento: agosto 2026</p>
-
-    <!-- NOTA PER IL TITOLARE: personalizzare i dati societari (ragione sociale,
-         sede legale, P.IVA, email del DPO/RP) prima della pubblicazione. -->
-
+    <p class="legal-updated">Ultimo aggiornamento: settembre 2026</p>
     <section>
-        <h2>1. Titolare del trattamento</h2>
-        <p>Melpis AI — <em>[ragione sociale completa, sede legale, codice fiscale/P.IVA]</em>, email: <strong>privacy@melpis.it</strong>.</p>
+        <h2>1. Titolare e ruoli</h2>
+        <p>{{LEGAL_ENTITY_NAME}} — sede: {{LEGAL_ENTITY_REGISTERED_OFFICE}}, P.IVA: {{LEGAL_ENTITY_VAT_NUMBER}}, contatto privacy: <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>.</p><p>Per i dati degli account e del sito Melpis opera come titolare. Per i messaggi e gli altri dati dei clienti finali caricati dall'attività, quest'ultima determina finalità e istruzioni del trattamento; il relativo accordo sul trattamento deve essere definito prima dell'uso operativo.</p>
     </section>
-
     <section>
         <h2>2. Dati trattati</h2>
-        <p>A seconda dell'uso del servizio, trattiamo le seguenti categorie di dati:</p>
-        <ul>
-            <li><strong>Dati di registrazione</strong>: nome dell'attività, indirizzo email, password (conservata esclusivamente in forma crittografata dal provider di autenticazione Supabase Auth).</li>
-            <li><strong>Dati di fatturazione</strong>: gestiti da Stripe (società terza, titolare autonomo); Melpis non memorizza numeri di carta di credito.</li>
-            <li><strong>Dati dei tuoi clienti</strong>: messaggi WhatsApp ricevuti tramite il tuo numero WhatsApp Business, necessari al funzionamento dell'assistente AI. Il contenuto delle conversazioni è trattato per fornire il servizio ed è eliminato secondo le politiche di retention descritte nella sezione 5.</li>
-            <li><strong>Dati tecnici</strong>: log di sicurezza e di funzionamento (indirizzo IP, timestamp), trattati per finalità di sicurezza informatica.</li>
-        </ul>
+        <p>Trattiamo dati di account e organizzazione (nome, email, credenziali gestite dal sistema di autenticazione), configurazioni, documenti caricati, conversazioni e contatti ricevuti tramite i canali collegati, prenotazioni, bozze di risposta, dati tecnici e log di sicurezza. Se attivate, le integrazioni Google o Meta comportano il trattamento dei dati necessari alle rispettive funzioni. Non inserire dati particolari, inclusi dati sanitari, senza una valutazione specifica.</p>
     </section>
-
     <section>
         <h2>3. Finalità e basi giuridiche</h2>
-        <ul>
-            <li><strong>Erogazione del servizio contrattuale</strong> (risposte automatiche, prenotazioni, report): esecuzione del contratto, art. 6(1)(b) GDPR.</li>
-            <li><strong>Fatturazione e obblighi fiscali</strong>: obbligo legale, art. 6(1)(c) GDPR.</li>
-            <li><strong>Sicurezza informatica e prevenzione abusi</strong>: interesse legittimo, art. 6(1)(f) GDPR.</li>
-            <li><strong>Miglioramento del servizio con dati aggregati e anonimi</strong>: interesse legittimo; i dati anonimi non sono più riconducibili all'interessato.</li>
-        </ul>
-        <p>L'assistente AI non utilizza le conversazioni dei tuoi clienti per addestrare modelli generici.</p>
+        <p>Account, autenticazione e servizio: esecuzione del contratto (art. 6(1)(b) GDPR). Sicurezza, prevenzione abusi e log essenziali: interesse legittimo (art. 6(1)(f)). Adempimenti fiscali applicabili: obbligo legale (art. 6(1)(c)). Per i dati dei clienti finali, la base giuridica e l'informativa verso tali persone spettano all'attività titolare.</p>
     </section>
-
     <section>
-        <h2>4. Fornitori e trasferimenti extra-UE</h2>
-        <p>Ci avvaliamo dei seguenti responsabili esterni, selezionati tra provider che offrono garanzie contrattuali conformi agli artt. 28 e 46 GDPR:</p>
-        <ul>
-            <li><strong>Supabase</strong> — autenticazione e database (Unione Europea).</li>
-            <li><strong>Meta Platforms Ireland Ltd.</strong> — WhatsApp Business API.</li>
-            <li><strong>Stripe Payments Europe</strong> — pagamenti.</li>
-            <li><strong>OpenRouter</strong> — instradamento dei modelli AI; i provider sono configurati per non addestrare sui dati.</li>
-            <li><strong>Plausible Analytics</strong> — statistiche di traffico anonime e senza cookie (nessun dato personale trattato).</li>
-            <li><strong>[provider hosting]</strong> — hosting dell'applicazione web <em>[da completare con il provider effettivo prima della pubblicazione]</em>.</li>
-        </ul>
+        <h2>4. Destinatari e trasferimenti</h2>
+        <p>In base alle funzioni effettivamente attivate, i dati possono essere trattati da fornitori di infrastruttura e database, Supabase per l'autenticazione, Meta per WhatsApp/Instagram, Google per accesso o integrazioni e dal provider AI configurato (Groq o OpenRouter). I contenuti necessari alla risposta possono essere inviati al provider AI scelto. Luogo del trattamento, eventuali trasferimenti fuori SEE e garanzie contrattuali vanno verificati per la configurazione attiva prima del lancio. Nessun particolare fornitore di hosting futuro è qui dichiarato come già operativo.</p>
     </section>
-
     <section>
-        <h2>5. Conservazione</h2>
-        <p>I dati conversazionali sono conservati per il tempo necessario all'erogazione del servizio e, successivamente, secondo la finestra di retention operativa configurata nel sistema. Alla cancellazione dell'account, i dati dell'organizzazione sono eliminati in modo definitivo e a cascata entro 30 giorni, salvo obblighi di legge su dati fiscali.</p>
+        <h2>5. Conservazione e cancellazione</h2>
+        <p>I dati sono conservati per il tempo necessario alle finalità descritte e secondo le impostazioni operative e gli obblighi applicabili. Una richiesta di chiusura, esportazione o cancellazione va inviata a <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>; sarà valutata tenendo conto di copie di backup, log, dati presso terzi e obblighi di conservazione. Non è attualmente garantita una cancellazione completa entro un termine fisso, né una funzione autonoma di esportazione o cancellazione dalla dashboard.</p>
     </section>
-
     <section>
-        <h2>6. Diritti degli interessati</h2>
-        <p>Puoi esercitare in ogni momento i diritti di accesso, rettifica, cancellazione ("diritto all'oblio"), limitazione, portabilità e opposizione previsti dagli artt. 15–22 GDPR scrivendo a <strong>privacy@melpis.it</strong>. I titolari di account possono inoltre esportare ed eliminare autonomamente i dati dalla dashboard. Hai diritto a proporre reclamo al Garante per la protezione dei dati personali (<a href="https://www.garanteprivacy.it" rel="noopener noreferrer" target="_blank">garanteprivacy.it</a>).</p>
+        <h2>6. Diritti</h2>
+        <p>Gli interessati possono richiedere accesso, rettifica, cancellazione, limitazione, portabilità ove applicabile e opposizione ai sensi degli artt. 15–22 GDPR scrivendo a <strong>{{LEGAL_PRIVACY_CONTACT_EMAIL}}</strong>. Le richieste relative ai dati dei clienti finali possono essere indirizzate anche all'attività titolare. È possibile proporre reclamo al <a href="https://www.garanteprivacy.it/" target="_blank" rel="noopener noreferrer">Garante per la protezione dei dati personali</a>.</p>
     </section>
-
     <section>
-        <h2>7. Sicurezza</h2>
-        <p>I dati sono cifrati in transito (TLS) e a riposo. L'autenticazione usa sessioni in cookie HttpOnly+Secure; l'accesso alle funzioni sensibili è protetto da controllo dei ruoli, audit logging e autenticazione a due fattori opzionale.</p>
+        <h2>7. Sicurezza e aggiornamenti</h2>
+        <p>Usiamo controlli di accesso, cookie di sessione con protezioni appropriate e misure tecniche per ridurre l'accesso non autorizzato. Nessun sistema è privo di rischi. Questa informativa sarà aggiornata quando cambiano trattamento, fornitori o configurazione; la versione applicabile è quella pubblicata con la data indicata.</p>
     </section>
-
-    <section>
-        <h2>8. Modifiche</h2>
-        <p>La presente informativa può essere aggiornata. Le modifiche sostanziali verranno comunicate via email o dall'interno della dashboard con almeno 30 giorni di preavviso.</p>
-    </section>
-
 </main>
 
 <footer class="site-footer">
@@ -244,7 +238,7 @@
         <div class="footer-top-row">
             <div class="footer-brand-col">
                 <a href="/" class="nav-brand">
-                    <img src="/logo.webp" alt="Melpis" width="24" height="24" class="nav-logo">
+                    <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
                     <span class="nav-brand-text">Melpis</span>
                 </a>
                 <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
@@ -277,95 +271,7 @@
     </div>
 </footer>
 
-<script>
-    (function() {
-        var header = document.getElementById('mainHeader');
-        var dropdown = document.getElementById('navDropdownSettori');
-        var trigger = document.getElementById('settoriDropdownTrigger');
-        var hamburger = document.getElementById('navHamburger');
-        var overlay = document.getElementById('mobileOverlay');
-        var accordionBtn = document.getElementById('mobileSettoriBtn');
-        var accordionWrap = document.getElementById('mobileSettoriAccordion');
-
-        if (header) {
-            var updateScrollState = function() {
-                var isScrolled = (window.pageYOffset || document.documentElement.scrollTop || 0) > 15;
-                header.classList.toggle('is-scrolled', isScrolled);
-            };
-            window.addEventListener('scroll', updateScrollState, { passive: true });
-            updateScrollState();
-        }
-
-        if (dropdown && trigger) {
-            var setDropdown = function(open) {
-                dropdown.classList.toggle('is-open', open);
-                trigger.setAttribute('aria-expanded', String(open));
-            };
-
-            trigger.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                setDropdown(!dropdown.classList.contains('is-open'));
-            });
-
-            document.addEventListener('click', function(e) {
-                if (!dropdown.contains(e.target)) {
-                    setDropdown(false);
-                }
-            });
-
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && dropdown.classList.contains('is-open')) {
-                    setDropdown(false);
-                    trigger.focus();
-                }
-            });
-
-            dropdown.addEventListener('focusout', function() {
-                setTimeout(function() {
-                    if (!dropdown.contains(document.activeElement)) {
-                        setDropdown(false);
-                    }
-                }, 10);
-            });
-        }
-
-        if (hamburger && overlay) {
-            var setNav = function(open) {
-                overlay.classList.toggle('open', open);
-                overlay.setAttribute('aria-hidden', String(!open));
-                hamburger.setAttribute('aria-expanded', String(open));
-                document.body.style.overflow = open ? 'hidden' : '';
-            };
-
-            hamburger.addEventListener('click', function(e) {
-                e.preventDefault();
-                setNav(!overlay.classList.contains('open'));
-            });
-
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && overlay.classList.contains('open')) {
-                    setNav(false);
-                }
-            });
-
-            overlay.querySelectorAll('.mobile-link:not(.mobile-accordion-btn), .mobile-sublink, .btn-cta-primary, .btn-pill-cta').forEach(function(link) {
-                link.addEventListener('click', function() {
-                    setNav(false);
-                });
-            });
-        }
-
-        if (accordionBtn && accordionWrap) {
-            accordionBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var isExpanded = accordionWrap.classList.toggle('is-expanded');
-                accordionBtn.setAttribute('aria-expanded', String(isExpanded));
-            });
-        }
-    })();
-</script>
+<script src="/inline-assets/script-19ddd63a317f25b089a324634a1a7c0f6bb8c00f763e55253c30db76599cc844.js" defer></script>
 
     <script src="/app.js" defer></script>
 </body>

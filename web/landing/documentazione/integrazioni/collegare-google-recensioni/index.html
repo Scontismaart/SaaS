@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Come collegare Google Recensioni (Business Profile) — Documentazione Melpis</title>
+    <meta name="description" content="Guida all'automazione delle recensioni Google con Melpis: connessione Google Business Profile, analisi sentiment, bozze AI e approvazione con un click.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/integrazioni/collegare-google-recensioni/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link is-active">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Canali e Integrazioni</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Google Recensioni</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Come collegare Google Recensioni (Business Profile)</h1>
+                    <p class="docs-article-subtitle">Gestisci e rispondi a tutte le recensioni Google della tua sede: analisi del sentiment, bozze formulate dall'AI e pubblicazione one-click.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>L'integrazione Google Recensioni connette il tuo <strong>Profilo dell'Attività su Google (Google Business Profile)</strong> a Melpis. Ogni volta che un cliente lascia una recensione con testo e stelle (da 1 a 5):</p>
+                    <ul>
+                        <li>La recensione viene scaricata automaticamente nella schermata <span class="docs-ui-path">Principale <span class="docs-ui-arrow">&rarr;</span> Recensioni</span>.</li>
+                        <li>L'intelligenza artificiale ne analizza il <strong>sentiment</strong> (positivo, neutro o negativo) e la categoria (es. cibo, servizio, puntualità, pulizia).</li>
+                        <li>L'AI redige una bozza di risposta professionale, elegante e coerente con la tua voce aziendale.</li>
+                        <li>Puoi modificare la bozza o cliccare su <strong>Approva e pubblica</strong>: la risposta viene inviata istantaneamente a Google e visualizzata pubblicamente su Google Maps.</li>
+                        <li>Le recensioni a 1 o 2 stelle vengono contrassegnate automaticamente dal badge rosso <em>"Richiede revisione urgente"</em>.</li>
+                    </ul>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Un account Google amministratore o proprietario della scheda Google Business Profile.</li>
+                        <li>Un piano Melpis attivo di livello <strong>Crescita (Pro)</strong> o <strong>Scala (Business)</strong>. Il piano Essenziale (Starter) non include il modulo recensioni.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Accesso alla sezione Google Recensioni</h3>
+                                <p class="docs-step-text">Accedi a <span class="docs-ui-path">Impostazioni <span class="docs-ui-arrow">&rarr;</span> Integrazioni <span class="docs-ui-arrow">&rarr;</span> Google Recensioni</span>.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Autorizzazione OAuth con Google Business Profile</h3>
+                                <p class="docs-step-text">Clicca su <strong>Collega Google Business Profile</strong>. Nella schermata di Google, autorizza il permesso <code>https://www.googleapis.com/auth/business.manage</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Selezione della Sede Aziendale</h3>
+                                <p class="docs-step-text">Se il tuo account gestisce più sedi su Google Maps, seleziona dal menu a discesa la sede corretta associata a questa organizzazione Melpis e salva le impostazioni.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Prima sincronizzazione e revisione bozze</h3>
+                                <p class="docs-step-text">Apri la sezione <span class="docs-ui-path">Principale <span class="docs-ui-arrow">&rarr;</span> Recensioni</span>. Visualizzerai l'elenco delle recensioni recenti con la valutazione a stelle, il sentiment calcolato e la bozza di risposta pronta per l'approvazione.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-screenshot-card">
+                        <div class="docs-mockup-bar">
+                            <div class="docs-mockup-dots">
+                                <span class="docs-mockup-dot"></span>
+                                <span class="docs-mockup-dot"></span>
+                                <span class="docs-mockup-dot"></span>
+                            </div>
+                            <span class="docs-mockup-title">Pannello Melpis &rarr; Recensioni</span>
+                        </div>
+                        <div class="docs-mockup-body">
+                            <div class="docs-mockup-badge">★ ★ ★ ★ ★ &bull; Sentiment: Positivo &bull; Bozza AI pronta per l'approvazione</div>
+                            <p class="docs-mockup-caption">Il titolare mantiene sempre il controllo finale prima che qualsiasi testo venga reso pubblico su Google.</p>
+                        </div>
+                    </div>
+
+                    <h2 id="limitazioni-reali">Limitazioni del piano</h2>
+                    <p>La funzionalità di sincronizzazione e risposta alle recensioni richiede un abbonamento Crescita o Scala. Nel piano Essenziale (Starter), l'accesso alle API recensioni è disattivato e restituisce il messaggio informativo di upgrade.</p>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-related-card">
+                            <div class="docs-related-tag">Piani</div>
+                            <div class="docs-related-title">Piani di Abbonamento e Upgrade</div>
+                        </a>
+                        <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-related-card">
+                            <div class="docs-related-tag">Integrazione Google</div>
+                            <div class="docs-related-title">Come collegare Google Calendar</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni del piano</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

@@ -1,4 +1,3 @@
-import hmac
 import os
 import time
 from pathlib import Path
@@ -8,7 +7,6 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, Header, HTTPException, Request
 
-from src.core.auth.api_key_guard import api_key_request_allowed
 from src.core.auth.denylist import is_token_revoked
 
 # Firme JWT emesse da Supabase Auth: i progetti con le chiavi di firma
@@ -17,7 +15,7 @@ from src.core.auth.denylist import is_token_revoked
 SUPPORTED_JWT_ALGS = ("RS256", "ES256")
 JWKS_CACHE: dict[str, Any] = {"keys": None, "expires_at": 0}
 HTTP_CLIENT: httpx.AsyncClient | None = None
-VALID_RUOLI = {"owner", "manager", "staff", "service_role"}
+VALID_RUOLI = {"owner", "manager", "staff"}
 ENV_LOADED = False
 
 
@@ -74,7 +72,7 @@ async def _get_supabase_jwks() -> list[dict]:
 
 
 async def verify_supabase_jwt(token: str) -> dict:
-    from jose import JWTError, jwt
+    from jose import ExpiredSignatureError, JWTError, jwt
 
     jwks = await _get_supabase_jwks()
     expected_aud = os.getenv("SUPABASE_JWT_AUD", "authenticated")
@@ -87,16 +85,34 @@ async def verify_supabase_jwt(token: str) -> dict:
         alg = key.get("alg")
         if alg and alg not in SUPPORTED_JWT_ALGS:
             continue
+        algorithms = [alg] if alg else list(SUPPORTED_JWT_ALGS)
+        options = {"verify_aud": True, "verify_iss": bool(expected_iss)}
         try:
             payload = jwt.decode(
                 token,
                 key,
-                algorithms=[alg] if alg else list(SUPPORTED_JWT_ALGS),
+                algorithms=algorithms,
                 audience=expected_aud,
                 issuer=expected_iss,
-                options={"verify_aud": True, "verify_iss": bool(expected_iss)},
+                options=options,
             )
             return payload
+        except ExpiredSignatureError:
+            # Solo un token autentico con gli altri claim validi e' una
+            # sessione scaduta da rinnovare. Firma/issuer/audience errati
+            # restano 403, senza cambiare i gate MFA o di tenant.
+            try:
+                jwt.decode(
+                    token,
+                    key,
+                    algorithms=algorithms,
+                    audience=expected_aud,
+                    issuer=expected_iss,
+                    options={**options, "verify_exp": False},
+                )
+            except JWTError:
+                continue
+            raise HTTPException(401, "Sessione scaduta: rinnova l'accesso")
         except JWTError:
             continue
     raise HTTPException(403, "Token JWT non valido")
@@ -108,7 +124,10 @@ async def get_token(
     x_api_key: str | None = Header(None),
 ) -> str | None:
     if authorization:
-        return authorization.removeprefix("Bearer ")
+        scheme, _, credential = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not credential.strip():
+            raise HTTPException(status_code=401, detail="Credenziali non valide")
+        return credential.strip()
     if x_api_key:
         return f"apikey:{x_api_key}"
     # BFF (task18): sessione in cookie HttpOnly+Secure+SameSite=Strict.
@@ -134,21 +153,8 @@ async def get_current_user(
             "source": "anonymous",
         }
     if token.startswith("apikey:"):
-        key = token.removeprefix("apikey:")
-        expected = os.getenv("API_KEY_SERVICE") or ""
-        # Audit 1.5: confronto con == e' vulnerabile a timing attack (il
-        # tempo di confronto rivela quanti caratteri iniziali coincidono).
-        # hmac.compare_digest confronta in tempo costante.
-        if not expected or not hmac.compare_digest(key, expected):
-            raise HTTPException(status_code=403, detail="API Key non valida")
-        if not api_key_request_allowed(request):
-            raise HTTPException(status_code=403, detail="API Key non consentita da questa rete")
-        return {
-            "auth_user_id": None,
-            "organization_id": None,
-            "ruolo": "service_role",
-            "source": "api_key",
-        }
+        # Service credentials never represent a user or a tenant membership.
+        raise HTTPException(status_code=403, detail="Le API key non sono ammesse sulle API utente")
     if await is_token_revoked(token):
         raise HTTPException(status_code=401, detail="Sessione revocata: effettua di nuovo il login")
     payload = await verify_supabase_jwt(token)
@@ -178,8 +184,8 @@ async def get_organization_context(
     current_user: dict = Depends(get_current_user),
     x_organization_id: str | None = Header(None),
 ) -> dict:
-    if current_user["source"] in ("api_key", "anonymous"):
-        return {**current_user, "organization_id": x_organization_id}
+    if current_user.get("source") != "jwt":
+        raise HTTPException(status_code=401, detail="Sessione utente richiesta")
     # Task18: risoluzione tenant server-side dall'identità nel JWT validato.
     # L'header X-Organization-Id NON è più fonte di fiducia per l'org: la
     # membership si ricava dal DB. Con 1 solo membership l'org è univoca e
@@ -228,8 +234,9 @@ async def get_organization_context(
 
 async def get_optional_organization_context(request: Request) -> dict | None:
     """Risolve l'organization context in modo opzionale per endpoint ad accesso ibrido (es. simulatore).
-    Supporta cookie HttpOnly BFF, Bearer token, API Key e dependency_overrides nei test.
-    Restituisce None per richieste anonime o non valide senza lanciare eccezioni."""
+    Supporta cookie HttpOnly BFF, Bearer token e dependency_overrides nei test.
+    Restituisce un'identita' anonima solo in modalita' demo senza credenziali;
+    credenziali presenti ma non valide e errori di membership vengono propagati."""
     if hasattr(request, "app") and hasattr(request.app, "dependency_overrides"):
         if get_organization_context in request.app.dependency_overrides:
             override = request.app.dependency_overrides[get_organization_context]
@@ -239,24 +246,41 @@ async def get_optional_organization_context(request: Request) -> dict | None:
                 return await res
             return res
 
-    try:
-        token = await get_token(
-            request,
-            authorization=request.headers.get("Authorization"),
-            x_api_key=request.headers.get("X-API-Key"),
-        )
-        if not token:
-            return None
-        user = await get_current_user(request, token=token)
-        if not user or user.get("source") == "anonymous":
-            return None
-        return await get_organization_context(
-            request,
-            current_user=user,
-            x_organization_id=request.headers.get("X-Organization-Id"),
-        )
-    except Exception:
-        return None
+    from src.core.auth import bff
+
+    has_credentials = any((
+        request.headers.get("Authorization") is not None,
+        request.headers.get("X-API-Key") is not None,
+        request.cookies.get(bff.access_cookie_name()) is not None,
+        request.cookies.get(bff.refresh_cookie_name()) is not None,
+    ))
+    if not has_credentials:
+        if not is_demo_mode():
+            raise HTTPException(status_code=401, detail="Token o API Key richiesti")
+        return {
+            "auth_user_id": None,
+            "organization_id": None,
+            "ruolo": None,
+            "source": "anonymous",
+        }
+
+    token = await get_token(
+        request,
+        authorization=request.headers.get("Authorization"),
+        x_api_key=request.headers.get("X-API-Key"),
+    )
+    # A refresh cookie without its access cookie is still an attempted
+    # authenticated session; this endpoint does not silently downgrade it.
+    if not token:
+        raise HTTPException(status_code=401, detail="Sessione non valida: effettua di nuovo il login")
+    user = await get_current_user(request, token=token)
+    if not user or user.get("source") == "anonymous":
+        raise HTTPException(status_code=401, detail="Sessione utente richiesta")
+    return await get_organization_context(
+        request,
+        current_user=user,
+        x_organization_id=request.headers.get("X-Organization-Id"),
+    )
 
 
 def require_ruolo(*ruoli: str):
@@ -264,9 +288,7 @@ def require_ruolo(*ruoli: str):
     if invalid:
         raise ValueError(f"Ruoli non validi: {invalid}. Validi: {VALID_RUOLI}")
     async def _check(user: dict = Depends(get_organization_context)):
-        if user.get("source") == "api_key":
-            return user
-        if user.get("source") == "anonymous":
+        if user.get("source") != "jwt":
             raise HTTPException(status_code=401, detail="Token o API Key richiesti")
         if user.get("ruolo") not in ruoli:
             raise HTTPException(
@@ -304,16 +326,12 @@ def require_mfa():
         user = Depends(require_ruolo("owner"))
         mfa  = Depends(require_mfa())
 
-    Le richieste via API_KEY_SERVICE (source="api_key") sono esenti: sono
-    credenziali interne al backend (inbound processor, webhook Stripe) e non
-    rappresentano una sessione utente rubabile.
+    Solo una sessione utente verificata con secondo fattore soddisfa il gate.
     """
     async def _check(user: dict = Depends(get_current_user)):
-        if user.get("source") == "api_key":
-            return user
         # aal: Supabase popola "aal2" solo dopo verifica del secondo fattore.
         # Token legacy o sessioni senza MFA portano aal=None o "aal1".
-        if user.get("aal") != "aal2":
+        if user.get("source") != "jwt" or user.get("aal") != "aal2":
             raise HTTPException(
                 status_code=403,
                 detail="Autenticazione a due fattori (MFA) richiesta per questa operazione. "

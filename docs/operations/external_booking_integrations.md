@@ -59,8 +59,8 @@ SimplyBook utilizza autenticazione JSON-RPC 2.0 tramite token di sessione genera
 {
   "provider": "simplybook",
   "is_active": true,
-  "company_login": "salone_eleganza_milano",
-  "api_key": "sb_live_secret_key_abcdef123456",
+  "company_login": "<YOUR_SIMPLYBOOK_COMPANY_LOGIN>",
+  "api_key": "<YOUR_SIMPLYBOOK_API_KEY>",
   "config": {
     "mode": "authoritative",
     "timeout_seconds": 4.0,
@@ -144,7 +144,7 @@ A differenza dei verticali altamente specializzati (es. WuBook per hospitality m
 {
   "provider": "calcom",
   "is_active": true,
-  "api_key": "cal_live_abcdef0123456789",
+  "api_key": "<YOUR_CALCOM_API_KEY>",
   "config": {
     "mode": "authoritative",
     "base_url": "https://api.cal.com/v2",
@@ -188,9 +188,9 @@ Se `property_id` non è specificato nel config del tenant, l'adapter effettua l'
 {
   "provider": "apaleo",
   "is_active": true,
-  "client_id": "IGAR-SP-TEST",
-  "client_secret": "Kev4wZSbQRwCO9PwAhwA2O0Uj8ESCe",
-  "property_id": "BER",
+  "client_id": "<YOUR_APALEO_CLIENT_ID>",
+  "client_secret": "<YOUR_APALEO_CLIENT_SECRET>",
+  "property_id": "<YOUR_APALEO_PROPERTY_ID>",
   "config": {
     "mode": "authoritative",
     "base_url": "https://api.apaleo.com",

@@ -5,6 +5,7 @@ import uuid
 from typing import Any
 
 from src.core.channels.base import ChannelOutboundPort, OutboundSendResult
+from src.core.channels.delivery import provider_message_id
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class WhatsAppOutboundAdapter(ChannelOutboundPort):
                 handling_type=handling_type,
                 idempotency_key=idempotency_key,
             )
-            wam_id = (res.get("wam_id") or res.get("id")) if isinstance(res, dict) else None
+            wam_id = provider_message_id(res)
             return OutboundSendResult(
                 success=True,
                 channel="whatsapp",

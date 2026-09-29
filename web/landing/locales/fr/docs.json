@@ -1,0 +1,56 @@
+{
+  "page_title": "Documentation & Guides Officiels · Melpis",
+  "meta_description": "Guides pratiques, checklists de lancement et documentation technique pour configurer votre assistant WhatsApp IA, connecter Google Calendar et la boîte partagée.",
+  "hero": {
+    "badge": "Centre d'Aide & Guides",
+    "title": "Comment pouvons-nous vous aider ?",
+    "subtitle": "Tout ce dont vous avez besoin pour configurer, intégrer et exploiter au mieux votre assistant Melpis.",
+    "search_placeholder": "Rechercher des guides, intégrations, réglages (Ctrl+K)..."
+  },
+  "search": {
+    "empty": "Aucun article trouvé pour cette recherche.",
+    "count_articles": "{{count}} articles",
+    "shortcut_hint": "Appuyez sur / pour rechercher rapidement"
+  },
+  "categories": {
+    "start": {
+      "title": "Commencer ici",
+      "desc": "Présentation de Melpis, principes fondamentaux, guide d'installation en 7 étapes et checklist pré-lancement."
+    },
+    "integrations": {
+      "title": "Canaux & Intégrations",
+      "desc": "WhatsApp Business, Instagram Direct, Google Calendar, Avis Google, PMS hôteliers et Airtable."
+    },
+    "ai_config": {
+      "title": "Configuration IA & Connaissances",
+      "desc": "Personnalité, niveau de langue, horaires, dépôt de documents RAG, grilles tarifaires et cache FAQ."
+    },
+    "inbox": {
+      "title": "Boîte Partagée & Prise en Main Humaine",
+      "desc": "Attribution des échanges (Claim), réponses manuelles WhatsApp/Instagram, règles d'escalade et SLA."
+    },
+    "bookings": {
+      "title": "Réservations & Rendez-vous",
+      "desc": "Disponibilité des créneaux, indicateurs horaires, jauges d'accueil, prise de rendez-vous et sync d'agenda."
+    },
+    "accounts": {
+      "title": "Comptes, Équipe & Forfaits",
+      "desc": "Gestion des collaborateurs (Propriétaire, Gestionnaire, Collaborateur), formules Essentiel, Croissance, Échelle et Stripe."
+    },
+    "security": {
+      "title": "Sécurité, Confidentialité & RGPD",
+      "desc": "Conformité RGPD, DPA, conservation 60-90 jours, désinscription volontaire et droit à l'effacement."
+    },
+    "troubleshooting": {
+      "title": "Dépannage & Architecture",
+      "desc": "Diagnostic des jetons expirés, erreurs de l'API Meta, webhooks, seuils de requêtes et architecture technique."
+    }
+  },
+  "ui": {
+    "back_to_docs": "← Tous les guides",
+    "table_of_contents": "Sur cette page",
+    "need_help": "Vous ne trouvez pas votre réponse ?",
+    "contact_support": "Contacter l'assistance Melpis",
+    "last_updated": "Dernière mise à jour : {{date}}"
+  }
+}

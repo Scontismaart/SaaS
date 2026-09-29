@@ -7,12 +7,24 @@ Il PDF non viene mai scritto su filesystem — generato in BytesIO.
 import io
 import os
 from datetime import datetime, timezone
+from typing import NoReturn
 
 from jinja2 import Environment, FileSystemLoader
 
 from src.models.schemas import KPISettimanali
 
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+
+
+def _new_pdf_resource_fetcher():
+    """Build a WeasyPrint 70 fetcher that cannot read files or make requests."""
+    from weasyprint.urls import URLFetcher
+
+    class DenyAllURLFetcher(URLFetcher):
+        def fetch(self, url: str, headers: dict | None = None) -> NoReturn:
+            raise ValueError("External PDF resources are disabled")
+
+    return DenyAllURLFetcher()
 
 
 def _formatta_tempo_risposta(secondi: float | None) -> str:
@@ -55,5 +67,5 @@ def genera_pdf(kpi: KPISettimanali) -> bytes:
     )
 
     pdf_buffer = io.BytesIO()
-    HTML(string=html_content).write_pdf(target=pdf_buffer)
+    HTML(string=html_content, url_fetcher=_new_pdf_resource_fetcher()).write_pdf(target=pdf_buffer)
     return pdf_buffer.getvalue()

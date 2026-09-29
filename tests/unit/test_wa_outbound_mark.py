@@ -26,6 +26,19 @@ from src.whatsapp.service import (
 ORG = uuid.uuid4()
 
 
+@pytest.fixture(autouse=True)
+def sandbox_test_recipient(monkeypatch):
+    # All providers in this module are local fakes; authorize only the fixture.
+    monkeypatch.setenv("WHATSAPP_TEST_RECIPIENTS", "+3900000")
+
+
+def _payload(text="x", *, category=None):
+    result = {"to": "+3900000", "type": "text", "text": {"body": text}}
+    if category:
+        result["_delivery_category"] = category
+    return result
+
+
 def _now():
     return datetime.now(timezone.utc)
 
@@ -90,6 +103,15 @@ class FakeMsgRepo:
     async def increment_message_usage(self, org_id):
         self.usage_increments += 1
 
+    async def claim_outbound_delivery(self, message_id, *, organization_id):
+        row = self.by_id.get(str(message_id))
+        if not row or row["organization_id"] != organization_id or row["status"] not in {"queued", "failed"} or row.get("wam_id"):
+            return None
+        previous = row["status"]
+        row["status"] = "sending_ambiguous"
+        self.transitions.append((previous, "sending_ambiguous"))
+        return dict(row)
+
 
 class FakeMetaClient:
     def __init__(self, fail=False):
@@ -115,16 +137,15 @@ def _service(repo=None):
 
 class TestPreMark:
     @pytest.mark.asyncio
-    async def test_ambiguous_before_sent(self):
+    async def test_missing_durable_row_prevents_send(self):
         repo, meta = FakeMsgRepo(), FakeMetaClient()
         svc = _service(repo)
-        res = await svc.attempt_delivery(
-            message_id=uuid.uuid4(), phone_number_id="pid1", access_token="t",
-            payload={"to": "+390", "type": "text", "text": {"body": "ciao"}},
-            meta_client=meta, organization_id=ORG)
-        # Riga pre-esistente per osservare le transizioni
-        assert meta.calls, "Meta mai chiamato"
-        assert res["status"] == "sent" and res["wam_id"] == "wamid.out.1"
+        from src.core.channels.delivery import DeliveryUnconfirmed
+        with pytest.raises(DeliveryUnconfirmed):
+            await svc.attempt_delivery(
+                message_id=uuid.uuid4(), phone_number_id="pid1", access_token="t",
+                payload=_payload("ciao"), meta_client=meta, organization_id=ORG)
+        assert meta.calls == []
 
     @pytest.mark.asyncio
     async def test_pre_mark_then_sent_order(self):
@@ -132,32 +153,32 @@ class TestPreMark:
         row = await repo.upsert_message(
             id=uuid.uuid4(), organization_id=ORG, conversation_id=uuid.uuid4(),
             wam_id=None, direction="outbound", message_type="text",
-            content={}, content_text="x", status="queued")
+            content=_payload(), content_text="x", status="queued")
         svc, meta = _service(repo), FakeMetaClient()
         await svc.attempt_delivery(
             message_id=row["id"], phone_number_id="p", access_token="t",
-            payload={"to": "+390", "type": "text", "text": {"body": "x"}},
+            payload={"to": "+3900000", "type": "text", "text": {"body": "x"}},
             meta_client=meta, organization_id=ORG)
         assert repo.transitions[0] == ("queued", "sending_ambiguous")
         assert repo.transitions[1] == ("sending_ambiguous", "sent")
         assert repo.by_id[str(row["id"])]["wam_id"] == "wamid.out.1"
 
     @pytest.mark.asyncio
-    async def test_exception_marks_failed(self):
+    async def test_exception_preserves_ambiguous(self):
         repo = FakeMsgRepo()
         row = await repo.upsert_message(
             id=uuid.uuid4(), organization_id=ORG, conversation_id=uuid.uuid4(),
             wam_id=None, direction="outbound", message_type="text",
-            content={}, content_text="x", status="queued")
+            content=_payload(), content_text="x", status="queued")
         svc = _service(repo)
         with pytest.raises(RuntimeError):
             await svc.attempt_delivery(
                 message_id=row["id"], phone_number_id="p", access_token="t",
-                payload={"to": "+390", "type": "text", "text": {"body": "x"}},
+                payload={"to": "+3900000", "type": "text", "text": {"body": "x"}},
                 meta_client=FakeMetaClient(fail=True), organization_id=ORG)
         final = repo.by_id[str(row["id"])]
-        assert final["status"] == "failed"
-        assert ("sending_ambiguous", "failed") in repo.transitions
+        assert final["status"] == "sending_ambiguous"
+        assert ("sending_ambiguous", "failed") not in repo.transitions
 
 
 class TestKeyDiscipline:
@@ -167,11 +188,11 @@ class TestKeyDiscipline:
         row = await repo.upsert_message(
             id=uuid.uuid4(), organization_id=ORG, conversation_id=uuid.uuid4(),
             wam_id="wamid.old", direction="outbound", message_type="text",
-            content={}, content_text="x", status="sent",
+            content=_payload(category="service"), content_text="x", status="sent",
             idempotency_key="reply:inb-1")
         svc, meta = _service(repo), FakeMetaClient()
         res = await svc.send_whatsapp_message(
-            org_id=ORG, to_number="+390", payload={"to": "+390"},
+            org_id=ORG, to_number="+3900000", payload=_payload(),
             category="service", meta_client=meta, tenant_config=_tenant(),
             idempotency_key="reply:inb-1")
         assert res["id"] == row["id"]
@@ -183,17 +204,17 @@ class TestKeyDiscipline:
         row = await repo.upsert_message(
             id=uuid.uuid4(), organization_id=ORG, conversation_id=uuid.uuid4(),
             wam_id=None, direction="outbound", message_type="text",
-            content={}, content_text="x", status="queued",
+            content=_payload(category="service"), content_text="x", status="queued",
             idempotency_key="reply:inb-2")
         svc, meta = _service(repo), FakeMetaClient()
         res = await svc.send_whatsapp_message(
-            org_id=ORG, to_number="+390",
-            payload={"to": "+390", "type": "text", "text": {"body": "x"}},
+            org_id=ORG, to_number="+3900000",
+            payload={"to": "+3900000", "type": "text", "text": {"body": "x"}},
             category="service", meta_client=meta, tenant_config=_tenant(),
             idempotency_key="reply:inb-2")
         assert meta.calls and res["status"] == "sent"
         assert res["id"] == row["id"]  # continuita' di marcatura
-        assert repo.usage_increments == 1
+        assert repo.usage_increments == 0  # inbound reply already reserved quota
 
     @pytest.mark.asyncio
     async def test_existing_fresh_ambiguous_no_resend(self):
@@ -201,33 +222,33 @@ class TestKeyDiscipline:
         await repo.upsert_message(
             id=uuid.uuid4(), organization_id=ORG, conversation_id=uuid.uuid4(),
             wam_id=None, direction="outbound", message_type="text",
-            content={}, content_text="x", status="sending_ambiguous",
+            content=_payload(category="service"), content_text="x", status="sending_ambiguous",
             idempotency_key="reply:inb-3")
         svc, meta = _service(repo), FakeMetaClient()
         await svc.send_whatsapp_message(
-            org_id=ORG, to_number="+390",
-            payload={"to": "+390", "type": "text", "text": {"body": "x"}},
+            org_id=ORG, to_number="+3900000",
+            payload={"to": "+3900000", "type": "text", "text": {"body": "x"}},
             category="service", meta_client=meta, tenant_config=_tenant(),
             idempotency_key="reply:inb-3")
         assert meta.calls == [] and repo.usage_increments == 0
 
     @pytest.mark.asyncio
-    async def test_existing_stale_ambiguous_resends(self):
+    async def test_existing_stale_ambiguous_never_resends(self):
         repo = FakeMsgRepo()
         row = await repo.upsert_message(
             id=uuid.uuid4(), organization_id=ORG, conversation_id=uuid.uuid4(),
             wam_id=None, direction="outbound", message_type="text",
-            content={}, content_text="x", status="sending_ambiguous",
+            content=_payload(category="service"), content_text="x", status="sending_ambiguous",
             idempotency_key="reply:inb-4")
         repo.by_id[str(row["id"])]["updated_at"] = _now() - timedelta(
             seconds=AMBIGUOUS_WEBHOOK_WAIT_SECONDS + 60)
         svc, meta = _service(repo), FakeMetaClient()
         res = await svc.send_whatsapp_message(
-            org_id=ORG, to_number="+390",
-            payload={"to": "+390", "type": "text", "text": {"body": "x"}},
+            org_id=ORG, to_number="+3900000",
+            payload={"to": "+3900000", "type": "text", "text": {"body": "x"}},
             category="service", meta_client=meta, tenant_config=_tenant(),
             idempotency_key="reply:inb-4")
-        assert meta.calls and res["status"] == "sent"
+        assert not meta.calls and res["status"] == "sending_ambiguous"
 
 
 class TestRankLateral:
@@ -247,7 +268,7 @@ class TestRankLateral:
         assert _row_awaiting_webhook(fresh) is True
         stale = {"status": "sending_ambiguous",
                  "updated_at": _now() - timedelta(hours=1)}
-        assert _row_awaiting_webhook(stale) is False
+        assert _row_awaiting_webhook(stale) is True
         assert _row_awaiting_webhook({"status": "queued"}) is False
 
 
@@ -267,7 +288,7 @@ class TestWorkerGuard:
     @pytest.mark.asyncio
     async def test_sent_payload_skips_delivery(self):
         payload = {"organization_id": ORG, "status": "sent", "wam_id": "wamid.1",
-                   "content": {"to": "+390"}, "channel": "whatsapp"}
+                   "content": {"to": "+3900000"}, "channel": "whatsapp"}
         worker, repo = self._worker(payload, service=MagicMock())
         await worker._process_one({"id": "att-1", "message_id": "m-1",
                                    "attempt_number": 1})
@@ -279,7 +300,7 @@ class TestWorkerGuard:
     async def test_fresh_ambiguous_skips_delivery_untouched(self):
         payload = {"organization_id": ORG, "status": "sending_ambiguous",
                    "wam_id": None, "updated_at": _now(),
-                   "content": {"to": "+390"}, "channel": "whatsapp"}
+                   "content": {"to": "+3900000"}, "channel": "whatsapp"}
         worker, repo = self._worker(payload, service=MagicMock())
         await worker._process_one({"id": "att-2", "message_id": "m-2",
                                    "attempt_number": 1})
@@ -287,7 +308,7 @@ class TestWorkerGuard:
         repo.insert_delivery_attempt.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_stale_ambiguous_proceeds_via_adapter(self):
+    async def test_stale_ambiguous_never_retries_via_adapter(self):
         from unittest.mock import patch
 
         from src.core.channels.base import OutboundSendResult
@@ -295,7 +316,7 @@ class TestWorkerGuard:
         payload = {"organization_id": ORG, "status": "sending_ambiguous",
                    "wam_id": None,
                    "updated_at": _now() - timedelta(hours=1),
-                   "content": {"to": "+390", "text": {"body": "x"}},
+                   "content": {"to": "+3900000", "text": {"body": "x"}},
                    "channel": "whatsapp"}
         sender = AsyncMock(return_value=OutboundSendResult(
             success=True, channel="whatsapp"))
@@ -308,7 +329,7 @@ class TestWorkerGuard:
                    new=AsyncMock(return_value=tenant)):
             await worker._process_one({"id": "att-3", "message_id": "m-3",
                                        "attempt_number": 1})
-        sender.assert_awaited_once()
+        sender.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_queued_proceeds(self):
@@ -317,7 +338,7 @@ class TestWorkerGuard:
         from src.core.channels.base import OutboundSendResult
 
         payload = {"organization_id": ORG, "status": "queued",
-                   "content": {"to": "+390", "text": {"body": "x"}},
+                   "content": {"to": "+3900000", "text": {"body": "x"}},
                    "channel": "whatsapp"}
         sender = AsyncMock(return_value=OutboundSendResult(
             success=True, channel="whatsapp"))
@@ -347,7 +368,7 @@ class TestAdapterKeyThreading:
 
         adapter = WhatsAppOutboundAdapter(FakeService())
         res = await adapter.send_reply(
-            org_id=ORG, to_destination="+390", text="ciao",
+            org_id=ORG, to_destination="+3900000", text="ciao",
             tenant_config=MagicMock(), idempotency_key="reply:inb-9")
         assert res.success is True
         assert seen["idempotency_key"] == "reply:inb-9"
@@ -370,7 +391,7 @@ class TestAdapterKeyThreading:
         svc = InboundProcessingService(
             app_config=MagicMock(), repo=MagicMock(), channel_router=router)
         msg = {"id": "inb-42", "organization_id": ORG, "canale": "whatsapp"}
-        await svc._send_reply(ORG, msg, {"from": "+390"}, MagicMock(), "ciao")
+        await svc._send_reply(ORG, msg, {"from": "+3900000"}, MagicMock(), "ciao")
         assert seen["idempotency_key"] == "reply:inb-42"
 
 
@@ -388,15 +409,15 @@ class TestQuotaExceededBehavior:
         # Normal message must raise MessageUsageExceeded
         with pytest.raises(WhatsAppService.MessageUsageExceeded):
             await svc.send_whatsapp_message(
-                org_id=ORG, to_number="+390",
-                payload={"to": "+390", "type": "text", "text": {"body": "normal msg"}},
+                org_id=ORG, to_number="+3900000",
+                payload={"to": "+3900000", "type": "text", "text": {"body": "normal msg"}},
                 category="service", meta_client=meta, tenant_config=_tenant(),
             )
 
         # But handling_type="quota_exceeded" bypasses the limit check AND does not increment usage
         res = await svc.send_whatsapp_message(
-            org_id=ORG, to_number="+390",
-            payload={"to": "+390", "type": "text", "text": {"body": "troppe richieste"}},
+            org_id=ORG, to_number="+3900000",
+            payload={"to": "+3900000", "type": "text", "text": {"body": "troppe richieste"}},
             category="service", meta_client=meta, tenant_config=_tenant(),
             handling_type="quota_exceeded",
         )

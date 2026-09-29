@@ -1,0 +1,19 @@
+/* Melpis visual language — shared by marketing, authentication and dashboard. */
+:root {
+  --melpis-canvas: #090909;
+  --melpis-surface: #171717;
+  --melpis-surface-raised: #222222;
+  --melpis-line: rgba(255, 255, 255, 0.14);
+  --melpis-line-strong: rgba(255, 255, 255, 0.26);
+  --melpis-ink: #fafafa;
+  --melpis-muted: #c5c5c5;
+  --melpis-subtle: #a3a3a3;
+  --melpis-accent: #ffffff;
+  --melpis-focus: #ffffff;
+  --melpis-danger: #ffb3b3;
+  --melpis-radius-card: 24px;
+  --melpis-radius-control: 12px;
+  --melpis-shadow: 0 24px 72px rgba(0, 0, 0, 0.42);
+  --melpis-display: 'Inter', 'Outfit', sans-serif;
+  --melpis-body: 'Outfit', sans-serif;
+}

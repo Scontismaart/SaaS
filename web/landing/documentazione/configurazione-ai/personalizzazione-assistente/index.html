@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalizzazione Assistente: Tono, Prompt e Regole — Documentazione Melpis</title>
+    <meta name="description" content="Come configurare la personalità, il tono di voce, gli orari di apertura e le istruzioni personalizzate del tuo assistente AI su Melpis.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/configurazione-ai/personalizzazione-assistente/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link is-active">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Configurazione AI</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Personalizzazione Assistente</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Personalizzazione Assistente: Tono, Prompt e Regole</h1>
+                    <p class="docs-article-subtitle">Configura il nome, il tono di voce, il comportamento fuori orario e le direttive tassative del tuo risponditore AI.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>La personalizzazione dell'assistente ti consente di allineare le risposte automatiche all'identità del tuo brand. Puoi impostare un nome specifico (es. <em>"Giulia del Salone Eleganza"</em>), scegliere lo stile comunicativo, impostare orari di apertura precisi con messaggi dedicati al di fuori dell'orario di lavoro e definire regole ferree che l'AI non deve mai violare.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Devi aver completato la registrazione e possedere i permessi di <strong>Owner</strong> o <strong>Manager</strong>.</li>
+                        <li>Avere chiari gli orari di apertura e i turni della tua attività.</li>
+                        <li>Identificare eventuali divieti assoluti (es. non promettere sconti, non fornire consulenze mediche o legali vincolanti).</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Accedi a Impostazioni &rarr; Personalità Assistente</h3>
+                                <p class="docs-step-text">Nel menu laterale della Dashboard Melpis clicca su <strong>Impostazioni</strong> e apri la scheda <strong>Assistente AI</strong>. Qui trovi tutti i parametri che compongono il System Prompt dinamico.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Imposta Nome e Tono di Voce</h3>
+                                <p class="docs-step-text">Seleziona uno dei quattro stili predefiniti calibrati per le attività commerciali:
+                                <ul>
+                                    <li><strong>Professionale</strong> (consigliato per studi professionali e medici): cordiale, sintetico, formale ma accogliente (usa il "Lei" se richiesto).</li>
+                                    <li><strong>Amichevole ed Empatico</strong> (ottimo per parrucchieri, estetiste, palestre): usa il "tu", tono caloroso e colloquiale, emoji misurate.</li>
+                                    <li><strong>Caldo e Accogliente</strong> (ideale per ristoranti, agriturismi e hotel): focalizzato sull'ospitalità e sul comfort del cliente.</li>
+                                    <li><strong>Formale</strong>: massima sobrietà, nessun uso di emoji, linguaggio strettamente istituzionale.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Definisci le Regole Tassative (Prompt Personale)</h3>
+                                <p class="docs-step-text">Nella casella <em>Regole e Istruzioni Aggiuntive</em> puoi scrivere direttive specifiche in linguaggio naturale. Ad esempio:
+                                <ul>
+                                    <li><em>"Non comunicare mai prezzi per interventi complessi; invita sempre a prenotare una consulenza di valutazione."</em></li>
+                                    <li><em>"Ricorda sempre che accettiamo cani di piccola taglia ma non di grande taglia all'interno della sala."</em></li>
+                                    <li><em>"Se il cliente chiede informazioni su allergie alimentari gravi, chiedi di specificarle e informa che il personale di cucina controllerà personalmente."</em></li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Configura Orari di Apertura e Messaggio Fuori Orario</h3>
+                                <p class="docs-step-text">Imposta giorno per giorno l'orario di apertura, chiusura ed eventuale pausa pranzo. Puoi attivare l'opzione <strong>Gestione Fuori Orario</strong>:
+                                <ul>
+                                    <li><strong>AI risponde sempre</strong> (consigliato): l'AI risponde subito, chiarisce che la sede è chiusa e indica quando aprirà, ma prende comunque la prenotazione o il messaggio per la riapertura.</li>
+                                    <li><strong>Messaggio cortesia fisso</strong>: l'AI invia solo un avviso prestabilito e rimanda la conversazione all'orario di apertura.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-tip">
+                        <div class="docs-callout-title">💡 Consiglio pratico sui prompt</div>
+                        <p class="docs-callout-text">Evita prompt eccessivamente lunghi con doppi negativi (es. <em>"Non fare in modo che non si capisca..."</em>). Usa comandi affermativi e chiari: <em>"Sii conciso. Rispondi con massimo 2 frasi a meno che il cliente non chieda dettagli approfonditi."</em> I messaggi brevi su WhatsApp hanno un tasso di lettura del 94% superiore ai testi lunghi.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <p>Al salvataggio, Melpis ricompila istantaneamente il System Prompt del tenant. Da quel momento:</p>
+                    <ul>
+                        <li>Tutti i nuovi messaggi ricevuti da WhatsApp o Instagram utilizzeranno la nuova configurazione vocale.</li>
+                        <li>Se hai configurato orari di apertura, l'AI controllerà il timestamp UTC del messaggio rapportato al fuso orario locale (<code>Europe/Rome</code>) prima di formulare la risposta.</li>
+                        <li>Le regole aggiuntive vengono protette contro tentativi di jailbreak o prompt injection del cliente finale.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Sicurezza e Guardrail Non Disattivabili</strong>: Non puoi chiedere all'AI di ignorare le politiche di sicurezza o di promettere prezzi inventati; i guardrail deterministici dell'applicazione hanno sempre la precedenza sul prompt personalizzato.</li>
+                        <li><strong>Lunghezza massima istruzioni</strong>: Il campo delle istruzioni personalizzate è limitato a 2.000 caratteri per evitare degrado dell'attenzione del modello (context drift) e rallentamenti dell'inferenza.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'AI continua a dare del "tu" nonostante abbia scelto il tono Professionale</summary>
+                            <div class="docs-accordion-content">
+                                <p>Assicurati di aver cliccato su <strong>Salva Modifiche</strong> in fondo alla schermata. Inoltre, se una conversazione era già aperta, l'AI potrebbe mantenere una leggera continuità stilistica con i messaggi pregressi presenti nella finestra di contesto (ultimi 6 messaggi). Nei nuovi contatti il tono sarà strettamente formale.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'assistente accetta richieste che ho esplicitamente vietato nelle regole</summary>
+                            <div class="docs-accordion-content">
+                                <p>Controlla la formulazione della regola. Le direttive generiche (es. <em>"sii prudente"</em>) sono meno efficaci di direttive categoriche (es. <em>"Se il cliente chiede uno sconto, rispondi tassativamente che i prezzi applicati sono quelli di listino e che eventuali promozioni vengono concordate solo in sede"</em>).</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>In fase di inferenza, la pipeline di Melpis in <code>src/whatsapp/inbound_processor.py</code> assembla il payload per il modello LLM concatenando vari layer gerarchici:</p>
+                    <ol>
+                        <li><strong>System Anchor</strong>: direttive di sistema inviolabili (protezione da jailbreak, tenant isolation).</li>
+                        <li><strong>Business Profile</strong>: nome azienda, categoria merceologica, indirizzo e orari correnti calcolati con <code>zoneinfo.ZoneInfo('Europe/Rome')</code>.</li>
+                        <li><strong>Tone &amp; Style Module</strong>: direttive sul tono prescelto (es. <code>TONE_PROFESSIONALE_PROMPT</code>).</li>
+                        <li><strong>Tenant Custom Rules</strong>: il testo inserito dall'utente in <code>regole_personalizzate</code>.</li>
+                        <li><strong>Context RAG / Services</strong>: frammenti estratti dai documenti caricati o dai servizi attivi.</li>
+                    </ol>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/ai/prompts.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>def build_system_prompt(org: Organization, settings: AssistantSettings) -> str:
+    parts = [
+        SYSTEM_BASE_INVARIANTS,
+        f"Sei l'assistente virtuale di {org.name}, attività di tipo {org.business_type}.",
+        f"Il tuo nome è {settings.nome_assistente or 'l\'assistente'}.",
+        TONE_REGISTRY.get(settings.tone, TONE_DEFAULT),
+    ]
+    if settings.regole_personalizzate:
+        parts.append(f"REGOLE SPECIFICHE DELL'ATTIVITÀ:\n{settings.regole_personalizzate}")
+    return "\n\n".join(parts)</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-related-card">
+                            <div class="docs-related-tag">Base di conoscenza</div>
+                            <div class="docs-related-title">Documenti e Riconoscimento OCR</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-related-card">
+                            <div class="docs-related-tag">Listino</div>
+                            <div class="docs-related-title">Listino Servizi e Conflitti Prezzo</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-related-card">
+                            <div class="docs-related-tag">Prestazioni</div>
+                            <div class="docs-related-title">FAQ e Cache a Zero Token</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

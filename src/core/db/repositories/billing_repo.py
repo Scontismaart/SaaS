@@ -33,6 +33,75 @@ class BillingRepository(TenantScopedRepository):
             json.dumps(metadata or {}))
             return dict(row)
 
+    async def record_usage_batch(
+        self, organization_id: uuid.UUID | str, records: list[dict], *, block_ai: bool = False
+    ) -> None:
+        """Atomically persist provider usage attempts and optional unresolved hold."""
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        if not isinstance(records, list):
+            raise ValueError("Usage records must be a list")
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                for record in records:
+                    event_type = record.get("event_type", "ai_response")
+                    quantity = record.get("quantity", 1)
+                    metadata = record.get("metadata", {})
+                    if (not isinstance(event_type, str) or not event_type.strip()
+                            or isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0
+                            or not isinstance(metadata, dict)):
+                        raise ValueError("Invalid usage record")
+                    await conn.execute(
+                        """INSERT INTO usage_events
+                           (id, organization_id, event_type, quantity, metadata)
+                           VALUES ($1, $2, $3, $4, $5::jsonb)""",
+                        uuid.uuid4(), organization_id, event_type, quantity, json.dumps(metadata),
+                    )
+                if block_ai:
+                    await conn.execute(
+                        "UPDATE organizations SET ai_accounting_blocked = TRUE WHERE id = $1",
+                        organization_id,
+                    )
+
+    async def reconcile_unresolved_usage(
+        self, organization_id: uuid.UUID | str, usage_id: uuid.UUID | str, resolution: str
+    ) -> bool:
+        """Tenant-scoped explicit reconciliation for an unresolved provider attempt."""
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        if isinstance(usage_id, str):
+            usage_id = uuid.UUID(usage_id)
+        if not isinstance(resolution, str) or not resolution.strip() or len(resolution) > 500:
+            raise ValueError("A concise reconciliation reason is required")
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.fetchval(
+                    "SELECT id FROM organizations WHERE id = $1 FOR UPDATE", organization_id
+                )
+                row = await conn.fetchrow(
+                    """UPDATE usage_events
+                       SET metadata = jsonb_set(
+                           jsonb_set(metadata, '{accounting_status}', to_jsonb('resolved'::text), TRUE),
+                           '{resolution}', to_jsonb($3::text), TRUE)
+                       WHERE organization_id = $1 AND id = $2
+                         AND metadata->>'accounting_status' = 'unresolved'
+                       RETURNING id""",
+                    organization_id, usage_id, resolution.strip(),
+                )
+                if row is None:
+                    return False
+                await conn.execute(
+                    """UPDATE organizations SET ai_accounting_blocked = (
+                         EXISTS (SELECT 1 FROM governance_outbox
+                                 WHERE organization_id = $1 AND event_kind = 'usage')
+                         OR EXISTS (SELECT 1 FROM usage_events
+                                    WHERE organization_id = $1
+                                      AND metadata->>'accounting_status' = 'unresolved')
+                       ) WHERE id = $1""",
+                    organization_id,
+                )
+                return True
+
     async def get_usage_by_month(
         self, organization_id: uuid.UUID | str, year: int, month: int
     ) -> list[dict]:
@@ -73,8 +142,9 @@ class BillingRepository(TenantScopedRepository):
                        plan, messages_used_this_period, messages_limit,
                        users_limit, whatsapp_numbers_limit,
                        current_period_start, current_period_end,
-                       trial_start, trial_end, suspension_notified_at
-                FROM organizations WHERE id = $1
+                       trial_start, trial_end, suspension_notified_at,
+                       COALESCE((to_jsonb(o)->>'ai_accounting_blocked')::boolean, FALSE) AS ai_accounting_blocked
+                FROM organizations o WHERE id = $1
             """, organization_id)
             if row is None:
                 raise ValueError(f"Organization {organization_id} not found")
@@ -86,8 +156,9 @@ class BillingRepository(TenantScopedRepository):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT subscription_status, trial_end,
+                       COALESCE((to_jsonb(o)->>'ai_accounting_blocked')::boolean, FALSE) AS ai_accounting_blocked,
                        messages_used_this_period, messages_limit
-                FROM organizations WHERE id = $1
+                FROM organizations o WHERE id = $1
             """, org_id)
             return dict(row) if row else None
 
@@ -96,6 +167,12 @@ class BillingRepository(TenantScopedRepository):
     ) -> dict:
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)
+        allowed = {"stripe_customer_id", "subscription_id", "subscription_status", "plan",
+                   "messages_used_this_period", "messages_limit", "users_limit", "whatsapp_numbers_limit",
+                   "current_period_start", "current_period_end", "trial_start", "trial_end",
+                   "suspension_notified_at", "ai_accounting_blocked"}
+        if not data or not set(data) <= allowed:
+            raise ValueError("Invalid billing fields")
         sets = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(data))
         values = list(data.values())
         async with self.pool.acquire() as conn:
@@ -198,15 +275,110 @@ class BillingRepository(TenantScopedRepository):
         so the dedup INSERT and the billing effect run atomically together."""
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)
-        try:
-            await conn.execute(
-                "INSERT INTO processed_stripe_events (event_id, organization_id) VALUES ($1, $2)",
-                event_id,
-                organization_id,
+        # ON CONFLICT does not poison the surrounding transaction on replay.
+        return await conn.fetchval(
+            "INSERT INTO processed_stripe_events (event_id, organization_id) VALUES ($1, $2) "
+            "ON CONFLICT (event_id, organization_id) DO NOTHING RETURNING event_id",
+            event_id, organization_id,
+        ) is not None
+
+    async def enqueue_governance(self, organization_id, event_kind: str, payload: dict) -> str:
+        if event_kind not in {"audit", "usage"}:
+            raise ValueError("Invalid governance kind")
+        if not isinstance(payload, dict):
+            raise ValueError("Governance payload must be an object")
+        if event_kind == "usage":
+            quantity = payload.get("quantity", 1)
+            if (not isinstance(payload.get("event_type"), str)
+                    or not payload["event_type"].strip()
+                    or isinstance(quantity, bool) or not isinstance(quantity, int)
+                    or quantity <= 0 or not isinstance(payload.get("metadata", {}), dict)):
+                raise ValueError("Invalid usage governance payload")
+        elif (not isinstance(payload.get("action"), str)
+              or not payload["action"].strip()
+              or not isinstance(payload.get("details", {}), dict)):
+            raise ValueError("Invalid audit governance payload")
+        # Reject poison messages before they can permanently hold the tenant's
+        # accounting flag. The drain casts these fields to UUID in PostgreSQL.
+        for key in ("user_id", "target_id"):
+            value = payload.get(key)
+            if value is not None:
+                try:
+                    uuid.UUID(str(value))
+                except (TypeError, ValueError, AttributeError) as exc:
+                    raise ValueError(f"Invalid audit {key}") from exc
+        serialized = json.dumps(payload, default=str)
+        if len(serialized.encode("utf-8")) > 64 * 1024:
+            raise ValueError("Governance payload exceeds 64 KiB")
+        event_id = uuid.uuid4()
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "SELECT id FROM organizations WHERE id = $1::uuid FOR UPDATE", str(organization_id)
+                )
+                await conn.execute("""
+                    INSERT INTO governance_outbox(id, organization_id, event_kind, payload)
+                    VALUES ($1, $2::uuid, $3, $4::jsonb)
+                """, event_id, str(organization_id), event_kind, serialized)
+                if event_kind == "usage":
+                    await conn.execute(
+                        "UPDATE organizations SET ai_accounting_blocked = TRUE WHERE id = $1::uuid",
+                        str(organization_id),
+                    )
+        return str(event_id)
+
+    @system_scope("worker drains durable org-scoped governance events; every write includes organization_id")
+    async def drain_governance_outbox(self, limit: int = 100) -> int:
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
+            raise ValueError("Governance drain limit must be between 1 and 1000")
+        processed = 0
+        # Lock organization first, as enqueue does, so clearing its hold cannot
+        # race a newly queued event or deadlock a concurrent accounting writer.
+        async with self.pool.acquire() as conn:
+            organizations = await conn.fetch(
+                "SELECT DISTINCT organization_id FROM governance_outbox ORDER BY organization_id LIMIT $1", limit
             )
-            return True
-        except asyncpg.exceptions.UniqueViolationError:
-            return False
+            for organization in organizations:
+                org_id = organization["organization_id"]
+                async with conn.transaction():
+                    await conn.execute("SELECT id FROM organizations WHERE id = $1 FOR UPDATE", org_id)
+                    rows = await conn.fetch("""
+                        SELECT * FROM governance_outbox WHERE organization_id = $1
+                        ORDER BY created_at, id LIMIT $2 FOR UPDATE SKIP LOCKED
+                    """, org_id, limit - processed)
+                    for row in rows:
+                        payload = row["payload"]
+                        if isinstance(payload, str):
+                            payload = json.loads(payload)
+                        if row["event_kind"] == "usage":
+                            await conn.execute("""
+                                INSERT INTO usage_events(id, organization_id, event_type, quantity, metadata)
+                                VALUES ($1, $2, $3, $4, $5::jsonb) ON CONFLICT (id) DO NOTHING
+                            """, row["id"], org_id, payload["event_type"], payload.get("quantity", 1),
+                                json.dumps(payload.get("metadata", {})))
+                        else:
+                            await conn.execute("""
+                                INSERT INTO audit_log(id, organization_id, user_id, auth_user_id,
+                                                      action, target_table, target_id, details)
+                                VALUES ($1, $2, $3::uuid, $4, $5, $6, $7::uuid, $8::jsonb)
+                                ON CONFLICT (id) DO NOTHING
+                            """, row["id"], org_id, payload.get("user_id"), payload.get("auth_user_id"),
+                                payload["action"], payload.get("target_table"), payload.get("target_id"),
+                                json.dumps(payload.get("details", {})))
+                        await conn.execute("DELETE FROM governance_outbox WHERE id = $1 AND organization_id = $2", row["id"], org_id)
+                        processed += 1
+                    await conn.execute("""
+                        UPDATE organizations SET ai_accounting_blocked = (
+                            EXISTS (SELECT 1 FROM governance_outbox
+                                    WHERE organization_id = $1 AND event_kind = 'usage')
+                            OR EXISTS (SELECT 1 FROM usage_events
+                                       WHERE organization_id = $1
+                                         AND metadata->>'accounting_status' = 'unresolved')
+                        ) WHERE id = $1
+                    """, org_id)
+                if processed >= limit:
+                    break
+        return processed
 
     async def update_plan_limits(
         self, organization_id: uuid.UUID | str, plan_slug: str

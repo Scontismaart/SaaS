@@ -1,0 +1,106 @@
+{
+  "page_title": "Melpis · KI-WhatsApp-Assistent für Unternehmen | 7 Tage Testphase",
+  "meta_description": "Aktivieren Sie den KI-WhatsApp-Assistenten für Ihren Betrieb: 24/7-Kundenantworten, Termine in Google Calendar und Bewertungsmanagement. 7 Tage kostenlos.",
+  "hero": {
+    "badge": "Offizielle Meta Cloud API Infrastruktur",
+    "title_part1": "Der KI-WhatsApp-Assistent, der",
+    "title_highlight": "Anfragen in zahlende Kunden verwandelt",
+    "subtitle": "Antwortet in Echtzeit rund um die Uhr, trägt Termine zuverlässig in Google Calendar ein und benachrichtigt Ihr Team, sobald persönliche Betreuung nötig ist.",
+    "cta_primary": "7 Tage kostenlos testen",
+    "cta_secondary": "Funktionsweise entdecken",
+    "no_card_required": "Keine Kreditkarte erforderlich",
+    "setup_time": "In 5 Minuten startklar"
+  },
+  "stats": {
+    "response_time": "< 3 Sekunden",
+    "response_time_label": "durchschnittliche Antwortzeit",
+    "availability": "24/7",
+    "availability_label": "unterbrechungsfreie Erreichbarkeit",
+    "no_shows": "Echtzeit",
+    "no_shows_label": "Kalender-Sync zur Vermeidung von Terminüberschneidungen",
+    "time_saved": "1 Klick",
+    "time_saved_label": "zur sofortigen manuellen Mitarbeiterübernahme"
+  },
+  "features": {
+    "section_badge": "Entwickelt für gesundes Unternehmenswachstum",
+    "section_title": "Alles, was Sie brauchen, um keinen einzigen Kunden auf WhatsApp zu verpassen",
+    "f1": {
+      "title": "Präzise und empathische Antworten auf Basis Ihrer Unternehmensdaten",
+      "desc": "Laden Sie Dokumente, Öffnungszeiten, Preislisten und Konditionen hoch: Melpis antwortet exakt und verlässlich, ohne zu fabulieren."
+    },
+    "f2": {
+      "title": "Zuverlässige Terminsynchronisierung mit Google Calendar",
+      "desc": "Prüft Live-Verfügbarkeiten, bucht freie Zeitfenster und sendet Bestätigungen sowie Terminerinnerungen automatisch an Ihre Kunden."
+    },
+    "f3": {
+      "title": "Gemeinsamer Posteingang und nahtlose Team-Übernahme",
+      "desc": "Sobald eine Anfrage persönliche Aufmerksamkeit erfordert, kann Ihr Team direkt über die Web-Oberfläche die Unterhaltung übernehmen."
+    },
+    "f4": {
+      "title": "Bewertungsmanagement und Kundenzufriedenheit",
+      "desc": "Holen Sie ehrliches Feedback ein und leiten Sie begeisterte Kunden unkompliziert zu einer 5-Sterne-Bewertung auf Google Maps weiter."
+    }
+  },
+  "how_it_works": {
+    "badge": "Einfach und transparent",
+    "title": "So funktioniert Melpis",
+    "step1": {
+      "num": "01",
+      "title": "WhatsApp-Nummer verknüpfen",
+      "desc": "Sichere Ein-Klick-Anbindung über die offizielle Meta Cloud API — Ihre bestehende Rufnummer bleibt uneingeschränkt erhalten."
+    },
+    "step2": {
+      "num": "02",
+      "title": "Betriebsregeln und Wissen hinterlegen",
+      "desc": "Tragen Sie Öffnungszeiten, Preise, Leistungen und den gewünschten Umgangston für die Kundenkommunikation ein."
+    },
+    "step3": {
+      "num": "03",
+      "title": "Den Assistenten für sich arbeiten lassen",
+      "desc": "Melpis beantwortet jede eingehende Nachricht innerhalb weniger Sekunden, während Sie im Dashboard den Überblick behalten."
+    }
+  },
+  "faq": {
+    "badge": "Klare Antworten",
+    "title": "Häufig gestellte Fragen",
+    "items": [
+      {
+        "q": "Benötige ich eine neue Telefonnummer für Melpis?",
+        "a": "Nein. Sie können Ihre bestehende WhatsApp Business Rufnummer über die offizielle Meta Cloud API anbinden oder bei Bedarf eine separate Nummer verwenden."
+      },
+      {
+        "q": "Wie werden Chats verwaltet und funktioniert das System auf Mobilgeräten?",
+        "a": "Melpis verbindet sich über die offizielle Infrastruktur von Meta. Das Einsehen und manuelle Beantworten erfolgt direkt im Melpis-Posteingang (zugänglich via Browser auf PC, Tablet oder Smartphone). Der Assistent antwortet sofort und benachrichtigt Sie bei Bedarf."
+      },
+      {
+        "q": "Was passiert, wenn der Assistent eine Information nicht weiß oder die Anfrage komplex ist?",
+        "a": "Melpis antwortet streng auf Grundlage der hinterlegten Dokumente und Vorgaben. Sind Informationen nicht vorhanden oder erfordern Sonderabsprachen, improvisiert der Assistent nicht: Er informiert den Kunden freundlich und leitet die Nachricht an den Posteingang Ihres Teams weiter."
+      },
+      {
+        "q": "Wie viel Zeit nimmt die Ersteinrichtung in Anspruch?",
+        "a": "Die Einrichtung erfolgt in wenigen einfachen Schritten: WhatsApp-Kanal verbinden, Basisdaten (Öffnungszeiten, Speisekarte oder Leistungen) hochladen und Antwortregeln anpassen. Sie können den Assistenten vorab im integrierten Simulator testen."
+      },
+      {
+        "q": "Wie funktioniert die kostenlose 7-tägige Testphase?",
+        "a": "Die Testphase endet nach 7 Tagen oder 150 KI-Nachrichten, je nachdem, was zuerst eintritt. Eine Kreditkarte ist nicht erforderlich und es gibt keine automatische Verlängerung. Nach Erreichen des Nachrichtenlimits stoppt die KI und Anfragen werden an einen Mitarbeiter übergeben."
+      },
+      {
+        "q": "Sind Kundendaten geschützt und entspricht das System der DSGVO?",
+        "a": "Ja. Melpis garantiert eine strikte Mandantentrennung, Verschlüsselung im Ruhezustand (Fernet), Opt-out-Verwaltung und verwendet Kundendaten zu keinem Zeitpunkt für das Training externer Sprachmodelle."
+      },
+      {
+        "q": "Kann ich Tonalität und Verhaltensregeln individuell anpassen?",
+        "a": "Ja. Im Dashboard bestimmen Sie Arbeitsanweisungen, Höflichkeitsgrad (Du oder Sie), Buchungsintervalle und Themengebiete, die zwingend von einem Mitarbeiter bestätigt werden müssen."
+      },
+      {
+        "q": "Kann das Abonnement jederzeit beendet werden?",
+        "a": "Ja, Sie können Ihr Abonnement jederzeit eigenständig über das integrierte Stripe-Kundenportal beenden oder anpassen — ohne vertragliche Mindestlaufzeiten oder versteckte Kündigungsgebühren."
+      }
+    ]
+  },
+  "cta_banner": {
+    "title": "Bereit, WhatsApp in Ihren erfolgreichsten Verkaufskanal zu verwandeln?",
+    "subtitle": "Schließen Sie sich erfolgreichen Betrieben an, die Buchungen und Kundenservice bereits automatisiert haben.",
+    "button": "7 Tage kostenlos testen"
+  }
+}

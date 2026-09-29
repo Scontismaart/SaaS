@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Come collegare WhatsApp Business (Meta Cloud API) — Documentazione Melpis</title>
+    <meta name="description" content="Guida passo-passo per collegare il tuo numero WhatsApp Business a Melpis: Phone Number ID, WABA ID, System User token e configurazione Webhook.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/integrazioni/collegare-whatsapp/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link is-active">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Canali e Integrazioni</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">WhatsApp Business</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Come collegare WhatsApp Business (Meta Cloud API)</h1>
+                    <p class="docs-article-subtitle">Guida per collegare il canale WhatsApp ufficiale a Melpis: generazione token permanente, recupero ID e configurazione webhook.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Collegando l'API ufficiale di Meta (WhatsApp Cloud API), Melpis può ricevere i messaggi inviati dai clienti al tuo numero WhatsApp aziendale, interpretarli con l'intelligenza artificiale e inviare risposte immediate con orari, servizi, listini e conferme di prenotazione.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <p>Prima di iniziare la procedura, assicurati di possedere:</p>
+                    <ul>
+                        <li>Un account <strong>Meta for Developers</strong> (<a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer">developers.facebook.com</a>) associato a un <strong>Meta Business Manager</strong> verificato.</li>
+                        <li>Un numero di telefono dedicato a WhatsApp Business (che non sia contemporaneamente attivo sull'applicazione WhatsApp Messenger standard per smartphone).</li>
+                        <li>Il ruolo di <strong>Owner</strong> o <strong>Manager</strong> nel tuo account Melpis.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <!-- Step 1 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Creazione dell'App in Meta for Developers</h3>
+                                <p class="docs-step-text">Accedi a <em>Meta for Developers &rarr; Le mie app &rarr; Crea app</em>. Seleziona come tipologia <strong>Azienda (Business)</strong>. Assegna un nome all'app (es. "Melpis Risponditore") e collega il tuo account aziendale Business Manager.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Aggiunta del prodotto WhatsApp</h3>
+                                <p class="docs-step-text">Dalla dashboard dell'app Meta, cerca <strong>WhatsApp</strong> e clicca su <strong>Configura</strong>. Nel menu laterale sinistro, clicca su <em>WhatsApp &rarr; Guida introduttiva (API Setup)</em>.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Recupero di Phone Number ID e WABA ID</h3>
+                                <p class="docs-step-text">Nella schermata <em>API Setup</em> troverai due codici numerici fondamentali:
+                                <ul>
+                                    <li><strong>ID numero di telefono (Phone Number ID)</strong>: identifica il tuo numero WhatsApp.</li>
+                                    <li><strong>ID account WhatsApp Business (WABA ID)</strong>: identifica il tuo account aziendale WhatsApp.</li>
+                                </ul>
+                                Copia entrambi i valori negli appunti.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 4 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Generazione del Token Permanente (System User)</h3>
+                                <p class="docs-step-text">Il token temporaneo della console scade dopo 24 ore. Per la produzione serve un <strong>System User Token permanente</strong>:
+                                <ol>
+                                    <li>Apri <em>Meta Business Manager &rarr; Impostazioni aziendali &rarr; Utenti del sistema</em>.</li>
+                                    <li>Crea un utente di sistema con ruolo <strong>Amministratore</strong>.</li>
+                                    <li>Assegna all'utente di sistema la risorsa <em>WhatsApp Business Account</em> con controllo completo.</li>
+                                    <li>Clicca su <strong>Genera nuovo token</strong>, seleziona la tua app Meta e spunta i permessi <code>whatsapp_business_messaging</code> e <code>whatsapp_business_management</code>.</li>
+                                    <li>Seleziona come scadenza <strong>Nessuna scadenza (Permanente)</strong> e copia il token generato.</li>
+                                </ol>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Step 5 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">5</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Inserimento delle credenziali in Melpis</h3>
+                                <p class="docs-step-text">Apri il pannello Melpis, naviga su <span class="docs-ui-path">Impostazioni <span class="docs-ui-arrow">&rarr;</span> Integrazioni <span class="docs-ui-arrow">&rarr;</span> WhatsApp Business</span>. Incolla il <strong>Phone Number ID</strong>, il <strong>WABA ID</strong> e l'<strong>Access Token permanente</strong>. Clicca su <strong>Salva credenziali WhatsApp</strong>.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 6 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">6</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Verifica con il Test di Connettività</h3>
+                                <p class="docs-step-text">Subito dopo il salvataggio, clicca su <strong>Test connettività</strong>. Il backend Melpis contatta la Graph API v21.0 di Meta. Se le credenziali sono corrette, visualizzerai un badge verde: <em>"WhatsApp Business verificato (&lt;Nome verificato da Meta&gt;)"</em>.</p>
+                            </div>
+                        </div>
+
+                        <!-- Step 7 -->
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">7</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Configurazione del Webhook in Meta</h3>
+                                <p class="docs-step-text">Torna nella console Meta in <em>WhatsApp &rarr; Configurazione</em>. Nel box <strong>Webhook</strong>:
+                                <ul>
+                                    <li><strong>URL di callback</strong>: <code>https://tuodominio.it/webhooks/whatsapp</code> (o l'endpoint fornito nel pannello).</li>
+                                    <li><strong>Verifica token</strong>: inserisci il token di verifica concordato sul tuo server.</li>
+                                    <li>Clicca su <strong>Verifica e salva</strong>.</li>
+                                    <li>Nel pannello <em>Campi webhook</em> sottoscrivi obbligatoriamente il campo <strong>messages</strong> e <strong>message_template_status_update</strong>.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-screenshot-card">
+                        <div class="docs-mockup-bar">
+                            <div class="docs-mockup-dots">
+                                <span class="docs-mockup-dot"></span>
+                                <span class="docs-mockup-dot"></span>
+                                <span class="docs-mockup-dot"></span>
+                            </div>
+                            <span class="docs-mockup-title">Pannello Melpis &rarr; Impostazioni &rarr; WhatsApp Business</span>
+                        </div>
+                        <div class="docs-mockup-body">
+                            <div class="docs-mockup-badge">Stato Canale: Connesso &bull; Phone Number ID: 104829384729102 &bull; Test: OK</div>
+                            <p class="docs-mockup-caption">Il token di accesso non viene mai mostrato a video per sicurezza e viene cifrato con Fernet at-rest.</p>
+                        </div>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <p>Una volta collegato WhatsApp:</p>
+                    <ul>
+                        <li>Il token viene salvato nel database PostgreSQL (tabella <code>whatsapp_accounts</code>) ed è cifrato a riposo con chiave Fernet AES-128.</li>
+                        <li>Ogni messaggio inviato da un cliente genera una chiamata webhook a <code>/webhooks/whatsapp</code>. Il server valida la firma digitale <code>X-Hub-Signature-256</code> con l'App Secret di Meta.</li>
+                        <li>Il worker in background (<code>InboundProcessor</code>) prende in carico il messaggio, esegue il RAG sui tuoi documenti e invia la risposta automatica entro pochissimi secondi.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Finestra di messaggistica di 24 ore</strong>: Secondo le policy Meta, quando un cliente ti scrive si apre una finestra di assistenza di 24 ore in cui l'AI può rispondere liberamente. Oltre le 24 ore senza nuovi messaggi del cliente, per contattarlo è obbligatorio usare un template WhatsApp pre-approvato da Meta.</li>
+                        <li><strong>Token temporaneo vs permanente</strong>: Se utilizzi il token di test dalla schermata iniziale di Meta, il bot smetterà di rispondere esattamente 24 ore dopo. È obbligatorio creare un token di sistema permanente come spiegato al passo 4.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-callout docs-callout-danger">
+                        <span class="docs-callout-icon">🚨</span>
+                        <div class="docs-callout-content">
+                            <div class="docs-callout-title">Test fallito: "Token Meta scaduto o non valido"</div>
+                            <p>Questo errore significa che il token inserito è scaduto (era un token di test da 24 ore) oppure i permessi <code>whatsapp_business_messaging</code> non sono stati concessi. Genera un nuovo token permanente da <em>Utenti del sistema</em> in Business Manager.</p>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-warning">
+                        <span class="docs-callout-icon">⚠️</span>
+                        <div class="docs-callout-content">
+                            <div class="docs-callout-title">Meta restituisce errore di validazione Webhook</div>
+                            <p>Verifica che l'URL inserito in Meta inizi per <code>https://</code> con certificato SSL valido e che il <strong>Verifica token</strong> coincida esattamente con il valore configurato nel file di ambiente del server.</p>
+                        </div>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico (per sviluppatori)</h2>
+                    <p>I dettagli di integrazione verificabili nel codice sorgente Melpis:</p>
+                    <div class="docs-code-card">
+                        <div class="docs-code-header">
+                            <span>Endpoint interno di verifica connettività</span>
+                            <button type="button" class="docs-copy-btn">Copia</button>
+                        </div>
+                        <pre class="docs-code-content"><code>POST /api/integrazioni/test/whatsapp
+Headers:
+  Authorization: Bearer &lt;JWT_SESSIONE&gt;
+  X-Organization-Id: &lt;UUID_ORGANIZZAZIONE&gt;
+
+Risposta positiva (HTTP 200):
+{
+  "canale": "whatsapp",
+  "status": "connected",
+  "success": true,
+  "message": "WhatsApp Business verificato (Trattoria da Mario)",
+  "details": {
+    "verified_name": "Trattoria da Mario",
+    "display_phone_number": "+39 02 1234567"
+  }
+}</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-related-card">
+                            <div class="docs-related-tag">Canale aggiuntivo</div>
+                            <div class="docs-related-title">Come collegare Instagram Direct</div>
+                        </a>
+                        <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-related-card">
+                            <div class="docs-related-tag">Gestione messaggi</div>
+                            <div class="docs-related-title">Shared Inbox e Presa in Carico</div>
+                        </a>
+                        <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-related-card">
+                            <div class="docs-related-tag">Assistenza</div>
+                            <div class="docs-related-title">Troubleshooting Token ed Errori Meta</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

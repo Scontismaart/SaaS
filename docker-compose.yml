@@ -28,8 +28,15 @@ services:
       context: ./web
       dockerfile: Dockerfile
     image: whatsapp-ai-responder-web:latest
+    # Local development has no reviewed legal identity values. Keep the
+    # production legal renderer enabled in compose.production.yml; here serve
+    # the dashboard while the legal templates remain outside the document root.
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["exec nginx -g 'daemon off;'"]
     ports:
       - "8080:80"
+      # Keep the local QA URL on the Compose network so nginx can resolve api.
+      - "127.0.0.1:4174:80"
     volumes:
       - ./web/landing/index.html:/usr/share/nginx/html/index.html:ro
       - ./web/landing/style.css:/usr/share/nginx/html/style.css:ro
@@ -38,14 +45,18 @@ services:
       - ./web/landing/conoscenza.webp:/usr/share/nginx/html/conoscenza.webp:ro
       - ./web/landing/prenotazioni.webp:/usr/share/nginx/html/prenotazioni.webp:ro
       - ./web/landing/inbox.webp:/usr/share/nginx/html/inbox.webp:ro
-      - ./web/landing/logo.webp:/usr/share/nginx/html/logo.webp:ro
-      - ./web/landing/privacy.html:/usr/share/nginx/html/privacy.html:ro
-      - ./web/landing/termini.html:/usr/share/nginx/html/termini.html:ro
-      - ./web/landing/cookie.html:/usr/share/nginx/html/cookie.html:ro
+      - ./web/landing/brand:/usr/share/nginx/html/brand:ro
+      - ./web/landing/sfondoherosction.webp:/usr/share/nginx/html/sfondoherosction.webp:ro
       - ./web/landing/sitemap.xml:/usr/share/nginx/html/sitemap.xml:ro
       - ./web/landing/settori:/usr/share/nginx/html/settori:ro
       - ./web/landing/prezzi:/usr/share/nginx/html/prezzi:ro
       - ./web/landing/documentazione:/usr/share/nginx/html/documentazione:ro
+      - ./web/landing/fonts:/usr/share/nginx/html/fonts:ro
+      - ./web/landing/navbar.js:/usr/share/nginx/html/navbar.js:ro
+      - ./web/landing/og-image-universal.jpg:/usr/share/nginx/html/og-image-universal.jpg:ro
+      - ./web/locales:/usr/share/nginx/html/locales:ro
+      - ./web/i18n-client.js:/usr/share/nginx/html/i18n-client.js:ro
+      - ./web/inline-assets:/usr/share/nginx/html/inline-assets:ro
       - ./web/index.html:/usr/share/nginx/html/app/index.html:ro
       - ./web/style.css:/usr/share/nginx/html/app/style.css:ro
       - ./web/app.js:/usr/share/nginx/html/app/app.js:ro

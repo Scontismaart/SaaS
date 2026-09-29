@@ -11,30 +11,59 @@
 
 FROM nginx:1.27-alpine AS runtime
 
-# ── Landing (root del docroot) ──────────────────────────────
-COPY landing/index.html landing/style.css landing/app.js /usr/share/nginx/html/
-COPY landing/privacy.html landing/termini.html landing/cookie.html landing/404.html /usr/share/nginx/html/
-COPY landing/robots.txt landing/sitemap.xml landing/og-image.jpg /usr/share/nginx/html/
+# ── Landing e pagine pubbliche multilingua (root del docroot) ─
+COPY landing/index.html landing/style.css landing/app.js landing/navbar.js /usr/share/nginx/html/
+COPY design-tokens.css /usr/share/nginx/html/
+COPY landing/404.html /usr/share/nginx/html/
+COPY landing/robots.txt landing/sitemap.xml landing/*.jpg /usr/share/nginx/html/
 COPY landing/*.webp landing/*.svg /usr/share/nginx/html/
+COPY landing/brand/ /usr/share/nginx/html/brand/
+COPY inline-assets/ /usr/share/nginx/html/inline-assets/
 COPY landing/fonts/ /usr/share/nginx/html/fonts/
 COPY landing/settori/ /usr/share/nginx/html/settori/
 COPY landing/prezzi/ /usr/share/nginx/html/prezzi/
+COPY landing/documentazione/ /usr/share/nginx/html/documentazione/
+COPY landing/en/ /usr/share/nginx/html/en/
+COPY landing/es/ /usr/share/nginx/html/es/
+COPY landing/fr/ /usr/share/nginx/html/fr/
+COPY landing/de/ /usr/share/nginx/html/de/
+COPY locales/ /usr/share/nginx/html/locales/
+COPY i18n-client.js /usr/share/nginx/html/
 
 # ── Pagine di accesso e registrazione dedicate (/accedi/, /registrati/) ──
 COPY login.html login.js register.html register.js auth.js auth.css /usr/share/nginx/html/
 
 # ── Dashboard (sotto /app/) ─────────────────────────────────
-COPY index.html style.css app.js logo.webp /usr/share/nginx/html/app/
+COPY index.html style.css app.js dialog-focus.js theme-init.js i18n-client.js /usr/share/nginx/html/app/
+COPY design-tokens.css /usr/share/nginx/html/app/
 COPY fonts/ /usr/share/nginx/html/app/fonts/
 COPY vendor/ /usr/share/nginx/html/app/vendor/
 COPY config.template.js /usr/share/nginx/html/config.template.js
 
+# Public legal pages are templates until the entrypoint renders only the
+# reviewed LEGAL_* fields into /run/melpis-legal (a tmpfs in production).
+# Keep templates outside the docroot so unrendered tokens can never ship.
+COPY landing/privacy.html landing/termini.html landing/cookie.html /opt/melpis/legal-templates/
+COPY landing/en/ /opt/melpis/legal-templates/en/
+COPY landing/es/ /opt/melpis/legal-templates/es/
+COPY landing/fr/ /opt/melpis/legal-templates/fr/
+COPY landing/de/ /opt/melpis/legal-templates/de/
+COPY render_legal_pages.py /opt/melpis/render_legal_pages.py
+COPY docker-entrypoint.d/50-render-legal-pages.sh /docker-entrypoint.d/50-render-legal-pages.sh
+
 # Genera config.js dal template con envsubst nella root pubblica.
 # MELPIS_API_BASE vuota (default) = same-origin.
-RUN apk add --no-cache gettext && \
+RUN apk add --no-cache gettext python3 && \
     envsubst '${MELPIS_API_BASE}' < /usr/share/nginx/html/config.template.js \
         > /usr/share/nginx/html/config.js && \
     rm /usr/share/nginx/html/config.template.js && \
+    rm -f /usr/share/nginx/html/app/vendor/fullcalendar-source.min.js && \
+    rm -f /usr/share/nginx/html/privacy.html /usr/share/nginx/html/termini.html /usr/share/nginx/html/cookie.html \
+        /usr/share/nginx/html/en/privacy/index.html /usr/share/nginx/html/en/terms/index.html /usr/share/nginx/html/en/cookies/index.html \
+        /usr/share/nginx/html/es/privacidad/index.html /usr/share/nginx/html/es/terminos/index.html /usr/share/nginx/html/es/cookies/index.html \
+        /usr/share/nginx/html/fr/confidentialite/index.html /usr/share/nginx/html/fr/conditions/index.html /usr/share/nginx/html/fr/cookies/index.html \
+        /usr/share/nginx/html/de/datenschutz/index.html /usr/share/nginx/html/de/agb/index.html /usr/share/nginx/html/de/cookies/index.html && \
+    chmod 0755 /docker-entrypoint.d/50-render-legal-pages.sh && \
     chown -R nginx:nginx /usr/share/nginx/html
 
 # Sostituisce il default.conf dell'immagine base.

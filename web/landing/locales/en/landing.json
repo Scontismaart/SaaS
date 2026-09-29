@@ -1,0 +1,106 @@
+{
+  "page_title": "Melpis · WhatsApp AI Assistant for Business | 7-Day Free Trial",
+  "meta_description": "Activate your WhatsApp AI assistant for business: 24/7 instant client replies, Google Calendar bookings, and review management. Try free for 7 days.",
+  "hero": {
+    "badge": "Official Meta Cloud API Infrastructure",
+    "title_part1": "The AI WhatsApp assistant that",
+    "title_highlight": "turns conversations into customers",
+    "subtitle": "Replies in real time 24/7, schedules appointments directly on Google Calendar, and alerts your team when a human touch is needed.",
+    "cta_primary": "Start your 7-day free trial",
+    "cta_secondary": "See how it works",
+    "no_card_required": "No credit card required",
+    "setup_time": "5-minute setup"
+  },
+  "stats": {
+    "response_time": "< 3 seconds",
+    "response_time_label": "average response time",
+    "availability": "24/7",
+    "availability_label": "continuous availability",
+    "no_shows": "Real-time",
+    "no_shows_label": "calendar sync to prevent scheduling clashes",
+    "time_saved": "1 click",
+    "time_saved_label": "for immediate human staff takeover"
+  },
+  "features": {
+    "section_badge": "Engineered for growth",
+    "section_title": "Everything you need to capture every opportunity on WhatsApp",
+    "f1": {
+      "title": "Smart, natural replies trained on your business data",
+      "desc": "Upload your documents, service menus, prices, and policies: Melpis replies with pinpoint accuracy without making things up."
+    },
+    "f2": {
+      "title": "Seamless Google Calendar appointment sync",
+      "desc": "Verifies live slot availability, books appointments, and sends automatic confirmations and reminder messages to clients."
+    },
+    "f3": {
+      "title": "Shared Inbox with instant human handoff",
+      "desc": "Whenever a conversation requires personal attention, your team can seamlessly take over directly from the web dashboard."
+    },
+    "f4": {
+      "title": "Review collection & customer satisfaction",
+      "desc": "Gather genuine feedback and prompt delighted customers to leave 5-star reviews on your Google Business profile."
+    }
+  },
+  "how_it_works": {
+    "badge": "Simple and straightforward",
+    "title": "How Melpis works",
+    "step1": {
+      "num": "01",
+      "title": "Connect your WhatsApp number",
+      "desc": "Secure one-click setup through the official Meta Cloud API, keeping your current phone number intact."
+    },
+    "step2": {
+      "num": "02",
+      "title": "Define your business rules",
+      "desc": "Add your opening hours, service catalogue, pricing, and preferred tone of voice for customer interactions."
+    },
+    "step3": {
+      "num": "03",
+      "title": "Let your assistant do the heavy lifting",
+      "desc": "Melpis engages incoming inquiries within seconds while you monitor everything from your live dashboard."
+    }
+  },
+  "faq": {
+    "badge": "Clear answers",
+    "title": "Frequently Asked Questions",
+    "items": [
+      {
+        "q": "Do I need a new phone number to use Melpis?",
+        "a": "No. You can connect your existing WhatsApp Business number via the official Meta Cloud API, or use a dedicated number if you prefer keeping channels separate."
+      },
+      {
+        "q": "How do I manage chat conversations and can I use it from my phone?",
+        "a": "Melpis integrates via the official Meta Cloud API. Reading and replying manually takes place directly inside the Melpis Shared Inbox (accessible via web on computers, tablets, or smartphones). The assistant replies in real time and notifies you immediately when human intervention is needed."
+      },
+      {
+        "q": "What happens if the assistant receives a complex or unknown request?",
+        "a": "Melpis replies strictly using the documents and rules you provide. If an inquiry covers missing information or requires special arrangements, the assistant will not improvise: it politely informs the customer and hands off the ticket to your staff in the Inbox."
+      },
+      {
+        "q": "How long does the initial setup take?",
+        "a": "Basic setup takes just a few minutes: connect your WhatsApp channel, upload your business info (hours, services, or menu), and configure response rules. You can test your assistant immediately in the built-in simulator before going live."
+      },
+      {
+        "q": "How does the 7-day free trial work?",
+        "a": "The trial ends after 7 days or 150 AI messages, whichever comes first. No credit card is required and there is no automatic renewal. When the message limit is reached, AI replies stop and requests are handed to an operator."
+      },
+      {
+        "q": "Is customer data secure and GDPR-compliant?",
+        "a": "Yes. Melpis enforces strict tenant-level data isolation, encryption at rest (Fernet), consent and opt-out tracking, and never uses your customer data to train third-party language models."
+      },
+      {
+        "q": "Can I customize the assistant's tone of voice and response guidelines?",
+        "a": "Yes. From your dashboard, you can define custom instructions, choose formality levels, set booking boundaries, and designate specific topics that always require manual operator confirmation."
+      },
+      {
+        "q": "Can I cancel my subscription at any time?",
+        "a": "Yes, you can manage or cancel your subscription at any time directly through the integrated Stripe billing portal in your settings, with no lock-in contracts or penalty fees."
+      }
+    ]
+  },
+  "cta_banner": {
+    "title": "Ready to turn WhatsApp into your best sales channel?",
+    "subtitle": "Join hundreds of businesses that have already automated bookings and customer support.",
+    "button": "Start your 7-day free trial"
+  }
+}

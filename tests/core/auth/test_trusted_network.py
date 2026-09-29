@@ -3,7 +3,8 @@ from fastapi import Request
 import pytest
 from src.core.auth.trusted_network import get_client_ip, is_ip_in_allowed_cidrs
 
-def test_get_client_ip_with_x_forwarded_for():
+def test_get_client_ip_with_x_forwarded_for(monkeypatch):
+    monkeypatch.setenv("TRUSTED_PROXY_CIDRS", "172.18.0.2/32")
     # Simulate attacker sending X-Forwarded-For: 127.0.0.1
     # Traefik appends the real IP (e.g. 203.0.113.1)
     class DummyClient:
@@ -52,3 +53,29 @@ def test_spoofed_request_is_rejected(monkeypatch):
     
     ip = get_client_ip(DummyRequest())
     assert is_ip_in_allowed_cidrs(ip, "TEST_ALLOWED_CIDRS", ()) == False
+
+
+def _request(peer, xff):
+    from types import SimpleNamespace
+    return SimpleNamespace(client=SimpleNamespace(host=peer), headers={"x-forwarded-for": xff})
+
+
+def test_untrusted_peer_cannot_spoof_private_ip(monkeypatch):
+    monkeypatch.delenv("TRUSTED_PROXY_CIDRS", raising=False)
+    assert str(get_client_ip(_request("203.0.113.5", "127.0.0.1"))) == "203.0.113.5"
+
+
+def test_trusted_chain_stops_at_first_untrusted_hop(monkeypatch):
+    monkeypatch.setenv("TRUSTED_PROXY_CIDRS", "172.18.0.2/32,10.1.1.1/32")
+    assert str(get_client_ip(_request("172.18.0.2", "127.0.0.1,203.0.113.5,10.1.1.1"))) == "203.0.113.5"
+
+
+@pytest.mark.parametrize("xff", ["bad-ip", "203.0.113.5,", ",".join(["10.1.1.1"] * 33)])
+def test_malformed_proxy_chain_fails_closed(monkeypatch, xff):
+    monkeypatch.setenv("TRUSTED_PROXY_CIDRS", "172.18.0.2/32")
+    assert get_client_ip(_request("172.18.0.2", xff)) is None
+
+
+def test_invalid_proxy_configuration_fails_closed(monkeypatch):
+    monkeypatch.setenv("TRUSTED_PROXY_CIDRS", "not-a-network")
+    assert get_client_ip(_request("172.18.0.2", "127.0.0.1")) is None

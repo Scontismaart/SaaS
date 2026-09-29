@@ -8,11 +8,13 @@ Gestisce:
 """
 
 import asyncio
+import hashlib
+import json
 import logging
 import uuid
 from datetime import datetime
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 
 from src.api.dependencies import (
     get_orchestrator,
@@ -21,8 +23,10 @@ from src.api.dependencies import (
     get_repo,
     require_ruolo,
 )
+from src.core.auth.dependencies import is_demo_mode
 from src.api.routes.common import (
     check_feature_blocked_by_plan,
+    enforce_org_rate_limit,
     get_billing_snapshot,
     get_shared_event_history,
     next_event_id,
@@ -30,7 +34,7 @@ from src.api.routes.common import (
     resolve_genera_risposta_recensione,
 )
 from src.core.conversation_store import store as conv_store
-from src.core.priorita import calcola_priorita, calcola_priorita_recensione
+from src.core.priorita import calcola_priorita
 from src.core.receptionist.models import OrchestrationInput
 from src.models.business_profile import PROFILI_DEMO
 from src.models.schemas import (
@@ -50,42 +54,139 @@ router = APIRouter(tags=["simulator"])
 async def ricevi_messaggio(
     request: Request,
     messaggio: MessaggioInput,
+    response: Response,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     profilo_id: str = "trattoria_da_mario",
 ):
     """Simulatore messaggi per playground UI e test di interazione AI (Invarianti 1, 5, 7, 8)."""
-    # Se l'utente è autenticato nella dashboard, usa il profilo reale
-    # dell'organizzazione (business_profile/onboarding) e il semaforo DB.
-    # Altrimenti fallback al profilo demo statico (PROFILI_DEMO).
+    trace_id = getattr(request.state, "trace_id", "unavailable")
+    # Solo la modalita' demo esplicitamente abilitata accetta richieste anonime.
     org_id = None
     profilo = None
     repo = getattr(request.app.state, "repo", None)
-    try:
-        user = await get_optional_organization_context(request)
-        if user and user.get("source") != "anonymous" and user.get("organization_id"):
-            org_id = user["organization_id"]
-            if repo:
-                org_data = await repo.get_organization(org_id)
-                if org_data and org_data.get("business_profile"):
-                    from src.whatsapp.inbound_processor import _profile_from_dict
-                    profilo = _profile_from_dict(
-                        org_data["business_profile"],
-                        fallback_name=org_data.get("name", "Attività"),
-                    )
-    except Exception as e:
-        logger.warning("Profilo organizzazione non caricato per il simulatore (fallback demo): %s", e)
+    user = await get_optional_organization_context(request)
+    if user and user.get("source") == "anonymous":
+        if not is_demo_mode():
+            raise HTTPException(status_code=401, detail="Sessione utente richiesta")
+    elif user and user.get("organization_id"):
+        org_id = user["organization_id"]
+        if repo is None:
+            raise HTTPException(status_code=503, detail="Database non disponibile")
+        billing = await get_billing_snapshot(repo, org_id)
+        if not billing:
+            raise HTTPException(status_code=503, detail="Impossibile verificare l'abbonamento")
+        if billing.get("ai_accounting_blocked"):
+            raise HTTPException(status_code=503, detail="Contabilità AI non disponibile")
+        status = billing.get("subscription_status")
+        from src.core.billing.suspension import is_org_suspended
+        if is_org_suspended(status, billing.get("trial_end")) or status in (
+            "canceled", "unpaid", "incomplete_expired"
+        ):
+            raise HTTPException(status_code=403, detail="Abbonamento sospeso o scaduto")
+        try:
+            org_data = await repo.get_organization(org_id)
+        except Exception:
+            logger.warning("simulator=profile_load_failed org_id=%s trace_id=%s", org_id, trace_id)
+            raise HTTPException(status_code=503, detail="Impossibile caricare il profilo attività")
+        if not org_data or not org_data.get("business_profile"):
+            raise HTTPException(status_code=409, detail="Completa il profilo attività prima di usare il simulatore")
+        try:
+            from src.whatsapp.inbound_processor import _profile_from_dict
+            profilo = _profile_from_dict(
+                org_data["business_profile"],
+                fallback_name=org_data.get("name", "Attività"),
+            )
+        except Exception:
+            logger.warning("simulator=profile_invalid org_id=%s trace_id=%s", org_id, trace_id)
+            raise HTTPException(status_code=503, detail="Impossibile caricare il profilo attività")
+    else:
+        raise HTTPException(status_code=401, detail="Sessione utente richiesta")
 
-    if profilo is None:
+    request_uuid = None
+    auth_user_uuid = None
+    payload_hash = None
+    claim_token = None
+    if org_id is not None:
+        if not idempotency_key:
+            raise HTTPException(status_code=400, detail="Header Idempotency-Key richiesto")
+        try:
+            request_uuid = uuid.UUID(idempotency_key)
+            auth_user_uuid = uuid.UUID(str(user.get("auth_user_id")))
+        except (ValueError, TypeError, AttributeError):
+            raise HTTPException(status_code=400, detail="Idempotency-Key o identità utente non validi")
+
+        # Timestamp is server-generated by MessaggioInput when omitted, so it
+        # is excluded from the stable request fingerprint.
+        stable_payload = {
+            "testo": messaggio.testo,
+            "canale": messaggio.canale.value,
+            "id_conversazione": messaggio.id_conversazione,
+            "telefono_mittente": messaggio.telefono_mittente,
+        }
+        payload_hash = hashlib.sha256(
+            json.dumps(stable_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        try:
+            reservation = await repo.reserve_simulation_request(
+                org_id, auth_user_uuid, request_uuid, payload_hash
+            )
+        except Exception:
+            logger.error("simulator=reservation_failed org_id=%s trace_id=%s", org_id, trace_id)
+            raise HTTPException(status_code=503, detail="Impossibile riservare la richiesta simulata")
+
+        reservation_status = reservation.get("status") if reservation else None
+        claim_token = reservation.get("claim_token") if reservation else None
+        if reservation_status == "replay":
+            cached = reservation.get("response")
+            if isinstance(cached, str):
+                try:
+                    cached = json.loads(cached)
+                except ValueError:
+                    cached = None
+            if not isinstance(cached, dict):
+                raise HTTPException(status_code=503, detail="Risposta simulata non disponibile")
+            response.headers["Idempotency-Replayed"] = "true"
+            return RispostaOutput.model_validate(cached)
+        if reservation_status == "payload_conflict":
+            raise HTTPException(status_code=409, detail="Idempotency-Key già usata con contenuto diverso")
+        if reservation_status == "in_progress":
+            raise HTTPException(status_code=409, detail="Richiesta simulata già in elaborazione")
+        if reservation_status == "quota_exceeded":
+            raise HTTPException(status_code=429, detail="Quota messaggi esaurita")
+        if reservation_status != "reserved":
+            raise HTTPException(status_code=503, detail="Impossibile riservare la richiesta simulata")
+        if not claim_token:
+            raise HTTPException(status_code=503, detail="Proprietà della richiesta simulata non disponibile")
+
+    if org_id is None:
+        if not is_demo_mode():
+            raise HTTPException(status_code=401, detail="Sessione utente richiesta")
         profilo = PROFILI_DEMO.get(profilo_id)
         if profilo is None:
             raise HTTPException(status_code=404, detail=f"Profilo '{profilo_id}' non trovato")
+        demo_session = request.cookies.get("melpis_demo_session")
+        if not demo_session:
+            demo_session = uuid.uuid4().hex + uuid.uuid4().hex
+            from src.core.auth.bff import cookie_secure
+            response.set_cookie(
+                key="melpis_demo_session",
+                value=demo_session,
+                httponly=True,
+                secure=cookie_secure(),
+                samesite="strict",
+                max_age=60 * 60 * 24,
+                path="/api/messaggio",
+            )
 
     # Cronologia del simulatore: la chiave e' client-controlled, quindi per
     # le org autenticate va namespaced per evitare incroci tra tenant.
-    chiave_conv = f"{org_id}:{messaggio.id_conversazione}" if org_id else messaggio.id_conversazione
+    identity = str(user.get("user_id") or user.get("auth_user_id") or "anonymous")
+    scope = f"{org_id}:{identity}" if org_id else f"demo:{demo_session}"
+    chiave_conv = f"{scope}:{messaggio.id_conversazione}"
     cronologia = conv_store.recupera_cronologia(chiave_conv)
 
     # Billing snapshot per il routing budget-aware (invariante 8)
-    billing = await get_billing_snapshot(repo, org_id)
+    billing = None if org_id is None else billing
 
     # Core AI Receptionist Orchestrator (Fase 2)
     orchestrator = get_orchestrator(request)
@@ -100,16 +201,23 @@ async def ricevi_messaggio(
         cronologia=cronologia,
         billing_state=billing,
         is_simulation=True,
+        # Attribute real LLM usage for cost governance. This records usage_events
+        # only; it does not reserve or increment the inbound message quota.
         record_billing_usage=bool(org_id),
     )
 
     try:
         out = await orchestrator.orchestrate(req)
-    except Exception as e:
-        logger.error("Error generating AI response in ricevi_messaggio: %s", e)
+    except Exception:
+        logger.error("simulator=generation_failed org_id=%s trace_id=%s", org_id or "demo", trace_id)
+        if org_id is not None:
+            try:
+                await repo.fail_simulation_request(
+                    org_id, auth_user_uuid, request_uuid, payload_hash, claim_token
+                )
+            except Exception:
+                logger.error("simulator=failure_state_update_failed org_id=%s trace_id=%s", org_id, trace_id)
         raise HTTPException(status_code=502, detail="Impossibile generare la risposta al momento. Riprova più tardi.")
-
-    conv_store.aggiungi(chiave_conv, messaggio.testo, out.response_text)
 
     risposta = RispostaOutput(
         risposta=out.response_text,
@@ -118,6 +226,25 @@ async def ricevi_messaggio(
         categoria=out.intent or "generico",
         prenotazione=out.prenotazione,
     )
+
+    if org_id is not None:
+        try:
+            persisted = await repo.complete_simulation_request(
+                org_id,
+                auth_user_uuid,
+                request_uuid,
+                payload_hash,
+                claim_token,
+                risposta.model_dump(mode="json"),
+            )
+        except Exception:
+            logger.error("simulator=response_persist_failed org_id=%s trace_id=%s", org_id, trace_id)
+            raise HTTPException(status_code=503, detail="Impossibile salvare la risposta simulata")
+        if not persisted:
+            raise HTTPException(status_code=503, detail="Impossibile salvare la risposta simulata")
+
+    # Keep conversation history only after the idempotent response is durable.
+    conv_store.aggiungi(chiave_conv, messaggio.testo, out.response_text)
 
     prenotazione_id = None
     pren = out.prenotazione
@@ -137,8 +264,8 @@ async def ricevi_messaggio(
             )
             creata = crea_prenotazione_dashboard(demo_input)
             prenotazione_id = getattr(creata, "id", None)
-        except Exception as e:
-            logger.warning("[demo] Booking save failed: %s", e)
+        except Exception:
+            logger.warning("simulator=demo_booking_persist_failed trace_id=%s", trace_id)
 
     # Solo il percorso demo anonimo alimenta lo storico demo condiviso:
     # le org autenticate hanno i propri dati su DB.
@@ -172,6 +299,37 @@ async def ricevi_recensione(
     request: Request,
     user: dict = Depends(require_ruolo("owner", "manager", "staff")),
 ):
+    repo = get_repo(request)
+    org_id = user.get("organization_id")
+    if not org_id or not recensione.external_id or not recensione.external_id.strip():
+        raise HTTPException(status_code=422, detail="external_id stabile obbligatorio per la recensione.")
+    await enforce_org_rate_limit(org_id, "review-ai", 30, 60)
+
+    from src.core.reviews.idempotency import claim_external_review
+    try:
+        async with claim_external_review(repo.pool, str(org_id), recensione.external_id) as claimed:
+            if not claimed:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Recensione già in elaborazione. Riprova tra poco.",
+                )
+            return await _ricevi_recensione_impl(recensione, request, user)
+    except HTTPException:
+        raise
+    except Exception:
+        trace_id = getattr(request.state, "trace_id", "unavailable")
+        logger.error("review=claim_failed org_id=%s trace_id=%s", org_id, trace_id)
+        raise HTTPException(
+            status_code=503,
+            detail="Generazione AI temporaneamente non disponibile.",
+        )
+
+
+async def _ricevi_recensione_impl(
+    recensione: RecensioneInput,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager", "staff")),
+):
     """Genera una risposta AI per una recensione ricevuta e ne persiste lo stato (Invarianti 1, 8, 10)."""
     repo = get_repo(request)
     org_id = user.get("organization_id")
@@ -180,26 +338,76 @@ async def ricevi_recensione(
         raise HTTPException(status_code=403, detail=blocco)
     billing = await get_billing_snapshot(repo, org_id)
 
+    # Idempotency check before profile/RAG/provider work.
+    if org_id and recensione.external_id:
+        existing = await repo.get_review_by_external_id(org_id, recensione.external_id)
+        if existing:
+            return RispostaRecensioneOutput(
+                id=str(existing["id"]), stato=existing["stato"],
+                bozza_risposta=existing.get("bozza_risposta", ""),
+                sentiment=existing.get("sentiment", ""),
+                richiede_revisione_urgente=bool(existing.get("richiede_revisione_urgente", False)),
+                motivo="", categoria=existing.get("categoria", ""),
+            )
+    from src.core.reviews.ai_governance import (
+        authorize_review_generation, generic_review_fallback,
+        record_review_usage, validate_review_draft,
+    )
+    try:
+        billing = await authorize_review_generation(repo, str(org_id))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Generazione AI temporaneamente non disponibile.")
+
     # Lingue dell'org dal profilo onboarding: se non esiste ancora (onboarding
     # non completato) si usano i default ["it"]/"it", nessun errore.
     profilazione = await repo.get_onboarding_profile(org_id) or {}
     lingue = profilazione.get("lingue_supportate") or None
     lingua_default = profilazione.get("lingua_default") or None
+    profilo_pubblico = {
+        "nome_attivita": profilazione.get("nome_attivita") or "",
+        "verticale": profilazione.get("verticale") or "",
+        "tono": profilazione.get("tono") or "",
+        "lingue_supportate": lingue,
+        "lingua_default": lingua_default,
+    }
+    from src.core.documenti.rag_context import recupera_contesto_documenti
+    contesto = await recupera_contesto_documenti(str(org_id), recensione.testo, repo)
+    usage = {}
 
-    genera_risposta_recensione = resolve_genera_risposta_recensione()
-    try:
-        output = await asyncio.to_thread(
-            lambda: genera_risposta_recensione(
-                testo=recensione.testo,
-                stelle=recensione.valutazione_stelle,
-                autore=recensione.autore,
-                billing=billing,
-                lingue_supportate=lingue,
-                lingua_default=lingua_default,
+    if not contesto.testo.strip():
+        output = generic_review_fallback(recensione.testo)
+    else:
+        genera_risposta_recensione = resolve_genera_risposta_recensione()
+        try:
+            output = await asyncio.to_thread(
+                lambda: genera_risposta_recensione(
+                    testo=recensione.testo,
+                    stelle=recensione.valutazione_stelle,
+                    autore=recensione.autore,
+                    billing=billing,
+                    lingue_supportate=lingue,
+                    lingua_default=lingua_default,
+                    profilo_attivita=profilo_pubblico,
+                    contesto_documenti=contesto.testo,
+                    usage_sink=usage,
+                )
             )
-        )
-    except Exception as e:
-        logger.error("Error generating review draft: %s", e)
+        except Exception:
+            trace_id = getattr(request.state, "trace_id", "unavailable")
+            try:
+                await record_review_usage(repo, str(org_id), usage)
+            except Exception:
+                logger.error("review=usage_persist_failed org_id=%s trace_id=%s", org_id, trace_id)
+                raise HTTPException(status_code=503, detail="Generazione AI temporaneamente non disponibile.")
+            logger.error("review=generate_failed org_id=%s trace_id=%s", org_id, trace_id)
+            raise HTTPException(status_code=502, detail="Impossibile generare la bozza di risposta. Riprova più tardi.")
+    try:
+        if usage:
+            await record_review_usage(repo, str(org_id), usage)
+        validate_review_draft(output.bozza_risposta, recensione.testo, contesto.testo)
+    except Exception:
+        trace_id = getattr(request.state, "trace_id", "unavailable")
+        logger.error("review=generate_failed org_id=%s trace_id=%s", org_id, trace_id)
         raise HTTPException(
             status_code=502,
             detail="Impossibile generare la bozza di risposta. Riprova più tardi.",
@@ -233,40 +441,10 @@ async def ricevi_recensione(
                 raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
             review_id = str(esistente["id"])
             stato = esistente["stato"]
-        except Exception as e:
-            logger.error("[recensione] Persistenza fallita org=%s external_id=%s: %s", org_id, recensione.external_id, e)
+        except Exception:
+            trace_id = getattr(request.state, "trace_id", "unavailable")
+            logger.error("review=persist_failed org_id=%s trace_id=%s", org_id, trace_id)
             raise HTTPException(status_code=502, detail="Impossibile salvare la recensione, riprova.")
-
-    await record_ai_usage(
-        repo,
-        org_id,
-        "review",
-        recensione.testo,
-        billing,
-        {"fonte": recensione.fonte, "stelle": recensione.valutazione_stelle},
-    )
-
-    storico = get_shared_event_history()
-    storico.append(
-        EventoDashboard(
-            id=next_event_id("rec"),
-            tipo_evento="recensione",
-            timestamp=datetime.now(),
-            priorita=calcola_priorita_recensione(recensione.valutazione_stelle, output),
-            testo_originale=recensione.testo,
-            risposta_ai=output.bozza_risposta,
-            gestito_da_ai=True,
-            dettagli={
-                "sentiment": output.sentiment,
-                "stelle": recensione.valutazione_stelle,
-                "fonte": recensione.fonte,
-                "autore": recensione.autore,
-                "richiede_revisione_urgente": output.richiede_revisione_urgente,
-                "motivo": output.motivo,
-                "categoria": output.categoria,
-            },
-        )
-    )
 
     return RispostaRecensioneOutput(
         id=review_id,

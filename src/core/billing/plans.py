@@ -1,6 +1,8 @@
 import os
 from dataclasses import dataclass
 
+TRIAL_MESSAGES_LIMIT = 150
+
 
 @dataclass
 class Plan:

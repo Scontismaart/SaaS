@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Come collegare Instagram Direct (DM) — Documentazione Melpis</title>
+    <meta name="description" content="Guida all'integrazione di Instagram Direct con Melpis: requisiti Facebook Page, permessi Meta e gestione delle chat nella Shared Inbox.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/integrazioni/collegare-instagram/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link is-active">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Canali e Integrazioni</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Instagram Direct</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Come collegare Instagram Direct (DM)</h1>
+                    <p class="docs-article-subtitle">Automatizza le risposte ai messaggi privati di Instagram riutilizzando la stessa app Meta già configurata per WhatsApp.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Il canale Instagram Direct permette all'assistente AI di rispondere ai messaggi ricevuti in DM sul profilo Instagram aziendale della tua attività. I messaggi appaiono nella stessa <strong>Shared Inbox</strong> di WhatsApp contrassegnati dal badge Instagram, permettendo al tuo staff di avere un unico centro di controllo unificato.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <p>Requisiti tecnici verificati:</p>
+                    <ul>
+                        <li>Un <strong>Account Instagram Professional</strong> (Business o Creator). I profili personali non supportano le API di messaggistica.</li>
+                        <li>Il profilo Instagram deve essere collegato a una <strong>Pagina Facebook aziendale</strong> di cui sei amministratore.</li>
+                        <li>Nelle impostazioni dell'app Instagram (sul telefono): andare in <em>Impostazioni e privacy &rarr; Messaggi e risposte alle storie &rarr; Controlli per i messaggi</em> e abilitare <strong>Consenti l'accesso ai messaggi</strong>.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Aggiunta del prodotto Instagram nell'app Meta</h3>
+                                <p class="docs-step-text">Accedi alla stessa app Meta for Developers usata per WhatsApp. Clicca su <em>Aggiungi prodotto</em> e seleziona <strong>Instagram Graph API</strong> (o Messenger for Instagram). Assicurati che siano concessi i permessi <code>instagram_basic</code> e <code>instagram_manage_messages</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Recupero dell'ID Account Instagram Professionale</h3>
+                                <p class="docs-step-text">L'ID dell'account Instagram (<code>ig_user_id</code>) è l'identificatore numerico univoco del tuo profilo professionale. Puoi visualizzarlo tramite il Graph API Explorer di Meta interrogando il nodo <code>/me/accounts?fields=instagram_business_account</code>.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Generazione del Page Access Token</h3>
+                                <p class="docs-step-text">Genera un token permanente associato alla Pagina Facebook collegata all'account Instagram. Questo token consente a Melpis di trasmettere le risposte ai DM dei clienti.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Inserimento delle credenziali in Melpis</h3>
+                                <p class="docs-step-text">Apri il pannello Melpis e naviga in <span class="docs-ui-path">Impostazioni <span class="docs-ui-arrow">&rarr;</span> Integrazioni <span class="docs-ui-arrow">&rarr;</span> Instagram Direct</span>. Inserisci l'<strong>Instagram User ID</strong> e il <strong>Page Access Token</strong>, quindi clicca su <strong>Salva credenziali Instagram</strong>.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">5</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Test di connettività Instagram</h3>
+                                <p class="docs-step-text">Clicca sul pulsante <strong>Test connettività</strong>. Melpis eseguirà una chiamata di verifica verso <code>graph.facebook.com/v21.0/{ig_user_id}</code>. Se l'operazione ha successo, vedrai la conferma verde con l'username Instagram verificato (es. <em>"Instagram Direct verificato (@bellavista_salon)"</em>).</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">6</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Configurazione Webhook per i DM</h3>
+                                <p class="docs-step-text">Nella console Meta, sotto Webhook &rarr; Instagram, imposta come URL di callback <code>https://tuodominio.it/webhooks/instagram</code> con lo stesso Verify Token usato per WhatsApp e sottoscrivi il campo <strong>messages</strong>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <p>Ogni messaggio diretto ricevuto sul profilo Instagram:</p>
+                    <ul>
+                        <li>Viene recapitato al webhook <code>/webhooks/instagram</code> e convertito nello schema comune della tabella <code>messages</code> con il campo <code>canale = 'instagram'</code>.</li>
+                        <li>L'assistente elabora la risposta con le stesse regole di business e la stessa memoria documentale di WhatsApp.</li>
+                        <li>Se un membro dello staff interviene e scrive una risposta manuale dalla Shared Inbox, Melpis instrada automaticamente il messaggio verso le API di Instagram DM.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali del canale Instagram</h2>
+                    <ul>
+                        <li><strong>Solo messaggi di testo</strong>: Attualmente sono gestiti solo messaggi testuali. Note vocali, immagini inviate nei DM, storie menzionate o reazioni con emoji non vengono elaborate dall'AI.</li>
+                        <li><strong>Un profilo per account</strong>: Ogni organizzazione su Melpis può collegare un solo profilo Instagram professionale.</li>
+                        <li><strong>Nessun tracciamento di lettura</strong>: Meta non fornisce per Instagram DM lo stato di "consegnato" o "letto" (blue ticks); lo stato passa a <code>sent</code> immediatamente dopo la ricezione dell'ACK da parte di Meta.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-callout docs-callout-warning">
+                        <span class="docs-callout-icon">⚠️</span>
+                        <div class="docs-callout-content">
+                            <div class="docs-callout-title">I messaggi arrivano ma l'assistente non risponde?</div>
+                            <p>Verifica nell'app mobile di Instagram che sia abilitata l'opzione <strong>Consenti l'accesso ai messaggi</strong> (<em>Impostazioni e privacy &rarr; Messaggi &rarr; Controlli messaggi</em>). Se questa impostazione è disattivata, Meta blocca l'accesso ai messaggi per le app di terze parti.</p>
+                        </div>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-related-card">
+                            <div class="docs-related-tag">Canale principale</div>
+                            <div class="docs-related-title">Come collegare WhatsApp Business</div>
+                        </a>
+                        <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-related-card">
+                            <div class="docs-related-tag">Inbox</div>
+                            <div class="docs-related-title">Shared Inbox e Gestione Multicanale</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

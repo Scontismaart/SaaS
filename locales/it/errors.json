@@ -1,0 +1,17 @@
+{
+  "required_field": "Questo campo è obbligatorio.",
+  "invalid_email": "Inserisci un indirizzo email valido.",
+  "password_too_short": "La password deve contenere almeno 10 caratteri.",
+  "password_missing_requirements": "La password deve rispettare tutti i criteri di sicurezza richiesti.",
+  "passwords_do_not_match": "Le password inserite non coincidono.",
+  "terms_required": "Devi accettare i Termini di Servizio e la Privacy Policy per proseguire.",
+  "network_error": "Impossibile contattare il server. Verifica la connessione e riprova.",
+  "session_expired": "Sessione scaduta. Effettua nuovamente l'accesso.",
+  "unauthorized": "Accesso non autorizzato. Effettua il login.",
+  "forbidden": "Non disponi dei permessi necessari per questa operazione.",
+  "not_found": "La risorsa richiesta non è stata trovata.",
+  "rate_limit": "Troppe richieste inviate. Attendi qualche istante prima di riprovare.",
+  "server_error": "Errore interno del server. Riprova più tardi.",
+  "invalid_credentials": "Email o password non corretti.",
+  "email_already_exists": "Esiste già un account registrato con questo indirizzo email."
+}

@@ -26,7 +26,10 @@ def app_config():
 @pytest.fixture
 def mock_repo():
     repo = AsyncMock()
-    repo.get_org_subscription_state = AsyncMock(return_value=None)
+    repo.get_org_subscription_state = AsyncMock(return_value={
+        "subscription_status": "active", "trial_end": None,
+        "ai_accounting_blocked": False,
+    })
     repo.claim_message_and_check_quota = AsyncMock(return_value={
         "status": "claimed",
         "ai_reply_cache": None,

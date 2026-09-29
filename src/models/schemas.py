@@ -125,7 +125,7 @@ class OnboardingProfileInput(BaseModel):
     id: str | None = None
     verticale: VerticaleOnboarding
     nome_attivita: str = Field(min_length=2, max_length=120)
-    orari: str = Field(min_length=2, max_length=1000)
+    orari: str = Field(default="", max_length=1000)
     descrizione: str = Field(default="", max_length=1000)
     tono: str = Field(default="", max_length=400)
     servizi: list[str] = Field(default_factory=list)

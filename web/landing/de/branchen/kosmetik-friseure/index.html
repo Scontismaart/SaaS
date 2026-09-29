@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melpis für Friseure & Kosmetikstudios · Automatische WhatsApp-Termine</title>
+    <meta name="description" content="Automatisieren Sie Terminanfragen im Salon per WhatsApp. Mitarbeiterwahl, Kombinationsbehandlungen und Erinnerungen ohne Arbeitsunterbrechung.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Melpis">
+    <meta property="og:url" content="https://melpis.it/settori/saloni-bellezza/">
+    <meta property="og:title" content="Melpis für Friseure & Kosmetikstudios · Automatische WhatsApp-Termine">
+    <meta property="og:description" content="Automatisieren Sie Terminanfragen im Salon per WhatsApp. Mitarbeiterwahl, Kombinationsbehandlungen und Erinnerungen ohne Arbeitsunterbrechung.">
+    <meta property="og:image" content="https://melpis.it/og-image-universal.jpg">
+    <meta property="og:locale" content="de_DE">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Melpis für Friseure & Kosmetikstudios · Automatische WhatsApp-Termine">
+    <meta name="twitter:description" content="Automatisieren Sie Terminanfragen im Salon per WhatsApp. Mitarbeiterwahl, Kombinationsbehandlungen und Erinnerungen ohne Arbeitsunterbrechung.">
+    <meta name="twitter:image" content="https://melpis.it/og-image-universal.jpg">
+
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+
+    <!-- Dati Strutturati Schema.org (JSON-LD) -->
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "BreadcrumbList",
+            "@id": "https://melpis.it/settori/saloni-bellezza/#breadcrumb",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": "https://melpis.it/"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Settori",
+                    "item": "https://melpis.it/#panoramica"
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 3,
+                    "name": "Saloni e Barbershop",
+                    "item": "https://melpis.it/settori/saloni-bellezza/"
+                }
+            ]
+        },
+        {
+            "@type": "SoftwareApplication",
+            "@id": "https://melpis.it/settori/saloni-bellezza/#app",
+            "name": "Melpis per Saloni di Bellezza, Parrucchieri e Barbershop",
+            "operatingSystem": "All (Web-based)",
+            "applicationCategory": "BusinessApplication",
+            "description": "Assistente AI WhatsApp per saloni di parrucchieri, barbieri e centri benessere: registra appuntamenti singoli per cliente, gestisce l'agenda dei singoli operatori e riduce i no-show con promemoria tempestivi.",
+            "offers": {
+                "@type": "Offer",
+                "price": "29.00",
+                "priceCurrency": "EUR",
+                "priceValidUntil": "2026-12-31",
+                "availability": "https://schema.org/InStock"
+            }
+        },
+        {
+            "@type": "FAQPage",
+            "@id": "https://melpis.it/settori/saloni-bellezza/#faq",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "Come gestisce i tempi di posa per i trattamenti di colore o balayage?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Dalla dashboard puoi definire la durata totale del servizio o impostare tempi di posa separati, permettendo al sistema di incastrare pieghe o tagli rapidi durante l'attesa del colore senza creare sovrapposizioni."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Possiamo impostare orari e giorni lavorativi diversi per ciascun collaboratore?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Sì. Ogni membro del tuo team può avere orari dedicati, giorni di riposo specifici e la lista dei servizi che è abilitato a eseguire. Melpis proporrà solo gli orari in cui il professionista richiesto è realmente in salone."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Cosa succede se un cliente chiede un appuntamento per sé e per un amico o familiare?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Melpis individua le richieste plurali (es. 'due tagli' o 'per me e mio figlio') e assegna 2 persone allocando due slot consecutivi o due poltrone distinte in contemporanea in base alle disponibilità."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Possiamo bloccare temporaneamente le prenotazioni nei momenti di massimo affollamento?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Certamente. Dalla dashboard o con un comando rapido puoi impostare il salone come 'al completo' per la giornata: l'assistente proporrà solo le prime date utili della settimana successiva."
+                    }
+                },
+                {
+                    "@type": "Question",
+                    "name": "Come funziona la prova gratuita di 7 giorni per il mio salone?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Puoi registrarti inserendo nome salone ed email, senza carta di credito. Hai 7 giorni completi per caricare i tuoi servizi, testare le risposte con il tuo team e verificare l'efficacia prima di scegliere il piano."
+                    }
+                }
+            ]
+        }
+    ]
+}
+    </script>
+
+<link rel="stylesheet" href="/inline-assets/style-f7c49dd2898acc3cb86e64d79f8e52b2d2a2e6ead83c9fbb77f3b9a655322bf5.css">
+    <link rel="canonical" href="https://melpis.it/de/branchen/kosmetik-friseure/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/settori/saloni-bellezza/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/industries/beauty-salons/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/sectores/salones-belleza/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/secteurs/salons-beaute/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/branchen/kosmetik-friseure/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/industries/beauty-salons/">
+</head>
+<body>
+
+    <!-- Skip Link per Accessibilità Tastiera -->
+    <a href="#main-content" class="skip-link">Zum Hauptinhalt springen</a>
+
+            <!-- ==================== UNIFIED STICKY HEADER ==================== -->
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/de/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <div class="nav-item-dropdown" id="navDropdownSettori">
+                    <button type="button" class="hero-nav-link dropdown-trigger-btn" id="settoriDropdownTrigger" aria-haspopup="true" aria-expanded="false" aria-controls="settoriDropdownPanel">
+                        <span>Branchen</span>
+                        <svg class="dropdown-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                    <div class="dropdown-menu-panel" id="settoriDropdownPanel" role="region" aria-labelledby="settoriDropdownTrigger">
+                        <div class="dropdown-sectors-list">
+                            <a href="/de/branchen/restaurants/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M18 2v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                        <path d="M15 2v14a2 2 0 0 1-2 2h0a2 2 0 0 1-2-2V2"/>
+                                        <path d="M6 2v20"/>
+                                        <path d="M9 2v4a3 3 0 0 1-3 3 3 3 0 0 1-3-3V2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Restaurants & Pizzerien</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Tischreservierungen, Schichtverwaltung, Kalendersync</p>
+                                </div>
+                            </a>
+
+                            <a href="/de/branchen/kosmetik-friseure/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Salons & Kosmetikstudios</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Termine nach Mitarbeiter, Kombi-Behandlungen, Erinnerungen</p>
+                                </div>
+                            </a>
+
+                            <a href="/de/branchen/arztpraxen/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/>
+                                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/>
+                                        <circle cx="20" cy="10" r="2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Arztpraxen & Zahnärzte</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Patiententriage, vertrauliche Datenverarbeitung, 24/7-Support</p>
+                                </div>
+                            </a>
+
+                            <a href="/de/branchen/hotels/" class="dropdown-sector-item">
+                                <div class="dropdown-sector-icon-badge">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 21h18"/>
+                                        <path d="M19 21v-4"/>
+                                        <path d="M19 17a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14z"/>
+                                        <path d="M7 10h4"/>
+                                        <path d="M7 14h2"/>
+                                    </svg>
+                                </div>
+                                <div class="dropdown-sector-info">
+                                    <div class="dropdown-sector-head">
+                                        <span class="dropdown-sector-title">Hotels & Unterkünfte</span>
+                                        <svg class="dropdown-sector-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </div>
+                                    <p class="dropdown-sector-sub">Zimmerverfügbarkeit, mehrsprachiger WhatsApp-Concierge, Check-in</p>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <a href="/de/dokumentation/" class="hero-nav-link">Dokumentation</a>
+                <a href="/de/preise/" class="hero-nav-link">Preise</a>
+                <a href="/de/anmelden/" class="hero-nav-link">Anmelden</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/de/registrieren/" class="btn-pill-white">
+                    <span>Kostenlos testen</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+                
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">DE</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/settori/saloni-bellezza/" class="lang-option-link" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/industries/beauty-salons/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/sectores/salones-belleza/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/secteurs/salons-beaute/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/branchen/kosmetik-friseure/" class="lang-option-link is-active" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
+                <button type="button" class="nav-hamburger" id="navHamburger" aria-label="Apri menu" aria-expanded="false" aria-controls="mobileOverlay">
+                    <span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+            <!-- ==================== MOBILE MENU OVERLAY ==================== -->
+    <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true">
+        <div class="mobile-menu-inner">
+            <a href="/de/" class="mobile-link">Home</a>
+            
+            <!-- Mobile Accordion for Settori -->
+            <div class="mobile-accordion" id="mobileSettoriAccordion">
+                <button type="button" class="mobile-accordion-btn" id="mobileSettoriBtn" aria-expanded="false" aria-controls="mobileSettoriList">
+                    <span>Branchen</span>
+                    <svg class="accordion-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="mobile-accordion-content" id="mobileSettoriList" role="region" aria-labelledby="mobileSettoriBtn">
+                    <a href="/de/branchen/restaurants/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🍽️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Restaurants & Pizzerien</span>
+                            <span class="mobile-sublink-desc">Tavoli, turni e no-show</span>
+                        </div>
+                    </a>
+                    <a href="/de/branchen/kosmetik-friseure/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">✨</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Salons & Kosmetikstudios</span>
+                            <span class="mobile-sublink-desc">Poltrona e promemoria</span>
+                        </div>
+                    </a>
+                    <a href="/de/branchen/arztpraxen/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🩺</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Arztpraxen & Zahnärzte</span>
+                            <span class="mobile-sublink-desc">Triage e segreteria 24/7</span>
+                        </div>
+                    </a>
+                    <a href="/de/branchen/hotels/" class="mobile-sublink">
+                        <span class="mobile-sublink-icon">🛎️</span>
+                        <div class="mobile-sublink-text">
+                            <span class="mobile-sublink-title">Hotels & Unterkünfte</span>
+                            <span class="mobile-sublink-desc">Camere e concierge</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <a href="/de/dokumentation/" class="mobile-link">Dokumentation</a>
+            <a href="/de/preise/" class="mobile-link">Preise</a>
+            <a href="/de/anmelden/" class="mobile-link mobile-login">Anmelden</a>
+        <a href="/de/registrieren/" class="btn-cta-primary w-full is-5313025c2edb">
+            <span>7 Tage kostenlos testen</span>
+        </a>
+
+            <div class="mobile-lang-section">
+                <span class="mobile-lang-title">Lingua / Language</span>
+                <div class="mobile-lang-grid">
+                <a href="/settori/saloni-bellezza/" class="mobile-lang-chip" hreflang="it">Italiano</a>
+                <a href="/en/industries/beauty-salons/" class="mobile-lang-chip" hreflang="en">English</a>
+                <a href="/es/sectores/salones-belleza/" class="mobile-lang-chip" hreflang="es">Español</a>
+                <a href="/fr/secteurs/salons-beaute/" class="mobile-lang-chip" hreflang="fr">Français</a>
+                <a href="/de/branchen/kosmetik-friseure/" class="mobile-lang-chip is-active" hreflang="de">Deutsch</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<main id="main-content">
+        <!-- ==================== 2. HERO SECTION ==================== -->
+        <section class="vertical-hero">
+            <div class="hero-bg-overlay" aria-hidden="true"></div>
+
+            <div class="container hero-container">
+                <div class="hero-two-col-grid">
+                    <div class="hero-text-col">
+                        <h1 class="vertical-hero-title hero-animate-1">Volle Terminkalender im Salon ohne Unterbrechung während der Behandlung</h1>
+                        <p class="vertical-hero-sub hero-animate-3">Kein lästiges Telefonklingeln mehr während des Haarschnitts oder der Behandlung. Melpis bucht Termine, prüft freie Zeitfenster und schlägt Alternativen vor.</p>
+
+                        <div class="hero-actions-row hero-animate-4">
+                            <a href="/de/registrieren/" class="btn-cta-primary">
+                                <span>7 Tage kostenlos testen</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                            </a>
+                            <a href="#come-funziona" class="btn-cta-secondary">
+                                <span>So funktioniert's</span>
+                            </a>
+                        </div>
+
+                        <!-- Trust Points Strip -->
+                        <div class="trust-points-row hero-animate-5">
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                Keine Kreditkarte nötig
+                            </span>
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                7 Tage vollwertige Testphase
+                            </span>
+                            <span class="trust-item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Offizielle Meta Cloud API
+                            </span>
+                        </div>
+                    </div>
+                    <div class="hero-visual-spacer" aria-hidden="true"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== TRANSITION BRIDGE TO LIGHT ==================== -->
+        <div class="transition-bridge-to-light" aria-hidden="true"></div>
+
+        <!-- ==================== 3. VANTAGGI A RIGHE ALTERNATE ==================== -->
+        <section class="vantaggi-section" id="vantaggi" data-navbar-theme="light">
+            <div class="container">
+                <div class="center reveal">
+                    <span class="eyebrow-pill">Maßgeschneidert für Salons, Barbiere und Stylisten</span>
+                    <h2 class="display-md">Echte Vorteile für Ihren Salon</h2>
+                </div>
+
+                <div class="vantaggi-rows-container">
+                    <!-- Riga 1: APPUNTAMENTI ZERO-ATTRITO -->
+                    <div class="vantaggi-row reveal is-67d149738738">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">APPUNTAMENTI ZERO-ATTRITO</span>
+                            <h3>Nessuna domanda superflua: l'assistente sa già che l'appuntamento è per una persona</h3>
+                            <p>I chatbot generici chiedono goffamente "Per quante persone prenoti?". Melpis conosce la realtà del salone e del barbershop: per qualsiasi taglio, barba, piega o trattamento assegna in automatico 1 persona, calcola la durata precisa e fissa lo slot in un unico messaggio rapido.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Back -->
+                                <div class="layer-card-back">
+
+                                    <div class="v-meta-row">
+                                        <span class="v-live-tag"><span class="pulse-dot"></span> Poltrona 2 (Barber Post)</span>
+                                        <span class="v-metric-badge">Slot 15:30 - 16:15</span>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 2: Front -->
+                                <div class="layer-card-front">
+
+                                    <div class="v-chat-in">
+                                        <span class="v-chat-author">Cliente · Andrea</span>
+                                        Ciao, vorrei fare taglio e barba domani verso le 15:30 a nome Andrea. C'è posto?
+                                    </div>
+                                    <div class="v-chat-out">
+                                        <div class="v-chat-out-head">
+                                            <span class="v-chat-author">Melpis per Hair &amp; Barber Studio</span>
+                                            <span class="widget-tag-success">Registrato</span>
+                                        </div>
+                                        Ciao Andrea! Ti confermo l'appuntamento per domani alle 15:30 per taglio e rifinitura barba con Marco (45 min). Riceverai un promemoria 3 ore prima. A domani!
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 3: Floating Pill -->
+                                <div class="layer-floating-pill" id="">
+
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Appuntamento Fissato · Durata 45 min</span>
+                
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riga 2: PREFERENZA STYLIST &amp; POLTRONE -->
+                    <div class="vantaggi-row is-reversed reveal is-e41c74dd16b9">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">PREFERENZA STYLIST &amp; POLTRONE</span>
+                            <h3>Il cliente desidera il suo stylist preferito? Melpis incrocia orari e poltrone libere</h3>
+                            <p>Se un cliente chiede espressamente di Davide per la sfumatura o di Elena per il colore, Melpis verifica in tempo reale l'agenda del singolo professionista, proponendo gli orari liberi senza creare sovrapposizioni o conflitti alle postazioni di lavoro.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Back -->
+                                <div class="layer-card-back">
+
+                                    <div class="v-meta-row">
+                                        <span>Disponibilità Operatori Salone</span>
+                                        <span class="turni-capienza-light">Venerdì Pomeriggio</span>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 2: Front -->
+                                <div class="layer-card-front">
+
+                                    <div class="turni-list-light">
+                                        <div class="turno-row-light">
+                                            <div class="turno-info-light">
+                                                <strong>Davide (Master Barber)</strong>
+                                                <span>Sfumature &amp; Barba · Poltrona 1</span>
+                                            </div>
+                                            <span class="turno-badge-light badge-emerald-light">Libero 17:30</span>
+                                        </div>
+                                        <div class="turno-row-light">
+                                            <div class="turno-info-light">
+                                                <strong>Elena (Colorist Specialist)</strong>
+                                                <span>Balayage &amp; Tonalizzante · Poltrona 3</span>
+                                            </div>
+                                            <span class="turno-badge-light badge-amber-light">Occupata fino 18:00</span>
+                                        </div>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 3: Floating Pill -->
+                                <div class="layer-floating-pill" id="">
+
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Operatore Assegnato: Davide (Barber)</span>
+                
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riga 3: LAVORI TECNICI &amp; PRIVACY GDPR -->
+                    <div class="vantaggi-row reveal is-74101b6fa846">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">LAVORI TECNICI &amp; PRIVACY DEI DATI</span>
+                            <h3>Balayage, schiariture e cambi look: l'AI raccoglie foto e richieste per lo staff</h3>
+                            <p>Per lavori complessi ad alta personalizzazione non si azzardano preventivi al buio. Melpis accoglie la richiesta, riceve l'eventuale foto del capello e la inoltra privatamente allo staff in dashboard. Tutto in totale riservatezza e protezione dei dati, senza conservazione biometrica.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Back -->
+                                <div class="layer-card-back">
+
+                                    <div class="v-meta-row">
+                                        <div class="doc-file-pill-light">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                            <span>Foto Cliente · Richiesta Consulenza Colore</span>
+                                        </div>
+                                        <span class="doc-badge-light">Inoltro Staff Privato</span>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 2: Front -->
+                                <div class="layer-card-front">
+
+                                    <div class="doc-qa-snippet-light">
+                                        <div class="doc-question-light">“Vorrei passare dal castano scuro a un biondo miele, quanto tempo serve?”</div>
+                                        <div class="doc-answer-light">
+                                            <span class="doc-source-tag-light">Risposta Automatica Cordiale &amp; Triage Staff</span>
+                                            <p>Grazie per la foto! Per una schiaritura importante valutiamo sempre la salute del capello. Ho inoltrato la scheda al nostro master colorist: ti riserverà 15 min di consulenza preliminare gratuita prima del trattamento.</p>
+                                        </div>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 3: Floating Pill -->
+                                <div class="layer-floating-pill" id="">
+
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span>Inoltro Staff Riservato · Dati Protetti</span>
+                
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riga 4: RIDUZIONE NO-SHOW -->
+                    <div class="vantaggi-row is-reversed reveal is-ed5894c12a96">
+                        <div class="vantaggi-text-col">
+                            <div class="vantaggi-outline-icon" aria-hidden="true">
+                                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            </div>
+                            <span class="vantaggi-eyebrow">RIDUZIONE NO-SHOW</span>
+                            <h3>Elimina i buchi in cassa: promemoria automatici e disdetta rapida con un tap</h3>
+                            <p>Un cliente che non si presenta all'ultimo minuto è un'ora di fatturato persa. Melpis invia promemoria gentili via WhatsApp con opzioni di conferma o rinvio immediato. Se lo slot viene liberato, il salone può riassegnarlo subito a chi è in lista d'attesa.</p>
+                        </div>
+                        <div class="vantaggi-visual-col">
+                            <div class="vantaggi-stage-canvas">
+                                <!-- Layer 1: Back -->
+                                <div class="layer-card-back">
+
+                                    <div class="v-meta-row">
+                                        <span>Promemoria automatico inviato alle 13:30 · Poltrona 1</span>
+                                        <span class="noshow-time-light">Appuntamento ore 16:30</span>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 2: Front -->
+                                <div class="layer-card-front">
+
+                                    <div class="noshow-prompt-light">
+                                        “Ciao Marco, ti ricordiamo il tuo appuntamento per Taglio &amp; Barba oggi alle 16:30 con Davide da Gentleman Studio.”
+                                    </div>
+                                    <div class="noshow-actions-light">
+                                        <button type="button" class="widget-mini-btn widget-btn-confirm" id="demoBtnConfirm" aria-label="Conferma presenza">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                            <span>Termin bestätigen</span>
+                                        </button>
+                                        <button type="button" class="widget-mini-btn" id="demoBtnCancel" aria-label="Disdici appuntamento">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                            <span>Verschieben / absagen</span>
+                                        </button>
+                                    </div>
+                
+                                </div>
+                                <!-- Layer 3: Floating Pill -->
+                                <div class="layer-floating-pill" id="noshowFeedback">
+
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                                    <span id="noshowFeedbackText">Termin bestätigt · Zeitfenster reserviert</span>
+                
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 4. COME FUNZIONA IN 3 PASSAGGI ==================== -->
+        <section class="vertical-steps-section" id="come-funziona" data-navbar-theme="light">
+            <div class="container">
+                <div class="center reveal is-67d149738738">
+                    <span class="eyebrow-pill">Einfache Einrichtung</span>
+                    <h2 class="display-md">In 3 Schritten startklar für Ihren Salon</h2>
+                </div>
+
+                <div class="steps-grid">
+                    <div class="step-card reveal is-67d149738738">
+                        <div class="step-pill-number">1</div>
+                        <h3>WhatsApp verknüpfen</h3>
+                        <p>Verbinden Sie Ihre WhatsApp Business-Nummer über die offizielle Meta Cloud API für höchste Zuverlässigkeit.</p>
+                    </div>
+                    <div class="step-card reveal is-e41c74dd16b9">
+                        <div class="step-pill-number">2</div>
+                        <h3>Leistungen, Preise &amp; Mitarbeiter hinterlegen</h3>
+                        <p>Tragen Sie Behandlungen, Behandlungsdauern und Arbeitszeiten Ihrer Mitarbeiter für nahtlose Buchungen ein.</p>
+                    </div>
+                    <div class="step-card reveal is-74101b6fa846">
+                        <div class="step-pill-number">3</div>
+                        <h3>Termine buchen sich von selbst</h3>
+                        <p>Kunden buchen freie Zeiten direkt in Google Calendar, während Sie sich ganz auf den Kunden im Stuhl konzentrieren.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== 5. FAQ VERTICALE CON STICKY SLIDE-OVER ==================== -->
+        <div class="pin-wrap-faq">
+            <section class="faq-section" id="faq" data-navbar-theme="light">
+                <div class="container">
+                    <div class="center reveal is-67d149738738">
+                        <span class="eyebrow-pill">Häufig gestellte Fragen</span>
+                        <h2 class="display-md">Alles Wissenswerte für Ihren Salon</h2>
+                    </div>
+
+                    <div class="faq-list">
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Können Kunden Termine bei bestimmten Mitarbeitern buchen?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Ja. Melpis prüft die Verfügbarkeit jedes Stylisten separat und trägt den Termin direkt in den jeweiligen Kalender ein.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Wie berechnet der Assistent Kombi-Behandlungen (z. B. Schnitt + Farbe)?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Sie hinterlegen die Dauer für jede Einzelleistung. Melpis addiert die benötigten Zeiten und findet passende zusammenhängende Slots.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Wie verhindern automatische Erinnerungen Terminausfälle?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis versendet 24 Stunden vorher eine WhatsApp-Erinnerung. Kunden können mit einem Fingertipp bestätigen oder verschieben.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Können Pausen oder spontane Ausfälle blockiert werden?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Ja. Jeder in Google Calendar eingetragene Blocker wird in Echtzeit von Melpis für Buchungen gesperrt.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal">
+                            <summary class="faq-quest"><span>Wie funktioniert die 7-tägige Testphase für Salons?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Starten Sie in 2 Minuten ohne Kreditkarte. Sie können 7 Tage lang Ihre Leistungen hinterlegen und Kundenchats testen.</p></div></div>
+                        </details>
+                    </div></div>
+                        </details>
+                        <details class="faq-item reveal is-e41c74dd16b9">
+                            <summary class="faq-quest"><span>Possiamo impostare orari e giorni lavorativi diversi per ciascun collaboratore?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Sì. Ogni membro del tuo team può avere orari dedicati, giorni di riposo specifici e la lista dei servizi che è abilitato a eseguire. Melpis proporrà solo gli orari in cui il professionista richiesto è realmente in salone.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal is-74101b6fa846">
+                            <summary class="faq-quest"><span>Cosa succede se un cliente chiede un appuntamento per sé e per un amico o familiare?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Melpis individua le richieste plurali (es. 'due tagli' o 'per me e mio figlio') e assegna 2 persone allocando due slot consecutivi o due poltrone distinte in contemporanea in base alle disponibilità.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal is-ed5894c12a96">
+                            <summary class="faq-quest"><span>Possiamo bloccare temporaneamente le prenotazioni nei momenti di massimo affollamento?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Certamente. Dalla dashboard o con un comando rapido puoi impostare il salone come 'al completo' per la giornata: l'assistente proporrà solo le prime date utili della settimana successiva.</p></div></div>
+                        </details>
+                        <details class="faq-item reveal is-01ea3a07975d">
+                            <summary class="faq-quest"><span>Come funziona la prova gratuita di 7 giorni per il mio salone?</span> <span class="faq-icon" aria-hidden="true">+</span></summary>
+                            <div class="faq-ans"><div class="faq-ans-inner"><p>Puoi registrarti inserendo nome salone ed email, senza carta di credito. Hai 7 giorni completi per caricare i tuoi servizi, testare le risposte con il tuo team e verificare l'efficacia prima di scegliere il piano.</p></div></div>
+                        </details>
+                    </div>
+                </div>
+            </section>
+        </div> <!-- Close pin-wrap-faq -->
+
+        <!-- ==================== 6. FINAL CALL TO ACTION ==================== -->
+        <section class="final-cta-section" id="finalCta">
+            <div class="container final-cta-container">
+                <div class="final-cta-box reveal is-67d149738738">
+                    <h2 class="final-cta-title">Mehr Zeit für Ihre Kunden im Salon.<br>Die Terminvergabe regelt Melpis.</h2>
+                    <p class="final-cta-sub">Richten Sie Melpis in wenigen Schritten ein und testen Sie es 7 Tage kostenlos ohne Kreditkarte.</p>
+                    <a href="/de/registrieren/" class="btn-cta-primary is-05cfc5041a64">
+                        <span>Testphase für Ihren Salon starten</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== 7. FOOTER ==================== -->
+    <footer class="site-footer footer-section">
+        <div class="container">
+            <div class="footer-top-row footer-top-grid">
+                <div class="footer-brand-col">
+                    <a href="/de/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI per le comunicazioni e le prenotazioni della tua attività.</p>
+                </div>
+                <div class="footer-links-grid footer-nav-cols">
+                    <div class="footer-col">
+                        <h4>Branchen</h4>
+                        <a href="/de/branchen/restaurants/">Ristoranti e Pizzerie</a>
+                        <a href="/de/branchen/kosmetik-friseure/">Saloni e Barbershop</a>
+                        <a href="/de/branchen/arztpraxen/">Studi Medici e Dentisti</a>
+                        <a href="/de/branchen/hotels/">Hotel e Ospitalità</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Piattaforma</h4>
+                        <a href="/app/">Pannello di controllo</a>
+                        <a href="/de/anmelden/">Anmelden</a>
+                        <a href="/de/registrieren/">Registrati</a>
+                        <a href="/de/preise/">Preise</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Rechtliches</h4>
+                        <a href="/de/datenschutz/">Privacy Policy</a>
+                        <a href="/de/agb/">Nutzungsbedingungen</a>
+                        <a href="/de/cookies/">Cookie-Einstellungen</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Alle Rechte vorbehalten. API Meta Cloud ufficiale &amp; Sicurezza dei dati.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/inline-assets/script-2b37cde15b5cc021bc9917aa23c79240ad8f447dbdbacebd4344d0c48e2c2f55.js" defer></script>
+    <script src="/app.js" defer></script>
+</body>
+</html>
+

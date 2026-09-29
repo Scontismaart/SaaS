@@ -1,0 +1,36 @@
+{
+  "filters": {
+    "open": "Open", "mine": "My tickets", "ai_handling": "AI handling", "human_needed": "Human needed", "closed": "Closed", "search_chats": "Search conversations...",
+    "conversations": "Conversations", "list_aria": "Conversation list", "search_aria": "Search conversations",
+    "channel": "Channel", "channel_aria": "Filter by channel", "status": "Status", "status_aria": "Filter by status and owner",
+    "all": "All", "operator": "Agent", "escalated": "Escalated", "resolved": "Resolved",
+    "detail_aria": "Conversation details", "empty_title": "No messages in this conversation.",
+    "empty_text": "Select a conversation from the list to view message history and reply.",
+    "back_aria": "Back to conversation list", "message_placeholder": "Write a message…", "message_aria": "Write a message"
+  },
+  "chat": {
+    "claim_btn": "Take over ticket",
+    "claimed_by_you": "Assigned to you",
+    "claimed_by_other": "Assigned to {{name}}",
+    "release_btn": "Release back to AI",
+    "close_ticket": "Close conversation",
+    "reopen_ticket": "Reopen conversation",
+    "channel_whatsapp": "WhatsApp",
+    "channel_instagram": "Instagram Direct",
+    "type_message": "Type your message...",
+    "send_btn": "Send",
+    "customer_info": "Contact details",
+    "phone": "Phone",
+    "last_seen": "Last active: {{time}}",
+    "notes": "Internal team notes",
+    "add_note_placeholder": "Add an internal note visible only to your team...",
+    "opt_out_badge": "Marketing opt-out active",
+    "ai_paused": "AI assistant paused for this chat"
+  },
+  "status_labels": {
+    "active": "Active",
+    "waiting_reply": "Waiting for reply",
+    "resolved": "Resolved",
+    "archived": "Archived"
+  }
+}

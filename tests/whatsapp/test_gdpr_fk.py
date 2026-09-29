@@ -140,17 +140,18 @@ async def test_transaction_rollback_on_usage_failure(pg_pool):
     mock_msg.text.body = "Test rollback"
     mock_msg.model_dump.return_value = {"body": "Test rollback"}
 
-    original_increment = repo.increment_message_usage
+    original_upsert = repo.upsert_message
 
-    async def failing_increment(org_id, conn=None):
-        raise RuntimeError("Simulated DB failure during usage increment")
+    async def failing_upsert(**kwargs):
+        await original_upsert(**kwargs)
+        raise RuntimeError("Simulated DB failure after message insert")
 
-    repo.increment_message_usage = failing_increment
+    repo.upsert_message = failing_upsert
 
     with pytest.raises(RuntimeError):
         await _handle_inbound_message(repo, org_id, mock_msg, [])
 
-    repo.increment_message_usage = original_increment
+    repo.upsert_message = original_upsert
 
     async with pg_pool.acquire() as conn:
         row = await conn.fetchrow("SELECT id FROM messages WHERE wam_id = $1", wam_id)

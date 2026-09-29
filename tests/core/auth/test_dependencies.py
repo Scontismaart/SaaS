@@ -9,6 +9,7 @@ from src.core.auth.dependencies import (
     get_organization_context,
     require_ruolo,
     get_repo,
+    get_optional_organization_context,
 )
 
 
@@ -20,6 +21,11 @@ class TestGetToken:
     async def test_bearer_token_extracted(self):
         result = await get_token(request=_fake_request(), authorization="Bearer my.jwt.token", x_api_key=None)
         assert result == "my.jwt.token"
+
+    async def test_invalid_authorization_scheme_is_rejected(self):
+        with pytest.raises(HTTPException) as exc:
+            await get_token(request=_fake_request(), authorization="Basic credentials", x_api_key=None)
+        assert exc.value.status_code == 401
 
     async def test_api_key_prefixed(self):
         result = await get_token(request=_fake_request(), authorization=None, x_api_key="sk-test-123")
@@ -56,11 +62,44 @@ class TestGetCurrentUser:
             await get_current_user(request=_fake_request(repo=None), token=None)
         assert exc.value.status_code == 401
 
-    async def test_valid_api_key_returns_service_role(self, monkeypatch):
+    async def test_valid_service_key_is_not_user_auth(self, monkeypatch):
         monkeypatch.setenv("API_KEY_SERVICE", "sk-test-key")
-        result = await get_current_user(request=_fake_request(), token="apikey:sk-test-key")
-        assert result["ruolo"] == "service_role"
-        assert result["source"] == "api_key"
+        with pytest.raises(HTTPException) as exc:
+            await get_current_user(request=_fake_request(), token="apikey:sk-test-key")
+        assert exc.value.status_code == 403
+
+
+class TestGetOptionalOrganizationContext:
+    async def test_no_credentials_is_anonymous_only_when_demo_is_enabled(self, monkeypatch):
+        monkeypatch.setattr("src.core.auth.dependencies.is_demo_mode", lambda: True)
+        user = await get_optional_organization_context(_fake_request())
+        assert user["source"] == "anonymous"
+
+    async def test_no_credentials_in_production_context_raises_401(self, monkeypatch):
+        monkeypatch.setattr("src.core.auth.dependencies.is_demo_mode", lambda: False)
+        with pytest.raises(HTTPException) as exc:
+            await get_optional_organization_context(_fake_request())
+        assert exc.value.status_code == 401
+
+    async def test_refresh_cookie_without_access_cookie_is_not_anonymous(self, monkeypatch):
+        import src.core.auth.bff as bff
+        monkeypatch.setattr("src.core.auth.dependencies.is_demo_mode", lambda: True)
+        req = _fake_request(cookies={bff.refresh_cookie_name(): "refresh-token"})
+        with pytest.raises(HTTPException) as exc:
+            await get_optional_organization_context(req)
+        assert exc.value.status_code == 401
+
+    async def test_invalid_bearer_propagates_authentication_error(self, monkeypatch):
+        from unittest.mock import patch
+        req = _fake_request()
+        req.headers["Authorization"] = "Bearer invalid"
+        monkeypatch.setattr("src.core.auth.dependencies.get_token", AsyncMock(return_value="invalid"))
+        with patch("src.core.auth.dependencies.get_current_user", new=AsyncMock(
+            side_effect=HTTPException(status_code=403, detail="invalid token")
+        )):
+            with pytest.raises(HTTPException) as exc:
+                await get_optional_organization_context(req)
+        assert exc.value.status_code == 403
 
     async def test_invalid_api_key_raises_403(self, monkeypatch):
         monkeypatch.setenv("API_KEY_SERVICE", "sk-real-key")
@@ -85,15 +124,13 @@ def _fake_request(repo=None, cookies=None):
 
 
 class TestGetOrganizationContext:
-    async def test_api_key_returns_as_is(self):
+    async def test_api_key_cannot_select_arbitrary_organization(self):
         user = {"source": "api_key", "ruolo": "service_role"}
-        result = await get_organization_context(
-            request=_fake_request(),
-            current_user=user,
-            x_organization_id="org-123",
-        )
-        assert result["organization_id"] == "org-123"
-        assert result["source"] == "api_key"
+        with pytest.raises(HTTPException) as exc:
+            await get_organization_context(
+                request=_fake_request(), current_user=user, x_organization_id="org-123",
+            )
+        assert exc.value.status_code == 401
 
     async def test_no_memberships_raises_403(self):
         mock_repo = AsyncMock()
@@ -186,22 +223,23 @@ class TestGetRepo:
 class TestRequireRuolo:
     async def test_owner_allowed_when_admin(self):
         async def dummy_dep():
-            return {"ruolo": "owner", "organization_id": str(uuid.uuid4())}
+            return {"source": "jwt", "ruolo": "owner", "organization_id": str(uuid.uuid4())}
         check = require_ruolo("owner", "manager")
         result = await check(user=await dummy_dep())
         assert result["ruolo"] == "owner"
 
     async def test_staff_blocked_from_admin(self):
         async def dummy_dep():
-            return {"ruolo": "staff", "organization_id": str(uuid.uuid4())}
+            return {"source": "jwt", "ruolo": "staff", "organization_id": str(uuid.uuid4())}
         check = require_ruolo("owner", "manager")
         with pytest.raises(HTTPException) as exc:
             await check(user=await dummy_dep())
         assert exc.value.status_code == 403
 
-    async def test_service_role_bypasses_check(self):
+    async def test_service_role_never_bypasses_check(self):
         async def dummy_dep():
             return {"ruolo": None, "source": "api_key"}
         check = require_ruolo("owner")
-        result = await check(user=await dummy_dep())
-        assert result["source"] == "api_key"
+        with pytest.raises(HTTPException) as exc:
+            await check(user=await dummy_dep())
+        assert exc.value.status_code == 401

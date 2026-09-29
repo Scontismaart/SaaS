@@ -10,6 +10,8 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from googleapiclient.discovery import build
 from google.auth.exceptions import RefreshError
 
+from src.core.google_feature_flags import google_calendar_enabled
+
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
@@ -48,6 +50,8 @@ class GoogleCalendarService:
         return self._encrypt(value)
 
     def _get_client_config(self):
+        if not google_calendar_enabled():
+            raise RuntimeError("Google Calendar disabled")
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
         if not client_id or not client_secret:
@@ -62,6 +66,8 @@ class GoogleCalendarService:
         }
 
     async def _get_credentials(self, org_id):
+        if not google_calendar_enabled():
+            return None
         async with await self._get_org_lock(org_id):
             async with self.repo.pool.acquire() as conn:
                 row = await conn.fetchrow(
@@ -128,12 +134,16 @@ class GoogleCalendarService:
             return row["timezone"] if row else "Europe/Rome"
 
     async def _build_service(self, org_id):
+        if not google_calendar_enabled():
+            return None
         creds = await self._get_credentials(org_id)
         if not creds:
             return None
         return await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
 
     async def create_event(self, booking, org_id):
+        if not google_calendar_enabled():
+            return None
         service = await self._build_service(org_id)
         if not service:
             return None
@@ -184,6 +194,8 @@ class GoogleCalendarService:
         return event_id
 
     async def update_event(self, booking, org_id):
+        if not google_calendar_enabled():
+            return None
         event_id = booking.get("google_event_id")
         if not event_id:
             return None
@@ -227,6 +239,8 @@ class GoogleCalendarService:
         return event_id
 
     async def delete_event(self, booking, org_id):
+        if not google_calendar_enabled():
+            return None
         event_id = booking.get("google_event_id")
         if not event_id:
             return None
@@ -262,6 +276,8 @@ class GoogleCalendarService:
         errore o fuso invalido -> lista vuota; il check e' best-effort e la
         capacita' DB resta la fonte autorevole. Il fail-open copre TUTTO il
         percorso, incluso _build_service (credenziali non decifrabili)."""
+        if not google_calendar_enabled():
+            return []
         try:
             service = await self._build_service(org_id)
             if not service:
@@ -296,6 +312,8 @@ class GoogleCalendarService:
         return intervals
 
     async def sync_booking_state(self, booking, org_id):
+        if not google_calendar_enabled():
+            return
         stato = booking.get("stato", "")
         google_event_id = booking.get("google_event_id")
         stato_occupato = {"in_attesa", "confermata", "da_verificare", "completata"}

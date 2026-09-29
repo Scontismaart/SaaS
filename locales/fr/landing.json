@@ -1,0 +1,106 @@
+{
+  "page_title": "Melpis · Assistant Virtuel WhatsApp IA pour Entreprises | Essai 7 jours",
+  "meta_description": "Activez votre assistant virtuel WhatsApp IA : réponses clients 24/7, réservations instantanées sur Google Calendar et gestion des avis. Essai gratuit 7 jours.",
+  "hero": {
+    "badge": "Infrastructure officielle Meta Cloud API",
+    "title_part1": "L'assistant WhatsApp IA qui",
+    "title_highlight": "transforme vos messages en clients",
+    "subtitle": "Répond instantanément 24 heures sur 24, inscrit vos rendez-vous dans Google Calendar et alerte votre équipe lorsqu'une intervention humaine est requise.",
+    "cta_primary": "Démarrer l'essai gratuit de 7 jours",
+    "cta_secondary": "Découvrir le fonctionnement",
+    "no_card_required": "Aucune carte bancaire requise",
+    "setup_time": "Configuration en 5 minutes"
+  },
+  "stats": {
+    "response_time": "< 3 secondes",
+    "response_time_label": "délai moyen de réponse",
+    "availability": "24/7",
+    "availability_label": "disponibilité ininterrompue",
+    "no_shows": "Temps réel",
+    "no_shows_label": "synchronisation d'agenda pour éviter les chevauchements",
+    "time_saved": "1 clic",
+    "time_saved_label": "pour reprendre la main manuellement à tout instant"
+  },
+  "features": {
+    "section_badge": "Conçu pour développer votre activité",
+    "section_title": "Tout ce dont vous avez besoin pour ne plus perdre aucun prospect sur WhatsApp",
+    "f1": {
+      "title": "Des réponses expertes et naturelles basées sur votre savoir",
+      "desc": "Transmettez vos documents, horaires, menus et conditions : Melpis répond avec une rigueur absolue sans rien inventer."
+    },
+    "f2": {
+      "title": "Synchronisation instantanée avec Google Calendar",
+      "desc": "Vérifie les disponibilités en direct, confirme les rendez-vous et envoie automatiquement confirmations et rappels à vos clients."
+    },
+    "f3": {
+      "title": "Boîte partagée et reprise en main par votre équipe",
+      "desc": "Dès qu'un échange demande une attention particulière, vos collaborateurs peuvent intervenir directement depuis l'interface web."
+    },
+    "f4": {
+      "title": "Collecte d'avis et réputation client",
+      "desc": "Recueillez les impressions de vos clients et invitez les personnes ravies à déposer un avis 5 étoiles sur Google Maps."
+    }
+  },
+  "how_it_works": {
+    "badge": "Simple et rapide",
+    "title": "Comment fonctionne Melpis",
+    "step1": {
+      "num": "01",
+      "title": "Connectez votre numéro WhatsApp",
+      "desc": "Connexion sécurisée en un clic via la Meta Cloud API officielle, sans changer votre numéro habituel."
+    },
+    "step2": {
+      "num": "02",
+      "title": "Renseignez les spécificités de votre activité",
+      "desc": "Indiquez vos horaires, votre grille tarifaire, vos prestations et le ton de communication adapté à votre clientèle."
+    },
+    "step3": {
+      "num": "03",
+      "title": "Laissez votre assistant gérer les échanges",
+      "desc": "Melpis prend en charge chaque message en quelques secondes pendant que vous gardez la main depuis votre tableau de bord."
+    }
+  },
+  "faq": {
+    "badge": "Réponses limpides",
+    "title": "Foire aux questions",
+    "items": [
+      {
+        "q": "Ai-je besoin d'un nouveau numéro de téléphone pour utiliser Melpis ?",
+        "a": "Non. Vous pouvez associer votre numéro WhatsApp Business actuel via la Meta Cloud API officielle, ou utiliser une ligne dédiée si vous préférez distinguer vos canaux."
+      },
+      {
+        "q": "Comment gère-t-on les conversations et peut-on y accéder depuis un smartphone ?",
+        "a": "Melpis s'intègre via l'infrastructure officielle de Meta. La consultation et la réponse manuelle s'effectuent directement depuis la boîte partagée de Melpis (accessible sur ordinateur, tablette ou smartphone). L'assistant répond en temps réel et vous signale tout besoin d'intervention."
+      },
+      {
+        "q": "Que se passe-t-il si l'assistant ne connaît pas la réponse ou face à une demande complexe ?",
+        "a": "Melpis répond strictement sur la base des consignes et documents fournis. Si la demande concerne un élément absent ou exige un accord particulier, l'assistant n'improvise jamais : il prévient poliment le client et transmet le dossier à vos équipes."
+      },
+      {
+        "q": "Combien de temps prend la configuration initiale ?",
+        "a": "La mise en place se réalise en quelques étapes simples : connexion du canal WhatsApp, dépôt des informations clés (horaires, carte ou prestations) et ajustement des règles. Vous pouvez tester immédiatement votre assistant dans le simulateur intégré."
+      },
+      {
+        "q": "Comment se déroule la période d'essai gratuit de 7 jours ?",
+        "a": "L'essai se termine après 7 jours ou 150 messages IA, selon la première limite atteinte. Aucune carte bancaire n'est requise et le renouvellement n'est pas automatique. Une fois la limite de messages atteinte, l'IA cesse de répondre et les demandes sont transmises à un opérateur."
+      },
+      {
+        "q": "Les données de mes clients sont-elles protégées et conformes au RGPD ?",
+        "a": "Oui. Melpis garantit une stricte séparation des données par compte, un chiffrement au repos (Fernet), la gestion des consentements et du droit de retrait, et n'utilise jamais vos données pour entraîner des modèles d'IA tiers."
+      },
+      {
+        "q": "Puis-je adapter la tonalité et les consignes de réponse ?",
+        "a": "Oui. Depuis vos paramètres, vous définissez les instructions de l'assistant, le niveau de courtoisie (tutoiement ou vouvoiement), les règles de prise de rendez-vous et les thématiques nécessitant une validation humaine."
+      },
+      {
+        "q": "Puis-je résilier mon abonnement quand je le souhaite ?",
+        "a": "Oui, vous pouvez gérer ou interrompre votre abonnement à tout moment directement depuis l'espace de facturation Stripe intégré, sans durée d'engagement ni frais de rupture."
+      }
+    ]
+  },
+  "cta_banner": {
+    "title": "Prêt à faire de WhatsApp votre premier canal de vente ?",
+    "subtitle": "Rejoignez les professionnels qui automatisent déjà leurs réservations et leur relation client.",
+    "button": "Démarrer l'essai gratuit de 7 jours"
+  }
+}

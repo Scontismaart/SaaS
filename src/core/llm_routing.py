@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from src.core.cost_policy import DEFAULT_FREE_MODEL, is_openrouter_free_model
 from dataclasses import dataclass
 from typing import Literal
 
@@ -15,11 +16,10 @@ LLMTaskType = Literal[
 
 LLMTier = Literal["cheap", "premium"]
 
-_DEFAULT_CHEAP_MODEL = "mistral/mistral-small-latest"
-_DEFAULT_PREMIUM_MODEL = "mistral/mistral-medium-2508"
+_DEFAULT_CHEAP_MODEL = "groq/llama-3.1-8b-instant"
+_DEFAULT_PREMIUM_MODEL = DEFAULT_FREE_MODEL
 _DEFAULT_FALLBACK_MODELS = (
-    "mistral/mistral-medium-2508,"
-    "mistral/mistral-small-latest,"
+    "groq/llama-3.1-8b-instant,"
     "groq/openai/gpt-oss-120b"
 )
 
@@ -69,7 +69,13 @@ def _split_models(raw: str) -> tuple[str, ...]:
 
 
 def get_route_fallback_models(primary_model: str) -> list[str]:
-    raw = os.getenv("OPENROUTER_MODEL_FALLBACKS", _DEFAULT_FALLBACK_MODELS)
+    # A newly configured provider must never silently fall back to Groq (or a
+    # differently billed account). Legacy deployments keep their old chain.
+    configured = os.getenv("AI_MODEL", "").strip()
+    raw = (
+        os.getenv("AI_MODEL_FALLBACKS", "")
+        if configured else os.getenv("OPENROUTER_MODEL_FALLBACKS", _DEFAULT_FALLBACK_MODELS)
+    )
     return [model for model in _split_models(raw) if model != primary_model]
 
 
@@ -90,8 +96,13 @@ def _budget_is_low(ratio: float | None) -> bool:
 
 
 def route_llm(request: LLMRouteRequest) -> LLMRoute:
-    cheap_model = _env_model("OPENROUTER_MODEL_CHEAP", _DEFAULT_CHEAP_MODEL)
-    premium_model = _env_model("OPENROUTER_MODEL_PREMIUM", os.getenv("OPENROUTER_MODEL", _DEFAULT_PREMIUM_MODEL))
+    configured = os.getenv("AI_MODEL", "").strip()
+    if configured:
+        cheap_model = _env_model("AI_MODEL_CHEAP", configured)
+        premium_model = _env_model("AI_MODEL_PREMIUM", configured)
+    else:
+        cheap_model = _env_model("OPENROUTER_MODEL_CHEAP", _DEFAULT_CHEAP_MODEL)
+        premium_model = _env_model("OPENROUTER_MODEL_PREMIUM", os.getenv("OPENROUTER_MODEL", _DEFAULT_PREMIUM_MODEL))
 
     if request.force_tier == "cheap":
         tier: LLMTier = "cheap"
@@ -153,6 +164,10 @@ def budget_ratio_from_billing(billing: dict | None) -> float | None:
 # Chiavi: nome modello senza prefisso provider, incluse le varianti dei
 # default di routing (mistral-small-latest, mistral-medium-2508).
 _TOKEN_PRICES_EUR_PER_1M: dict[str, tuple[float, float]] = {
+    # The launch policy permits these models only on a user-confirmed Groq
+    # free account, therefore their application-side estimated spend is zero.
+    "llama-3.1-8b-instant": (0.0, 0.0),
+    "gpt-oss-20b": (0.0, 0.0),
     "mistral-small": (0.2, 0.6),
     "mistral-small-latest": (0.2, 0.6),
     "mistral-medium": (2.7, 8.1),
@@ -167,6 +182,10 @@ def stima_costo_eur(model, prompt_tokens, completion_tokens):
     non e' in tabella o i token mancano."""
     if prompt_tokens is None or completion_tokens is None:
         return None
+    # Client creation separately verifies this model's current zero pricing
+    # in the official catalog before any request can be sent.
+    if is_openrouter_free_model(model or ""):
+        return 0.0
     nome = (model or "").split("/")[-1].strip().lower()
     prezzi = _TOKEN_PRICES_EUR_PER_1M.get(nome)
     if not prezzi:

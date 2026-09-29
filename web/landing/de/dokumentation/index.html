@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentation & Offizielles Hilfecenter · Melpis</title>
+    <meta name="description" content="Praxisleitfäden, Checklisten für den Livegang und Dokumentation zur Einrichtung Ihres KI-WhatsApp-Assistenten, Kalender-Sync und des Team-Posteingangs.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+
+    <!-- Open Graph / Twitter Cards -->
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Melpis">
+    <meta property="og:url" content="https://melpis.it/documentazione/">
+    <meta property="og:title" content="Dokumentation & Offizielles Hilfecenter · Melpis">
+    <meta property="og:description" content="Praxisleitfäden, Checklisten für den Livegang und Dokumentation zur Einrichtung Ihres KI-WhatsApp-Assistenten, Kalender-Sync und des Team-Posteingangs.">
+    <meta property="og:image" content="https://melpis.it/og-image-universal.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <!-- Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://melpis.it/documentazione/#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://melpis.it/"
+            },
+            {
+              "@type": "ListItem",
+              "position": 2,
+              "name": "Documentazione",
+              "item": "https://melpis.it/documentazione/"
+            }
+          ]
+        },
+        {
+          "@type": "TechArticle",
+          "@id": "https://melpis.it/documentazione/#article",
+          "headline": "Cos'è Melpis e come funziona l'assistente AI",
+          "description": "Panoramica completa del funzionamento dell'assistente WhatsApp AI, retrieval documentale RAG e guardrail deterministici.",
+          "url": "https://melpis.it/documentazione/",
+          "dateModified": "2026-09-16",
+          "author": {
+            "@type": "Organization",
+            "name": "Melpis"
+          }
+        }
+      ]
+    }
+    </script>
+    <link rel="canonical" href="https://melpis.it/de/dokumentation/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/documentazione/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/documentation/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/documentacion/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/documentation/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/dokumentation/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/documentation/">
+</head>
+<body class="docs-page-shell">
+
+    <!-- ==================== HEADER PRINCIPALE ==================== -->
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/de/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/de/dokumentation/" class="hero-nav-link" aria-current="page">Dokumentation</a>
+                <a href="/de/preise/" class="hero-nav-link">Preise</a>
+                <a href="/de/anmelden/" class="hero-nav-link">Anmelden</a>
+            </nav>
+            <div class="hero-nav-actions">
+
+            <div class="lang-selector-wrap" id="langSelectorWrap">
+                <button type="button" class="lang-selector-btn" id="langDropdownTrigger" aria-haspopup="menu" aria-expanded="false" aria-label="Seleziona lingua / Select language">
+                    <span class="lang-code-text">DE</span>
+                    <svg class="dropdown-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                <div class="lang-dropdown-menu" id="langDropdownMenu" role="menu" aria-labelledby="langDropdownTrigger" hidden>
+                    <a href="/documentazione/" class="lang-option-link" hreflang="it" role="menuitem">Italiano</a>
+                    <a href="/en/documentation/" class="lang-option-link" hreflang="en" role="menuitem">English</a>
+                    <a href="/es/documentacion/" class="lang-option-link" hreflang="es" role="menuitem">Español</a>
+                    <a href="/fr/documentation/" class="lang-option-link" hreflang="fr" role="menuitem">Français</a>
+                    <a href="/de/dokumentation/" class="lang-option-link is-active" hreflang="de" role="menuitem">Deutsch</a>
+                </div>
+            </div>
+                <a href="/de/registrieren/" class="btn-pill-white">
+                    <span>Kostenlos testen</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN WRAPPER ==================== -->
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <!-- ==================== SIDEBAR DI NAVIGAZIONE ==================== -->
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-search-box">
+                    <div class="docs-search-container">
+                        <div class="docs-search-box">
+                            <svg class="docs-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="search" id="docsSearchInput" class="docs-search-input" placeholder="Anleitungen durchsuchen (Strg+K)..." aria-label="Cerca articoli nella documentazione" autocomplete="off">
+                            <span class="docs-search-shortcut" title="Premi / o Ctrl+K per cercare">/</span>
+                        </div>
+                        <div class="docs-search-dropdown" id="docsSearchDropdown" role="listbox" aria-label="Risultati di ricerca"></div>
+                    </div>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Erste Schritte</span>
+                    <a href="/de/dokumentation/" class="docs-sidebar-link is-active">Cos'è Melpis</a>
+                    <a href="/de/dokumentation/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/de/dokumentation/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checkliste vor dem Start</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Kanäle & Integrationen</span>
+                    <a href="/de/dokumentation/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/de/dokumentation/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/de/dokumentation/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/de/dokumentation/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/de/dokumentation/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/de/dokumentation/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">KI-Konfiguration & Wissensdatenbank</span>
+                    <a href="/de/dokumentation/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/de/dokumentation/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/de/dokumentation/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/de/dokumentation/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Zentraler Posteingang & Menschliche Übernahme</span>
+                    <a href="/de/dokumentation/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/de/dokumentation/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Buchungen & Termine</span>
+                    <a href="/de/dokumentation/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Konto, Team & Tarife</span>
+                    <a href="/de/dokumentation/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/de/dokumentation/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicherheit, Datenschutz & DSGVO</span>
+                    <a href="/de/dokumentation/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Fehlerbehebung & Architektur</span>
+                    <a href="/de/dokumentation/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/de/dokumentation/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <!-- ==================== CONTENUTO ARTICOLO ==================== -->
+            <article class="docs-article-body-wrap">
+                <!-- Mobile Navigation Toggle -->
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Inhaltsverzeichnis anzeigen</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <!-- Breadcrumbs -->
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/de/dokumentation/" class="docs-bc-link">Dokumentation</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/de/dokumentation/" class="docs-bc-link">Erste Schritte</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Cos'è Melpis</span>
+                </nav>
+
+                <!-- Header Articolo -->
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Was ist Melpis und wie funktioniert der KI-Assistent</h1>
+                    <p class="docs-article-subtitle">Ein vollständiger und überprüfbarer Überblick darüber, wie Melpis WhatsApp- und Instagram-Nachrichten selbstständig beantwortet, Preislisten beachtet und bei Bedarf Mitarbeiter einbindet.</p>
+                </header>
+
+                <!-- Corpo Prose -->
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Funktionsumfang und Möglichkeiten</h2>
+                    <p>Melpis è un risponditore e segretario digitale basato su intelligenza artificiale progettato specificamente per attività di servizio locali: ristoranti, pizzerie, saloni di bellezza, centri estetici, studi medici e strutture ricettive.</p>
+                    <p>A differenza dei chatbot tradizionali a pulsanti rigidi o degli assistenti generici, Melpis:</p>
+                    <ul>
+                        <li><strong>Risponde in linguaggio naturale 24/7</strong> alle domande su orari, servizi, listini prezzi, indicazioni stradali e disponibilità.</li>
+                        <li><strong>Registra prenotazioni e appuntamenti</strong> verificando le capienze orarie e sincronizzando il tuo Google Calendar o gestionale PMS.</li>
+                        <li><strong>Garantisce zero allucinazioni sui prezzi</strong>: ogni cifra indicata al cliente deve obbligatoriamente esistere nel tuo listino o nei documenti caricati. In caso contrario, il guardrail deterministico blocca la risposta e passa la conversazione allo staff.</li>
+                        <li><strong>Offre una Shared Inbox per il team</strong>: tu e i tuoi collaboratori potete visualizzare tutte le chat e intervenire manualmente in qualsiasi momento.</li>
+                        <li><strong>Gestisce le recensioni Google</strong>: analizza il sentiment delle recensioni ricevute su Google Business Profile, prepara risposte mirate e ti permette di approvarle con un click.</li>
+                    </ul>
+
+                    <div class="docs-callout docs-callout-info">
+                        <div class="docs-callout-title">ℹ️ Conformità Ufficiale Meta e AI Act</div>
+                        <p class="docs-callout-text">Melpis si collega esclusivamente tramite le <strong>Meta Cloud API ufficiali</strong> (WhatsApp Business Cloud API). Non utilizza emulatori non autorizzati né numeri web non certificati, proteggendo il tuo numero da ban o sospensioni. Inoltre, il primo messaggio inviato a ciascun nuovo cliente dichiara in modo trasparente l'interazione con un assistente AI.</p>
+                    </div>
+
+                    <h2 id="i-4-pilastri-operativi">Die 4 operativen Säulen von Melpis</h2>
+                    <div class="docs-features-grid">
+                        <div class="docs-feature-card">
+                            <h3 class="docs-feature-card-title">1. Meta Cloud API Ufficiale</h3>
+                            <p class="docs-feature-card-desc">Connessione diretta ai server Meta con crittografia end-to-end e webhook ad altissima velocità. Nessun rischio di ban per utilizzo di emulatori non conformi.</p>
+                        </div>
+                        <div class="docs-feature-card">
+                            <h3 class="docs-feature-card-title">2. Guardrail Anti-Allucinazione</h3>
+                            <p class="docs-feature-card-desc">Un layer deterministico analizza a posteriori ogni prezzo o promessa generata dall'AI. Se il dato non è presente nel database, il messaggio viene bloccato e passato allo staff.</p>
+                        </div>
+                        <div class="docs-feature-card">
+                            <h3 class="docs-feature-card-title">3. Shared Inbox &amp; Presa in Carico</h3>
+                            <p class="docs-feature-card-desc">Quando un membro del team clicca su <em>Prendi in carico</em>, l'AI viene sospesa all'istante su quella chat, evitando sovrapposizioni tra uomo e macchina.</p>
+                        </div>
+                        <div class="docs-feature-card">
+                            <h3 class="docs-feature-card-title">4. Sincronizzazione Calendario Bidirezionale</h3>
+                            <p class="docs-feature-card-desc">Google Calendar, SimplyBook o Apaleo: gli orari occupati vengono bloccati in tempo reale, azzerando le doppie prenotazioni e i conflitti di agenda.</p>
+                        </div>
+                    </div>
+
+                    <h2 id="il-ciclo-di-vita-del-messaggio">Lebenszyklus einer Nachricht (Pipeline)</h2>
+                    <p>Per capire davvero come lavora Melpis senza misteri, ecco cosa accade dal momento in cui un cliente scrive su WhatsApp al momento in cui riceve la risposta:</p>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Ricezione istantanea via Webhook Meta</h3>
+                                <p class="docs-step-text">Il server riceve il webhook, ne verifica la firma crittografica HMAC-SHA256, deduplica l'ID messaggio per evitare risposte doppie e risponde a Meta con HTTP 200 in meno di 50 millisecondi.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Verifica del Consenso e Filtro Opt-Out</h3>
+                                <p class="docs-step-text">Se il cliente invia parole come "STOP", "BASTA" o "CANCELLAMI", il sistema registra immediatamente l'opt-out marketing nel database e disattiva ogni invio commerciale (meccanismo fail-closed a tutela della privacy conforme GDPR).</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Controllo dello Stato del Ticket (HITL)</h3>
+                                <p class="docs-step-text">Se un operatore umano ha già preso in carico la chat (stato <code>claimed</code>) o il ticket è in attesa dello staff (stato <code>pending_staff</code>), l'AI si astiene dal rispondere per non interrompere la conversazione umana.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Classificazione Intent &amp; Cache FAQ a Zero Token</h3>
+                                <p class="docs-step-text">Se la domanda corrisponde a una FAQ ricorrente già verificata (distanza coseno &lt; 0.08), la risposta viene restituita istantaneamente dalla cache semantica senza spendere token AI e con latenza inferiore a 80ms.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">5</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Recupero Conoscenza (RAG) &amp; Generazione Risposta</h3>
+                                <p class="docs-step-text">Il motore interroga il database vettoriale PostgreSQL (pgvector 384d) per estrarre solo i passaggi rilevanti da menù, listini e regolamenti. Il modello AI formula una risposta cordiale, corretta e concisa.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">6</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Pipeline dei Guardrail Deterministi</h3>
+                                <p class="docs-step-text">Prima dell'invio su WhatsApp, la risposta attraversa controlli automatici: se cita un prezzo non presente nei documenti o frasi ambigue, il messaggio viene bloccato e la conversazione passa immediatamente allo staff umano.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2 id="limitazioni-reali">Tatsächliche Systemgrenzen</h2>
+                    <p>Per la massima trasparenza, tieni presenti questi vincoli verificati nel codice dell'applicazione:</p>
+                    <ul>
+                        <li><strong>Solo messaggistica testuale</strong>: Melpis risponde a messaggi di testo WhatsApp e messaggi diretti Instagram. Non gestisce chiamate vocali telefoniche tradizionali, note vocali in uscita o invio di video complessi.</li>
+                        <li><strong>Un numero WhatsApp per account</strong>: I piani Starter e Pro gestiscono 1 numero WhatsApp Business dedicato. La gestione multi-sede o multi-numero è riservata al piano Business dedicato.</li>
+                        <li><strong>Nessuna azione finanziaria diretta da LLM</strong>: L'AI non può autorizzare rimborsi né addebitare carte di credito; può solo registrare prenotazioni secondo le regole stabilite dall'amministratore.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Fehlerbehebung</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'assistente non risponde ai messaggi WhatsApp in arrivo</summary>
+                            <div class="docs-accordion-content">
+                                <p>Verifica che il <strong>Token Permanente Meta</strong> non sia scaduto (errore 190) e che il Webhook in Meta for Developers sia nello stato "Sottoscritto". In alternativa, controlla di non aver superato il monte messaggi mensile del tuo piano.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'AI blocca la risposta con "Richiesta verifica personale"</summary>
+                            <div class="docs-accordion-content">
+                                <p>Questo accade quando il cliente pone una domanda con cifre economiche che non trovano riscontro nel listino ufficiale dei servizi. È una protezione voluta per evitare allucinazioni tariffarie.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Technische Vertiefung (für Entwickler)</h2>
+                    <p>La pipeline è implementata in Python asincrono con <code>FastAPI</code>, database <code>PostgreSQL 15+</code> con estensione <code>pgvector</code> e worker di consumo code basati sulla clausola <code>FOR UPDATE SKIP LOCKED</code>:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/whatsapp/inbound_processor.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code># Ricezione atomica asincrona senza collisioni tra worker
+async def process_next_message(db_pool):
+    async with db_pool.acquire() as conn:
+        row = await conn.fetchrow("""
+            SELECT id, organization_id, payload
+            FROM inbound_messages_queue
+            WHERE status = 'pending'
+            ORDER BY created_at ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED;
+        """)
+        if row:
+            await handle_inbound_pipeline(conn, row)</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Verwandte Anleitungen</h2>
+                    <div class="docs-related-grid">
+                        <a href="/de/dokumentation/inizia-da-qui/guida-onboarding/" class="docs-related-card">
+                            <div class="docs-related-tag">Guida successiva</div>
+                            <div class="docs-related-title">Wizard di Configurazione in 7 passi</div>
+                        </a>
+                        <a href="/de/dokumentation/integrazioni/collegare-whatsapp/" class="docs-related-card">
+                            <div class="docs-related-tag">Integrazione</div>
+                            <div class="docs-related-title">Come collegare WhatsApp Business</div>
+                        </a>
+                        <a href="/de/dokumentation/configurazione-ai/personalizzazione-assistente/" class="docs-related-card">
+                            <div class="docs-related-tag">Configurazione</div>
+                            <div class="docs-related-title">Personalità e Regole Operative</div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Footer Articolo con Feedback -->
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">War diese Anleitung hilfreich?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Ja, sehr verständlich</button>
+                            <button type="button" class="docs-btn-vote">👎 Nein, benötigt Klärung</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Vielen Dank für Ihre Rückmeldung! Sie hilft uns, die Dokumentation zu verbessern.</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- ==================== ON-PAGE TOC (DESKTOP) ==================== -->
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">Auf dieser Seite</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Funktionsumfang und Möglichkeiten</a></li>
+                    <li class="docs-toc-item"><a href="#i-4-pilastri-operativi" class="docs-toc-link">Die 4 operativen Säulen</a></li>
+                    <li class="docs-toc-item"><a href="#il-ciclo-di-vita-del-messaggio" class="docs-toc-link">Lebenszyklus Nachricht</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Tatsächliche Systemgrenzen</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Fehlerbehebung</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Technische Vertiefung</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Verwandte Anleitungen</a></li>
+                </ul>
+            </aside>
+
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER UNIFICATO ==================== -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/de/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Produkt</h4>
+                        <a href="/de/dokumentation/">Dokumentation</a>
+                        <a href="/de/preise/">Preise</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Rechtliches</h4>
+                        <a href="/de/datenschutz/">Privacy Policy</a>
+                        <a href="/de/agb/">Nutzungsbedingungen</a>
+                        <a href="/de/cookies/">Cookie-Einstellungen</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Alle Rechte vorbehalten. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

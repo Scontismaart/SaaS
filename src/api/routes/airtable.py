@@ -12,6 +12,7 @@ import logging
 from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
+from src.core.auth.dependencies import require_mfa
 
 from src.api.dependencies import (
     get_airtable_service,
@@ -54,7 +55,8 @@ class ValidateSchemaRequest(BaseModel):
 async def connect_airtable(
     req: ConnectAirtableRequest,
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Verifica e connette un account Airtable tramite PAT per l'organizzazione corrente.
 
@@ -136,7 +138,8 @@ async def validate_table_schema(
 async def disconnect_airtable(
     request: Request,
     base_id: str = Query(..., description="ID della Base Airtable da disconnettere"),
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
 ):
     """Rimuove la connessione Airtable specificata per l'organizzazione."""
     org_id = user.get("organization_id")
@@ -234,7 +237,8 @@ async def airtable_webhook_endpoint(
 async def subscribe_webhook(
     req: SubscribeWebhookRequest,
     request: Request,
-    user: dict = Depends(require_ruolo("owner", "manager")),
+    user: dict = Depends(require_ruolo("owner")),
+    mfa: dict = Depends(require_mfa()),
     webhook_service: Any = Depends(get_airtable_webhook_service),
     connection_service: Any = Depends(get_airtable_service),
 ):

@@ -12,9 +12,6 @@ import pytest
 
 from src.core import scheduler
 
-pytestmark = pytest.mark.asyncio
-
-
 class FakeConn:
     async def fetchval(self, query, *args):
         if "pg_try_advisory_lock" in query:
@@ -71,6 +68,7 @@ def track_create_pool(monkeypatch):
     return created
 
 
+@pytest.mark.asyncio
 async def test_con_pool_esimero_crea_chiude_parametri_ok(track_create_pool):
     viste = []
 
@@ -89,6 +87,7 @@ async def test_con_pool_esimero_crea_chiude_parametri_ok(track_create_pool):
     assert track_create_pool[0].closed is True
 
 
+@pytest.mark.asyncio
 async def test_pool_chiuso_anche_su_errore_job(track_create_pool):
     async def job_che_esplode(pool):
         await pool.fetch("SELECT boom")

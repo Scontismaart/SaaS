@@ -1,0 +1,56 @@
+{
+  "page_title": "Dokumentation & Offizielles Hilfecenter · Melpis",
+  "meta_description": "Praxisleitfäden, Checklisten für den Livegang und Dokumentation zur Einrichtung Ihres KI-WhatsApp-Assistenten, Kalender-Sync und des Team-Posteingangs.",
+  "hero": {
+    "badge": "Hilfecenter & Leitfäden",
+    "title": "Wie können wir Ihnen weiterhelfen?",
+    "subtitle": "Alles Wissenswerte zur Einrichtung, Integration und optimalen Nutzung Ihres Melpis-Assistenten.",
+    "search_placeholder": "Leitfäden, Integrationen, Einstellungen durchsuchen (Strg+K)..."
+  },
+  "search": {
+    "empty": "Keine Artikel für diesen Suchbegriff gefunden.",
+    "count_articles": "{{count}} Artikel",
+    "shortcut_hint": "Drücken Sie / für die Schnellsuche"
+  },
+  "categories": {
+    "start": {
+      "title": "Erste Schritte",
+      "desc": "Was Melpis ist, grundlegende Architektur, 7-Schritte-Assistent und Checkliste für den Livegang."
+    },
+    "integrations": {
+      "title": "Kanäle & Integrationen",
+      "desc": "WhatsApp Business, Instagram Direct, Google Calendar, Google Rezensionen, PMS und Airtable."
+    },
+    "ai_config": {
+      "title": "KI-Konfiguration & Wissensdatenbank",
+      "desc": "Persönlichkeit, Tonalität, Arbeitszeiten, RAG-Dokumenten-Upload, Preislisten und FAQ-Cache."
+    },
+    "inbox": {
+      "title": "Zentraler Posteingang & Menschliche Übernahme",
+      "desc": "Ticketzuweisung (Claim), manuelle WhatsApp/Instagram-Antworten, Weiterleitungsregeln und SLAs."
+    },
+    "bookings": {
+      "title": "Buchungen & Termine",
+      "desc": "Terminverfügbarkeit, Zeitraster, Kapazitätsgrenzen, Terminerstellung und Kalendersynchronisierung."
+    },
+    "accounts": {
+      "title": "Konto, Team & Tarife",
+      "desc": "Mitarbeiterverwaltung (Inhaber, Manager, Mitarbeiter), Basis-, Wachstum- und Skalierungsplan sowie Stripe."
+    },
+    "security": {
+      "title": "Sicherheit, Datenschutz & DSGVO",
+      "desc": "DSGVO-Konformität, AV-Vertrag (DPA), 60-90 Tage Speicherfrist, Opt-out-Verwaltung und Recht auf Löschung."
+    },
+    "troubleshooting": {
+      "title": "Fehlerbehebung & Architektur",
+      "desc": "Diagnose abgelaufener Tokens, Meta-API-Fehler, Webhooks, Ratenbegrenzungen und technische Worker-Architektur."
+    }
+  },
+  "ui": {
+    "back_to_docs": "← Alle Leitfäden",
+    "table_of_contents": "Auf dieser Seite",
+    "need_help": "Nicht das Richtige gefunden?",
+    "contact_support": "Melpis-Support kontaktieren",
+    "last_updated": "Zuletzt aktualisiert: {{date}}"
+  }
+}

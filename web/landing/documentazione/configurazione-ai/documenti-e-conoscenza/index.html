@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caricamento Documenti, RAG e Riconoscimento OCR — Documentazione Melpis</title>
+    <meta name="description" content="Come caricare file PDF, menu, listini e documenti aziendali in Melpis. Funzionamento dell'OCR RapidOCR e del motore semantico pgvector.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/configurazione-ai/documenti-e-conoscenza/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link is-active">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Configurazione AI</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Documenti e OCR</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Caricamento Documenti, RAG e Riconoscimento OCR</h1>
+                    <p class="docs-article-subtitle">Come istruire l'AI caricando brochure, menu e informative aziendali mediante vettorializzazione semantica pgvector.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>La sezione <strong>Documenti &amp; Conoscenza</strong> consente di fornire all'assistente una base informativa estesa e proprietaria (ad esempio: regolamenti interni, menu dettagliati con allergeni, policy di cancellazione, istruzioni pre-trattamento, schede tecniche). Melpis analizza i file, estrae il testo tramite parser nativi o OCR, crea vettori matematici (embeddings) e li interroga in tempo reale solo quando un cliente fa una domanda pertinente.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>La funzionalità Knowledge Base RAG richiede il piano <strong>Business</strong> (oppure l'add-on RAG attivo).</li>
+                        <li>I formati ammessi sono: <code>.pdf</code>, <code>.txt</code>, <code>.csv</code>, <code>.docx</code>.</li>
+                        <li>Il limite di dimensione per singolo file è di <strong>10 MB</strong>.</li>
+                        <li>Assicurati che i documenti non contengano dati sensibili o credenziali di accesso private.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Accedi a Conoscenza &rarr; Documenti</h3>
+                                <p class="docs-step-text">Dalla barra di navigazione a sinistra della dashboard, apri la voce <strong>Documenti</strong>. Vedrai l'elenco dei file attualmente elaborati e il relativo stato di indicizzazione.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Trascina o seleziona il file</h3>
+                                <p class="docs-step-text">Trascina il tuo file PDF, documento Word o file di testo nell'area di upload (oppure clicca su <em>Sfoglia file</em>). Puoi inserire un titolo mnemonico descrittivo (es. <em>"Menu Primavera 2026 e Carta Vini"</em>).</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Elaborazione e OCR Automatico</h3>
+                                <p class="docs-step-text">Una volta caricato, il backend avvia la pipeline in background:
+                                <ul>
+                                    <li>Se il PDF ha testo selezionabile, viene estratto digitalmente in alta fedeltà.</li>
+                                    <li>Se il PDF è una scansione o una foto, interviene il motore <strong>RapidOCR</strong> locale che riconosce i caratteri senza inviare le immagini a servizi terzi.</li>
+                                    <li>Il testo viene frammentato in blocchi (chunks) di circa 500 caratteri e convertito in embedding a 384 dimensioni.</li>
+                                </ul>
+                                Il badge di stato passerà da <em>Elaborazione in corso</em> a <span class="docs-badge-diff badge-base">Indicizzato</span> (solitamente entro 5-15 secondi).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">4</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Verifica con il simulatore di chat</h3>
+                                <p class="docs-step-text">Apri il pulsante <strong>Test Assistente</strong> in basso a destra nella dashboard e poni una domanda specifica basata sul documento appena caricato (es. <em>"Quali piatti senza glutine avete?"</em> o <em>"Qual è la policy di cancellazione?"</em>) per verificare l'accuratezza del retrieval.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-info">
+                        <div class="docs-callout-title">ℹ️ Come organizzare i documenti per la massima precisione</div>
+                        <p class="docs-callout-text">I modelli di embedding funzionano meglio quando le informazioni sono organizzate con titoli chiari ed elenchi puntati. Evita tabelle complesse con celle unite irregolari; converti le schede in formato domanda-risposta o elenchi strutturati per una comprensione immediata.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>Quando un utente invia una domanda su WhatsApp o Instagram, Melpis calcola l'embedding della domanda ed esegue una ricerca per distanza coseno su PostgreSQL (<code>pgvector</code>).</li>
+                        <li>Se la somiglianza supera la soglia di confidenza, i 3 frammenti più rilevanti vengono iniettati nel contesto dell'LLM come fonte di verità certificata.</li>
+                        <li>Se l'utente fa una domanda che non trova riscontro nei documenti né nel listino, l'AI ammette di non possedere l'informazione e propone di inoltrare la richiesta allo staff.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Disponibilità di piano</strong>: La funzione RAG è riservata al piano Business. Con il piano Starter e Pro, le risposte sono guidate esclusivamente dalla personalità, dalle FAQ e dal listino servizi.</li>
+                        <li><strong>Scansioni a bassissima risoluzione</strong>: Se carichi una foto mossa, storta o con scarsa illuminazione (sotto i 150 DPI), l'OCR potrebbe commettere errori nell'estrazione di numeri telefonici o prezzi specifici.</li>
+                        <li><strong>Aggiornamento di un file</strong>: Se modifichi un menu, non sovrascrivere il vecchio file: elimina il documento precedente dalla tabella e carica la nuova versione per garantire la completa rimozione dei vecchi frammenti di embedding.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Stato bloccato su "Errore di elaborazione"</summary>
+                            <div class="docs-accordion-content">
+                                <p>Il file potrebbe essere protetto da password, crittografato o corrotto. Apri il PDF in locale, verifica che non richieda permessi speciali, salvalo nuovamente con "Stampa su PDF" e ripeti il caricamento.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">L'AI non cita le informazioni presenti nel PDF</summary>
+                            <div class="docs-accordion-content">
+                                <p>Verifica che il documento sia nello stato <strong>Indicizzato</strong>. Se l'informazione è isolata in una nota a piè di pagina minuscola, prova a riformularla in un paragrafo chiaro nel documento sorgente o aggiungila direttamente come FAQ nella sezione apposita.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>Il motore RAG è implementato in <code>src/core/rag.py</code> e fa leva su PostgreSQL con l'estensione <code>pgvector</code>. Ogni chunk è archiviato nella tabella <code>document_chunks</code> con isolamento obbligatorio a livello di <code>organization_id</code>:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">SQL (Query di similarità vettoriale)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>SELECT content, 1 - (embedding <=> $1) AS similarity
+FROM document_chunks
+WHERE organization_id = $2
+  AND 1 - (embedding <=> $1) > 0.68
+ORDER BY embedding <=> $1
+LIMIT 3;</code></pre>
+                    </div>
+                    <p>La query garantisce tenant isolation assoluta: un cliente dell'Organizzazione A non potrà in nessun caso estrarre frammenti appartenenti all'Organizzazione B, anche in caso di collisione di embedding.</p>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-related-card">
+                            <div class="docs-related-tag">Listino</div>
+                            <div class="docs-related-title">Listino Servizi e Conflitti Prezzo</div>
+                        </a>
+                        <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-related-card">
+                            <div class="docs-related-tag">Ottimizzazione</div>
+                            <div class="docs-related-title">FAQ e Cache a Zero Token</div>
+                        </a>
+                        <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-related-card">
+                            <div class="docs-related-tag">Fatturazione</div>
+                            <div class="docs-related-title">Piani, Limiti e Funzionalità RAG</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

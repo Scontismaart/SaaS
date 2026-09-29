@@ -45,7 +45,7 @@ DPA_HTML = """<!DOCTYPE html>
 <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%">
 <tr><th>Sub-processor</th><th>Service</th><th>Data Location</th></tr>
 <tr><td>Meta Platforms (WhatsApp Business API)</td><td>Message delivery</td><td>USA — verify transfer mechanism</td></tr>
-<tr><td>OpenRouter / underlying LLM providers</td><td>AI response generation</td><td>USA/variable — verify transfer mechanism</td></tr>
+<tr><td>Groq / provider LLM configurato</td><td>Generazione risposte AI</td><td>Ubicazione e meccanismo di trasferimento da verificare contrattualmente</td></tr>
 <tr><td>Google (Business Profile, Calendar)</td><td>Reviews, calendar sync</td><td>USA — verify transfer mechanism</td></tr>
 <tr><td>Stripe</td><td>Payment processing, subscriptions, booking deposits</td><td>USA/EU per Stripe configuration</td></tr>
 <tr><td>Supabase</td><td>Authentication, database hosting</td><td>Depends on the Supabase project region</td></tr>
@@ -222,13 +222,19 @@ async def gdpr_delete(
 
 @router.get("/retention-policy")
 async def retention_policy():
-    return {"retention_days": 60, "purge_after_days": 30}
+    return {
+        "retention_days": 60,
+        "purge_after_days": 30,
+        "simulator_response_days": 30,
+        "simulator_history_idle_hours": 24,
+    }
 
 
 async def _export_tenant_data(repo: CoreRepository, org_id: str) -> dict:
     contacts = await repo.get_contacts_by_org(org_id)
     conversations = await repo.get_conversations_by_org(org_id)
     messages = await repo.get_messages_by_org(org_id)
+    simulation_requests = await repo.get_simulation_requests_by_org(org_id)
 
     return {
         "organization_id": str(org_id),
@@ -250,5 +256,17 @@ async def _export_tenant_data(repo: CoreRepository, org_id: str) -> dict:
                 "created_at": m.get("created_at").isoformat() if m.get("created_at") else None,
             }
             for m in messages
+        ],
+        "simulator_responses": [
+            {
+                "request_id": str(item["request_id"]),
+                "user_id": str(item["auth_user_id"]),
+                "payload_hash": item.get("payload_hash"),
+                "status": item.get("status"),
+                "response": item.get("response"),
+                "created_at": item.get("created_at").isoformat() if item.get("created_at") else None,
+                "completed_at": item.get("completed_at").isoformat() if item.get("completed_at") else None,
+            }
+            for item in simulation_requests
         ],
     }

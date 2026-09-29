@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Team e Permessi (RBAC: Owner, Manager, Staff) — Documentazione Melpis</title>
+    <meta name="description" content="Come invitare i collaboratori, gestire i ruoli e configurare i permessi di accesso in Melpis secondo il modello di sicurezza RBAC.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/account-e-piani/team-e-ruoli/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link is-active">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Account e Piani</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Team e Ruoli</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Gestione Team e Permessi (RBAC: Owner, Manager, Staff)</h1>
+                    <p class="docs-article-subtitle">Come invitare dipendenti e collaboratori, assegnando privilegi commisurati alle loro mansioni operative.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>La gestione del team in Melpis consente di condividere l'accesso alla dashboard con dipendenti, colleghi della reception o responsabili di sede, senza dover condividere le credenziali del titolare. Il sistema si basa su un rigoroso modello di controllo degli accessi basato sui ruoli (<strong>Role-Based Access Control - RBAC</strong>) che protegge i dati sensibili di fatturazione e le configurazioni critiche dell'attività.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Solo gli utenti con ruolo di <strong>Owner</strong> possono gestire la fatturazione e invitare altri utenti (nei limiti del piano sottoscritto).</li>
+                        <li>Limiti di postazioni per piano:
+                            <ul>
+                                <li><strong>Starter</strong>: 1 utente (Owner).</li>
+                                <li><strong>Pro</strong>: fino a 3 utenti.</li>
+                                <li><strong>Business</strong>: utenti e collaboratori illimitati.</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Procedura passo-passo</h2>
+
+                    <div class="docs-steps-list">
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">1</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">I 3 Ruoli e la Matrice dei Permessi</h3>
+                                <p class="docs-step-text">Prima di invitare un utente, seleziona il livello corretto:
+                                <ul>
+                                    <li><strong>Owner (Proprietario)</strong>: accesso totale. Gestisce l'abbonamento Stripe, le credenziali API di Meta, la cancellazione dei dati dell'azienda e assegna i ruoli agli altri membri.</li>
+                                    <li><strong>Manager (Responsabile di sede)</strong>: configura l'assistente (prompt, orari, tono), aggiorna il listino prezzi, carica documenti e FAQ, invita operatori dello staff. Non ha accesso alle carte di credito né alla cancellazione dell'azienda.</li>
+                                    <li><strong>Staff (Operatore reception)</strong>: accede unicamente alla Shared Inbox per leggere e rispondere ai messaggi, effettuare il claim delle conversazioni e visualizzare l'agenda prenotazioni. Non può modificare le impostazioni di sistema.</li>
+                                </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">2</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Invia un invito via email</h3>
+                                <p class="docs-step-text">Vai su <strong>Impostazioni &rarr; Team &rarr; Invita Collaboratore</strong>:
+                                <ul>
+                                    <li>Inserisci l'indirizzo email aziendale del collaboratore.</li>
+                                    <li>Seleziona il ruolo (<em>Manager</em> o <em>Staff</em>).</li>
+                                    <li>Clicca su <strong>Invia Invito</strong>.</li>
+                                </ul>
+                                Il destinatario riceverà un link crittografato valido 48 ore per impostare la propria password personale.</p>
+                            </div>
+                        </div>
+
+                        <div class="docs-step-item">
+                            <span class="docs-step-number">3</span>
+                            <div class="docs-step-content">
+                                <h3 class="docs-step-title">Revoca o Modifica di un utente</h3>
+                                <p class="docs-step-text">Se un collaboratore cambia mansione o lascia l'azienda, l'Owner può disattivare l'account o revocare l'accesso con effetto immediato dalla stessa schermata. Le sessioni attive dell'utente vengono invalidate istantaneamente.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="docs-callout docs-callout-tip">
+                        <div class="docs-callout-title">💡 Separazione per la conformità GDPR</div>
+                        <p class="docs-callout-text">Assegnare il ruolo <em>Staff</em> ai dipendenti operativi tutela la tua azienda ai sensi del GDPR: gli operatori hanno visibilità solo sui messaggi dei clienti con cui devono interagire e non possono esportare database completi né modificare le condizioni contrattuali.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <ul>
+                        <li>Quando un operatore effettua il login, l'interfaccia si adatta dinamicamente mostrando solo le sezioni autorizzate.</li>
+                        <li>Tutte le azioni svolte nella Shared Inbox (invio messaggi, claim, chiusura conversazioni) vengono registrate nell'audit trail indicando nome ed email dell'operatore specifico.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li><strong>Un solo Owner per organizzazione</strong>: Per motivi di sicurezza contrattuale, ogni organizzazione ha un solo profilo Owner con responsabilità legale del contratto. Il ruolo può essere trasferito contattando il supporto.</li>
+                        <li><strong>Superamento del limite utenti</strong>: Se hai il piano Starter o Pro e cerchi di invitare un utente oltre la quota inclusa, il sistema ti proporrà l'upgrade al piano successivo tramite lo Stripe Portal.</li>
+                    </ul>
+
+                    <h2 id="risoluzione-dei-problemi">Risoluzione dei problemi</h2>
+                    <div class="docs-accordion-group">
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Il collaboratore non riceve l'email di attivazione</summary>
+                            <div class="docs-accordion-content">
+                                <p>Verifica la casella di posta indesiderata (Spam). In alternativa, l'Owner può cliccare sui tre puntini accanto all'invito in attesa e selezionare <em>Re-invia invito</em> per generare un nuovo token.</p>
+                            </div>
+                        </details>
+
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">Un membro dello staff non vede le impostazioni dell'assistente</summary>
+                            <div class="docs-accordion-content">
+                                <p>È il comportamento corretto: il ruolo <em>Staff</em> è abilitato esclusivamente all'interazione con i clienti nella Inbox e alla gestione dell'agenda. Per consentirgli di modificare orari o prezzi, l'Owner deve promuoverlo al ruolo <em>Manager</em>.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>La sicurezza applicativa è implementata tramite dipendenze FastAPI in <code>src/core/auth.py</code>. I controlli verificano sia l'autenticità del token JWT, sia l'appartenenza del ruolo all'insieme consentito per l'endpoint:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">Python (src/core/auth.py)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>def require_role(allowed_roles: list[str]):
+    async def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Privilegi insufficienti per eseguire questa operazione"
+            )
+        return current_user
+    return role_checker
+
+# Esempio su rotta di configurazione
+@router.post("/settings/prompt")
+async def update_prompt(user: User = Depends(require_role(["owner", "manager"]))):
+    ...</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-related-card">
+                            <div class="docs-related-tag">Abbonamento</div>
+                            <div class="docs-related-title">Piani e Stripe Customer Portal</div>
+                        </a>
+                        <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-related-card">
+                            <div class="docs-related-tag">Operatività</div>
+                            <div class="docs-related-title">Shared Inbox e Presa in Carico</div>
+                        </a>
+                        <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-related-card">
+                            <div class="docs-related-tag">Conformità</div>
+                            <div class="docs-related-title">Privacy, GDPR e DPA</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Procedura passo-passo</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#risoluzione-dei-problemi" class="docs-toc-link">Risoluzione dei problemi</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

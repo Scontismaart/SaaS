@@ -4,10 +4,14 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: ["**"]
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   test:
+    name: Validate application and deployment
     runs-on: ubuntu-22.04
 
     services:
@@ -46,18 +50,85 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Python dependency audit
+        run: |
+          pip install pip-audit==2.10.1
+          pip-audit -r requirements.txt --format json --output pip-audit.json || test "$?" -eq 1
+          python scripts/check_dependency_audit.py pip-audit.json
+
       - name: Install lint tool
         run: pip install ruff
 
       - name: Lint with ruff
-        continue-on-error: true  # TODO: 98 errori preesistenti in tutto il repo, fuori scope task9
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ scripts/ --select E9,F63,F7,F82
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Frontend lint and DOM tests
+        run: |
+          npm ci --ignore-scripts
+          npm audit --audit-level=high --include=dev
+          npm run build:i18n
+          npm run lint:web
+          npm run test:web
+          npm run test:i18n
+          npm run audit:csp
+          npm run audit:assets
+          npm run audit:links
+          npm run audit:seo
+          npm run audit:images
+          # Advisory only: see scripts/audit-hardcoded.js for documented
+          # runtime-shell false positives.
+          npm run audit:hardcoded
 
       - name: Syntax check (py_compile)
         run: python -m py_compile $(git ls-files 'src/*.py' 'tests/*.py' 'scripts/*.py' '*.py' ':!:scratch/*')
 
       - name: Tenant scoping check (guard dog)
         run: python scripts/check_tenant_scoping.py
+
+      - name: Prepare compose syntax-check files
+        run: |
+          # Compose validates env_file existence.  This deliberately empty,
+          # non-secret file is only for static config validation; production
+          # generates reviewed public values with write_legal_runtime_env.py.
+          mkdir -p .runtime
+          : > .runtime/legal.env
+
+      - name: Deployment checks
+        env:
+          MELPIS_API_IMAGE_REF: ghcr.io/example/melpis-api@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          MELPIS_WEB_IMAGE_REF: ghcr.io/example/melpis-web@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          MELPIS_ENV_FILE: /dev/null
+          CADDY_SITE_MODE: temporary
+          PUBLIC_HOST: temporary.example.test
+        run: |
+          bash tests/scripts/test_oracle_vm_bootstrap.sh
+          docker compose -f compose.production.yml config --quiet
+          docker run --rm \
+            --env PUBLIC_HOST \
+            --volume "$PWD/Caddyfile.temporary:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker run --rm \
+            --volume "$PWD/Caddyfile.final:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10.2-alpine \
+            caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+
+      - name: Generate ephemeral test encryption key
+        run: |
+          python - <<'PY'
+          import os
+          from cryptography.fernet import Fernet
+
+          key = Fernet.generate_key().decode("ascii")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"ENCRYPTION_KEY={key}\n")
+          print(f"::add-mask::{key}")
+          PY
 
       - name: Run tests
         env:
@@ -68,5 +139,210 @@ jobs:
           PGHOST: localhost
           PGPORT: 5432
           TEST_DB_DSN: postgresql://postgres:test@localhost:5432/test
-          ENCRYPTION_KEY: C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=
         run: pytest -v --tb=short
+
+  # Pull requests prove both target architectures build successfully. Each
+  # architecture uses a native runner so the API image cannot exhaust an x64
+  # runner while emulating arm64. This job cannot publish packages.
+  build_images:
+    name: Build ${{ matrix.image }} image (${{ matrix.arch }}, no push)
+    if: github.event_name == 'pull_request' || github.ref != 'refs/heads/main'
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: .
+            file: ./Dockerfile
+            arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-22.04
+          - image: api
+            context: .
+            file: ./Dockerfile
+            arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          - image: web
+            context: ./web
+            file: ./web/Dockerfile
+            arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-22.04
+          - image: web
+            context: ./web
+            file: ./web/Dockerfile
+            arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository and history for secrets
+        run: |
+          docker run --rm --volume "$PWD:/repo:ro" \
+            ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git --redact --no-banner /repo
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 1
+
+      - name: Build release architecture
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platform }}
+          pull: true
+          push: false
+          sbom: true
+
+  # Only a validated, direct push to main receives package-write permission.
+  # Publish one native architecture per runner, then assemble the immutable
+  # multi-architecture manifest in the following job.
+  publish_images:
+    name: Publish ${{ matrix.image }} image (${{ matrix.arch }})
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: .
+            file: ./Dockerfile
+            arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-22.04
+          - image: api
+            context: .
+            file: ./Dockerfile
+            arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+          - image: web
+            context: ./web
+            file: ./web/Dockerfile
+            arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-22.04
+          - image: web
+            context: ./web
+            file: ./web/Dockerfile
+            arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve lowercase GHCR image name
+        id: image
+        shell: bash
+        env:
+          IMAGE_SUFFIX: ${{ matrix.image }}
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${IMAGE_SUFFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish immutable architecture image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          platforms: ${{ matrix.platform }}
+          pull: true
+          push: true
+          tags: ${{ steps.image.outputs.name }}:sha-${{ github.sha }}-${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          provenance: mode=max
+          sbom: true
+
+  publish_manifests:
+    name: Publish ${{ matrix.image }} multi-architecture manifest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [test, publish_images]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [api, web]
+    steps:
+      - name: Resolve lowercase GHCR image name
+        id: image
+        shell: bash
+        env:
+          IMAGE_SUFFIX: ${{ matrix.image }}
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-${IMAGE_SUFFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assemble and verify immutable release manifest
+        shell: bash
+        env:
+          IMAGE_SUFFIX: ${{ matrix.image }}
+          IMAGE_NAME: ${{ steps.image.outputs.name }}
+        run: |
+          set -euo pipefail
+          final_ref="$IMAGE_NAME:sha-${GITHUB_SHA}"
+          docker buildx imagetools create \
+            --tag "$final_ref" \
+            "$IMAGE_NAME:sha-${GITHUB_SHA}-amd64" \
+            "$IMAGE_NAME:sha-${GITHUB_SHA}-arm64"
+
+          manifest_json="$(docker buildx imagetools inspect "$final_ref" --format '{{json .Manifest}}')"
+          printf '%s\n' "$manifest_json" | jq -e '
+            [.manifests[] | select(.platform.os == "linux") | .platform.architecture]
+            | (index("amd64") != null and index("arm64") != null)
+          '
+          IMAGE_DIGEST="$(printf '%s\n' "$manifest_json" | jq -r '.digest // empty')"
+          test -n "$IMAGE_DIGEST"
+          case "$IMAGE_SUFFIX" in
+            api) image_env=MELPIS_API_IMAGE_REF ;;
+            web) image_env=MELPIS_WEB_IMAGE_REF ;;
+            *) exit 1 ;;
+          esac
+          printf '%s=%s@%s\n' "$image_env" "$IMAGE_NAME" "$IMAGE_DIGEST" >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,36 @@
+{
+  "filters": {
+    "open": "Aperti", "mine": "Miei ticket", "ai_handling": "Gestiti da AI", "human_needed": "Intervento richiesto", "closed": "Chiusi", "search_chats": "Cerca conversazione...",
+    "conversations": "Conversazioni", "list_aria": "Lista conversazioni", "search_aria": "Cerca nelle conversazioni",
+    "channel": "Canale", "channel_aria": "Filtra per canale", "status": "Stato", "status_aria": "Filtra per stato e gestione",
+    "all": "Tutti", "operator": "Operatore", "escalated": "Escalated", "resolved": "Risolte",
+    "detail_aria": "Dettaglio conversazione", "empty_title": "Nessun messaggio in questa conversazione.",
+    "empty_text": "Seleziona una conversazione dall'elenco per visualizzare lo storico dei messaggi e rispondere.",
+    "back_aria": "Torna all'elenco conversazioni", "message_placeholder": "Scrivi un messaggio…", "message_aria": "Scrivi messaggio"
+  },
+  "chat": {
+    "claim_btn": "Prendi in carico",
+    "claimed_by_you": "In carico a te",
+    "claimed_by_other": "In carico a {{name}}",
+    "release_btn": "Rilascia ad AI",
+    "close_ticket": "Chiudi conversazione",
+    "reopen_ticket": "Riapri conversazione",
+    "channel_whatsapp": "WhatsApp",
+    "channel_instagram": "Instagram Direct",
+    "type_message": "Scrivi una risposta...",
+    "send_btn": "Invia",
+    "customer_info": "Dettagli contatto",
+    "phone": "Telefono",
+    "last_seen": "Ultima attività: {{time}}",
+    "notes": "Note interne operatore",
+    "add_note_placeholder": "Aggiungi una nota visibile solo al team...",
+    "opt_out_badge": "Opt-out marketing attivo",
+    "ai_paused": "Assistente in pausa per questa chat"
+  },
+  "status_labels": {
+    "active": "Attiva",
+    "waiting_reply": "In attesa di risposta",
+    "resolved": "Risolta",
+    "archived": "Archiviata"
+  }
+}

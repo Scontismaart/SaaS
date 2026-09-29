@@ -20,11 +20,14 @@ python-multipart==0.0.32
 rapidocr-onnxruntime==1.4.4
 redis==6.4.0
 respx==0.23.1
+# CPU-only PyTorch prevents multi-GB CUDA wheels in Oracle/GHCR release images.
+--find-links https://download.pytorch.org/whl/cpu/torch/
+torch==2.14.0+cpu
 sentence-transformers==5.6.0
 sentry-sdk==2.66.1
 stripe==10.12.0
 tenacity==9.1.4
 testcontainers==4.14.2
 uvicorn==0.51.0
-weasyprint==69.0
+weasyprint==70.0
 jinja2==3.1.6

@@ -1,0 +1,94 @@
+{
+  "tabs": {
+    "general": "Generale",
+    "assistant": "Assistente e Regole",
+    "channels": "Canali & WhatsApp",
+    "calendar": "Calendario & Slot",
+    "team": "Team & Permessi",
+    "billing": "Abbonamento & Piano",
+    "language": "Lingua & Regione"
+  },
+  "general_section": {
+    "subtitle": "Localizzazione, fuso orario e preferenze operative del pannello."
+  },
+  "timezone_section": {
+    "title": "Localizzazione e Fuso orario",
+    "description": "Il fuso orario è usato per reminder prenotazioni, report di fine giornata e calcolo degli SLA.",
+    "label": "Fuso orario dell'attività",
+    "save_btn": "Salva fuso orario",
+    "load_loading": "Caricamento fuso orario in corso…",
+    "load_error": "Impossibile caricare il fuso orario. Riprova.",
+    "save_loading": "Salvataggio in corso…",
+    "save_success": "Fuso orario aggiornato",
+    "save_error": "Salvataggio non riuscito",
+    "connection_error": "Errore di connessione"
+  },
+  "language_section": {
+    "title": "Lingua del pannello",
+    "description": "Seleziona la lingua con cui desideri visualizzare l'interfaccia di Melpis.",
+    "select_label": "Lingua attiva",
+    "note": "La preferenza viene salvata per il tuo profilo."
+  },
+  "appearance": {
+    "title": "Aspetto e Tema",
+    "description": "Personalizza l'aspetto visivo dell'interfaccia. La modalità sistema adatterà i colori in base al tuo dispositivo.",
+    "aria": "Selezione tema", "light": "Chiaro", "dark": "Scuro", "system": "Sistema"
+  },
+  "ai_configuration": {
+    "group_main": "Configurazioni principali", "identity_title": "Identità dell'attività",
+    "identity_help": "Dati essenziali utilizzati dall'assistente per presentarsi ed elaborare le risposte.",
+    "business_name": "Nome dell'attività", "business_name_placeholder": "Es. Salone Bellavista, Ristorante La Pergola...",
+    "category": "Settore / Categoria", "description": "Descrizione per l'AI",
+    "description_placeholder": "Es. Salone di bellezza specializzato in tagli moda, trattamenti benessere e colorazioni naturali.",
+    "opening_hours": "Orari di apertura ufficiali", "opening_hours_placeholder": "Es. Mar-Sab: 09:00 - 19:30 | Dom-Lun: Chiuso",
+    "hours_sync_note": "Gli orari sono sincronizzati automaticamente con Priorità 1 nella scheda Dati struttura.",
+    "communication_title": "Tono di voce e stile", "communication_help": "Stile comunicativo adottato dall'assistente nei messaggi verso i clienti.",
+    "communication_default": "Stile di comunicazione predefinito", "tone_professional": "Professionale e caloroso (consigliato)",
+    "tone_informal": "Informale e amichevole", "tone_formal": "Formale ed elegante", "custom_style": "Istruzioni specifiche di stile",
+    "custom_style_placeholder": "Es. Accogliente, chiaro, dai del tu, usa emoji con moderazione ed evidenzia la cura per i dettagli.",
+    "group_advanced": "Lingue e regole avanzate", "languages_title": "Lingue supportate",
+    "languages_help": "Rilevamento automatico della lingua del cliente. L'italiano è predefinito.",
+    "enabled_languages": "Lingue abilitate", "italian_default": "Italiano (predefinita)",
+    "fallback_default": "Lingua predefinita (se messaggio ambiguo)", "escalation_title": "Regole di escalation e sicurezza",
+    "escalation_help": "Condizioni per il passaggio immediato della conversazione allo staff.",
+    "new_rule_placeholder": "Aggiungi una nuova regola (es. Richieste per eventi privati o convenzioni)",
+    "add_rule": "+ Aggiungi regola", "save_btn": "Salva Configurazione AI", "save_loading": "Salvataggio in corso…",
+    "save_success": "Configurazione AI salvata e sincronizzata!", "save_toast": "Configurazione AI salvata e sincronizzata con successo",
+    "save_error": "Errore durante il salvataggio", "connection_error": "Errore di connessione con il server",
+    "load_loading": "Caricamento configurazione AI in corso…", "load_error": "Impossibile caricare la configurazione AI. Riprova accedendo di nuovo a questa sezione.",
+    "rules_empty": "Nessuna regola attiva. Aggiungine una con il campo sottostante.", "remove_rule": "Elimina"
+  },
+  "assistant_rules": {
+    "title": "Istruzioni e Comportamento AI",
+    "personality_label": "Tono di voce e personalità",
+    "formality_label": "Livello di formalità",
+    "formality_tu": "Informale (dare del tu)",
+    "formality_lei": "Formale (dare del lei)",
+    "business_hours_title": "Orari di apertura e risposta",
+    "outside_hours_title": "Comportamento fuori orario",
+    "auto_reply_outside": "Invia messaggio automatico fuori orario",
+    "save_rules_btn": "Salva regole assistente"
+  },
+  "channels": {
+    "whatsapp_title": "Connessione WhatsApp Business",
+    "phone_number": "Numero di telefono connesso",
+    "meta_status": "Stato Meta Cloud API",
+    "reconnect_btn": "Riconnetti canale",
+    "disconnect_btn": "Disconnetti"
+  },
+  "calendar": {
+    "title": "Sincronizzazione Google Calendar",
+    "status_connected": "Google Calendar connesso",
+    "sync_calendar_name": "Calendario principale",
+    "slot_duration": "Durata predefinita slot (minuti)",
+    "buffer_time": "Pausa tra appuntamenti (minuti)",
+    "save_calendar_btn": "Salva impostazioni calendario"
+  },
+  "billing": {
+    "current_plan": "Piano attuale",
+    "status": "Stato abbonamento",
+    "manage_stripe_btn": "Gestisci fatturazione e carte su Stripe",
+    "upgrade_btn": "Passa al piano superiore",
+    "cancel_btn": "Disdici abbonamento"
+  }
+}

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guida alla Risoluzione Problemi e Codici Errore — Documentazione Melpis</title>
+    <meta name="description" content="Risoluzione dei problemi più comuni in Melpis: errori Meta Token 190, webhook validation fallita, conflitti di calendario e sospensione per superamento quota.">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#08090c">
+    <link rel="canonical" href="https://melpis.it/documentazione/risoluzione-problemi/guida-troubleshooting/">
+    <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css?v=hitl-anim-v4">
+    <link rel="stylesheet" href="/documentazione/docs.css?v=2">
+</head>
+<body class="docs-page-shell">
+
+    <header class="hero-nav-header" id="mainHeader">
+        <div class="hero-nav-container">
+            <a href="/" class="hero-brand" aria-label="Melpis Home">
+                <span class="brand-square-icon" aria-hidden="true">M</span>
+                <span class="brand-text">Melpis</span>
+            </a>
+            <nav class="hero-nav-links" aria-label="Navigazione principale">
+                <a href="/documentazione/" class="hero-nav-link" aria-current="page">Documentazione</a>
+                <a href="/prezzi/" class="hero-nav-link">Prezzi</a>
+                <a href="/accedi/" class="hero-nav-link">Accedi</a>
+            </nav>
+            <div class="hero-nav-actions">
+                <a href="/registrati/" class="btn-pill-white">
+                    <span>Inizia gratis</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="docs-main-wrap">
+        <div class="docs-layout-container">
+
+            <aside class="docs-sidebar-nav" id="docsSidebarNav" aria-label="Indice della documentazione">
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Inizia da qui</span>
+                    <a href="/documentazione/" class="docs-sidebar-link">Cos'è Melpis</a>
+                    <a href="/documentazione/inizia-da-qui/guida-onboarding/" class="docs-sidebar-link">Wizard di Configurazione</a>
+                    <a href="/documentazione/inizia-da-qui/checklist-pre-lancio/" class="docs-sidebar-link">Checklist Pre-Lancio</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Canali e Integrazioni</span>
+                    <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-sidebar-link">WhatsApp Business (Meta API)</a>
+                    <a href="/documentazione/integrazioni/collegare-instagram/" class="docs-sidebar-link">Instagram Direct (DM)</a>
+                    <a href="/documentazione/integrazioni/collegare-google-calendar/" class="docs-sidebar-link">Google Calendar</a>
+                    <a href="/documentazione/integrazioni/collegare-google-recensioni/" class="docs-sidebar-link">Google Recensioni</a>
+                    <a href="/documentazione/integrazioni/gestionali-e-pms/" class="docs-sidebar-link">Gestionali e PMS Esterni</a>
+                    <a href="/documentazione/integrazioni/integrazione-airtable/" class="docs-sidebar-link">Airtable &amp; Policy Sanitaria</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Configurazione AI</span>
+                    <a href="/documentazione/configurazione-ai/personalizzazione-assistente/" class="docs-sidebar-link">Personalità, Tono e Regole</a>
+                    <a href="/documentazione/configurazione-ai/documenti-e-conoscenza/" class="docs-sidebar-link">Documenti e Riconoscimento OCR</a>
+                    <a href="/documentazione/configurazione-ai/listino-servizi-e-prezzi/" class="docs-sidebar-link">Listino e Conflitti di Prezzo</a>
+                    <a href="/documentazione/configurazione-ai/faq-e-cache-semantica/" class="docs-sidebar-link">FAQ e Cache a Zero Token</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Shared Inbox &amp; Umano</span>
+                    <a href="/documentazione/inbox-e-messaggi/shared-inbox-e-claim/" class="docs-sidebar-link">Shared Inbox e Claim</a>
+                    <a href="/documentazione/inbox-e-messaggi/regole-escalation-e-sla/" class="docs-sidebar-link">Escalation Umana e SLA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Prenotazioni</span>
+                    <a href="/documentazione/prenotazioni/gestione-prenotazioni/" class="docs-sidebar-link">Gestione Prenotazioni</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Account &amp; Piani</span>
+                    <a href="/documentazione/account-e-piani/team-e-ruoli/" class="docs-sidebar-link">Team e Permessi (RBAC)</a>
+                    <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-sidebar-link">Piani e Stripe Portal</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Sicurezza &amp; GDPR</span>
+                    <a href="/documentazione/sicurezza-e-privacy/gdpr-privacy-e-dpa/" class="docs-sidebar-link">Privacy, GDPR e DPA</a>
+                </div>
+
+                <div class="docs-sidebar-group">
+                    <span class="docs-sidebar-group-title">Troubleshooting</span>
+                    <a href="/documentazione/risoluzione-problemi/guida-troubleshooting/" class="docs-sidebar-link is-active">Risoluzione Problemi</a>
+                    <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-sidebar-link">Architettura Tecnica</a>
+                </div>
+            </aside>
+
+            <article class="docs-article-body-wrap">
+                <button type="button" class="docs-mobile-toc-toggle" id="docsMobileToggle" aria-expanded="false" aria-controls="docsSidebarNav">
+                    <span>Mostra indice articoli</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+
+                <nav class="docs-breadcrumbs" aria-label="Percorso">
+                    <a href="/documentazione/" class="docs-bc-link">Documentazione</a>
+                    <span class="docs-bc-sep">/</span>
+                    <a href="/documentazione/#categoriesHeading" class="docs-bc-link">Troubleshooting</a>
+                    <span class="docs-bc-sep">/</span>
+                    <span class="docs-bc-curr">Guida Risoluzione Problemi</span>
+                </nav>
+
+                <header class="docs-article-header">
+                    <h1 class="docs-article-title">Guida alla Risoluzione Problemi e Codici Errore</h1>
+                    <p class="docs-article-subtitle">Diagnostica rapida, cause radice e rimedi operativi per gli intoppi tecnici più frequenti.</p>
+                </header>
+
+                <div class="docs-prose">
+                    <h2 id="cosa-permette-di-fare">Cosa permette di fare</h2>
+                    <p>Questa guida fornisce un compendio diagnostico per individuare e risolvere in autonomia qualsiasi malfunzionamento legato a credenziali Meta, connessione webhook, sincronizzazione calendari o saturazione dei limiti del piano, evitando interruzioni di servizio prolungate.</p>
+
+                    <h2 id="prima-di-iniziare">Prima di iniziare</h2>
+                    <ul>
+                        <li>Verifica se il problema riguarda l'invio (messaggi in uscita verso WhatsApp) o la ricezione (messaggi che i clienti inviano ma che non compaiono nella dashboard).</li>
+                        <li>Controlla la schermata <strong>Impostazioni &rarr; Diagnostica di Sistema</strong> per verificare lo stato di salute dei microservizi collegati.</li>
+                    </ul>
+
+                    <h2 id="procedura-passo-passo">Diagnostica dei Problemi Comuni</h2>
+
+                    <div class="docs-accordion-group">
+                        <!-- Errore 1 -->
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">🔴 Errore 190 Meta (OAuthException / Session Expired)</summary>
+                            <div class="docs-accordion-content">
+                                <p><strong>Sintomo:</strong> I messaggi dei clienti arrivano su Melpis ma l'assistente non risponde e nei dettagli dell'errore compare <em>"Error validating access token: Session has expired"</em>.</p>
+                                <p><strong>Causa reale:</strong> È stato inserito un token temporaneo generato dalla console sviluppatori Meta (la cui durata è di sole 24 ore) invece di un token permanente generato tramite <em>Utente del Sistema (System User)</em>.</p>
+                                <p><strong>Soluzione passo-passo:</strong></p>
+                                <ol>
+                                    <li>Accedi a <em>Meta Business Manager &rarr; Impostazioni aziendali &rarr; Utenti del sistema</em>.</li>
+                                    <li>Seleziona l'utente di sistema amministratore e clicca su <em>Genera token</em>.</li>
+                                    <li>Scegli la tua app e imposta scadenza su <strong>Mai (Permanente)</strong> con i permessi <code>whatsapp_business_messaging</code>.</li>
+                                    <li>Incolla il nuovo token in <em>Impostazioni &rarr; WhatsApp</em> su Melpis e clicca su <em>Test Connessione</em>.</li>
+                                </ol>
+                            </div>
+                        </details>
+
+                        <!-- Errore 2 -->
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">🔴 Fallimento Verifica Webhook (Challenge Token Mismatch)</summary>
+                            <div class="docs-accordion-content">
+                                <p><strong>Sintomo:</strong> Nella console Meta for Developers, cliccando su "Verifica e Salva" del Webhook, compare l'errore <em>"Impossibile convalidare l'URL di callback"</em>.</p>
+                                <p><strong>Causa reale:</strong> Il <em>Token di verifica (Verify Token)</em> incollato su Meta non coincide con quello generato su Melpis, oppure l'URL termina con uno spazio o carattere speciale non valido.</p>
+                                <p><strong>Soluzione passo-passo:</strong></p>
+                                <ol>
+                                    <li>Copia l'URL del webhook esatto: <code>https://api.melpis.it/webhooks/whatsapp</code> (senza slash finale).</li>
+                                    <li>Copia il <em>Verify Token</em> generato dalla scheda integrazioni Melpis (es. una stringa alfanumerica di 32 caratteri).</li>
+                                    <li>Incolla entrambi i valori su Meta for Developers e premi <em>Verifica e Salva</em>.</li>
+                                </ol>
+                            </div>
+                        </details>
+
+                        <!-- Errore 3 -->
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">🔴 Errore 409 Conflict su Prenotazione (Slot Sovrapposto)</summary>
+                            <div class="docs-accordion-content">
+                                <p><strong>Sintomo:</strong> L'assistente informa il cliente che l'orario scelto non è più disponibile, oppure l'operatore riceve errore 409 nel tentativo di forzare un appuntamento manuale.</p>
+                                <p><strong>Causa reale:</strong> L'orario richiesto coincide con un evento già registrato su Google Calendar (anche un evento personale o pausa) o con un'altra prenotazione confermata pochi secondi prima.</p>
+                                <p><strong>Soluzione:</strong> Apri Google Calendar e verifica gli impegni nella fascia oraria in questione, oppure seleziona uno slot differente.</p>
+                            </div>
+                        </details>
+
+                        <!-- Errore 4 -->
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">🔴 Sospensione Assistente per Quota Esaurita (Errore 429)</summary>
+                            <div class="docs-accordion-content">
+                                <p><strong>Sintomo:</strong> Tutte le nuove conversazioni vengono immediatamente marcate come <em>Richiede attenzione</em> senza che l'AI tenti alcuna risposta.</p>
+                                <p><strong>Causa reale:</strong> La tua organizzazione ha consumato il 100% dei messaggi inclusi nel piano mensile corrente.</p>
+                                <p><strong>Soluzione:</strong> Vai su <em>Fatturazione &rarr; Gestisci Abbonamento</em> ed effettua l'upgrade al piano superiore (es. da Starter a Pro o da Pro a Business). L'assistente riprenderà all'istante a rispondere a tutte le conversazioni.</p>
+                            </div>
+                        </details>
+
+                        <!-- Errore 5 -->
+                        <details class="docs-accordion-item">
+                            <summary class="docs-accordion-header">🔴 Errore 403 AirtableMedicalPolicyError</summary>
+                            <div class="docs-accordion-content">
+                                <p><strong>Sintomo:</strong> Impossibile salvare la chiave API o il Base ID di Airtable nel pannello.</p>
+                                <p><strong>Causa reale:</strong> La tua attività è registrata con categoria sanitaria (es. <em>Studio Medico, Dentista, Clinica</em>). In base al vincolo inderogabile di sicurezza di Melpis, l'esportazione verso fogli di calcolo cloud terzi non conformi a dati sanitari è disabilitata a livello di codice.</p>
+                                <p><strong>Soluzione:</strong> Utilizza l'esportazione nativa conforme GDPR integrata nella dashboard in formato CSV crittografato o consulta l'assistenza per soluzioni on-premise certificate.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="docs-callout docs-callout-tip">
+                        <div class="docs-callout-title">💡 Diagnostica in 1 clic</div>
+                        <p class="docs-callout-text">Dalla pagina <strong>Impostazioni &rarr; Diagnostica</strong> puoi cliccare su <em>Esegui Test Completo</em>: Melpis invierà una richiesta "ping" di prova a Meta Cloud API, al database PostgreSQL e all'API Google Calendar, segnalandoti con una spunta verde o una croce rossa quale singolo componente necessita del tuo intervento.</p>
+                    </div>
+
+                    <h2 id="cosa-succede-dopo">Cosa succede dopo</h2>
+                    <p>Una volta risolta l'anomalia:</p>
+                    <ul>
+                        <li>Il banner di alert scompare dalla parte superiore della dashboard.</li>
+                        <li>Eventuali messaggi rimasti in coda durante una breve interruzione del token vengono processati automaticamente in ordine di arrivo senza perdite di dati.</li>
+                    </ul>
+
+                    <h2 id="limitazioni-reali">Limitazioni reali</h2>
+                    <ul>
+                        <li>Se il numero di telefono WhatsApp associato viene bloccato da Meta per violazione delle policy commerciali (es. invio massivo di spam non autorizzato), Melpis non può sbloccarlo direttamente: è necessario fare ricorso attraverso il Meta Business Manager.</li>
+                    </ul>
+
+                    <h2 id="approfondimento-tecnico">Approfondimento tecnico</h2>
+                    <p>Melpis traccia tutti gli errori tramite un correlatore diagnostico (<code>trace_id</code>). Ogni richiesta porta con sé un identificativo univoco che compare sia nei log del server sia nel payload di errore restituito al frontend:</p>
+
+                    <div class="docs-code-block">
+                        <div class="docs-code-header">
+                            <span class="docs-code-lang">JSON (Payload di errore diagnostico)</span>
+                            <button type="button" class="docs-code-copy-btn">Copia</button>
+                        </div>
+                        <pre><code>{
+  "error": "META_TOKEN_EXPIRED",
+  "message": "Il token di accesso Meta ha superato il periodo di validità.",
+  "status_code": 401,
+  "trace_id": "req_9f82a1c0d4e7",
+  "resolution_guide": "https://melpis.it/documentazione/risoluzione-problemi/guida-troubleshooting/#errore-190-meta"
+}</code></pre>
+                    </div>
+
+                    <h2 id="guide-correlate">Guide correlate</h2>
+                    <div class="docs-related-grid">
+                        <a href="/documentazione/integrazioni/collegare-whatsapp/" class="docs-related-card">
+                            <div class="docs-related-tag">WhatsApp</div>
+                            <div class="docs-related-title">Configurazione Token Meta Permanente</div>
+                        </a>
+                        <a href="/documentazione/account-e-piani/piani-e-fatturazione/" class="docs-related-card">
+                            <div class="docs-related-tag">Fatturazione</div>
+                            <div class="docs-related-title">Piani, Consumi e Stripe Portal</div>
+                        </a>
+                        <a href="/documentazione/risoluzione-problemi/architettura-tecnica/" class="docs-related-card">
+                            <div class="docs-related-tag">Tecnica</div>
+                            <div class="docs-related-title">Architettura Tecnica e Invarianti</div>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="docs-article-footer">
+                    <div class="docs-feedback-box">
+                        <span class="docs-feedback-label">Questa guida ti è stata utile?</span>
+                        <div class="docs-feedback-actions">
+                            <button type="button" class="docs-btn-vote">👍 Sì, molto chiara</button>
+                            <button type="button" class="docs-btn-vote">👎 No, serve chiarimento</button>
+                        </div>
+                        <span class="docs-feedback-thankyou" hidden>Grazie per il tuo riscontro! Aiuta a migliorare la documentazione.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="docs-toc-wrap" aria-label="Indice della pagina">
+                <div class="docs-toc-title">In questa pagina</div>
+                <ul class="docs-toc-list">
+                    <li class="docs-toc-item"><a href="#cosa-permette-di-fare" class="docs-toc-link">Cosa permette di fare</a></li>
+                    <li class="docs-toc-item"><a href="#prima-di-iniziare" class="docs-toc-link">Prima di iniziare</a></li>
+                    <li class="docs-toc-item"><a href="#procedura-passo-passo" class="docs-toc-link">Diagnostica dei Problemi Comuni</a></li>
+                    <li class="docs-toc-item"><a href="#cosa-succede-dopo" class="docs-toc-link">Cosa succede dopo</a></li>
+                    <li class="docs-toc-item"><a href="#limitazioni-reali" class="docs-toc-link">Limitazioni reali</a></li>
+                    <li class="docs-toc-item"><a href="#approfondimento-tecnico" class="docs-toc-link">Approfondimento tecnico</a></li>
+                    <li class="docs-toc-item"><a href="#guide-correlate" class="docs-toc-link">Guide correlate</a></li>
+                </ul>
+            </aside>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-top-row">
+                <div class="footer-brand-col">
+                    <a href="/" class="nav-brand">
+                        <img src="/brand/melpis-symbol-dark.svg" alt="Melpis" width="24" height="24" class="nav-logo">
+                        <span class="nav-brand-text">Melpis</span>
+                    </a>
+                    <p class="footer-tagline">L'assistente AI su WhatsApp per attività di servizio.</p>
+                </div>
+                <div class="footer-links-grid">
+                    <div class="footer-col">
+                        <h4>Prodotto</h4>
+                        <a href="/documentazione/">Documentazione</a>
+                        <a href="/prezzi/">Prezzi</a>
+                        <a href="/app/">Pannello</a>
+                    </div>
+                    <div class="footer-col">
+                        <h4>Legale</h4>
+                        <a href="/privacy/">Privacy Policy</a>
+                        <a href="/termini/">Termini di Servizio</a>
+                        <a href="/cookie/">Cookie Policy</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom-row">
+                <p>© 2026 Melpis. Tutti i diritti riservati. Conforme Meta Cloud API &amp; GDPR.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/navbar.js" defer></script>
+    <script src="/documentazione/docs-data.js" defer></script>
+    <script src="/documentazione/docs.js" defer></script>
+</body>
+</html>

@@ -7,8 +7,10 @@ from datetime import datetime
 import asyncpg
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from src.core.db.scoping import system_scope
+from src.core.google_feature_flags import google_calendar_enabled
 from src.models.schemas import ReportOutput
 
 logger = logging.getLogger(__name__)
@@ -101,7 +103,17 @@ def genera_e_caching():
 
 
 def _run_retention():
+    # This state is process-local, so sweep it on every instance before the
+    # distributed database job takes its advisory lock.
+    _purge_local_simulator_history()
     asyncio.run(_con_pool_esimero(_retention_job))
+
+
+def _purge_local_simulator_history():
+    from src.core.conversation_store import store as conversation_store
+    purged = conversation_store.purge_expired()
+    if purged:
+        logger.info("scheduler=local_retention idle_simulator_histories_purged=%d", purged)
 
 
 async def _retention_job(pool):
@@ -182,14 +194,19 @@ async def _no_show_check_job(pool):
 
 
 def _run_calendar_sync():
+    if not google_calendar_enabled():
+        logger.info("calendar=sync_skipped reason=feature_disabled")
+        return
     asyncio.run(_con_pool_esimero(_calendar_sync_job))
 
 
 @system_scope("worker queue: enumerazione org con sync calendar abilitata")
 async def _calendar_sync_job(pool):
+    if not google_calendar_enabled():
+        logger.info("calendar=sync_skipped reason=feature_disabled")
+        return
     encryption_key = os.getenv("ENCRYPTION_KEY", "")
     if not encryption_key:
-        logger = __import__("logging").getLogger(__name__)
         logger.warning("calendar=sync_skipped reason=no_encryption_key")
         return
     from src.core.db.repositories.organization_repo import OrganizationRepository
@@ -218,7 +235,6 @@ async def _calendar_sync_job(pool):
             org_id,
         )
     if created:
-        logger = __import__("logging").getLogger(__name__)
         logger.info("calendar=sync_complete created=%d", created)
 
 
@@ -327,6 +343,13 @@ def avvia_scheduler():
         replace_existing=True,
     )
     _scheduler.add_job(
+        _purge_local_simulator_history,
+        IntervalTrigger(minutes=15),
+        id="simulator_history_retention",
+        name="Pulisce cronologia simulatore inattiva su questa istanza",
+        replace_existing=True,
+    )
+    _scheduler.add_job(
         _run_reminder_check,
         CronTrigger(minute="*/30"),
         id="booking_reminder_send",
@@ -389,6 +412,7 @@ def avvia_scheduler():
         name="Report settimanale PDF via email (tutti i tenant attivi)",
         replace_existing=True,
     )
+    _purge_local_simulator_history()
     _scheduler.start()
     logger.info("[scheduler] Avviato — report 20:00, retention 03:00, reminders every 30min, no-show 23:30, calendar sync every 60min, nonce cleanup 04:00, suspension notice 08:00, report settimanale lun 08:30.")
 

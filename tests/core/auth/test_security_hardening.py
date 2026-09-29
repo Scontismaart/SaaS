@@ -22,6 +22,13 @@ class FakeRedis:
     async def expire(self, key, seconds):
         self.ttl[key] = seconds
 
+    async def eval(self, script, numkeys, key, seconds):
+        assert numkeys == 1
+        count = await self.incr(key)
+        if count == 1 or key not in self.ttl:
+            await self.expire(key, seconds)
+        return count
+
 
 async def test_redis_rate_limiter_shared_across_instances():
     redis = FakeRedis()

@@ -3,6 +3,8 @@ import os
 import json
 import threading
 import uuid
+import hashlib
+import re
 import asyncpg
 from datetime import date, datetime
 from contextlib import asynccontextmanager
@@ -69,14 +71,8 @@ from src.models.schemas import (
     OnboardingProfileInput,
     PreviewInput,
 )
-import sentry_sdk as _sentry_sdk
-_sentry_dsn = os.getenv("SENTRY_DSN")
-if _sentry_dsn:
-    _sentry_sdk.init(
-        dsn=_sentry_dsn,
-        traces_sample_rate=0.1,
-        profiles_sample_rate=0.1,
-    )
+from src.core.observability import configure_error_reporting
+configure_error_reporting()
 
 from src.core.auth.csrf import validate_csrf_request
 from src.core.auth.dependencies import get_repo, require_ruolo, close_http_client
@@ -116,6 +112,9 @@ async def lifespan(app: FastAPI):
     )
     reset_memory_rate_limiter()
     start_worker()
+    app.state.inbound_task = None
+    app.state.retry_task = None
+    app.state.governance_task = None
     dsn = os.getenv("DATABASE_URL")
     if dsn:
         import asyncpg
@@ -235,8 +234,23 @@ async def lifespan(app: FastAPI):
                         logger.error("Retry worker loop error: %s", e)
                     await asyncio.sleep(5.0)
 
+            async def _governance_loop():
+                billing_repo = app.state.repo.billing_repo
+                while True:
+                    try:
+                        processed = await billing_repo.drain_governance_outbox(limit=100)
+                    except asyncio.CancelledError:
+                        break
+                    except Exception as e:
+                        logger.error("Governance outbox worker loop error: %s", e)
+                        processed = 0
+                    # Drain bursts promptly while avoiding a hot loop when idle
+                    # or when a persistent database error needs operator action.
+                    await asyncio.sleep(0.05 if processed else 1.0)
+
             app.state.inbound_task = asyncio.create_task(_inbound_loop())
             app.state.retry_task = asyncio.create_task(_retry_loop())
+            app.state.governance_task = asyncio.create_task(_governance_loop())
         except Exception as e:
             logger.warning("[startup] Database connection failed: %s. Running without pool.", e)
             app.state.repo = None
@@ -277,10 +291,17 @@ async def lifespan(app: FastAPI):
     yield
     ferma_scheduler()
     stop_email_worker()
-    if hasattr(app.state, "inbound_task") and app.state.inbound_task:
-        app.state.inbound_task.cancel()
-    if hasattr(app.state, "retry_task") and app.state.retry_task:
-        app.state.retry_task.cancel()
+    background_tasks = [
+        task for task in (
+            getattr(app.state, "inbound_task", None),
+            getattr(app.state, "retry_task", None),
+            getattr(app.state, "governance_task", None),
+        ) if task is not None
+    ]
+    for task in background_tasks:
+        task.cancel()
+    if background_tasks:
+        await asyncio.gather(*background_tasks, return_exceptions=True)
     if app.state.pool:
         await app.state.pool.close()
     await close_http_client()
@@ -362,7 +383,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
     allow_headers=["Authorization", "X-Organization-Id", "X-API-Key", "X-CSRF-Token", "Content-Type"],
 )
 
@@ -371,7 +392,7 @@ RATE_LIMIT_LIMIT = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 LLM_GLOBAL_RATE_LIMIT = int(os.getenv("LLM_GLOBAL_RATE_LIMIT", "200"))
 LLM_GLOBAL_RATE_WINDOW = int(os.getenv("LLM_GLOBAL_RATE_WINDOW_SECONDS", "60"))
-LLM_ROUTES = {"/api/messaggio", "/api/recensione", "/api/documenti/chiedi"}
+LLM_ROUTES = {"/api/messaggio", "/api/recensione", "/api/documenti/chiedi", "/api/reviews/google/sync"}
 
 
 async def _rate_limit_check(key: str, limit: int | None = None,
@@ -394,14 +415,15 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault(
         "Content-Security-Policy",
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'self'",
+        "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:; connect-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
     )
     return response
 
 
 @app.middleware("http")
 async def trace_id_middleware(request: Request, call_next):
-    trace_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:16]
+    supplied_id = request.headers.get("X-Request-ID", "")
+    trace_id = supplied_id if re.fullmatch(r"[A-Za-z0-9_-]{8,64}", supplied_id) else uuid.uuid4().hex[:16]
     request.state.trace_id = trace_id
     response = await call_next(request)
     response.headers["X-Trace-ID"] = trace_id
@@ -413,9 +435,11 @@ async def rate_limit_middleware(request: Request, call_next):
     if request.url.path.startswith("/api/health") or request.url.path in ("/webhooks/whatsapp", "/webhooks/instagram", "/api/billing/webhook"):
         return await call_next(request)
 
-    # Limite per tenant (o IP se non autenticato)
-    tenant = request.headers.get("X-Organization-Id") or (request.client.host if request.client else "127.0.0.1")
-    if await _rate_limit_check(f"tenant:{tenant}"):
+    # Before authentication, tenant headers are untrusted and cannot partition
+    # the quota. Only a validated proxy chain can supply the client address.
+    from src.core.auth.trusted_network import get_client_ip
+    client_ip = str(get_client_ip(request) or "unknown")
+    if await _rate_limit_check(f"ip:{client_ip}"):
         return JSONResponse(
             status_code=429,
             content={"detail": "Rate limit superato per l'organizzazione. Riprova tra poco."},
@@ -423,15 +447,17 @@ async def rate_limit_middleware(request: Request, call_next):
 
     # Limite per utente/credenziale (Bearer JWT o X-API-Key), indipendente dal tenant:
     # evita che un singolo utente saturi la finestra condivisa dell'organizzazione.
-    user_token = request.headers.get("Authorization") or request.headers.get("X-API-Key")
-    if user_token and await _rate_limit_check(f"user:{user_token}"):
+    from src.core.auth.bff import access_cookie_name
+    user_token = request.headers.get("Authorization") or request.cookies.get(access_cookie_name())
+    token_digest = hashlib.sha256(user_token.encode()).hexdigest() if user_token else None
+    if token_digest and await _rate_limit_check(f"credential:{token_digest}"):
         return JSONResponse(
             status_code=429,
             content={"detail": "Rate limit superato per l'utente. Riprova tra poco."},
         )
 
     # Audit 3.3: cap aggregato su TUTTE le chiamate LLM, indipendentemente
-    # dal tenant/utente — protegge il budget OpenRouter condiviso da un
+    # dal tenant/utente — protegge il budget del provider LLM condiviso da un
     # "noisy neighbor" fatto di molti tenant piccoli.
     if request.url.path in LLM_ROUTES:
         if await _rate_limit_check("llm:global", LLM_GLOBAL_RATE_LIMIT, LLM_GLOBAL_RATE_WINDOW):
@@ -480,12 +506,12 @@ async def liveness_check(request: Request):
     """
     workers_ok = True
     worker_status = {}
-    for task_name in ("inbound_task", "retry_task"):
+    for task_name in ("inbound_task", "retry_task", "governance_task"):
         task = getattr(request.app.state, task_name, None)
         if task is not None:
             if task.done():
                 exc = task.exception() if not task.cancelled() else "cancelled"
-                worker_status[task_name] = f"stopped: {exc}"
+                worker_status[task_name] = "stopped: worker failure" if exc else "stopped"
                 if exc:
                     workers_ok = False
             else:
@@ -506,12 +532,8 @@ async def liveness_check(request: Request):
 @app.get("/api/health")
 async def readiness_check(request: Request):
     """
-    Kubernetes / Docker Readiness Probe & Deep Health Check.
-    Verifica che l'istanza sia effettivamente pronta a servire traffico:
-    - Connettività database PostgreSQL via pool ('SELECT 1')
-    - Configurazione OpenRouter API key
-    Se il database è irraggiungibile, ritorna 503 affinché il load balancer escluda
-    temporaneamente l'istanza dal routing senza riavviare il processo.
+    Core readiness depends on the database, not an optional AI provider.
+    AI configuration is reported separately and never probed remotely here.
     """
     checks: dict[str, str] = {}
     healthy = True
@@ -519,25 +541,39 @@ async def readiness_check(request: Request):
     pool = getattr(request.app.state, "pool", None)
     if pool is None:
         checks["database"] = "non configurato (DATABASE_URL assente)"
+        healthy = False
     else:
         try:
             async with pool.acquire() as conn:
                 await conn.fetchval("SELECT 1")
             checks["database"] = "ok"
-        except Exception as e:
-            checks["database"] = f"errore: {e}"
+        except Exception:
+            logger.exception("readiness_database_failed")
+            checks["database"] = "errore di connessione"
             healthy = False
 
-    checks["openrouter_key_presente"] = "ok" if os.getenv("OPENROUTER_API_KEY") else "mancante"
-    if not os.getenv("OPENROUTER_API_KEY"):
-        healthy = False
+    from src.core.llm_config import ai_configuration_status
+    ai_status = ai_configuration_status()
+    checks["ai_provider"] = ai_status["status"]
 
     payload = {
         "status": "ok" if healthy else "degraded",
-        "modello_configurato": os.getenv("OPENROUTER_MODEL", "non impostato"),
+        "modello_configurato": ai_status["model"],
         "checks": checks,
     }
     if not healthy:
+        return JSONResponse(status_code=503, content=payload)
+    return payload
+
+
+@app.get("/api/health/ai")
+async def ai_availability_check():
+    """Configuration visibility only: no paid inference or remote request."""
+    from src.core.llm_config import ai_configuration_status
+
+    status = ai_configuration_status()
+    payload = {**status, "remote_status": "non_verificato"}
+    if status["status"] != "configurato":
         return JSONResponse(status_code=503, content=payload)
     return payload
 

@@ -35,14 +35,14 @@ def _make_jwk(private_key, alg: str) -> dict:
     return jwk
 
 
-def _make_token(private_key, alg: str, *, iss=ISS, aud=AUD, sub="user-1") -> str:
+def _make_token(private_key, alg: str, *, iss=ISS, aud=AUD, sub="user-1", exp_offset=600) -> str:
     now = int(time.time())
     claims = {
         "sub": sub,
         "aud": aud,
         "iss": iss,
         "iat": now,
-        "exp": now + 600,
+        "exp": now + exp_offset,
         "role": "authenticated",
     }
     return jwt.encode(claims, private_key, algorithm=alg)
@@ -86,6 +86,25 @@ async def test_token_rs256_legacy_accettato(patch_jwks):
     await patch_jwks([_make_jwk(key, "RS256")])
     payload = await deps.verify_supabase_jwt(_make_token(key, "RS256"))
     assert payload["sub"] == "user-1"
+
+
+@pytest.mark.parametrize("alg,key_factory", [("ES256", _ec_key), ("RS256", _rsa_key)])
+async def test_token_scaduto_valido_richiede_refresh(patch_jwks, alg, key_factory):
+    key = key_factory()
+    await patch_jwks([_make_jwk(key, alg)])
+    with pytest.raises(deps.HTTPException) as exc:
+        await deps.verify_supabase_jwt(_make_token(key, alg, exp_offset=-60))
+    assert exc.value.status_code == 401
+
+
+async def test_token_scaduto_con_issuer_estraneo_resta_rifiutato(patch_jwks):
+    key = _ec_key()
+    await patch_jwks([_make_jwk(key, "ES256")])
+    with pytest.raises(deps.HTTPException) as exc:
+        await deps.verify_supabase_jwt(
+            _make_token(key, "ES256", iss="https://other.supabase.co/auth/v1", exp_offset=-60)
+        )
+    assert exc.value.status_code == 403
 
 
 async def test_chiave_senza_camp_alg_prova_entrambe(monkeypatch, patch_jwks):

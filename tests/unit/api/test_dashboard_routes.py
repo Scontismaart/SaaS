@@ -30,6 +30,7 @@ def test_report_stato_unauthorized(client):
 def test_report_settimanale_role_restriction(client):
     # 'staff' role is not allowed on /api/report/settimanale (only owner, manager)
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "staff",
@@ -46,6 +47,7 @@ def test_report_settimanale_role_restriction(client):
 def test_report_csv_role_restriction(client):
     # 'staff' role is not allowed on /api/report/csv (only owner, manager)
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "staff",
@@ -61,6 +63,7 @@ def test_report_csv_role_restriction(client):
 
 def test_dashboard_authorized_fallback_empty(client):
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "owner",
@@ -77,6 +80,7 @@ def test_dashboard_authorized_fallback_empty(client):
 
 def test_dashboard_prioritari_authorized(client):
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "manager",
@@ -93,6 +97,7 @@ def test_dashboard_prioritari_authorized(client):
 
 def test_report_stato_authorized(client):
     mock_user = {
+        "source": "jwt",
         "user_id": str(uuid.uuid4()),
         "organization_id": str(uuid.uuid4()),
         "ruolo": "staff",

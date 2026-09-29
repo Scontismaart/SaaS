@@ -101,6 +101,10 @@ VERTICAL_TEMPLATES: dict[str, dict[str, Any]] = {
 }
 
 
+class ProfileCacheInvalidationError(RuntimeError):
+    """Profile persistence succeeded, but its org FAQ cache stayed stale."""
+
+
 def list_verticals() -> list[dict[str, Any]]:
     return [
         {
@@ -167,7 +171,7 @@ async def save_profile(
     """Persiste il profilo onboarding dell'org e sincronizza
     organizations.business_profile (usato dal responder WhatsApp reale)."""
     profile = build_business_profile(payload)
-    return await repo.save_onboarding_profile(
+    saved = await repo.save_onboarding_profile(
         organization_id,
         payload.verticale,
         payload.nome_attivita,
@@ -182,6 +186,13 @@ async def save_profile(
         payload.lingua_default,
         descrizione=payload.descrizione,
     )
+    try:
+        await repo.faq_cache_invalidate(organization_id)
+    except Exception as exc:
+        raise ProfileCacheInvalidationError(
+            "Profile saved, but FAQ cache invalidation failed"
+        ) from exc
+    return saved
 
 
 async def generate_preview(

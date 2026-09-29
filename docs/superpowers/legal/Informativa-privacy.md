@@ -7,14 +7,15 @@
 # Informativa Privacy — WhatsApp AI Responder
 ## Informativa sul trattamento dei dati relativi all'account del Cliente
 
-**Versione bozza 0.1 — ultimo aggiornamento [DATA]**
+**Versione bozza 0.1 — ultimo aggiornamento {{LEGAL_DOCUMENT_EFFECTIVE_DATE}}**
 
 ## 1. Titolare del trattamento
 
 Ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 ("GDPR"), il
 titolare del trattamento dei dati personali descritti nella presente
-informativa è [RAGIONE SOCIALE FORNITORE], con sede in [INDIRIZZO], P.IVA
-[P.IVA], ("Fornitore", "noi").
+informativa è {{LEGAL_ENTITY_NAME}}, con sede in
+{{LEGAL_ENTITY_REGISTERED_OFFICE}}, P.IVA {{LEGAL_ENTITY_VAT_NUMBER}},
+("Fornitore", "noi").
 
 ## 2. Ambito della presente informativa
 
@@ -65,14 +66,14 @@ generati durante l'uso del Servizio. Sono trattati per le seguenti finalità:
 
 I dati possono essere comunicati a soggetti terzi che trattano dati per conto
 del Fornitore (sub-responsabili ai sensi dell'Allegato B del DPA): Meta
-(WhatsApp Business API), OpenRouter e fornitori LLM, Google, Stripe,
+(WhatsApp Business API), Groq e fornitori LLM configurati, Google, Stripe,
 Supabase, Sentry (se configurato), provider SMTP, Airtable/Softr (solo
 propagazione cancellazione GDPR).
 
 Alcuni destinatari trattano dati al di fuori dello Spazio Economico Europeo
 (in particolare negli Stati Uniti). I trasferimenti avvengono sulla base di
 Clausole Contrattuali Tipo e/o meccanismi di adeguatezza applicabili, come
-disponibili per ciascun fornitore. [REV — verifica puntuale dello strumento di
+disponibili per ciascun fornitore. `{{LEGAL_DPA_REVIEW_APPROVAL}}` — verifica puntuale dello strumento di
 trasferimento alla data di sottoscrizione, come richiesto dal DPA §6.3]
 
 ## 7. Diritti dell'interessato
@@ -81,8 +82,8 @@ L'utente ha diritto di accesso, rettifica, cancellazione (oblio), limitazione
 del trattamento, portabilità e opposizione, nonché di proporre reclamo
 all'autorità di controllo competente (Garante per la protezione dei dati
 personali). I diritti possono essere esercitati tramite i canali di supporto
-del Servizio indicati in sede di sottoscrizione o scrivendo a [REV — contatto
-privacy effettivo del Fornitore].
+del Servizio indicati in sede di sottoscrizione o scrivendo a
+{{LEGAL_PRIVACY_CONTACT_EMAIL}}.
 
 ## 8. Approfondimenti
 

@@ -1,7 +1,13 @@
 import pytest
 
-from src.core.llm_config import MODELLO_DEFAULT, crea_llm
+from src.core.llm_config import LLM_TIMEOUT_SECONDS, MODELLO_DEFAULT, crea_llm
 from src.core.llm_routing import LLMRouteRequest
+
+
+@pytest.fixture(autouse=True)
+def offline_client_configuration(monkeypatch):
+    # Only constructs clients with dummy keys; no inference/network is allowed.
+    monkeypatch.setenv("LLM_COST_POLICY", "standard")
 
 
 def test_crea_llm_inietta_sempre_data_collection_deny(monkeypatch):
@@ -13,6 +19,7 @@ def test_crea_llm_inietta_sempre_data_collection_deny(monkeypatch):
 
     extra_body = llm.additional_params["extra_body"]
     assert extra_body["provider"]["data_collection"] == "deny"
+    assert llm.timeout == LLM_TIMEOUT_SECONDS
 
 
 def test_crea_llm_usa_modello_da_route_request(monkeypatch):
@@ -25,9 +32,8 @@ def test_crea_llm_usa_modello_da_route_request(monkeypatch):
     assert llm.model == "premium/model"
 
 
-def test_crea_llm_senza_route_usa_default_non_free(monkeypatch):
-    # Il default di routing ora e' mistral (paid): serve la chiave del provider.
-    monkeypatch.setenv("MISTRAL_API_KEY", "sk-test")
+def test_crea_llm_senza_route_usa_default(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-test")
 
     llm = crea_llm()
 
@@ -35,10 +41,9 @@ def test_crea_llm_senza_route_usa_default_non_free(monkeypatch):
     assert not llm.model.endswith(":free")
 
 
-def test_modello_default_e_un_modello_paid():
-    """Il 'vero ultimo fallback' non deve essere un endpoint free che
-    addestra sui dati dei clienti. Il default di routing e' mistral paid."""
-    assert MODELLO_DEFAULT == "mistral/mistral-small-latest"
+def test_modello_default_e_ammesso_nel_profilo_gratuito():
+    from src.core.cost_policy import FREE_MODELS
+    assert MODELLO_DEFAULT in FREE_MODELS
     assert not MODELLO_DEFAULT.endswith(":free")
 
 
@@ -54,6 +59,13 @@ def test_crea_llm_groq_pass_through_senza_deny(monkeypatch):
     assert llm.is_litellm is True
     assert llm.model == "groq/openai/gpt-oss-20b"
     assert "extra_body" not in llm.additional_params
+
+
+def test_explicit_groq_provider_prefixes_bare_model(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-test")
+    llm = crea_llm(model="openai/gpt-oss-20b")
+    assert llm.model == "groq/openai/gpt-oss-20b"
 
 
 def test_crea_llm_cerebras_pass_through_senza_deny(monkeypatch):
@@ -77,3 +89,61 @@ def test_crea_llm_richiede_la_chiave_del_provider(monkeypatch):
 
     with pytest.raises(RuntimeError, match="GROQ_API_KEY"):
         crea_llm(model="groq/openai/gpt-oss-20b")
+
+
+def test_adapter_openai_compatible_usa_base_url_senza_chiamate_remote(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AI_MODEL", "custom-free-model")
+    monkeypatch.setenv("AI_API_KEY", "dummy-offline-key")
+    monkeypatch.setenv("AI_BASE_URL", "https://ai.example.test/v1")
+    llm = crea_llm()
+    assert llm.base_url == "https://ai.example.test/v1"
+    assert "custom-free-model" in llm.model
+
+
+def test_free_profile_non_permette_endpoint_custom_neppure_con_modello_groq(monkeypatch):
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("GROQ_FREE_ACCOUNT_CONFIRMED", "true")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-test")
+    monkeypatch.setenv("AI_PROVIDER", "groq")
+    monkeypatch.setenv("AI_BASE_URL", "https://paid.example.test/v1")
+    with pytest.raises(RuntimeError, match="Budget EUR 0"):
+        crea_llm(model="groq/openai/gpt-oss-20b")
+
+
+def test_adapter_rejects_mismatched_provider_and_openrouter_custom_endpoint(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("AI_API_KEY", "dummy-offline-key")
+    monkeypatch.setenv("AI_BASE_URL", "https://ai.example.test/v1")
+    with pytest.raises(RuntimeError, match="non corrisponde"):
+        crea_llm(model="groq/openai/gpt-oss-20b")
+
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-offline-key")
+    with pytest.raises(RuntimeError, match="AI_BASE_URL non supportata"):
+        crea_llm(model="openrouter/custom-free-model")
+
+
+def test_free_openrouter_checks_catalog_before_client(monkeypatch):
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-offline-key")
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    checked = []
+    monkeypatch.setattr("src.core.llm_config.assert_openrouter_catalog_free", lambda model, key: checked.append(model))
+    llm = crea_llm(model="openrouter/vendor/model:free")
+    assert checked == ["openrouter/vendor/model:free"]
+    assert llm.model == "vendor/model:free"
+    assert llm.additional_params["extra_body"]["provider"]["zdr"] is True
+
+
+def test_free_openrouter_catalog_failure_prevents_client(monkeypatch):
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-offline-key")
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    def reject(model, key):
+        raise RuntimeError("catalog unavailable")
+    monkeypatch.setattr("src.core.llm_config.assert_openrouter_catalog_free", reject)
+    with pytest.raises(RuntimeError, match="catalog unavailable"):
+        crea_llm(model="openrouter/vendor/model:free")

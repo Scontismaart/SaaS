@@ -851,7 +851,7 @@ async def test_subscribe_route_rejects_base_not_connected_to_tenant(org_a_id: uu
     """Base authorization: la route subscribe richiede la Base connessa al tenant autenticato."""
     from src.api.dependencies import get_airtable_service, get_airtable_webhook_service
     from src.api.routes.airtable import router
-    from src.core.auth.dependencies import get_organization_context
+    from src.core.auth.dependencies import get_current_user, get_organization_context
 
     app = FastAPI()
     app.include_router(router)
@@ -859,6 +859,9 @@ async def test_subscribe_route_rejects_base_not_connected_to_tenant(org_a_id: uu
     webhook_repo = InMemoryWebhookRepo()
     app.dependency_overrides[get_airtable_webhook_service] = lambda: AirtableWebhookService(repo=webhook_repo)
 
+    app.dependency_overrides[get_current_user] = lambda: {
+        "source": "jwt", "aal": "aal2", "auth_user_id": "test-owner",
+    }
     # Connection service senza connessioni registrate: nessuna Base appartiene al tenant
     class EmptyConnectionRepo:
         async def get_connection(self, organization_id, base_id):

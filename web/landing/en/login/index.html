@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in to Dashboard · Melpis</title>
+<meta name="description" content="Log in to your Melpis dashboard to manage your AI WhatsApp assistant, live reservations, and team shared inbox.">
+<meta name="theme-color" content="#08090c">
+<link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/outfit-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/auth.css?v=dark-luxury-v1">
+    <script id="auth-translations" type="application/json">{"empty_fields":"Please fill in both fields.","google_error":"Google sign-in was cancelled or failed. Please try again or use your email and password.","invalid_credentials":"Incorrect email or password.","enter_business_name":"Please enter your business name.","invalid_email":"Please enter a valid email address.","password_too_short":"Password must be at least 10 characters long.","password_special":"Password must include at least one special symbol (e.g., ! @ # $ %).","accept_terms":"You must agree to the Privacy Policy and Terms of Service to proceed.","register_failed":"Sign-up was unsuccessful. Please try again shortly.","new_password_title":"New password","new_password_help":"Choose a new password for your account.","enter_new_password":"Please enter your new password.","password_updated":"Password updated. You can now log in with your new password.","login_title":"Log in to Melpis","login_help":"Manage your assistant, bookings, and documents from a single platform.","forgot_password_title":"Reset password","forgot_password_help":"We'll send you a link to reset your password.","enter_email":"Please enter your email.","recovery_sent":"If the email is registered, you will receive a reset link.","update_failed":"Update failed. Please try again."}</script>
+    <link rel="canonical" href="https://melpis.it/en/login/">
+    <link rel="alternate" hreflang="it" href="https://melpis.it/accedi/">
+    <link rel="alternate" hreflang="en" href="https://melpis.it/en/login/">
+    <link rel="alternate" hreflang="es" href="https://melpis.it/es/iniciar-sesion/">
+    <link rel="alternate" hreflang="fr" href="https://melpis.it/fr/connexion/">
+    <link rel="alternate" hreflang="de" href="https://melpis.it/de/anmelden/">
+    <link rel="alternate" hreflang="x-default" href="https://melpis.it/en/login/">
+</head>
+<body>
+
+<main class="accedi-page">
+  <div class="accedi-card">
+    <div class="accedi-brand">
+      <img src="/brand/melpis-symbol-dark.svg" alt="Melpis Logo" width="28" height="28" class="is-1a7584936aed">
+      <span class="accedi-brand-name">Melpis</span>
+    </div>
+
+    <h1 id="accesso-title">Log in to Melpis</h1>
+    <p class="accesso-help" id="accesso-help">Manage your assistant, bookings, and knowledge base from a unified dashboard. Secure session: no credentials exposed to the browser.</p>
+
+    <p class="accedi-error" id="accedi-error" role="alert"></p>
+
+    <a class="google-btn" id="google-btn" href="#">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+      Continue with Google
+    </a>
+
+    <div class="accedi-divider">or with email</div>
+
+    <form id="form-login" novalidate>
+      <label for="accesso-email">Email</label>
+      <input class="wizard-input" id="accesso-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="accesso-error" placeholder="name@business.com">
+      <label for="accesso-password">Password</label>
+      <input class="wizard-input" id="accesso-password" type="password" autocomplete="current-password" required aria-describedby="accesso-error" placeholder="••••••••">
+      <p class="doc-config-status" id="accesso-error" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="accesso-save">Log in</button>
+      </div>
+    </form>
+
+    <!-- Recupero password: visibile dal link "Password dimenticata?" -->
+    <form id="form-recover" hidden novalidate>
+      <p class="doc-config-status">Enter the email associated with your account: if an account exists, you'll receive a password reset link.</p>
+      <label for="recover-email">Email</label>
+      <input class="wizard-input" id="recover-email" type="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="recover-status" placeholder="name@business.com">
+      <p class="doc-config-status" id="recover-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="recover-save">Send reset link</button>
+      </div>
+      <p class="accedi-foot"><a href="#" id="recover-back">← Back to login</a></p>
+    </form>
+
+    <!-- Nuova password: visibile solo con link di recovery (#access_token=...&type=recovery) -->
+    <form id="form-reset" hidden novalidate>
+      <p class="doc-config-status">Set a new password: minimum 10 characters and at least one special symbol.</p>
+      <label for="reset-password">New password</label>
+      <input class="wizard-input" id="reset-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="reset-status" placeholder="••••••••">
+      <p class="doc-config-status" id="reset-status" role="alert"></p>
+      <div class="onboarding-actions">
+        <button type="submit" class="review-analyze" id="reset-save">Update password</button>
+      </div>
+    </form>
+
+    <p class="accedi-foot" id="forgot-link-row"><a href="#" id="forgot-link">Forgot your password?</a></p>
+
+    <p class="accedi-foot">Don't have an account? <a id="link-registrati" href="/en/signup/">Sign up</a></p>
+    <p class="accedi-foot"><a href="/en/">← Back to home</a></p>
+  </div>
+</main>
+
+<script src="/config.js"></script>
+<script src="/auth.js?v=2"></script>
+<script src="/login.js?v=2"></script>
+</body>
+</html>

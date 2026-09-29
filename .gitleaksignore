@@ -3,3 +3,4 @@
 
 # Historical CI-only Fernet fixture; replaced by a per-run key in migrations.yml.
 7e678a5794f8d75b6d404596f36e677ad4744833:.github/workflows/migrations.yml:generic-api-key:85
+e1a0e176385fd7fc8c38244b6d951774d4d45729:.github/workflows/ci.yml:generic-api-key:57

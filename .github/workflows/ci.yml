@@ -118,6 +118,18 @@ jobs:
             caddy:2.10.2-alpine \
             caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
+      - name: Generate ephemeral test encryption key
+        run: |
+          python - <<'PY'
+          import os
+          from cryptography.fernet import Fernet
+
+          key = Fernet.generate_key().decode("ascii")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"ENCRYPTION_KEY={key}\n")
+          print(f"::add-mask::{key}")
+          PY
+
       - name: Run tests
         env:
           CI: true
@@ -127,7 +139,6 @@ jobs:
           PGHOST: localhost
           PGPORT: 5432
           TEST_DB_DSN: postgresql://postgres:test@localhost:5432/test
-          ENCRYPTION_KEY: C1IuGfMh142ShEqV9Y2w3WPcMjIjO4aXjbnly7sqlvw=
         run: pytest -v --tb=short
 
   # Pull requests prove both target architectures build successfully. Each

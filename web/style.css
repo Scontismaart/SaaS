@@ -9915,6 +9915,57 @@ html[data-theme="dark"] .account-badge-popolare {
   transition-duration: 200ms;
 }
 
+.security-mfa-card {
+  grid-column: 1 / -1;
+}
+
+.security-mfa-factors,
+.security-mfa-flow,
+.security-mfa-secret-wrap,
+.security-mfa-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.security-mfa-factor,
+.security-mfa-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.security-mfa-qr {
+  display: block;
+  width: min(100%, 220px);
+  height: auto;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+}
+
+.security-mfa-secret-wrap code {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--chip-bg, rgba(0, 0, 0, 0.04));
+  user-select: all;
+}
+
+.security-mfa-flow form {
+  display: grid;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.security-status.err { color: var(--red); }
+.security-status.ok { color: var(--green-deep); }
+
 .security-card:hover {
   border-color: var(--ink-soft);
 }

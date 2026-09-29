@@ -9,7 +9,7 @@
   var DEFAULT_LANG = 'it';
   var STORAGE_KEY = 'melpis_lang';
   var COOKIE_NAME = 'melpis_lang';
-  var BUNDLE_VERSION = 'pr38-dashboard-language';
+  var BUNDLE_VERSION = 'phase3-auth-mfa-1';
 
   var LOCALE_MAP = {
     it: 'it-IT',

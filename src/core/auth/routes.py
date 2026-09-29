@@ -6,13 +6,16 @@ Nessun token transita dal client (niente localStorage, niente header Bearer).
 """
 
 import hashlib
+import math
 import os
 import re
 import secrets
+import time
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.core.auth import bff, throttle
 from src.core.auth.audit import audit_log
@@ -21,6 +24,7 @@ from src.core.auth.denylist import is_token_revoked, revoke_token
 from src.core.auth.dependencies import get_organization_context, get_repo, require_ruolo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
 
 # Durata trial alla creazione org (registrazione normale e primo accesso
 # Google usano la stessa variabile d'ambiente).
@@ -44,6 +48,18 @@ _LOGIN_LOCKOUT_SECONDS = _LOGIN_WINDOW_SECONDS  # la finestra stessa è il locko
 _OAUTH_VERIFIER_COOKIE = "wa_oauth_verifier"
 _OAUTH_NEXT_COOKIE = "wa_oauth_next"
 _OAUTH_STATE_MAX_AGE = 600  # 10 minuti per completare il round-trip
+_MFA_RECENT_AUTH_SECONDS = 300
+_MFA_PRIMARY_AUTH_METHODS = {
+    "password",
+    "oauth",
+    "otp",
+    "magiclink",
+    "sso/saml",
+    "web3",
+    "recovery",
+    "invite",
+    "email/signup",
+}
 
 
 def _oauth_cookie_name(base: str) -> str:
@@ -362,6 +378,334 @@ class PasswordChange(BaseModel):
 
 class EmailChange(BaseModel):
     email: str
+
+
+class MfaFactorRequest(BaseModel):
+    factor_id: UUID
+
+
+class MfaVerifyRequest(MfaFactorRequest):
+    challenge_id: UUID
+    code: str = Field(pattern=r"^\d{6}$")
+
+
+async def _mfa_session(request: Request) -> tuple[str, dict]:
+    """MFA management accepts only this browser's HttpOnly BFF session."""
+    if request.headers.get("authorization") or request.headers.get("x-api-key"):
+        raise HTTPException(400, "Usa la sessione browser per gestire MFA")
+    token = request.cookies.get(bff.access_cookie_name())
+    if not token:
+        raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
+    if await is_token_revoked(token):
+        raise HTTPException(401, "Sessione revocata: effettua di nuovo il login")
+
+    from src.core.auth.dependencies import verify_supabase_jwt
+
+    claims = await verify_supabase_jwt(token)
+    if not isinstance(claims.get("sub"), str) or not claims["sub"]:
+        raise HTTPException(401, "Sessione non valida")
+    return token, claims
+
+
+async def _mfa_auth_request(
+    method: str,
+    path: str,
+    token: str,
+    payload: dict | None = None,
+) -> dict:
+    """Call only fixed Supabase Auth MFA paths; never expose upstream details."""
+    import httpx
+
+    client = await bff._client()
+    try:
+        resp = await client.request(
+            method,
+            f"{bff._supabase_url()}/auth/v1/{path.lstrip('/')}",
+            json=payload,
+            headers={
+                "apikey": bff._anon_key(),
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+    except httpx.HTTPError:
+        raise HTTPException(502, "Servizio autenticazione non raggiungibile")
+
+    if resp.status_code == 401:
+        raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
+    if resp.status_code == 403:
+        raise HTTPException(403, "Operazione MFA non autorizzata")
+    if resp.status_code == 404:
+        raise HTTPException(404, "Fattore MFA non trovato")
+    if resp.status_code == 422:
+        raise HTTPException(422, "Codice MFA non valido o scaduto")
+    if resp.status_code == 429:
+        raise HTTPException(429, "Troppe richieste MFA. Riprova tra poco")
+    if resp.status_code >= 400:
+        raise HTTPException(502, "Operazione MFA non riuscita")
+    if not resp.content:
+        return {}
+    try:
+        value = resp.json()
+    except ValueError:
+        raise HTTPException(502, "Risposta del servizio autenticazione non valida")
+    if not isinstance(value, dict):
+        raise HTTPException(502, "Risposta del servizio autenticazione non valida")
+    return value
+
+
+async def _mfa_user(token: str, expected_user_id: str) -> dict:
+    user = await _mfa_auth_request("GET", "user", token)
+    if str(user.get("id") or "") != expected_user_id:
+        raise HTTPException(401, "Sessione non valida")
+    return user
+
+
+def _totp_factors(user: dict) -> list[dict]:
+    factors = user.get("factors")
+    if not isinstance(factors, list):
+        return []
+    return [
+        factor for factor in factors
+        if isinstance(factor, dict) and factor.get("factor_type") == "totp"
+    ]
+
+
+def _public_totp_factors(factors: list[dict]) -> list[dict]:
+    return [
+        {
+            "id": factor.get("id"),
+            "friendly_name": factor.get("friendly_name") or "Authenticator app",
+            "status": factor.get("status"),
+        }
+        for factor in factors
+        if factor.get("status") in {"verified", "unverified"}
+        and isinstance(factor.get("id"), str)
+    ]
+
+
+def _owned_totp_factor(factors: list[dict], factor_id: str) -> dict:
+    factor = next((f for f in factors if str(f.get("id")) == factor_id), None)
+    if not factor or factor.get("status") not in {"verified", "unverified"}:
+        raise HTTPException(404, "Fattore MFA non trovato")
+    return factor
+
+
+def _require_recent_auth(claims: dict) -> None:
+    amr = claims.get("amr")
+    if not isinstance(amr, list):
+        raise HTTPException(428, "Per configurare MFA, esci e accedi di nuovo")
+
+    def primary_timestamp(entry: object) -> int | float | None:
+        if not isinstance(entry, dict):
+            return None
+        method = entry.get("method")
+        timestamp = entry.get("timestamp")
+        if (
+            not isinstance(method, str)
+            or method not in _MFA_PRIMARY_AUTH_METHODS
+            or not isinstance(timestamp, (int, float))
+            or isinstance(timestamp, bool)
+        ):
+            return None
+        try:
+            return timestamp if math.isfinite(timestamp) else None
+        except OverflowError:
+            return None
+
+    timestamps = [timestamp for entry in amr if (timestamp := primary_timestamp(entry)) is not None]
+    if not timestamps:
+        raise HTTPException(428, "Per configurare MFA, esci e accedi di nuovo")
+    age = time.time() - max(timestamps)
+    if age < -60 or age > _MFA_RECENT_AUTH_SECONDS:
+        raise HTTPException(428, "Per configurare MFA, esci e accedi di nuovo")
+
+
+@router.get("/mfa")
+async def mfa_status(request: Request):
+    token, claims = await _mfa_session(request)
+    user = await _mfa_user(token, claims["sub"])
+    factors = _public_totp_factors(_totp_factors(user))
+    return {"aal": claims.get("aal") or "aal1", "factors": factors}
+
+
+@router.post("/mfa/enroll")
+async def mfa_enroll(request: Request):
+    token, claims = await _mfa_session(request)
+    _require_recent_auth(claims)
+    user = await _mfa_user(token, claims["sub"])
+    factors = _totp_factors(user)
+    if any(f.get("status") == "verified" for f in factors):
+        raise HTTPException(409, "Un fattore MFA TOTP è già attivo")
+    if any(f.get("status") == "unverified" for f in factors):
+        raise HTTPException(409, "Annulla la configurazione MFA in sospeso prima di riprovare")
+
+    result = await _mfa_auth_request(
+        "POST",
+        "factors",
+        token,
+        {"factor_type": "totp", "friendly_name": "Melpis authenticator", "issuer": "Melpis"},
+    )
+    totp = result.get("totp") if isinstance(result.get("totp"), dict) else {}
+    qr_code = totp.get("qr_code")
+    secret = totp.get("secret")
+    factor_id = result.get("id")
+    svg_qr_code = None
+    if isinstance(qr_code, str):
+        import base64
+        import xml.etree.ElementTree as ET
+        from urllib.parse import unquote_to_bytes
+
+        svg_source = qr_code
+        if qr_code.startswith("data:image/svg+xml;utf-8,"):
+            try:
+                svg_source = unquote_to_bytes(qr_code.removeprefix("data:image/svg+xml;utf-8,")).decode("utf-8")
+            except (UnicodeDecodeError, ValueError):
+                svg_source = ""
+        if (
+            0 < len(svg_source) <= 32_768
+            and "<!DOCTYPE" not in svg_source.upper()
+            and "<!ENTITY" not in svg_source.upper()
+        ):
+            try:
+                root = ET.fromstring(svg_source)
+            except ET.ParseError:
+                root = None
+            if root is not None:
+                safe_tags = {"svg", "path", "rect"}
+                safe_attributes = {
+                    "svg": {"xmlns", "width", "height", "viewBox"},
+                    "path": {"d", "fill", "fill-rule", "clip-rule"},
+                    "rect": {"x", "y", "width", "height", "fill"},
+                }
+                nodes = list(root.iter())
+                def safe_tag_name(node):
+                    tag = node.tag
+                    if not isinstance(tag, str):
+                        return None
+                    if tag.startswith("{http://www.w3.org/2000/svg}"):
+                        return tag.rsplit("}", 1)[-1]
+                    return tag if "}" not in tag else None
+
+                is_safe_svg = (
+                    safe_tag_name(root) == "svg"
+                    and len(nodes) <= 10_000
+                    and all(
+                        safe_tag_name(node) in safe_tags
+                        and set(node.attrib).issubset(safe_attributes[safe_tag_name(node)])
+                        and not (node.text or "").strip()
+                        and not (node.tail or "").strip()
+                        for node in nodes
+                    )
+                )
+                if is_safe_svg:
+                    sanitized_root = ET.Element("svg", attrib={
+                        key: value for key, value in root.attrib.items()
+                        if key in safe_attributes["svg"] and key != "xmlns"
+                    })
+                    sanitized_root.set("xmlns", "http://www.w3.org/2000/svg")
+                    for node in list(root):
+                        sanitized_node = ET.SubElement(sanitized_root, safe_tag_name(node), attrib=node.attrib)
+                        for child in list(node):
+                            ET.SubElement(sanitized_node, safe_tag_name(child), attrib=child.attrib)
+                    safe_svg = ET.tostring(sanitized_root, encoding="utf-8", xml_declaration=False)
+                    encoded_svg = base64.b64encode(safe_svg).decode("ascii")
+                    svg_qr_code = f"data:image/svg+xml;base64,{encoded_svg}"
+    if (
+        result.get("type") != "totp"
+        or not isinstance(factor_id, str)
+        or not re.fullmatch(r"[0-9a-fA-F-]{36}", factor_id)
+        or not svg_qr_code
+        or not isinstance(secret, str)
+        or not secret
+    ):
+        raise HTTPException(502, "Impossibile avviare la configurazione MFA")
+    # Enrollment secrets are intentionally returned only to the authenticated
+    # browser response, protected by no-store; they are never logged or saved.
+    return {"factor_id": factor_id, "qr_code": svg_qr_code, "secret": secret}
+
+
+@router.post("/mfa/challenge")
+async def mfa_challenge(body: MfaFactorRequest, request: Request):
+    token, claims = await _mfa_session(request)
+    user = await _mfa_user(token, claims["sub"])
+    factor = _owned_totp_factor(_totp_factors(user), str(body.factor_id))
+    if factor.get("status") == "unverified" and claims.get("aal") == "aal2":
+        raise HTTPException(409, "La sessione non è valida per completare questo fattore")
+    result = await _mfa_auth_request(
+        "POST", f"factors/{body.factor_id}/challenge", token, {}
+    )
+    challenge_id = result.get("id")
+    if not isinstance(challenge_id, str) or not re.fullmatch(r"[0-9a-fA-F-]{36}", challenge_id):
+        raise HTTPException(502, "Impossibile avviare la verifica MFA")
+    return {"challenge_id": challenge_id}
+
+
+@router.post("/mfa/verify")
+async def mfa_verify(body: MfaVerifyRequest, request: Request, response: Response):
+    token, claims = await _mfa_session(request)
+    user = await _mfa_user(token, claims["sub"])
+    _owned_totp_factor(_totp_factors(user), str(body.factor_id))
+    result = await _mfa_auth_request(
+        "POST",
+        f"factors/{body.factor_id}/verify",
+        token,
+        {"challenge_id": str(body.challenge_id), "code": body.code},
+    )
+
+    new_access = result.get("access_token")
+    new_refresh = result.get("refresh_token")
+    new_user = result.get("user")
+    if (
+        not isinstance(new_access, str)
+        or not new_access
+        or not isinstance(new_refresh, str)
+        or not new_refresh
+        or not isinstance(new_user, dict)
+        or str(new_user.get("id") or "") != claims["sub"]
+    ):
+        if isinstance(new_access, str):
+            await revoke_token(new_access)
+        if isinstance(new_refresh, str):
+            await revoke_token(new_refresh)
+        raise HTTPException(502, "La verifica MFA non ha restituito una sessione valida")
+
+    from src.core.auth.dependencies import verify_supabase_jwt
+
+    try:
+        new_claims = await verify_supabase_jwt(new_access)
+    except HTTPException:
+        await revoke_token(new_access)
+        await revoke_token(new_refresh)
+        raise HTTPException(502, "La sessione verificata non è valida")
+    if new_claims.get("sub") != claims["sub"] or new_claims.get("aal") != "aal2":
+        await revoke_token(new_access)
+        await revoke_token(new_refresh)
+        raise HTTPException(502, "La verifica MFA non ha elevato la sessione")
+
+    # Supabase promotes this session and invalidates the user's other sessions.
+    # Locally also denylist the replaced BFF credentials, except if Supabase
+    # returned a token unchanged as part of the promoted session.
+    if token != new_access:
+        await revoke_token(token)
+    old_refresh = request.cookies.get(bff.refresh_cookie_name())
+    if old_refresh and old_refresh != new_refresh:
+        await revoke_token(old_refresh)
+
+    _set_session_cookies(response, result)
+    csrf_token = issue_csrf_token(response)
+    return {"ok": True, "aal": "aal2", "csrf_token": csrf_token}
+
+
+@router.delete("/mfa/factors/{factor_id}")
+async def mfa_cancel_pending(factor_id: UUID, request: Request):
+    token, claims = await _mfa_session(request)
+    user = await _mfa_user(token, claims["sub"])
+    factor = _owned_totp_factor(_totp_factors(user), str(factor_id))
+    if factor.get("status") != "unverified":
+        raise HTTPException(409, "Puoi annullare solo una configurazione MFA non verificata")
+    await _mfa_auth_request("DELETE", f"factors/{factor_id}", token)
+    return {"ok": True}
 
 
 def _account_throttle_key(ip: str) -> str:

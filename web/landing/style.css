@@ -5538,6 +5538,13 @@ html.js .reveal.visible {
 @media (max-width: 960px) {
     .pin-wrap::after { content: none; }
     .pin-wrap-2, .pin-wrap-3 { margin-top: 0; }
+    .sync-halo-glow {
+        left: 50%;
+        width: min(100vw, 780px);
+        max-width: 100%;
+        transform: translate(-50%, -50%);
+    }
+    .hitl-glow-backdrop { inset: 0; }
     .features-split-section,
     .hitl-section,
     .faq-section {

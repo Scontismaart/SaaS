@@ -59,6 +59,7 @@ async def test_quota_exceeded_meta_failure_finalizes_persisted_escalation(base_a
     mock_repo.pool = None
 
     mock_service = AsyncMock()
+    mock_service.check_opt_out = AsyncMock(return_value={"is_opt_out": False})
     mock_service.send_whatsapp_message = AsyncMock(side_effect=Exception("Meta 503 Service Unavailable"))
 
     with patch("src.whatsapp.inbound_processor.load_tenant_config", AsyncMock(return_value=fake_tenant)):

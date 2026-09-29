@@ -29,7 +29,8 @@ function check(file) {
     // files remain under /app. Resolve absolute landing references accordingly.
     const landingDocumentRoot = file.startsWith(path.join(root, "landing") + path.sep)
       || file.startsWith(path.join(root, "inline-assets") + path.sep);
-    const documentRoot = landingDocumentRoot
+    const landingRootAsset = /^\/brand\//.test(clean);
+    const documentRoot = landingDocumentRoot || landingRootAsset
       ? path.join(root, "landing")
       : root;
     // A few landing routes intentionally share dashboard/auth root assets and

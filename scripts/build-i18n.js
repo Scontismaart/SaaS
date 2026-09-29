@@ -2105,11 +2105,30 @@ function localizeDocs(html, lang, bundle) {
   return res;
 }
 
-function copyLocalesToWeb() {
+function copyLocalesToWeb(namespaces = null) {
   const destWeb = path.join(WEB_DIR, 'locales');
   const destLanding = path.join(WEB_DIR, 'landing', 'locales');
   ensureDir(destWeb);
   ensureDir(destLanding);
+
+  if (Array.isArray(namespaces)) {
+    for (const lang of SUPPORTED_LANGS) {
+      for (const namespace of namespaces) {
+        const filename = `${namespace}.json`;
+        const srcPath = path.join(LOCALES_DIR, lang, filename);
+        if (!fs.existsSync(srcPath)) {
+          throw new Error(`Missing locale source: ${srcPath}`);
+        }
+        for (const destinationRoot of [destWeb, destLanding]) {
+          const destination = path.join(destinationRoot, lang);
+          ensureDir(destination);
+          fs.copyFileSync(srcPath, path.join(destination, filename));
+        }
+      }
+    }
+    console.log(`  ✓ Synced ${namespaces.join(', ')} locale bundle(s) to web and web/landing`);
+    return;
+  }
 
   function copyRecursive(src, dest) {
     ensureDir(dest);
@@ -2154,6 +2173,19 @@ function buildAll() {
   for (const page of PAGES_CONFIG) {
     if (!fs.existsSync(page.sourceFile)) {
       console.warn(`⚠️ Source file not found: ${page.sourceFile}`);
+      continue;
+    }
+
+    // Legal translations are reviewed documents, not mechanically translated
+    // landing pages. Keep their locale-specific HTML intact on every build.
+    if (['privacy', 'terms', 'cookies'].includes(page.key)) {
+      for (const lang of SUPPORTED_LANGS) {
+        const legalPath = getTargetOutputPath(page.key, lang);
+        if (!legalPath || !fs.existsSync(legalPath)) {
+          throw new Error(`Missing reviewed legal page: ${page.key}/${lang}`);
+        }
+      }
+      console.log(`  ✓ Preserved 5 reviewed locales for [${page.key}]`);
       continue;
     }
 

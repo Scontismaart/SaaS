@@ -67,3 +67,6 @@ f3bcac5e85a1b54a2629efda2d1ae0897306b288:tests/whatsapp/test_router.py:generic-a
 f3bcac5e85a1b54a2629efda2d1ae0897306b288:tests/whatsapp/test_service.py:generic-api-key:19
 f3bcac5e85a1b54a2629efda2d1ae0897306b288:tests/whatsapp/test_templates.py:generic-api-key:14
 fb32b7276c32bf00f3c8566a8791ab74d157760b:tests/core/test_reviews_lingue.py:generic-api-key:23
+3fff8464dff75ff9da538741fbef53a0e9989c42:docs/operations/external_booking_integrations.md:generic-api-key:63
+3fff8464dff75ff9da538741fbef53a0e9989c42:docs/operations/external_booking_integrations.md:generic-api-key:147
+3fff8464dff75ff9da538741fbef53a0e9989c42:docs/operations/external_booking_integrations.md:generic-api-key:192

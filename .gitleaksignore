@@ -1,2 +1,5 @@
 # Fixture uses a deliberately non-secret GHCR image digest in a release preflight test.
 414f9c95620968672acba491784d6f469830defd:tests/unit/test_release_preflight.py:generic-api-key:203
+
+# Historical CI-only Fernet fixture; replaced by a per-run key in migrations.yml.
+7e678a5794f8d75b6d404596f36e677ad4744833:.github/workflows/migrations.yml:generic-api-key:85

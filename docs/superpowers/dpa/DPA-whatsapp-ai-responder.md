@@ -1,13 +1,13 @@
-> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Questo documento è stato redatto
-> sulla base di un audit tecnico verificato del codice sorgente (sub-responsabili
-> reali, misure di sicurezza reali, retention reale). Non sostituisce la
+> **BOZZA — NON PUBBLICARE SENZA REVIEW LEGALE.** Questo documento descrive
+> l'implementazione osservata nel codice; provider, regioni, contratti,
+> misure operative e retention effettiva vanno riconfermati al momento del lancio. Non sostituisce la
 > consulenza di un avvocato o DPO. Prima di farlo accettare a clienti reali,
 > va fatto rivedere da un professionista qualificato in materia di protezione
 > dati, in particolare sulle clausole di trasferimento extra-UE, sulla base
 > giuridica del legittimo interesse (§4.2) e sugli obblighi AI Act (§10).
 
 # Accordo sul Trattamento dei Dati (DPA)
-## Allegato ai Termini di Servizio — WhatsApp AI Responder
+## Allegato ai Termini di Servizio — Melpis
 
 **Ultimo aggiornamento:** {{LEGAL_DOCUMENT_EFFECTIVE_DATE}} — versione bozza 0.1
 **Titolare del trattamento (ai fini del presente Accordo):** il Cliente B2B
@@ -32,9 +32,10 @@ Regolamento (UE) 2016/679 ("GDPR"), tra cui in particolare:
   Titolare secondo le istruzioni documentate di quest'ultimo.
 - **Sub-responsabile**: soggetto terzo autorizzato dal Fornitore a trattare
   Dati Personali per l'esecuzione del Servizio (Allegato B).
-- **Servizio**: la piattaforma SaaS "WhatsApp AI Responder", che genera
-  risposte automatiche ai messaggi WhatsApp ricevuti dai contatti/clienti
-  finali del Titolare, tramite intelligenza artificiale.
+- **Servizio**: la piattaforma SaaS "Melpis", che assiste nella gestione di
+  conversazioni e attività collegate ai canali effettivamente attivati dal
+  Titolare. Le funzioni AI e le integrazioni opzionali sono soggette a
+  configurazione, disponibilità e consenso ove richiesto.
 
 ## 2. Oggetto e ruoli
 
@@ -133,18 +134,16 @@ previsti dal presente Accordo.
 6.3 **Trasferimenti extra-UE.** Alcuni Sub-responsabili elencati
 nell'Allegato B trattano dati al di fuori dello Spazio Economico Europeo
 (in particolare negli Stati Uniti). Tali trasferimenti avvengono sulla base
-di: Clausole Contrattuali Tipo (SCC) adottate dalla Commissione Europea,
-e/o meccanismi di adeguatezza applicabili (es. EU-U.S. Data Privacy
-Framework), come disponibili pro-tempore per ciascun fornitore. **Questa
-sezione richiede verifica legale puntuale** per confermare lo strumento di
-trasferimento effettivamente in essere con ciascun Sub-responsabile alla
-data di sottoscrizione, e per valutare l'esposizione una volta note le
-region/data-residency reali di Groq, Meta, Sentry e Supabase.
+di strumenti da verificare singolarmente con ciascun fornitore prima della
+sottoscrizione (ad esempio SCC o una decisione di adeguatezza applicabile).
+**Nessun meccanismo è qui dichiarato già perfezionato.** Occorre verificare
+regioni, data-residency, termini dei sub-responsabili e trasferimenti di
+Meta, del provider AI realmente selezionato, di Supabase e dei servizi opzionali.
 
 ## 7. Violazioni di Dati Personali (Data Breach)
 
-7.1 Il Responsabile notifica al Titolare, senza ingiustificato ritardo e
-comunque entro **48 ore** dal momento in cui ne viene a conoscenza,
+7.1 Il Responsabile notifica al Titolare senza ingiustificato ritardo,
+secondo un termine operativo da definire e validare prima della firma,
 qualsiasi violazione di Dati Personali che lo riguardi, fornendo le
 informazioni disponibili necessarie al Titolare per adempiere ai propri
 obblighi di notifica all'Autorità di controllo (art. 33 GDPR) ed eventuale
@@ -156,13 +155,16 @@ conseguenze probabili, misure adottate o proposte per porvi rimedio.
 
 ## 8. Assistenza per l'esercizio dei diritti degli interessati
 
-8.1 Il Servizio mette a disposizione del Titolare (ruolo owner, con
-autenticazione a due fattori) funzionalità self-service per:
+8.1 Il backend include endpoint riservati al titolare (ruolo owner, con
+autenticazione a due fattori) per le seguenti operazioni. L'interfaccia
+dashboard self-service e la completezza della propagazione verso tutti i
+fornitori non sono ancora verificate; fino ad allora è necessario un processo
+assistito e documentato:
 
 - **Esportazione dati** di un contatto (`GET /api/gdpr/export`);
 - **Cancellazione** dei dati dell'organizzazione (`POST /api/gdpr/delete`),
-  con effetto a cascata sulle tabelle collegate e propagazione della
-  richiesta di cancellazione ai Sub-responsabili applicabili (Allegato B);
+  con effetto sulle tabelle collegate; la cancellazione presso i fornitori
+  esterni e nei backup richiede verifica e intervento operativo;
 - **Gestione delle preferenze di consenso** dei contatti
   (`GET/PUT /api/gdpr/consent-prefs`).
 
@@ -288,13 +290,13 @@ necessario e di informarne gli interessati.
 | Fornitore | Funzione | Dati trattati | Sede / trasferimento extra-UE |
 |---|---|---|---|
 | Meta Platforms (WhatsApp Business API) | Invio/ricezione messaggi WhatsApp | Numero telefono, testo messaggio, identificativi messaggio, nome profilo, stato consegna | USA — verificare strumento di trasferimento |
-| Groq (e modelli LLM configurati) | Generazione risposte automatiche, bozze recensioni, report, Q&A documenti | Profilo attività, testo messaggio cliente, estratti di documenti (RAG), testo recensione | Ubicazione e strumento di trasferimento da verificare contrattualmente prima del go-live |
+| Provider AI effettivamente selezionato (Groq oppure OpenRouter e relativo provider di inferenza) | Generazione risposte automatiche, bozze recensioni, report, Q&A documenti | Profilo attività, testo messaggio cliente, estratti di documenti (RAG), testo recensione | Endpoint, retention, subfornitore e trasferimento da verificare per il modello scelto prima del go-live |
 | Google (Business Profile, Calendar) | Recensioni, sincronizzazione calendario | Testo/autore recensione; eventi calendario con nome/telefono/note cliente | USA — verificare strumento di trasferimento |
 | Stripe | Pagamenti, abbonamento, depositi prenotazione | Solo identificativi Stripe e importi; **nessun dato di pagamento (numero carta) transita o è conservato dal Fornitore** | USA/UE secondo configurazione Stripe |
-| Supabase | Autenticazione, hosting del database | Chiavi pubbliche di verifica token; di fatto ospita l'intero database del Servizio | Da verificare in base alla region del progetto Supabase |
+| Supabase | Autenticazione e hosting PostgreSQL/pgvector | Account e dati applicativi ospitati nel database | Il progetto Selecta SaaS risulta in eu-central-1; verificare contratti, backup e ogni ulteriore trattamento |
 | Sentry | Monitoraggio errori (attivo solo se configurato) | Tracce di errore, che possono incidentalmente includere frammenti di testo dei messaggi | USA/UE secondo configurazione |
 | Provider SMTP del Titolare/Fornitore | Notifiche email di escalation e sospensione account | Numero di telefono del contatto, identificativo conversazione (nessun testo del messaggio) | Secondo il provider SMTP configurato |
-| Airtable, Softr | Solo propagazione della richiesta di cancellazione GDPR | Solo identificativo dell'organizzazione | Da verificare |
+| Airtable, Softr (solo se collegati dal Titolare) | Integrazioni opzionali e gestione delle relative richieste di cancellazione | Dati sincronizzati/configurati dal Titolare, non solo l'identificativo dell'organizzazione | Da verificare prima dell'attivazione |
 
 *Sentry è disattivato di default e viene attivato solo tramite apposita
 configurazione del Fornitore.*

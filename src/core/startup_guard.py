@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 from src.core.cost_policy import FREE_MODELS, is_openrouter_free_model
 
@@ -129,6 +130,20 @@ def assert_production_safe() -> None:
                 "AVVIO BLOCCATO: credenziali Stripe live non autorizzate fuori produzione."
             )
         return
+
+    if os.getenv("AUTH_COOKIE_SECURE", "true").strip().lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        raise RuntimeError(
+            "AVVIO BLOCCATO: AUTH_COOKIE_SECURE deve essere true in produzione"
+        )
+    public_app_url = urlparse(os.getenv("PUBLIC_APP_URL", "").strip())
+    if public_app_url.scheme != "https" or not public_app_url.netloc:
+        raise RuntimeError(
+            "AVVIO BLOCCATO: PUBLIC_APP_URL deve usare HTTPS in produzione"
+        )
 
     demo = os.getenv("DEMO_MODE", "").strip().lower() in ("1", "true", "yes")
     if demo:

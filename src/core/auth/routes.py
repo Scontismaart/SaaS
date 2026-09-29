@@ -1,7 +1,7 @@
 """Endpoint BFF di autenticazione (/api/auth/*).
 
 Il frontend si autentica qui: il backend scambia le credenziali con Supabase
-Auth e restituisce la sessione in cookie HttpOnly+Secure+SameSite=Strict.
+Auth e restituisce la sessione in cookie HttpOnly+Secure+SameSite=Lax.
 Nessun token transita dal client (niente localStorage, niente header Bearer).
 """
 
@@ -36,9 +36,9 @@ _LOGIN_LOCKOUT_SECONDS = _LOGIN_WINDOW_SECONDS  # la finestra stessa è il locko
 # ── Google OAuth (PKCE server-side) ────────────────────────────────────
 # Il verifier viaggia SOLO in cookie HttpOnly: il browser non vede mai il
 # verifier (i token restano fuori da JS, come per il login BFF). Lo `state`
-# OAuth è gestito internamente da Supabase Auth: passarne uno custom rompe
-# il flusso (bad_oauth_state); il binding anti-CSRF è garantito da PKCE,
-# perché lo scambio del codice richiede il verifier del nostro cookie.
+# OAuth è generato e validato internamente da Supabase Auth: passarne uno
+# custom rompe il flusso (bad_oauth_state). Il callback applicativo è legato
+# al verifier PKCE custodito nel nostro cookie HttpOnly.
 # SameSite=Lax è richiesto: il callback arriva da un redirect top-level di
 # Google, che i cookie Strict non includerebbero.
 _OAUTH_VERIFIER_COOKIE = "wa_oauth_verifier"
@@ -48,6 +48,26 @@ _OAUTH_STATE_MAX_AGE = 600  # 10 minuti per completare il round-trip
 
 def _oauth_cookie_name(base: str) -> str:
     return f"__Host-{base}" if bff.cookie_secure() else base
+
+
+def _delete_oauth_cookies(response: Response) -> None:
+    for name in (
+        _oauth_cookie_name(_OAUTH_VERIFIER_COOKIE),
+        _oauth_cookie_name(_OAUTH_NEXT_COOKIE),
+    ):
+        response.delete_cookie(
+            name,
+            path="/",
+            secure=bff.cookie_secure(),
+            httponly=True,
+            samesite="lax",
+        )
+
+
+def _google_error_redirect() -> RedirectResponse:
+    response = RedirectResponse("/accedi/?errore=google", status_code=302)
+    _delete_oauth_cookies(response)
+    return response
 
 
 def _safe_next(next_path: str | None) -> str:
@@ -111,7 +131,13 @@ def _set_session_cookies(response: Response, data: dict) -> None:
 
 def _clear_session_cookies(response: Response) -> None:
     for name in (bff.access_cookie_name(), bff.refresh_cookie_name()):
-        response.delete_cookie(name, path="/")
+        response.delete_cookie(
+            name,
+            path="/",
+            secure=bff.cookie_secure(),
+            httponly=True,
+            samesite="lax",
+        )
     clear_csrf_token(response)
 
 
@@ -133,12 +159,47 @@ async def login(body: LoginRequest, request: Request, response: Response):
 @router.post("/refresh")
 async def refresh(request: Request, response: Response):
     rt = request.cookies.get(bff.refresh_cookie_name())
-    if not rt or await is_token_revoked(rt):
+    at = request.cookies.get(bff.access_cookie_name())
+    if not rt or not at or await is_token_revoked(rt) or await is_token_revoked(at):
         raise HTTPException(status_code=401, detail="Sessione scaduta")
+
+    # Verifica la firma del vecchio access token anche se è scaduto: il refresh
+    # deve ruotare la stessa identità senza aprire una nuova sessione implicita.
+    from src.core.auth.dependencies import verify_supabase_jwt
+
+    try:
+        previous_claims = await verify_supabase_jwt(at, allow_expired=True)
+    except HTTPException as exc:
+        raise HTTPException(status_code=401, detail="Sessione scaduta") from exc
+    previous_user_id = previous_claims.get("sub")
+    if not previous_user_id:
+        raise HTTPException(status_code=401, detail="Sessione scaduta")
+
     # user_key anonimo: digest del token, mai il token grezzo in memoria
     user_key = hashlib.sha256(rt.encode()).hexdigest()
     data = await bff.refresh(rt, user_key)
     await revoke_token(rt)
+    await revoke_token(at)
+
+    refreshed_user = data.get("user") if isinstance(data, dict) else None
+    new_access = data.get("access_token") if isinstance(data, dict) else None
+    new_refresh = data.get("refresh_token") if isinstance(data, dict) else None
+    if (
+        not isinstance(refreshed_user, dict)
+        or str(refreshed_user.get("id") or "") != str(previous_user_id)
+        or not new_access
+        or not new_refresh
+    ):
+        # La rotazione remota è già avvenuta: non consegnare token incoerenti.
+        # Anche il vecchio access token viene invalidato: la sessione rifiutata
+        # non deve rimanere utilizzabile fino alla sua scadenza JWT.
+        if new_access:
+            await revoke_token(str(new_access))
+            await bff.logout(str(new_access), scope="local")
+        if new_refresh:
+            await revoke_token(str(new_refresh))
+        raise HTTPException(status_code=401, detail="Sessione non valida")
+
     _set_session_cookies(response, data)
     csrf_token = issue_csrf_token(response)
     return {"ok": True, "csrf_token": csrf_token}
@@ -191,22 +252,35 @@ async def google_start(next: str | None = None):
 
 @router.get("/google/callback")
 async def google_callback(request: Request):
-    """Callback Google→Supabase: scambia il codice PKCE con i token di
-    sessione e imposta gli stessi cookie del login BFF. Lo `state` che torna
-    indietro è l'uuid interno di Supabase (opaco): l'integrità del flusso è
-    garantita da PKCE — senza il verifier nel cookie HttpOnly lo scambio
-    fallisce. Qualsiasi anomalia → /accedi/?errore=google (fail-closed)."""
-    error_redirect = RedirectResponse("/accedi/?errore=google", status_code=302)
+    """Callback Supabase PKCE: scambia il code monouso col verifier HttpOnly.
 
+    Supabase valida il provider state prima di emettere il code; il callback
+    applicativo può ricevere il solo code. Anomalie terminano a
+    /accedi/?errore=google senza sessione (fail-closed).
+    """
     # Google/Supabase possono rimandare un errore OAuth (access denied ecc.)
-    if request.query_params.get("error"):
-        return error_redirect
+    if request.query_params.get("error") or request.query_params.get("error_code"):
+        return _google_error_redirect()
 
-    auth_code = request.query_params.get("code")
+    code_values = request.query_params.getlist("code")
+    state_values = request.query_params.getlist("state")
+    # Supabase valida il proprio state prima di emettere il code; il callback
+    # PKCE può quindi essere code-only. Non accettiamo parametri ambigui o
+    # valori malformati e non aggiungiamo uno state custom al redirect OAuth.
+    if len(code_values) != 1 or len(state_values) > 1:
+        return _google_error_redirect()
+    if state_values and (
+        not state_values[0]
+        or len(state_values[0]) > 512
+        or any(ord(char) < 32 or ord(char) == 127 for char in state_values[0])
+    ):
+        return _google_error_redirect()
+
+    auth_code = code_values[0]
     cookie_verifier = request.cookies.get(_oauth_cookie_name(_OAUTH_VERIFIER_COOKIE))
     cookie_next = _safe_next(request.cookies.get(_oauth_cookie_name(_OAUTH_NEXT_COOKIE)))
     if not auth_code or not cookie_verifier:
-        return error_redirect
+        return _google_error_redirect()
 
     try:
         data = await bff.exchange_pkce(auth_code, cookie_verifier)
@@ -228,9 +302,11 @@ async def google_callback(request: Request):
                     TRIAL_DAYS,
                 )
     except HTTPException:
-        return error_redirect
+        return _google_error_redirect()
     except RuntimeError:
-        return error_redirect
+        return _google_error_redirect()
+    except Exception:
+        return _google_error_redirect()
 
     target_url = cookie_next
     redirect = RedirectResponse(target_url, status_code=302)
@@ -238,11 +314,7 @@ async def google_callback(request: Request):
     issue_csrf_token(redirect)
 
     # I cookie temporanei OAuth vanno consumati: non riutilizzabili.
-    for name in (
-        _oauth_cookie_name(_OAUTH_VERIFIER_COOKIE),
-        _oauth_cookie_name(_OAUTH_NEXT_COOKIE),
-    ):
-        redirect.delete_cookie(name, path="/")
+    _delete_oauth_cookies(redirect)
 
     return redirect
 
@@ -253,7 +325,7 @@ async def logout(request: Request, response: Response):
     rt = request.cookies.get(bff.refresh_cookie_name())
     if at:
         await revoke_token(at)
-        await bff.logout(at)
+        await bff.logout(at, scope="local")
     if rt:
         await revoke_token(rt)
     _clear_session_cookies(response)

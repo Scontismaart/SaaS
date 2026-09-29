@@ -5941,6 +5941,14 @@ notifBell?.addEventListener("click", () => {
    AVVIO
    ============================================================ */
 
+// Una pagina /app/ ripristinata dalla back-forward cache potrebbe contenere
+// DOM autenticato precedente al logout. Ricarica per riverificare la sessione.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && window.location.pathname.startsWith("/app/")) {
+    window.location.reload();
+  }
+});
+
 (async function avvia() {
   const pendingInvite = new URLSearchParams(window.location.hash.slice(1)).get("team-invite")
     || sessionStorage.getItem("melpis_pending_team_invite");

@@ -46,7 +46,15 @@ def issue_csrf_token(response: Response) -> str:
 
 
 def clear_csrf_token(response: Response) -> None:
-    response.delete_cookie(csrf_cookie_name(), path="/")
+    from src.core.auth import bff
+
+    response.delete_cookie(
+        csrf_cookie_name(),
+        path="/",
+        secure=bff.cookie_secure(),
+        httponly=False,
+        samesite="strict",
+    )
 
 
 def _allowed_origins() -> set[str]:

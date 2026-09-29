@@ -97,6 +97,16 @@ async def test_token_scaduto_valido_richiede_refresh(patch_jwks, alg, key_factor
     assert exc.value.status_code == 401
 
 
+async def test_token_scaduto_valido_conserva_l_identita_per_refresh(patch_jwks):
+    key = _ec_key()
+    await patch_jwks([_make_jwk(key, "ES256")])
+    payload = await deps.verify_supabase_jwt(
+        _make_token(key, "ES256", sub="user-refresh", exp_offset=-60),
+        allow_expired=True,
+    )
+    assert payload["sub"] == "user-refresh"
+
+
 async def test_token_scaduto_con_issuer_estraneo_resta_rifiutato(patch_jwks):
     key = _ec_key()
     await patch_jwks([_make_jwk(key, "ES256")])

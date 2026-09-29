@@ -15,7 +15,17 @@
 	}
 	log {
 		output stdout
-		format json
+		format filter {
+			request>uri query {
+				replace code [redacted]
+				replace state [redacted]
+				replace error_description [redacted]
+				replace access_token [redacted]
+				replace refresh_token [redacted]
+				replace id_token [redacted]
+				replace code_verifier [redacted]
+			}
+		}
 	}
 }
 

@@ -7,12 +7,12 @@ mai dal JavaScript del browser.
 ```
 Browser                 Backend (BFF)                Supabase Auth        Google
    │  GET /api/auth/google/start
-   │───────────────────────►│  genera verifier+state      │                 │
+   │───────────────────────►│  genera verifier PKCE       │                 │
    │  ◄── 302 authorize URL ┘                             │                 │
    │  GET /auth/v1/authorize?provider=google …            │                 │
    │─────────────────────────────────────────────────────►│  dialog OAuth   │
    │◄──────────────────────────────────────────────────────────────────────┤
-   │  GET /api/auth/google/callback?code=…&state=…                          │
+   │  GET /api/auth/google/callback?code=… (state già validato da Supabase)  │
    │───────────────────────►│  scambia code↔token (PKCE) │                  │
    │  ◄── 302 /app/ + cookie HttpOnly sessione ────────────│                  │
 ```

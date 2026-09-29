@@ -2,7 +2,7 @@
 
 Il frontend NON tocca mai i token: invia email+password a /api/auth/login, il
 backend scambia le credenziali con Supabase Auth via REST e salva la sessione
-in cookie HttpOnly+Secure+SameSite=Strict. I token restano inaccessibili a JS
+in cookie HttpOnly+Secure+SameSite=Lax. I token restano inaccessibili a JS
 (nessun localStorage), eliminando la superficie XSS sui token.
 
 Conforme al design in docs/CHECKLIST-PRE-LANCIO.md (sostituzione auth
@@ -164,13 +164,13 @@ async def refresh(refresh_token: str, user_key: str) -> dict:
                 del _refresh_locks[user_key]
 
 
-async def logout(access_token: str) -> None:
-    """Revoca della sessione su Supabase. Best-effort: se il token è già
-    scaduto/revocato la chiamata fallisce ma il logout locale è comunque ok."""
+async def logout(access_token: str, *, scope: str = "local") -> None:
+    """Revoca la sessione corrente su Supabase (non gli altri dispositivi)."""
     client = await _client()
     try:
         await client.post(
             f"{_supabase_url()}/auth/v1/logout",
+            params={"scope": scope},
             headers={"apikey": _anon_key(), "Authorization": f"Bearer {access_token}"},
         )
     except httpx.HTTPError:

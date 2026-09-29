@@ -9,6 +9,8 @@ from src.core.startup_guard import STRIPE_PRICE_ENV_NAMES, assert_production_saf
 
 @pytest.fixture(autouse=True)
 def sandbox_production_baseline(monkeypatch):
+    monkeypatch.setenv("AUTH_COOKIE_SECURE", "true")
+    monkeypatch.setenv("PUBLIC_APP_URL", "https://app.example.test")
     monkeypatch.setenv("LAUNCH_PROFILE", "sandbox")
     monkeypatch.setenv("SANDBOX_ONLY", "true")
     monkeypatch.setenv("LLM_COST_POLICY", "free_only")
@@ -66,6 +68,21 @@ def test_startup_ok_in_dev(monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "1")
     monkeypatch.delenv("ENCRYPTION_KEY", raising=False)
     assert_production_safe()
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "message"),
+    (
+        ("AUTH_COOKIE_SECURE", "false", "AUTH_COOKIE_SECURE"),
+        ("PUBLIC_APP_URL", "http://app.example.test", "PUBLIC_APP_URL"),
+    ),
+)
+def test_startup_bloccato_cookie_o_url_non_https(monkeypatch, name, value, message):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    monkeypatch.setenv(name, value)
+    with pytest.raises(RuntimeError, match=message):
+        assert_production_safe()
 
 
 def test_startup_bloccato_senza_encryption_key(monkeypatch):

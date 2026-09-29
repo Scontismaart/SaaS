@@ -4,6 +4,11 @@ import httpx
 import pytest
 
 from src.core.documenti.rag_context import recupera_contesto_documenti
+from src.core.onboarding import save_profile
+from src.core.receptionist.conversation_orchestrator import ConversationOrchestrator
+from src.core.receptionist.models import OrchestrationInput
+from src.core.guardrails.intent_classifier import IntentResult
+from src.models.schemas import OnboardingProfileInput, RispostaOutput
 from src.agents.responder_agent import crea_responder_agent
 
 API_KEY = "test-api-key-12345"
@@ -127,3 +132,216 @@ async def test_bidirezionalita_orari_conoscenza_e_configurazione_ai(async_client
     assert get_res.status_code == 200
     prof = get_res.json()["profilo"]
     assert prof["orari"] == "Tutti i giorni: 08:00 - 22:00"
+
+
+async def test_tone_only_profile_save_invalidates_only_organization_faq_cache(
+    async_client, repo, sample_org, other_org
+):
+    original = {
+        "verticale": "centro_estetico",
+        "nome_attivita": "Oasi del Benessere SPA",
+        "orari": "",
+        "descrizione": "Centro estetico e SPA.",
+        "tono": "caldo e informale",
+        "servizi": ["Massaggio Relax"],
+        "regole_escalation": [],
+        "lingue_supportate": ["it"],
+        "lingua_default": "it",
+    }
+    await save_profile(
+        str(sample_org["id"]), OnboardingProfileInput(**original), repo
+    )
+    embedding = [0.1] * 384
+    await repo.doc_repo.faq_cache_store(
+        str(sample_org["id"]), "Quanto costa il massaggio?", "Risposta precedente A",
+        embedding,
+    )
+    await repo.doc_repo.faq_cache_store(
+        str(other_org["id"]), "Quanto costa il massaggio?", "Risposta precedente B",
+        embedding,
+    )
+    payload = {**original, "tono": "formale e istituzionale"}
+
+    response = await async_client.post(
+        "/api/onboarding/profilo", json=payload,
+        headers=_headers(sample_org["id"]),
+    )
+
+    assert response.status_code == 200
+    assert await repo.doc_repo.faq_cache_lookup(str(sample_org["id"]), embedding, 0.08) is None
+    still_cached = await repo.doc_repo.faq_cache_lookup(str(other_org["id"]), embedding, 0.08)
+    assert still_cached["answer_text"] == "Risposta precedente B"
+
+
+async def test_profile_save_reports_org_scoped_faq_invalidation_failure(
+    async_client, repo, sample_org, other_org, monkeypatch
+):
+    attempts = []
+    invalidate = repo.faq_cache_invalidate
+
+    async def fail_only_sample_org(organization_id):
+        attempts.append(str(organization_id))
+        if str(organization_id) == str(sample_org["id"]):
+            raise RuntimeError("private cache backend details")
+        return await invalidate(organization_id)
+
+    monkeypatch.setattr(repo, "faq_cache_invalidate", fail_only_sample_org)
+    payload = {
+        "verticale": "centro_estetico",
+        "nome_attivita": "Profilo salvato prima dell'errore",
+        "orari": "",
+        "tono": "calmo e chiaro",
+        "servizi": [],
+        "regole_escalation": [],
+        "lingue_supportate": ["it"],
+        "lingua_default": "it",
+    }
+
+    failed = await async_client.post(
+        "/api/onboarding/profilo", json=payload,
+        headers=_headers(sample_org["id"]),
+    )
+    assert failed.status_code == 503
+    assert failed.json()["detail"] == (
+        "Profilo salvato, ma non è stato possibile aggiornare la cache FAQ. Riprova."
+    )
+    assert "private cache backend details" not in failed.text
+    persisted = await repo.get_onboarding_profile(sample_org["id"])
+    assert persisted["nome_attivita"] == payload["nome_attivita"]
+
+    other_payload = {**payload, "nome_attivita": "Altro tenant"}
+    succeeded = await async_client.post(
+        "/api/onboarding/profilo", json=other_payload,
+        headers=_headers(other_org["id"]),
+    )
+    assert succeeded.status_code == 200
+    assert attempts == [str(sample_org["id"]), str(other_org["id"])]
+
+
+async def test_same_question_uses_live_profile_and_knowledge_context_after_config_changes(
+    async_client, repo, sample_org, monkeypatch
+):
+    """Build the real CrewAI prompts from DB profile/RAG data with runtime mocked."""
+    question = "Quanto costa il Massaggio Relax?"
+    document = await repo.create_document(
+        str(sample_org["id"]), "listino.txt", tipo="upload", fonte="listino.txt"
+    )
+    await repo.add_chunk(
+        str(sample_org["id"]), str(document["id"]), 0,
+        "Massaggio Relax: 25 euro, durata 50 minuti.", [0.1] * 384,
+        {"fonte": "listino.txt"},
+    )
+
+    payload = {
+        "verticale": "centro_estetico",
+        "nome_attivita": "Oasi del Benessere SPA",
+        "orari": "Mar-Sab: 10:00 - 20:00",
+        "descrizione": "Centro estetico e SPA.",
+        "tono": "caldo e informale",
+        "servizi": ["Massaggio Relax"],
+        "regole_escalation": [],
+        "lingue_supportate": ["it"],
+        "lingua_default": "it",
+    }
+    observed = []
+
+    async def mock_provider_boundary(message, profile, **kwargs):
+        from src.agents.responder_agent import crea_responder_agent, crea_responder_task
+
+        agent = crea_responder_agent(
+            profile,
+            model="mock-runtime",
+            variante=kwargs.get("variante", "control"),
+        )
+        task = crea_responder_task(
+            agent,
+            message,
+            kwargs.get("cronologia"),
+            kwargs.get("contesto_documenti", ""),
+        )
+        observed.append({
+            "role": agent.role,
+            "backstory": agent.backstory,
+            "task": task.description,
+        })
+        return RispostaOutput(
+            risposta="Risposta generata dal runtime mock.",
+            richiede_umano=False, motivo="", categoria="info",
+        )
+
+    monkeypatch.setattr(
+        "src.core.receptionist.conversation_orchestrator.genera_risposta_async",
+        mock_provider_boundary,
+    )
+    monkeypatch.setattr("src.agents.responder_agent.crea_llm", lambda **_kwargs: "mock-runtime")
+    monkeypatch.setattr(
+        "src.core.receptionist.conversation_orchestrator.classifica_intent",
+        lambda _text: _async_value(IntentResult(intent="faq", confidence=1.0, source="test")),
+    )
+    monkeypatch.setattr(
+        "src.core.receptionist.conversation_orchestrator.faq_cache.cache_enabled",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "src.core.documenti.rag_context.vettorizza",
+        lambda _texts, tipo="query": [[0.1] * 384],
+    )
+    monkeypatch.setattr(
+        "src.integrations.airtable.wiring.select_airtable_tools",
+        lambda **_kwargs: _async_value([]),
+    )
+    orchestrator = ConversationOrchestrator(org_repo=repo, doc_repo=repo)
+
+    async def ask():
+        await orchestrator.orchestrate(OrchestrationInput(
+            organization_id=sample_org["id"], text=question,
+            record_billing_usage=False,
+        ))
+
+    profile_response = await async_client.post(
+        "/api/onboarding/profilo", json=payload,
+        headers=_headers(sample_org["id"]),
+    )
+    assert profile_response.status_code == 200
+    await ask()
+    payload["tono"] = "formale e istituzionale"
+    payload["nome_attivita"] = "Oasi SPA Milano"
+    profile_response = await async_client.post(
+        "/api/onboarding/profilo", json=payload,
+        headers=_headers(sample_org["id"]),
+    )
+    assert profile_response.status_code == 200
+    await ask()
+    removed = await async_client.delete(
+        f"/api/documenti/{document['id']}",
+        headers=_headers(sample_org["id"]),
+    )
+    assert removed.status_code == 200
+    updated = await repo.create_document(
+        str(sample_org["id"]), "listino-aggiornato.txt", tipo="upload", fonte="listino.txt"
+    )
+    await repo.add_chunk(
+        str(sample_org["id"]), str(updated["id"]), 0,
+        "Massaggio Relax: 40 euro, durata 50 minuti.", [0.1] * 384,
+        {"fonte": "listino.txt"},
+    )
+    await ask()
+
+    assert len(observed) == 3
+    first, second, third = observed
+    assert all(f"<customer_input>\n{question}\n</customer_input>" in call["task"] for call in observed)
+    old_fact = "Massaggio Relax: 25 euro, durata 50 minuti."
+    new_fact = "Massaggio Relax: 40 euro, durata 50 minuti."
+    assert old_fact in first["task"] and new_fact not in first["task"]
+    assert second["task"] == first["task"]
+    assert new_fact in third["task"] and old_fact not in third["task"]
+    assert first["role"] == "Assistente clienti di Oasi del Benessere SPA"
+    assert second["role"] == "Assistente clienti di Oasi SPA Milano"
+    assert first["backstory"] != second["backstory"]
+    assert "caldo e informale" in first["backstory"]
+    assert "formale e istituzionale" in second["backstory"]
+    assert second["backstory"] == third["backstory"]
+
+
+async def _async_value(value):
+    return value

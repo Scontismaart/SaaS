@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from src.core.cost_policy import DEFAULT_FREE_MODEL
+from src.core.cost_policy import DEFAULT_FREE_MODEL, is_openrouter_free_model
 from dataclasses import dataclass
 from typing import Literal
 
@@ -182,6 +182,10 @@ def stima_costo_eur(model, prompt_tokens, completion_tokens):
     non e' in tabella o i token mancano."""
     if prompt_tokens is None or completion_tokens is None:
         return None
+    # Client creation separately verifies this model's current zero pricing
+    # in the official catalog before any request can be sent.
+    if is_openrouter_free_model(model or ""):
+        return 0.0
     nome = (model or "").split("/")[-1].strip().lower()
     prezzi = _TOKEN_PRICES_EUR_PER_1M.get(nome)
     if not prezzi:

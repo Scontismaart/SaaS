@@ -9,6 +9,7 @@ from src.core.auth.dependencies import (
     get_organization_context,
     require_ruolo,
     get_repo,
+    get_optional_organization_context,
 )
 
 
@@ -20,6 +21,11 @@ class TestGetToken:
     async def test_bearer_token_extracted(self):
         result = await get_token(request=_fake_request(), authorization="Bearer my.jwt.token", x_api_key=None)
         assert result == "my.jwt.token"
+
+    async def test_invalid_authorization_scheme_is_rejected(self):
+        with pytest.raises(HTTPException) as exc:
+            await get_token(request=_fake_request(), authorization="Basic credentials", x_api_key=None)
+        assert exc.value.status_code == 401
 
     async def test_api_key_prefixed(self):
         result = await get_token(request=_fake_request(), authorization=None, x_api_key="sk-test-123")
@@ -60,6 +66,39 @@ class TestGetCurrentUser:
         monkeypatch.setenv("API_KEY_SERVICE", "sk-test-key")
         with pytest.raises(HTTPException) as exc:
             await get_current_user(request=_fake_request(), token="apikey:sk-test-key")
+        assert exc.value.status_code == 403
+
+
+class TestGetOptionalOrganizationContext:
+    async def test_no_credentials_is_anonymous_only_when_demo_is_enabled(self, monkeypatch):
+        monkeypatch.setattr("src.core.auth.dependencies.is_demo_mode", lambda: True)
+        user = await get_optional_organization_context(_fake_request())
+        assert user["source"] == "anonymous"
+
+    async def test_no_credentials_in_production_context_raises_401(self, monkeypatch):
+        monkeypatch.setattr("src.core.auth.dependencies.is_demo_mode", lambda: False)
+        with pytest.raises(HTTPException) as exc:
+            await get_optional_organization_context(_fake_request())
+        assert exc.value.status_code == 401
+
+    async def test_refresh_cookie_without_access_cookie_is_not_anonymous(self, monkeypatch):
+        import src.core.auth.bff as bff
+        monkeypatch.setattr("src.core.auth.dependencies.is_demo_mode", lambda: True)
+        req = _fake_request(cookies={bff.refresh_cookie_name(): "refresh-token"})
+        with pytest.raises(HTTPException) as exc:
+            await get_optional_organization_context(req)
+        assert exc.value.status_code == 401
+
+    async def test_invalid_bearer_propagates_authentication_error(self, monkeypatch):
+        from unittest.mock import patch
+        req = _fake_request()
+        req.headers["Authorization"] = "Bearer invalid"
+        monkeypatch.setattr("src.core.auth.dependencies.get_token", AsyncMock(return_value="invalid"))
+        with patch("src.core.auth.dependencies.get_current_user", new=AsyncMock(
+            side_effect=HTTPException(status_code=403, detail="invalid token")
+        )):
+            with pytest.raises(HTTPException) as exc:
+                await get_optional_organization_context(req)
         assert exc.value.status_code == 403
 
     async def test_invalid_api_key_raises_403(self, monkeypatch):

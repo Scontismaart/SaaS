@@ -7,15 +7,18 @@ Gestisce:
 """
 
 import logging
-import uuid
 import re
+import uuid
 from typing import Literal
-from pydantic import BaseModel, field_validator
+
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, field_validator
 
 from src.api.dependencies import get_pool, require_ruolo
 from src.api.routes.common import audit_event
+from src.core.auth.dependencies import get_current_user, get_token
 from src.core.billing.plans import PLANS
+from src.core.team_invitations import accept_invitation, create_invitation
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,10 @@ class AddTeamMemberInput(BaseModel):
 
 class UpdateRoleInput(BaseModel):
     ruolo: Literal["manager", "staff"]
+
+
+class AcceptTeamInviteInput(BaseModel):
+    token: str
 
 
 class TeamMemberItem(BaseModel):
@@ -114,109 +121,139 @@ async def list_team_members(
     )
 
 
-@router.post("/members", response_model=TeamMemberItem)
+@router.post("/members")
 async def add_team_member(
     body: AddTeamMemberInput,
     request: Request,
     user: dict = Depends(require_ruolo("owner", "manager")),
 ):
-    """Aggiunge un collaboratore all'organizzazione verificando il limite del piano."""
+    """Compatibilità API: crea solo un invito pendente, mai una membership."""
     org_id = user["organization_id"]
     pool = get_pool(request)
 
-    # I manager possono invitare solo staff
+    # I manager possono invitare solo staff.
     if user["ruolo"] == "manager" and body.ruolo != "staff":
         raise HTTPException(
             status_code=403,
             detail="I manager possono aggiungere solo collaboratori con ruolo 'staff'.",
         )
 
-    async with pool.acquire() as conn, conn.transaction():
-        # 1. Verifica limiti piano
-        org_row = await conn.fetchrow(
-            "SELECT plan, users_limit, subscription_status FROM organizations WHERE id = $1::uuid FOR UPDATE",
-            uuid.UUID(org_id),
-        )
-        if not org_row:
-            raise HTTPException(404, "Organizzazione non trovata")
+    return await create_invitation(pool, org_id=org_id, actor=user, email=body.email, role=body.ruolo)
 
-        plan = org_row["plan"]
-        effective_plan = plan or "pro"
-        plan_def = PLANS.get(effective_plan)
-        if org_row["users_limit"] is not None:
-            users_limit = org_row["users_limit"]
-        elif plan_def:
-            users_limit = plan_def.users_limit
-        else:
-            users_limit = 3
 
-        # Se il piano ha un limite numerico impostato, verifichiamo la capienza
-        if users_limit is not None:
-            current_count = await conn.fetchval(
-                "SELECT count(*) FROM organization_memberships WHERE organization_id = $1::uuid",
-                uuid.UUID(org_id),
-            )
-            if current_count >= users_limit:
-                piano_nome = "Essenziale" if effective_plan == "starter" else ("Crescita (in prova)" if not plan else "Crescita")
-                upgrade_suggerito = "Crescita (fino a 3 utenti)" if effective_plan == "starter" else "Scala (utenti illimitati)"
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Limite utenti raggiunto per il piano {piano_nome} (massimo {users_limit} utente/i). "
-                           f"Effettua l'upgrade al piano {upgrade_suggerito} per aggiungere altri collaboratori.",
-                )
-
-        # 2. Ricerca utente in user_profiles
-        target_user = await conn.fetchrow(
-            "SELECT id, nome, email FROM user_profiles WHERE LOWER(email) = LOWER($1)",
-            body.email.strip(),
-        )
-        if not target_user:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Nessun utente registrato trovato con l'email '{body.email}'. "
-                       "Il collaboratore deve prima completare la registrazione su Melpis.",
-            )
-
-        target_user_id = target_user["id"]
-
-        # 3. Verifica se già membro
-        existing_membership = await conn.fetchrow(
-            "SELECT ruolo FROM organization_memberships WHERE organization_id = $1::uuid AND user_id = $2::uuid",
-            uuid.UUID(org_id), target_user_id,
-        )
-        if existing_membership:
-            raise HTTPException(
-                status_code=409,
-                detail=f"L'utente '{body.email}' fa già parte di questa organizzazione con ruolo '{existing_membership['ruolo']}'.",
-            )
-
-        # 4. Inserimento membership
-        new_membership = await conn.fetchrow("""
-            INSERT INTO organization_memberships (organization_id, user_id, ruolo, joined_at)
-            VALUES ($1::uuid, $2::uuid, $3, NOW())
-            RETURNING id, organization_id, user_id, ruolo, joined_at
-        """, uuid.UUID(org_id), target_user_id, body.ruolo)
-
-    await audit_event(
-        request,
-        user,
-        "team.membro_aggiunto",
-        target_table="organization_memberships",
-        target_id=str(new_membership["id"]),
-        details={
-            "user_id": str(target_user_id),
-            "email": target_user["email"],
-            "ruolo": body.ruolo,
-        },
+@router.post("/invitations/accept")
+async def accept_team_invitation(
+    body: AcceptTeamInviteInput,
+    request: Request,
+    user: dict = Depends(get_current_user),
+    access_token: str | None = Depends(get_token),
+):
+    if user.get("source") != "jwt" or not access_token:
+        raise HTTPException(401, "Accedi per accettare l'invito")
+    return await accept_invitation(
+        get_pool(request), raw_token=body.token,
+        auth_user_id=user["auth_user_id"], access_token=access_token,
     )
 
-    return TeamMemberItem(
-        id=str(new_membership["id"]),
-        user_id=str(target_user_id),
-        nome=target_user["nome"] or target_user["email"].split("@")[0],
-        email=target_user["email"],
-        ruolo=new_membership["ruolo"],
-        joined_at=new_membership["joined_at"].isoformat(),
+
+@router.get("/organizations")
+async def list_my_organizations(
+    request: Request,
+    user: dict = Depends(get_current_user),
+):
+    """Resolve only memberships belonging to the verified JWT subject."""
+    if user.get("source") != "jwt":
+        raise HTTPException(401, "Sessione utente richiesta")
+    async with get_pool(request).acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT om.organization_id, o.name, om.ruolo
+               FROM organization_memberships om
+               JOIN user_profiles up ON up.id = om.user_id
+               JOIN organizations o ON o.id = om.organization_id
+               WHERE up.auth_user_id = $1::uuid AND om.joined_at IS NOT NULL
+               ORDER BY om.joined_at DESC, om.organization_id""",
+            uuid.UUID(user["auth_user_id"]),
+        )
+    return {"organizations": [
+        {"id": str(row["organization_id"]), "name": row["name"], "ruolo": row["ruolo"]}
+        for row in rows
+    ]}
+
+
+@router.get("/invitations")
+async def list_team_invitations(
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    async with get_pool(request).acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT id, email, ruolo, created_at, expires_at
+               FROM team_invitations WHERE organization_id = $1::uuid
+                 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()
+               ORDER BY created_at DESC LIMIT 100""",
+            uuid.UUID(user["organization_id"]),
+        )
+    return {"invitations": [
+        {"id": str(row["id"]), "email": row["email"], "ruolo": row["ruolo"],
+         "created_at": row["created_at"].isoformat(), "expires_at": row["expires_at"].isoformat()}
+        for row in rows
+    ]}
+
+
+@router.delete("/invitations/{invitation_id}")
+async def revoke_team_invitation(
+    invitation_id: uuid.UUID,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    org_id = uuid.UUID(user["organization_id"])
+    async with get_pool(request).acquire() as conn, conn.transaction():
+        await conn.execute("SELECT id FROM organizations WHERE id = $1::uuid FOR UPDATE", org_id)
+        actor = await conn.fetchrow(
+            """SELECT ruolo FROM organization_memberships WHERE organization_id = $1::uuid
+               AND user_id = $2::uuid AND joined_at IS NOT NULL FOR UPDATE""",
+            org_id, uuid.UUID(user["user_id"]),
+        )
+        if not actor or actor["ruolo"] not in {"owner", "manager"}:
+            raise HTTPException(403, "Permesso Team non disponibile")
+        row = await conn.fetchrow(
+            """UPDATE team_invitations SET revoked_at = NOW()
+                WHERE id = $1::uuid AND organization_id = $2::uuid
+                  AND consumed_at IS NULL AND revoked_at IS NULL
+                  AND ($3 = 'owner' OR ruolo = 'staff')
+                RETURNING id""",
+            invitation_id, org_id, actor["ruolo"],
+        )
+        if row:
+            await conn.execute(
+                """INSERT INTO audit_log
+                   (organization_id, user_id, auth_user_id, action, target_table, target_id)
+                   VALUES ($1::uuid, $2::uuid, $3, 'team.invito_revocato', 'team_invitations', $4::uuid)""",
+                org_id, uuid.UUID(user["user_id"]), str(user["auth_user_id"]), invitation_id,
+            )
+    return {"detail": "Invito revocato"}
+
+
+@router.post("/invitations/{invitation_id}/resend")
+async def resend_team_invitation(
+    invitation_id: uuid.UUID,
+    request: Request,
+    user: dict = Depends(require_ruolo("owner", "manager")),
+):
+    org_id = user["organization_id"]
+    async with get_pool(request).acquire() as conn:
+        row = await conn.fetchrow(
+            """SELECT email, ruolo FROM team_invitations
+               WHERE id = $1::uuid AND organization_id = $2::uuid
+                 AND consumed_at IS NULL AND revoked_at IS NULL""",
+            invitation_id, uuid.UUID(org_id),
+        )
+    if not row:
+        raise HTTPException(404, "Invito non trovato")
+    return await create_invitation(
+        get_pool(request), org_id=org_id, actor=user,
+        email=row["email"], role=row["ruolo"],
+        expected_invitation_id=invitation_id,
     )
 
 

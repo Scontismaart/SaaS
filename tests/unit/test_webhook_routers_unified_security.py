@@ -185,3 +185,23 @@ def test_instagram_router_hmac_and_replay_security(test_config):
         },
     )
     assert resp_replay.status_code == 403
+
+
+@pytest.mark.parametrize("channel", ["whatsapp", "instagram"])
+@pytest.mark.parametrize("secret", ["", "placeholder_meta_app_secret"])
+def test_webhook_rejects_unconfigured_app_secret(channel, secret, test_config, monkeypatch):
+    monkeypatch.delenv("META_APP_SECRET", raising=False)
+    test_config.app_secret = secret
+    app = FastAPI()
+    if channel == "whatsapp":
+        app.include_router(create_whatsapp_router(test_config, repo=MagicMock()))
+        body = b'{"object":"whatsapp_business_account","entry":[]}'
+    else:
+        app.include_router(create_instagram_router(test_config, wrepo=MagicMock(), igrepo=MagicMock()))
+        body = b'{"object":"instagram","entry":[]}'
+    response = TestClient(app).post(
+        f"/webhooks/{channel}",
+        content=body,
+        headers={"X-Hub-Signature-256": _sign(body, secret or "any-secret")},
+    )
+    assert response.status_code == 403

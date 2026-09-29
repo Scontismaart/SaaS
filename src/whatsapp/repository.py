@@ -68,6 +68,9 @@ class Repository(TenantScopedRepository):
     async def record_processing_failure(self, message_id, organization_id, handling_type):
         return await self._msg_repo.record_processing_failure(message_id, organization_id, handling_type)
 
+    async def purge_simulation_requests(self, retention_days: int = 30) -> int:
+        return await self._msg_repo.purge_simulation_requests(retention_days)
+
     def __getattr__(self, name: str):
         if name in (
             "_org_repo", "_contact_repo", "_conv_repo", "_msg_repo",

@@ -25,6 +25,50 @@ async def test_record_consent_opt_out_sets_contact_status(repo, contact, org_id)
     await repo.record_consent_event(c["id"], "opt_out", "keyword_match", organization_id=org_id)
     status = await repo.get_contact_consent(c["id"], org_id)
     assert status == "withdrawn"
+    prefs = await repo.get_contact_prefs(org_id, "391234567890")
+    assert prefs["marketing_opt_out"] is True
+    async with repo.pool.acquire() as conn:
+        audit_count = await conn.fetchval(
+            "SELECT count(*) FROM audit_log WHERE organization_id = $1 AND target_id = $2",
+            org_id, c["id"],
+        )
+    assert audit_count == 1
+
+
+@pytest.mark.asyncio
+async def test_duplicate_stop_message_has_one_event_and_audit(repo, contact, org_id):
+    c = await contact()
+    message_id = uuid.uuid4()
+    async with repo.pool.acquire() as conn:
+        conversation_id = uuid.uuid4()
+        await conn.execute(
+            "INSERT INTO conversations(id, organization_id, contact_id) VALUES ($1, $2, $3)",
+            conversation_id, org_id, c["id"],
+        )
+        await conn.execute(
+            "INSERT INTO messages(id, organization_id, conversation_id, direction, "
+            "message_type, content, status) "
+            "VALUES ($1, $2, $3, 'inbound', 'text', '{}', 'received_pending_ai')",
+            message_id, org_id, conversation_id,
+        )
+    first = await repo.record_consent_event(
+        c["id"], "opt_out", "keyword_match",
+        triggering_message_id=message_id, organization_id=org_id,
+    )
+    second = await repo.record_consent_event(
+        c["id"], "opt_out", "keyword_match",
+        triggering_message_id=message_id, organization_id=org_id,
+    )
+    assert first["id"] == second["id"]
+    async with repo.pool.acquire() as conn:
+        assert await conn.fetchval(
+            "SELECT count(*) FROM contact_consent_log WHERE triggering_message_id = $1",
+            message_id,
+        ) == 1
+        assert await conn.fetchval(
+            "SELECT count(*) FROM audit_log WHERE organization_id = $1 AND target_id = $2",
+            org_id, c["id"],
+        ) == 1
 
 
 @pytest.mark.asyncio

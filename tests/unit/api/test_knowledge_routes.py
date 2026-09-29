@@ -169,6 +169,28 @@ def test_carica_file_documento_too_large_413(client):
     app.dependency_overrides.pop(get_organization_context, None)
 
 
+@pytest.mark.asyncio
+async def test_carica_file_documento_caps_read_before_size_check():
+    from src.api.routes.knowledge import carica_file_documento
+
+    mock_repo = AsyncMock()
+    mock_file = MagicMock()
+    mock_file.filename = "huge.txt"
+    mock_file.read = AsyncMock(return_value=b"X" * (20 * 1024 * 1024 + 1))
+    mock_request = MagicMock()
+    user = {"organization_id": str(uuid.uuid4())}
+
+    with patch("src.api.routes.knowledge.get_repo", return_value=mock_repo), \
+         patch("src.api.routes.knowledge.check_feature_blocked_by_plan", new_callable=AsyncMock, return_value=None):
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc:
+            await carica_file_documento(mock_request, mock_file, user)
+
+    assert exc.value.status_code == 413
+    mock_file.read.assert_awaited_once_with(20 * 1024 * 1024 + 1)
+
+
 def test_chiedi_documenti_success(client):
     mock_org_id = str(uuid.uuid4())
     mock_user = {

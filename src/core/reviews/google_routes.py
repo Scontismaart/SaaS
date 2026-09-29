@@ -226,11 +226,14 @@ async def google_reviews_sync(
         raise HTTPException(status_code=403, detail=blocco)
     service = _get_service(request)
     try:
-        nuove = await service.fetch_reviews(org_id)
-    except Exception as e:
-        logger.exception("business=sync_fail org_id=%s", org_id)
-        raise HTTPException(502, detail=f"Sync Google reviews fallito: {e}")
-    return {"nuove": nuove}
+        result = await service.fetch_reviews(org_id)
+    except Exception:
+        trace_id = getattr(request.state, "trace_id", "unavailable")
+        logger.error("business=sync_fail org_id=%s trace_id=%s", org_id, trace_id)
+        raise HTTPException(502, detail="Sincronizzazione recensioni non completata.")
+    if result.get("parziale"):
+        return {**result, "detail": "Sincronizzazione parziale; alcune recensioni non sono state elaborate."}
+    return result
 
 
 @router.patch("/settings")
@@ -262,6 +265,11 @@ async def google_reviews_settings(
         idx += 1
     if not sets:
         raise HTTPException(400, "Nessun campo da aggiornare")
+    sets.extend([
+        "review_page_token = NULL",
+        "review_page_account_name = NULL",
+        "review_page_location_name = NULL",
+    ])
     sets.append("updated_at = NOW()")
     sql = f"UPDATE google_business_credentials SET {', '.join(sets)} WHERE organization_id = $1"
     async with pool.acquire() as conn:

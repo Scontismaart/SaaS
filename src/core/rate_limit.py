@@ -60,9 +60,16 @@ class RedisRateLimiter:
 
     async def hit(self, key: str, limit: int, window_seconds: int) -> bool:
         redis_key = f"{self.prefix}:{key}"
-        count = await self.redis.incr(redis_key)
-        if count == 1:
-            await self.redis.expire(redis_key, window_seconds)
+        count = await self.redis.eval(
+            """local count = redis.call('INCR', KEYS[1])
+               if count == 1 or redis.call('TTL', KEYS[1]) < 0 then
+                   redis.call('EXPIRE', KEYS[1], ARGV[1])
+               end
+               return count""",
+            1,
+            redis_key,
+            max(window_seconds, 1),
+        )
         return int(count) > limit
 
     # Finestra scorrevole via ZSET: condivisa tra worker/repliche e
@@ -95,8 +102,14 @@ _limiter: RateLimiter | None = None
 async def get_rate_limiter() -> RateLimiter:
     global _redis_client, _limiter
     backend = os.getenv("RATE_LIMIT_BACKEND", "memory").strip().lower()
-    if backend != "redis":
+    if backend == "memory":
+        from src.core.security.docs import is_production
+
+        if is_production():
+            raise RuntimeError("RATE_LIMIT_BACKEND=redis is required in production")
         return _memory_limiter
+    if backend != "redis":
+        raise RuntimeError("RATE_LIMIT_BACKEND must be 'redis' or 'memory'")
     if _limiter is None:
         from redis.asyncio import Redis
 

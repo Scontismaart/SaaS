@@ -75,6 +75,24 @@ class ReviewRepository(TenantScopedRepository):
             )
             return [dict(r) for r in rows]
 
+    async def count_reviews(self, organization_id, stato=None, fonte=None) -> int:
+        clauses = []
+        args = [organization_id]
+        idx = 2
+        if stato:
+            clauses.append(f"stato = ${idx}")
+            args.append(stato)
+            idx += 1
+        if fonte:
+            clauses.append(f"fonte = ${idx}")
+            args.append(fonte)
+        where_extra = (" AND " + " AND ".join(clauses)) if clauses else ""
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(
+                f"SELECT COUNT(*) FROM reviews WHERE organization_id = $1{where_extra}",
+                *args,
+            )
+
     async def update_review(self, organization_id, review_id, **kwargs):
         if not kwargs:
             return None

@@ -99,7 +99,7 @@ async def pg_pool(postgres_container):
             "CREATE TABLE IF NOT EXISTS email_configs (id UUID PRIMARY KEY, organization_id UUID UNIQUE)",
             "CREATE TABLE IF NOT EXISTS usage_events (id UUID PRIMARY KEY, organization_id UUID)",
             "CREATE TABLE IF NOT EXISTS event_log (id UUID PRIMARY KEY, organization_id UUID)",
-            "CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, organization_id UUID, created_at TIMESTAMPTZ DEFAULT NOW())",
+            "CREATE TABLE IF NOT EXISTS audit_log (id UUID PRIMARY KEY, organization_id UUID NOT NULL, action TEXT NOT NULL, target_table TEXT, target_id UUID, details JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT NOW())",
         ]:
             await conn.execute(ddl)
         with open("src/core/db/migrations/015_org_fk_strategy.sql") as f:

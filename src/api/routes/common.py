@@ -12,7 +12,7 @@ import logging
 import sys
 from datetime import datetime
 from typing import Any
-from fastapi import Request
+from fastapi import HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,19 @@ async def audit_event(
         "action": action, "user_id": user.get("user_id"), "auth_user_id": user.get("auth_user_id"),
         "target_table": target_table, "target_id": target_id, "details": details or {},
     })
+
+
+async def enforce_org_rate_limit(
+    organization_id: str | None, operation: str, limit: int, window_seconds: int
+) -> None:
+    """Cap expensive work by a tenant resolved from the authenticated user."""
+    if not organization_id:
+        raise HTTPException(status_code=403, detail="Organizzazione richiesta")
+    from src.core.rate_limit import get_rate_limiter
+
+    limiter = await get_rate_limiter()
+    if await limiter.hit(f"org:{organization_id}:{operation}", limit, window_seconds):
+        raise HTTPException(status_code=429, detail="Troppe richieste. Riprova più tardi.")
 
 
 async def get_billing_snapshot(repo, organization_id: str | None) -> dict | None:

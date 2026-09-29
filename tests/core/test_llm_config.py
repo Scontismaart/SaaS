@@ -1,6 +1,6 @@
 import pytest
 
-from src.core.llm_config import MODELLO_DEFAULT, crea_llm
+from src.core.llm_config import LLM_TIMEOUT_SECONDS, MODELLO_DEFAULT, crea_llm
 from src.core.llm_routing import LLMRouteRequest
 
 
@@ -19,6 +19,7 @@ def test_crea_llm_inietta_sempre_data_collection_deny(monkeypatch):
 
     extra_body = llm.additional_params["extra_body"]
     assert extra_body["provider"]["data_collection"] == "deny"
+    assert llm.timeout == LLM_TIMEOUT_SECONDS
 
 
 def test_crea_llm_usa_modello_da_route_request(monkeypatch):
@@ -121,3 +122,28 @@ def test_adapter_rejects_mismatched_provider_and_openrouter_custom_endpoint(monk
     monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-offline-key")
     with pytest.raises(RuntimeError, match="AI_BASE_URL non supportata"):
         crea_llm(model="openrouter/custom-free-model")
+
+
+def test_free_openrouter_checks_catalog_before_client(monkeypatch):
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-offline-key")
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    checked = []
+    monkeypatch.setattr("src.core.llm_config.assert_openrouter_catalog_free", lambda model, key: checked.append(model))
+    llm = crea_llm(model="openrouter/vendor/model:free")
+    assert checked == ["openrouter/vendor/model:free"]
+    assert llm.model == "vendor/model:free"
+    assert llm.additional_params["extra_body"]["provider"]["zdr"] is True
+
+
+def test_free_openrouter_catalog_failure_prevents_client(monkeypatch):
+    monkeypatch.setenv("LLM_COST_POLICY", "free_only")
+    monkeypatch.setenv("AI_PROVIDER", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "dummy-offline-key")
+    monkeypatch.delenv("AI_BASE_URL", raising=False)
+    def reject(model, key):
+        raise RuntimeError("catalog unavailable")
+    monkeypatch.setattr("src.core.llm_config.assert_openrouter_catalog_free", reject)
+    with pytest.raises(RuntimeError, match="catalog unavailable"):
+        crea_llm(model="openrouter/vendor/model:free")

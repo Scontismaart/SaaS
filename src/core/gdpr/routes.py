@@ -222,13 +222,19 @@ async def gdpr_delete(
 
 @router.get("/retention-policy")
 async def retention_policy():
-    return {"retention_days": 60, "purge_after_days": 30}
+    return {
+        "retention_days": 60,
+        "purge_after_days": 30,
+        "simulator_response_days": 30,
+        "simulator_history_idle_hours": 24,
+    }
 
 
 async def _export_tenant_data(repo: CoreRepository, org_id: str) -> dict:
     contacts = await repo.get_contacts_by_org(org_id)
     conversations = await repo.get_conversations_by_org(org_id)
     messages = await repo.get_messages_by_org(org_id)
+    simulation_requests = await repo.get_simulation_requests_by_org(org_id)
 
     return {
         "organization_id": str(org_id),
@@ -250,5 +256,17 @@ async def _export_tenant_data(repo: CoreRepository, org_id: str) -> dict:
                 "created_at": m.get("created_at").isoformat() if m.get("created_at") else None,
             }
             for m in messages
+        ],
+        "simulator_responses": [
+            {
+                "request_id": str(item["request_id"]),
+                "user_id": str(item["auth_user_id"]),
+                "payload_hash": item.get("payload_hash"),
+                "status": item.get("status"),
+                "response": item.get("response"),
+                "created_at": item.get("created_at").isoformat() if item.get("created_at") else None,
+                "completed_at": item.get("completed_at").isoformat() if item.get("completed_at") else None,
+            }
+            for item in simulation_requests
         ],
     }

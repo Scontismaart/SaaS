@@ -124,7 +124,10 @@ async def get_token(
     x_api_key: str | None = Header(None),
 ) -> str | None:
     if authorization:
-        return authorization.removeprefix("Bearer ")
+        scheme, _, credential = authorization.partition(" ")
+        if scheme.lower() != "bearer" or not credential.strip():
+            raise HTTPException(status_code=401, detail="Credenziali non valide")
+        return credential.strip()
     if x_api_key:
         return f"apikey:{x_api_key}"
     # BFF (task18): sessione in cookie HttpOnly+Secure+SameSite=Strict.
@@ -232,7 +235,8 @@ async def get_organization_context(
 async def get_optional_organization_context(request: Request) -> dict | None:
     """Risolve l'organization context in modo opzionale per endpoint ad accesso ibrido (es. simulatore).
     Supporta cookie HttpOnly BFF, Bearer token e dependency_overrides nei test.
-    Restituisce None per richieste anonime o non valide senza lanciare eccezioni."""
+    Restituisce un'identita' anonima solo in modalita' demo senza credenziali;
+    credenziali presenti ma non valide e errori di membership vengono propagati."""
     if hasattr(request, "app") and hasattr(request.app, "dependency_overrides"):
         if get_organization_context in request.app.dependency_overrides:
             override = request.app.dependency_overrides[get_organization_context]
@@ -242,24 +246,41 @@ async def get_optional_organization_context(request: Request) -> dict | None:
                 return await res
             return res
 
-    try:
-        token = await get_token(
-            request,
-            authorization=request.headers.get("Authorization"),
-            x_api_key=request.headers.get("X-API-Key"),
-        )
-        if not token:
-            return None
-        user = await get_current_user(request, token=token)
-        if not user or user.get("source") == "anonymous":
-            return None
-        return await get_organization_context(
-            request,
-            current_user=user,
-            x_organization_id=request.headers.get("X-Organization-Id"),
-        )
-    except Exception:
-        return None
+    from src.core.auth import bff
+
+    has_credentials = any((
+        request.headers.get("Authorization") is not None,
+        request.headers.get("X-API-Key") is not None,
+        request.cookies.get(bff.access_cookie_name()) is not None,
+        request.cookies.get(bff.refresh_cookie_name()) is not None,
+    ))
+    if not has_credentials:
+        if not is_demo_mode():
+            raise HTTPException(status_code=401, detail="Token o API Key richiesti")
+        return {
+            "auth_user_id": None,
+            "organization_id": None,
+            "ruolo": None,
+            "source": "anonymous",
+        }
+
+    token = await get_token(
+        request,
+        authorization=request.headers.get("Authorization"),
+        x_api_key=request.headers.get("X-API-Key"),
+    )
+    # A refresh cookie without its access cookie is still an attempted
+    # authenticated session; this endpoint does not silently downgrade it.
+    if not token:
+        raise HTTPException(status_code=401, detail="Sessione non valida: effettua di nuovo il login")
+    user = await get_current_user(request, token=token)
+    if not user or user.get("source") == "anonymous":
+        raise HTTPException(status_code=401, detail="Sessione utente richiesta")
+    return await get_organization_context(
+        request,
+        current_user=user,
+        x_organization_id=request.headers.get("X-Organization-Id"),
+    )
 
 
 def require_ruolo(*ruoli: str):

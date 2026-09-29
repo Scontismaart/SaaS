@@ -4,6 +4,12 @@ from src.core.llm_config import (
     get_route_fallback_models,
     route_llm,
 )
+from src.core.llm_routing import stima_costo_eur
+
+
+def test_openrouter_verified_free_model_has_zero_estimated_cost():
+    assert stima_costo_eur("openrouter/qwen/qwen3.8-27b:free", 120, 20) == 0.0
+    assert stima_costo_eur("openrouter/qwen/qwen3.8-27b:free", None, 20) is None
 
 
 def test_simple_faq_uses_cheap_model(monkeypatch):

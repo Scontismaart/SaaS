@@ -48,6 +48,7 @@ TENANT_SCOPED_TABLES: frozenset[str] = frozenset({
     "airtable_field_mappings",
     "airtable_webhooks",
     "airtable_webhook_events",
+    "simulation_requests",
 })
 
 INDIRECT_SCOPED_TABLES: frozenset[str] = frozenset({

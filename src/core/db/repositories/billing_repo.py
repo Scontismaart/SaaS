@@ -33,6 +33,75 @@ class BillingRepository(TenantScopedRepository):
             json.dumps(metadata or {}))
             return dict(row)
 
+    async def record_usage_batch(
+        self, organization_id: uuid.UUID | str, records: list[dict], *, block_ai: bool = False
+    ) -> None:
+        """Atomically persist provider usage attempts and optional unresolved hold."""
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        if not isinstance(records, list):
+            raise ValueError("Usage records must be a list")
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                for record in records:
+                    event_type = record.get("event_type", "ai_response")
+                    quantity = record.get("quantity", 1)
+                    metadata = record.get("metadata", {})
+                    if (not isinstance(event_type, str) or not event_type.strip()
+                            or isinstance(quantity, bool) or not isinstance(quantity, int) or quantity <= 0
+                            or not isinstance(metadata, dict)):
+                        raise ValueError("Invalid usage record")
+                    await conn.execute(
+                        """INSERT INTO usage_events
+                           (id, organization_id, event_type, quantity, metadata)
+                           VALUES ($1, $2, $3, $4, $5::jsonb)""",
+                        uuid.uuid4(), organization_id, event_type, quantity, json.dumps(metadata),
+                    )
+                if block_ai:
+                    await conn.execute(
+                        "UPDATE organizations SET ai_accounting_blocked = TRUE WHERE id = $1",
+                        organization_id,
+                    )
+
+    async def reconcile_unresolved_usage(
+        self, organization_id: uuid.UUID | str, usage_id: uuid.UUID | str, resolution: str
+    ) -> bool:
+        """Tenant-scoped explicit reconciliation for an unresolved provider attempt."""
+        if isinstance(organization_id, str):
+            organization_id = uuid.UUID(organization_id)
+        if isinstance(usage_id, str):
+            usage_id = uuid.UUID(usage_id)
+        if not isinstance(resolution, str) or not resolution.strip() or len(resolution) > 500:
+            raise ValueError("A concise reconciliation reason is required")
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.fetchval(
+                    "SELECT id FROM organizations WHERE id = $1 FOR UPDATE", organization_id
+                )
+                row = await conn.fetchrow(
+                    """UPDATE usage_events
+                       SET metadata = jsonb_set(
+                           jsonb_set(metadata, '{accounting_status}', to_jsonb('resolved'::text), TRUE),
+                           '{resolution}', to_jsonb($3::text), TRUE)
+                       WHERE organization_id = $1 AND id = $2
+                         AND metadata->>'accounting_status' = 'unresolved'
+                       RETURNING id""",
+                    organization_id, usage_id, resolution.strip(),
+                )
+                if row is None:
+                    return False
+                await conn.execute(
+                    """UPDATE organizations SET ai_accounting_blocked = (
+                         EXISTS (SELECT 1 FROM governance_outbox
+                                 WHERE organization_id = $1 AND event_kind = 'usage')
+                         OR EXISTS (SELECT 1 FROM usage_events
+                                    WHERE organization_id = $1
+                                      AND metadata->>'accounting_status' = 'unresolved')
+                       ) WHERE id = $1""",
+                    organization_id,
+                )
+                return True
+
     async def get_usage_by_month(
         self, organization_id: uuid.UUID | str, year: int, month: int
     ) -> list[dict]:
@@ -299,8 +368,12 @@ class BillingRepository(TenantScopedRepository):
                         await conn.execute("DELETE FROM governance_outbox WHERE id = $1 AND organization_id = $2", row["id"], org_id)
                         processed += 1
                     await conn.execute("""
-                        UPDATE organizations SET ai_accounting_blocked = EXISTS (
-                            SELECT 1 FROM governance_outbox WHERE organization_id = $1 AND event_kind = 'usage'
+                        UPDATE organizations SET ai_accounting_blocked = (
+                            EXISTS (SELECT 1 FROM governance_outbox
+                                    WHERE organization_id = $1 AND event_kind = 'usage')
+                            OR EXISTS (SELECT 1 FROM usage_events
+                                       WHERE organization_id = $1
+                                         AND metadata->>'accounting_status' = 'unresolved')
                         ) WHERE id = $1
                     """, org_id)
                 if processed >= limit:

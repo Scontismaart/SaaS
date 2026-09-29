@@ -483,3 +483,214 @@ class MessageRepository(TenantScopedRepository):
                 organization_id,
             )
             return [dict(r) for r in rows]
+
+    async def reserve_simulation_request(
+        self,
+        organization_id: uuid.UUID | str,
+        auth_user_id: uuid.UUID | str,
+        request_id: uuid.UUID | str,
+        payload_hash: str,
+    ) -> dict:
+        """Atomically reserve one simulator message and its monthly quota unit.
+
+        Replays are resolved before checking current quota, so a completed
+        request remains replayable after that reservation exhausts the plan.
+        """
+        org_id = uuid.UUID(str(organization_id))
+        user_id = uuid.UUID(str(auth_user_id))
+        req_id = uuid.UUID(str(request_id))
+        async with self.scoped_conn(org_id) as conn:
+            async with conn.transaction():
+                inserted = await conn.fetchrow(
+                    """
+                    INSERT INTO simulation_requests
+                        (organization_id, auth_user_id, request_id, payload_hash)
+                    VALUES ($1::uuid, $2::uuid, $3::uuid, $4)
+                    ON CONFLICT (organization_id, auth_user_id, request_id) DO NOTHING
+                    RETURNING status, claim_token
+                    """,
+                    org_id, user_id, req_id, payload_hash,
+                )
+                if inserted:
+                    quota = await conn.fetchrow(
+                        """
+                        UPDATE organizations
+                        SET messages_used_this_period = messages_used_this_period + 1
+                        WHERE id = $1::uuid
+                          AND (messages_limit IS NULL
+                               OR messages_used_this_period < messages_limit)
+                        RETURNING id
+                        """,
+                        org_id,
+                    )
+                    if quota:
+                        return {"status": "reserved", "claim_token": inserted["claim_token"]}
+
+                    # The quota update is the serialization point shared with
+                    # inbound message claims. Remove this failed reservation in
+                    # the same transaction so the key can be retried later.
+                    await conn.execute(
+                        """
+                        DELETE FROM simulation_requests
+                        WHERE organization_id = $1::uuid
+                          AND auth_user_id = $2::uuid
+                          AND request_id = $3::uuid
+                        """,
+                        org_id, user_id, req_id,
+                    )
+                    return {"status": "quota_exceeded"}
+
+                existing = await conn.fetchrow(
+                    """
+                    SELECT payload_hash, status, response, reserved_at, claim_token
+                    FROM simulation_requests
+                    WHERE organization_id = $1::uuid
+                      AND auth_user_id = $2::uuid
+                      AND request_id = $3::uuid
+                    FOR UPDATE
+                    """,
+                    org_id, user_id, req_id,
+                )
+                if existing is None:
+                    raise RuntimeError("Simulator idempotency row disappeared")
+                if existing["payload_hash"].strip() != payload_hash:
+                    return {"status": "payload_conflict"}
+                if existing["status"] == "completed":
+                    return {"status": "replay", "response": existing["response"]}
+                if existing["status"] == "failed":
+                    claim_token = uuid.uuid4()
+                    claimed = await conn.fetchrow(
+                        """
+                        UPDATE simulation_requests
+                        SET status = 'reserved', reserved_at = NOW(), completed_at = NULL,
+                            claim_token = $4::uuid
+                        WHERE organization_id = $1::uuid AND auth_user_id = $2::uuid
+                          AND request_id = $3::uuid AND status = 'failed'
+                        RETURNING claim_token
+                        """,
+                        org_id, user_id, req_id, claim_token,
+                    )
+                    if claimed:
+                        return {"status": "reserved", "claim_token": claimed["claim_token"]}
+                    return {"status": "in_progress"}
+                claim_token = uuid.uuid4()
+                stale = await conn.fetchrow(
+                    """
+                    UPDATE simulation_requests
+                    SET reserved_at = NOW(), claim_token = $4::uuid
+                    WHERE organization_id = $1::uuid AND auth_user_id = $2::uuid
+                      AND request_id = $3::uuid AND status = 'reserved'
+                      AND reserved_at < NOW() - INTERVAL '30 minutes'
+                    RETURNING claim_token
+                    """,
+                    org_id, user_id, req_id, claim_token,
+                )
+                if stale:
+                    return {"status": "reserved", "claim_token": stale["claim_token"]}
+                return {"status": "in_progress"}
+
+    async def complete_simulation_request(
+        self,
+        organization_id: uuid.UUID | str,
+        auth_user_id: uuid.UUID | str,
+        request_id: uuid.UUID | str,
+        payload_hash: str,
+        claim_token: uuid.UUID | str,
+        response: dict,
+    ) -> bool:
+        """Persist the response before the simulator acknowledges success."""
+        org_id = uuid.UUID(str(organization_id))
+        user_id = uuid.UUID(str(auth_user_id))
+        req_id = uuid.UUID(str(request_id))
+        async with self.scoped_conn(org_id) as conn:
+            row = await conn.fetchrow(
+                """
+                UPDATE simulation_requests
+                SET status = 'completed', response = $6::jsonb,
+                    completed_at = NOW()
+                WHERE organization_id = $1::uuid
+                  AND auth_user_id = $2::uuid
+                  AND request_id = $3::uuid
+                  AND payload_hash = $4
+                  AND claim_token = $5::uuid
+                  AND status = 'reserved'
+                RETURNING request_id
+                """,
+                org_id, user_id, req_id, payload_hash, claim_token, json.dumps(response),
+            )
+            if row:
+                return True
+            current = await conn.fetchrow(
+                """
+                SELECT status, payload_hash, claim_token FROM simulation_requests
+                WHERE organization_id = $1::uuid AND auth_user_id = $2::uuid
+                  AND request_id = $3::uuid
+                """,
+                org_id, user_id, req_id,
+            )
+            return bool(
+                current
+                and current["status"] == "completed"
+                and current["payload_hash"].strip() == payload_hash
+                and str(current["claim_token"]) == str(claim_token)
+            )
+
+    async def fail_simulation_request(
+        self,
+        organization_id: uuid.UUID | str,
+        auth_user_id: uuid.UUID | str,
+        request_id: uuid.UUID | str,
+        payload_hash: str,
+        claim_token: uuid.UUID | str,
+    ) -> bool:
+        """Mark a confirmed orchestration failure while preserving its quota unit."""
+        org_id = uuid.UUID(str(organization_id))
+        user_id = uuid.UUID(str(auth_user_id))
+        req_id = uuid.UUID(str(request_id))
+        async with self.scoped_conn(org_id) as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    UPDATE simulation_requests
+                    SET status = 'failed', completed_at = NOW()
+                    WHERE organization_id = $1::uuid AND auth_user_id = $2::uuid
+                      AND request_id = $3::uuid AND payload_hash = $4
+                      AND claim_token = $5::uuid
+                      AND status = 'reserved'
+                    RETURNING request_id
+                    """,
+                    org_id, user_id, req_id, payload_hash, claim_token,
+                )
+                if not row:
+                    return False
+                # Keep the quota unit: generation may have already consumed
+                # provider tokens. Retrying this same idempotency key reuses it.
+                return True
+
+    @system_scope("GDPR export per tenant di risposte idempotenti del simulatore")
+    async def get_simulation_requests_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
+        org_id = uuid.UUID(str(organization_id))
+        async with self.scoped_conn(org_id) as conn:
+            rows = await conn.fetch(
+                """
+                SELECT auth_user_id, request_id, payload_hash, status, response,
+                       created_at, completed_at
+                FROM simulation_requests
+                WHERE organization_id = $1::uuid
+                ORDER BY created_at
+                """,
+                org_id,
+            )
+            return [dict(row) for row in rows]
+
+    @system_scope("retention reaper globale: scadenza risposte cache del simulatore")
+    async def purge_simulation_requests(self, retention_days: int = 30) -> int:
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                """
+                DELETE FROM simulation_requests
+                WHERE created_at < NOW() - ($1 || ' days')::INTERVAL
+                """,
+                str(retention_days),
+            )
+            return int(result.split()[-1]) if result else 0

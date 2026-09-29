@@ -38,6 +38,10 @@ from src.models.schemas import (
 
 logger = logging.getLogger(__name__)
 
+def filter_simulation_airtable_tools(tools: list, is_simulation: bool) -> list:
+    """Never expose tenant CRM records to a simulator prompt."""
+    return [] if is_simulation else tools
+
 
 def profile_from_raw(raw: dict | str | None, fallback_name: str = "Attivita") -> ProfiloAttivita:
     """Normalizza un profilo business (dict, JSON o WhatsAppBusinessProfile) in ProfiloAttivita."""
@@ -214,6 +218,8 @@ class ConversationOrchestrator:
                 organization_id=org_id,
                 factory=self.airtable_tool_factory,
             )
+            if req.is_simulation:
+                airtable_tools = filter_simulation_airtable_tools(airtable_tools, True)
         except Exception as e:
             logger.warning("Airtable tools selection failed for org %s: %s", org_id, e)
             airtable_tools = []

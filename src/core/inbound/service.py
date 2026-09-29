@@ -249,25 +249,8 @@ class InboundProcessingService:
             content = {}
         canale = msg.get("canale") or "whatsapp"
 
-        # ── STEP 1: Quota Check & Claim Atomico (P0 Concorrenza) ──────────────
-        claim_result = await self.repo.claim_message_and_check_quota(msg["id"], org_id)
-        status = claim_result.get("status")
-        if status in ("not_found", "already_sent"):
-            return ProcessingOutcome(action="ignored", handling_type=status)
-        if status == "currently_processing":
-            logger.info(
-                "Message %s is currently being processed by another worker. Yielding.",
-                msg["id"],
-            )
-            return ProcessingOutcome(action="yielded", handling_type="currently_processing")
-
-        if status == "quota_exceeded":
-            cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
-            tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
-            return await self._escalate(org_id, msg, content, tenant_config,
-                "Stiamo ricevendo troppe richieste, attendi l'operatore.", "quota_exceeded")
-
-        # ── STEP 2: Fail-Closed Opt-Out (Invariante 6) ─────────────────────────
+        # STOP is a consent command. It must be persisted even when the
+        # organization has exhausted its paid message quota.
         if self.service:
             opt_out = await self.service.check_opt_out(text)
             if opt_out["is_opt_out"]:
@@ -290,6 +273,24 @@ class InboundProcessingService:
                     msg["id"], handling_type="opt_out", organization_id=org_id
                 )
                 return ProcessingOutcome(action="handled", handling_type="opt_out")
+
+        # ── STEP 1: Quota Check & Claim Atomico (P0 Concorrenza) ──────────────
+        claim_result = await self.repo.claim_message_and_check_quota(msg["id"], org_id)
+        status = claim_result.get("status")
+        if status in ("not_found", "already_sent"):
+            return ProcessingOutcome(action="ignored", handling_type=status)
+        if status == "currently_processing":
+            logger.info(
+                "Message %s is currently being processed by another worker. Yielding.",
+                msg["id"],
+            )
+            return ProcessingOutcome(action="yielded", handling_type="currently_processing")
+
+        if status == "quota_exceeded":
+            cfg_loader = _get_proc_symbol("load_tenant_config", load_tenant_config)
+            tenant_config = await cfg_loader(org_id, self.app_config, self.repo)
+            return await self._escalate(org_id, msg, content, tenant_config,
+                "Stiamo ricevendo troppe richieste, attendi l'operatore.", "quota_exceeded")
 
         # ── STEP 3: Richiesta Operatore Umano (Invariante 11) ─────────────────
         if self.service:

@@ -153,21 +153,17 @@ class MetaWebhookSecurity:
         body = await self.read_limited_body(request)
 
         secret = override_secret or self.app_secret
-        if secret and secret != "placeholder_meta_app_secret":
-            signature = request.headers.get("X-Hub-Signature-256", "")
-            if not self.verify_hmac(body, signature, secret):
-                client_ip = _get_client_ip(request)
-                path = _get_path(request)
-                logger.warning(
-                    json.dumps({
-                        "event": "webhook_hmac_rejected",
-                        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                        "ip": client_ip,
-                        "path": path,
-                        "signature": signature,
-                        "reason": "signature_mismatch",
-                    })
-                )
-                raise HTTPException(status_code=403, detail="Invalid signature")
+        signature = request.headers.get("X-Hub-Signature-256", "")
+        if not secret or secret == "placeholder_meta_app_secret" or not self.verify_hmac(body, signature, secret):
+            logger.warning(
+                json.dumps({
+                    "event": "webhook_hmac_rejected",
+                    "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "ip": _get_client_ip(request),
+                    "path": _get_path(request),
+                    "reason": "secret_unconfigured" if not secret or secret == "placeholder_meta_app_secret" else "signature_mismatch",
+                })
+            )
+            raise HTTPException(status_code=403, detail="Invalid signature")
 
         return body

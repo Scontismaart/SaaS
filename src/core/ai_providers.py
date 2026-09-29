@@ -44,7 +44,7 @@ class ProviderAdapter:
             params["base_url"] = endpoint
         if self.deny_training:
             params["additional_params"] = {
-                "extra_body": {"provider": {"data_collection": "deny"}},
+                "extra_body": {"provider": {"data_collection": "deny", "zdr": True}},
             }
         return params
 

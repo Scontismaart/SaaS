@@ -78,9 +78,10 @@ async def test_governance_drain_persists_usage_before_unblocking_tenant():
     statements = [query for query, _ in conn.executed]
     usage_index = next(i for i, query in enumerate(statements) if "INSERT INTO usage_events" in query)
     delete_index = next(i for i, query in enumerate(statements) if "DELETE FROM governance_outbox" in query)
-    unblock_index = next(i for i, query in enumerate(statements) if "ai_accounting_blocked = EXISTS" in query)
+    unblock_index = next(i for i, query in enumerate(statements) if "ai_accounting_blocked = (" in query)
     assert usage_index < delete_index < unblock_index
     assert "event_kind = 'usage'" in statements[unblock_index]
+    assert "metadata->>'accounting_status' = 'unresolved'" in statements[unblock_index]
 
 
 @pytest.mark.parametrize("limit", [0, -1, 1001, True, 1.5])

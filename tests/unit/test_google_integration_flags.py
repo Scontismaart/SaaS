@@ -192,7 +192,11 @@ async def test_business_service_blocks_refresh_discovery_and_review_api(
     monkeypatch.setattr(service, "_list_reviews", list_reviews)
 
     assert await service._get_credentials("org-1") is None
-    assert await service.fetch_reviews("org-1") == 0
+    assert await service.fetch_reviews("org-1") == {
+        "nuove": 0,
+        "fallimenti": 0,
+        "parziale": False,
+    }
 
     assert pool.acquire_calls == 0
     build_service.assert_not_awaited()

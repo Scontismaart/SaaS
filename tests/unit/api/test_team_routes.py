@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import patch
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
@@ -143,18 +144,9 @@ def test_post_team_member_manager_cannot_invite_manager(client):
         app.dependency_overrides.clear()
 
 
-def test_post_team_member_starter_limit_exceeded(client):
+def test_post_team_member_creates_invitation_without_direct_membership(client):
     test_org_id = str(uuid.uuid4())
-    mock_conn = MockConnection(
-        fetchrow_data={
-            "SELECT plan, users_limit, subscription_status FROM organizations": {
-                "plan": "starter",
-                "users_limit": 1,
-                "subscription_status": "active",
-            }
-        },
-        fetchval_data=1,
-    )
+    mock_conn = MockConnection()
     app.state.pool = MockPool(mock_conn)
 
     app.dependency_overrides[get_organization_context] = lambda: {
@@ -163,10 +155,14 @@ def test_post_team_member_starter_limit_exceeded(client):
         "source": "jwt",
     }
     try:
-        resp = client.post("/api/team/members", json={"email": "collega@azienda.it", "ruolo": "staff"})
-        assert resp.status_code == 403
-        assert "Limite utenti raggiunto per il piano Essenziale" in resp.json()["detail"]
-        assert "Crescita (fino a 3 utenti)" in resp.json()["detail"]
+        with patch("src.api.routes.team.create_invitation", new_callable=AsyncMock) as create:
+            create.return_value = {"detail": "Invito inviato"}
+            resp = client.post("/api/team/members", json={"email": "collega@azienda.it", "ruolo": "staff"})
+        assert resp.status_code == 200
+        assert resp.json() == {"detail": "Invito inviato"}
+        create.assert_awaited_once()
+        assert create.await_args.kwargs["email"] == "collega@azienda.it"
+        assert not mock_conn.executed
     finally:
         app.dependency_overrides.clear()
 

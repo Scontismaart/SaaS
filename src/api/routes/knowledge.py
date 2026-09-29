@@ -18,6 +18,7 @@ from src.api.dependencies import get_repo, require_ruolo
 from src.api.routes.common import (
     audit_event,
     check_feature_blocked_by_plan,
+    enforce_org_rate_limit,
     get_billing_snapshot,
     record_ai_usage,
     resolve_estrai_da_url,
@@ -55,6 +56,7 @@ async def chiedi_documenti(
     blocco = await check_feature_blocked_by_plan(repo, org_id, "rag")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
+    await enforce_org_rate_limit(org_id, "knowledge-qa", 60, 60)
     billing = await get_billing_snapshot(repo, org_id)
     output = await rispondi(org_id, domanda.domanda, repo, k=domanda.k, billing=billing)
     await record_ai_usage(
@@ -246,6 +248,7 @@ async def importa_pagina_web(
     blocco = await check_feature_blocked_by_plan(repo, org_id, "rag")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
+    await enforce_org_rate_limit(org_id, "knowledge-index", 20, 600)
 
     estrai_da_url = resolve_estrai_da_url()
     try:
@@ -350,6 +353,7 @@ async def salva_dati_struttura(
     blocco = await check_feature_blocked_by_plan(repo, org_id, "rag")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
+    await enforce_org_rate_limit(org_id, "knowledge-index", 20, 600)
 
     servizi_dicts = []
     for s in data.servizi:
@@ -449,6 +453,7 @@ async def carica_documento(
     blocco = await check_feature_blocked_by_plan(repo, org_id, "rag")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
+    await enforce_org_rate_limit(org_id, "knowledge-index", 20, 600)
     chunks = chunk_testo(doc.testo)
     if not chunks:
         raise HTTPException(status_code=400, detail="Testo senza contenuto indicizzabile.")
@@ -492,10 +497,12 @@ async def carica_file_documento(
     blocco = await check_feature_blocked_by_plan(repo, org_id, "rag")
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
-    contenuto = await file.read()
+    await enforce_org_rate_limit(org_id, "knowledge-index", 20, 600)
+    max_file_size = 20 * 1024 * 1024
+    contenuto = await file.read(max_file_size + 1)
     if not contenuto:
         raise HTTPException(status_code=400, detail="Il file è vuoto.")
-    if len(contenuto) > 20 * 1024 * 1024:
+    if len(contenuto) > max_file_size:
         raise HTTPException(status_code=413, detail="Il file supera il limite di 20 MB.")
     try:
         testo = estrai_testo(contenuto, nome, file.content_type or "")

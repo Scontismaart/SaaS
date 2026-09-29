@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from src.core.cost_policy import FREE_MODELS
+from src.core.cost_policy import FREE_MODELS, is_openrouter_free_model
 
 
 COMMERCIAL_BOOTSTRAP_PROFILE = "commercial_bootstrap"
@@ -70,20 +70,26 @@ def _require_safe_value(
 def _assert_free_groq_profile() -> None:
     if os.getenv("LLM_COST_POLICY", "").strip().lower() != "free_only":
         raise RuntimeError("AVVIO BLOCCATO: LLM_COST_POLICY deve essere free_only")
-    if os.getenv("GROQ_FREE_ACCOUNT_CONFIRMED", "").strip().lower() != "true":
+    provider = os.getenv("AI_PROVIDER", "groq").strip().lower()
+    if provider not in {"groq", "openrouter"}:
+        raise RuntimeError("AVVIO BLOCCATO: provider non autorizzato nel profilo EUR 0")
+    if provider == "groq" and os.getenv("GROQ_FREE_ACCOUNT_CONFIRMED", "").strip().lower() != "true":
         raise RuntimeError("AVVIO BLOCCATO: account Groq FREE non confermato")
-    if os.getenv("GROQ_ZDR_CONFIRMED", "").strip().lower() != "true":
+    if provider == "groq" and os.getenv("GROQ_ZDR_CONFIRMED", "").strip().lower() != "true":
         raise RuntimeError("AVVIO BLOCCATO: Groq ZDR non confermato")
-    _require_safe_value("GROQ_API_KEY", prefix="gsk_", min_length=16)
-    if os.getenv("AI_PROVIDER", "groq").strip().lower() != "groq":
-        raise RuntimeError("AVVIO BLOCCATO: il profilo EUR 0 richiede AI_PROVIDER=groq")
+    if provider == "groq":
+        _require_safe_value("GROQ_API_KEY", prefix="gsk_", min_length=16)
+    else:
+        _require_safe_value("OPENROUTER_API_KEY", min_length=16)
+        _require_safe_value("AI_MODEL", prefix="openrouter/")
     if os.getenv("AI_BASE_URL", "").strip() or os.getenv("AI_API_KEY", "").strip():
         raise RuntimeError("AVVIO BLOCCATO: endpoint/chiave AI custom non autorizzati nel profilo EUR 0")
 
     for name in MODEL_ENV_NAMES:
         configured = os.getenv(name, "")
         models = (model.strip() for model in configured.split(","))
-        if any(model not in FREE_MODELS for model in models if model):
+        allowed = (lambda model: model in FREE_MODELS) if provider == "groq" else is_openrouter_free_model
+        if any(not allowed(model) for model in models if model):
             raise RuntimeError(
                 f"AVVIO BLOCCATO: {name} contiene un modello fuori allowlist"
             )

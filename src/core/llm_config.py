@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 from crewai import LLM
 from src.core.ai_providers import provider_for_model
-from src.core.cost_policy import DEFAULT_FREE_MODEL, assert_model_allowed, free_only
+from src.core.cost_policy import DEFAULT_FREE_MODEL, assert_model_allowed, assert_openrouter_catalog_free, free_only
 from src.core.llm_routing import (
     LLMRoute,
     LLMRouteRequest,
@@ -25,6 +25,7 @@ MODELLO_DEFAULT = os.getenv(
 
 # Numero di tentativi in caso di errore/rate limit del modello free.
 MAX_RETRY = int(os.getenv("LLM_MAX_RETRY", "3"))
+LLM_TIMEOUT_SECONDS = max(1, int(os.getenv("LLM_TIMEOUT_SECONDS", "30")))
 
 # Audit 3.3: senza un limite di concorrenza, un tenant (o piu' tenant
 # insieme) puo' saturare il budget/rate-limit condiviso del provider LLM.
@@ -46,7 +47,7 @@ def ai_configuration_status() -> dict[str, str]:
     try:
         assert_model_allowed(model)
         provider = provider_for_model(model, os.getenv("AI_PROVIDER", "").strip().lower())
-        if free_only() and (provider.name != "groq" or os.getenv("AI_BASE_URL", "").strip()):
+        if free_only() and (provider.name not in {"groq", "openrouter"} or os.getenv("AI_BASE_URL", "").strip()):
             raise RuntimeError("Budget EUR 0: provider o endpoint non autorizzato")
         key_env = provider.key_env
         if provider.name == "openai_compatible" or (os.getenv("AI_PROVIDER") and not free_only()):
@@ -75,7 +76,7 @@ def crea_llm(
     assert_model_allowed(selected_model)
 
     provider = provider_for_model(selected_model, os.getenv("AI_PROVIDER", "").strip().lower())
-    if free_only() and (provider.name != "groq" or os.getenv("AI_BASE_URL", "").strip()):
+    if free_only() and (provider.name not in {"groq", "openrouter"} or os.getenv("AI_BASE_URL", "").strip()):
         raise RuntimeError("Budget EUR 0: provider o endpoint non autorizzato")
     key_env = provider.key_env
     if provider.name == "openai_compatible" or (os.getenv("AI_PROVIDER") and not free_only()):
@@ -87,6 +88,9 @@ def crea_llm(
             f"la chiave API per il provider '{provider.name}'."
         )
 
+    if free_only() and provider.name == "openrouter":
+        assert_openrouter_catalog_free(selected_model, api_key)
+
     if max_tokens is None:
         max_tokens = int(os.getenv("LLM_MAX_TOKENS", "250"))
 
@@ -94,6 +98,9 @@ def crea_llm(
         **provider.client_params(selected_model, api_key, os.getenv("AI_BASE_URL", "").strip() or None),
         "temperature": temperature,
         "max_tokens": max_tokens,
+        # CrewAI's LLM timeout is passed to LiteLLM/provider HTTP clients.
+        # This bounds a provider call even when the surrounding thread cannot be cancelled.
+        "timeout": LLM_TIMEOUT_SECONDS,
     }
 
     return LLM(**llm_params)
@@ -103,6 +110,7 @@ __all__ = [
     "LLM_CONCURRENCY_SEM",
     "LLMRoute",
     "LLMRouteRequest",
+    "LLM_TIMEOUT_SECONDS",
     "MAX_RETRY",
     "MODELLO_DEFAULT",
     "ai_configuration_status",

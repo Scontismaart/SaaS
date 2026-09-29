@@ -6,6 +6,7 @@ or external API key requirements (Invariants 1, 8, 10).
 """
 
 import uuid
+from contextlib import asynccontextmanager
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
@@ -100,17 +101,26 @@ def test_simulatore_recensione_intercepts_genera_risposta(client, mock_auth, cle
     mock_repo = MagicMock()
     mock_repo.get_organization_billing = AsyncMock(return_value={"plan": "business", "subscription_status": "active"})
     mock_repo.get_onboarding_profile = AsyncMock(return_value={})
+    mock_repo.get_review_by_external_id = AsyncMock(return_value=None)
     mock_repo.create_review = AsyncMock(return_value={"id": str(uuid.uuid4())})
     mock_repo.record_usage = AsyncMock()
 
+    @asynccontextmanager
+    async def claim(*_args, **_kwargs):
+        yield True
+
     with patch.object(app.state, "repo", mock_repo, create=True), \
          patch("src.api.main.genera_risposta_recensione", return_value=fake_review) as mock_gen, \
-         patch("src.api.routes.simulator.record_ai_usage", new_callable=AsyncMock):
+         patch("src.core.reviews.ai_governance.authorize_review_generation", new_callable=AsyncMock, return_value={"plan": "business"}), \
+         patch("src.core.reviews.ai_governance.record_review_usage", new_callable=AsyncMock), \
+         patch("src.core.documenti.rag_context.recupera_contesto_documenti", new_callable=AsyncMock, return_value=MagicMock(testo="knowledge")), \
+         patch("src.core.reviews.idempotency.claim_external_review", claim):
         res = client.post("/api/recensione", json={
             "testo": "Personale gentilissimo e cibo squisito.",
             "valutazione_stelle": 5,
             "autore": "Mario Rossi",
             "lingua": "it",
+            "external_id": "unit-review-1",
         })
         assert res.status_code == 200
         assert mock_gen.called, "patch('src.api.main.genera_risposta_recensione') NON ha intercettato la route!"
@@ -128,6 +138,7 @@ def test_onboarding_profilo_indicizza_dati_struttura_intercepts_vettorizza(clien
     mock_repo.create_document = AsyncMock(return_value={"id": str(uuid.uuid4())})
     mock_repo.add_chunk = AsyncMock()
     mock_repo.save_onboarding_profile = AsyncMock(return_value={"nome_attivita": "Ristorante Da Mario"})
+    mock_repo.faq_cache_invalidate = AsyncMock()
     mock_repo.update_org_business_profile = AsyncMock()
 
     with patch.object(app.state, "repo", mock_repo, create=True), \

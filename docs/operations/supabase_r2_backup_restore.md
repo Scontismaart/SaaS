@@ -41,3 +41,18 @@ scripts/restore_supabase_drill.sh --target drill-eu1 \
 ```
 
 The drill downloads the artifact and manifest, checks their binding and SHA-256 digest, authenticates/decrypts with age, verifies the PostgreSQL archive, restores in one transaction, then requires non-empty public tables and constraints plus at least one analyzed user-table row (`RESTORE_MINIMUM_ROWS` can raise that threshold). It is destructive to the named non-production database. Do not point it at a shared staging database without a maintenance window; use an isolated drill project/database instead. This is not point-in-time recovery, does not back up Supabase Auth/Storage/configuration outside PostgreSQL, and cannot recover data newer than the latest successful dump.
+
+## Supabase restore fidelity gate
+
+The Phase 2 staging restore exposed a gap in logical restore fidelity: the restored project did not have Melpis's custom `trg_sync_auth_user` trigger attached to `auth.users`, and the `EXECUTE` revokes for `public.sync_auth_user_profile()` and `public.rls_auto_enable()` had reverted. The source project already had the correct objects. A successful archive restore and row-count check therefore do **not** certify that Auth provisioning and function privileges are intact.
+
+After every logical restore into a Supabase non-production project, run the read-only gate below from an operator environment with access to that project's database and Supabase Security Advisor. Inject the URL and token through a secret manager; do not place either on the command line or in a committed `.env` file. `RESTORE_VERIFY_DATABASE_URL` must identify the exact `--project-ref` in a Supabase direct host or pooler username; the verifier rejects the main project and requires certificate-verified TLS. If the pooler's CA is not in the system trust store, set `RESTORE_VERIFY_PGSSLROOTCERT` to the trusted certificate downloaded from the target project's **Database → Settings → SSL Certificate** panel. The script fails closed if the trigger, owner, `SECURITY DEFINER`, `search_path`, or ACL differs from the state specified by migrations 002, 009 and 011. It reads the complete [Security Advisor](https://supabase.com/docs/reference/api/v1-get-security-advisors) and fails if its results contain any finding other than the documented Free-plan `auth_leaked_password_protection` warning.
+
+```bash
+RESTORE_VERIFY_DATABASE_URL="$INJECTED_NON_PRODUCTION_DATABASE_URL" \
+RESTORE_VERIFY_PGSSLROOTCERT="$TRUSTED_SUPABASE_CA_FILE" \
+SUPABASE_ACCESS_TOKEN="$INJECTED_SUPABASE_MANAGEMENT_TOKEN" \
+python scripts/verify_supabase_restore_fidelity.py --project-ref "$NON_PRODUCTION_PROJECT_REF"
+```
+
+Treat `RESTORE FIDELITY: PASS` as a required restore acceptance gate before testing sign-up or inviting users. The full Security Advisor endpoint is experimental; if Supabase changes its response, update and rerun the verifier rather than skipping it. Keep the management token off the isolated backup/restore host if it has access to other projects; run this check from a separate operator environment. The verifier performs no database DDL or DML and does not rerun migrations. If it fails, compare the target with the source project's trigger and ACL before applying a narrowly scoped repair on the non-production target.

@@ -2,8 +2,10 @@
 
 Questa procedura non crea risorse e non autorizza addebiti. Il target scelto è
 una VM Oracle Cloud Always Free, perché l'app richiede API e worker sempre
-attivi; un piano con sleep o senza background worker non basta. Disponibilità e
-quote dell'account vanno verificate nel portale prima del GO.
+attivi; un piano con sleep o senza background worker non basta. La quota A1
+attuale equivale a 2 OCPU e 12 GiB di RAM complessivi per tenancy Always Free:
+non usare la vecchia stima di 4 OCPU/24 GiB. Disponibilità della shape, quote
+e capienza sotto carico vanno verificate nel portale e sulla VM prima del GO.
 
 ## Architettura
 
@@ -21,10 +23,19 @@ log. Solo Caddy pubblica 80/443.
 ## Preparazione
 
 1. Crea Supabase Free nella regione appropriata e abilita pgvector.
-2. Applica in ordine le migrazioni, incluse `052_webhook_inbox.sql`,
-   `053_billing_reliability.sql` e `054_supabase_advisor_hardening.sql`.
-3. Verifica nel pannello Groq che l'account sia FREE e senza billing attivo;
-   solo allora imposta `GROQ_FREE_ACCOUNT_CONFIRMED=true`.
+2. Confronta schema e storico migrazioni del progetto Supabase selezionato,
+   poi applica in ordine le migrazioni mancanti da una release revisionata.
+   Le migrazioni locali `055_simulation_requests.sql` e
+   `056_google_reviews_cursor.sql` non risultavano applicate a Selecta SaaS
+   al 26 settembre 2026: non avviare il nuovo codice che le richiede prima
+   di un backup verificato e della loro applicazione controllata.
+3. Scegli un solo provider AI per il profilo `free_only`. Per Groq verifica
+   nel pannello il piano FREE e ZDR prima di confermare i flag dedicati. Per
+   OpenRouter imposta `AI_PROVIDER=openrouter`, una chiave dell'account free e
+   un `AI_MODEL=openrouter/<vendor>/<model>:free`; il codice ricontrolla il
+   catalogo gratuito/ZDR e si ferma se non può verificarlo. La sola presenza
+   nel catalogo non garantisce che un endpoint sia disponibile o che non sia
+   temporaneamente rate-limited: esegui un smoke test senza fallback a pagamento.
 4. Collauda i flussi in Stripe Test Mode e Meta sandbox/test number. Per il
    go-live commerciale configura poi Stripe Live con i sei Price ID e webhook
    firmato, mantenendo `LLM_COST_POLICY=free_only`. Prima del cutover compila
@@ -68,14 +79,15 @@ log. Solo Caddy pubblica 80/443.
   validati senza un addebito reale di prova.
 - Fallimento escalation visibile in Inbox e intervento umano disponibile.
 - Riavvio durante webhook/retry senza doppio effetto osservabile.
-- Prima di clienti reali: `pg_dump` cifrato verso storage separato gratuito e
-  restore drill su un database di verifica. Non presumere backup nel tier Free.
+- Prima di clienti reali: `pg_dump` cifrato verso storage separato, schedulato
+  e monitorato, e restore drill su un database di verifica. Non presumere backup
+  nel tier Supabase Free né gratuità dello storage oltre le sue quote.
 
 ## Rollback
 
 Mantieni i due riferimenti digest precedenti: ripristina
 `MELPIS_API_IMAGE_REF` e `MELPIS_WEB_IMAGE_REF` e rilancia il compose.
-Le migrazioni 052/053/054 sono additive e non vanno eliminate nel rollback. Se una
+Le migrazioni applicate sono additive e non vanno eliminate nel rollback. Se una
 migrazione fallisce, ferma il traffico e ripristina un dump verificato.
 
 ## Evidenze ancora esterne

@@ -1,7 +1,6 @@
-.env
-.env.local
-.env.production
+.env*
 Supabase-credentials.txt
+data/
 data/client_secret.json
 data/*.json
 data/chroma/
@@ -48,6 +47,10 @@ scratch/
 docs/
 tests/
 scripts/
+apply_deposit_filter.py
+build_all_docs.py
+build_decision_maker_campaign.py
+export_full_csv.py
 web/
 prompt-roadmap-saas.md
 README.md

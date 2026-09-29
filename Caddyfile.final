@@ -2,6 +2,9 @@
 # resolve to this VM. Keeping it separate prevents premature final-domain TLS.
 (melpis_app) {
 	encode zstd gzip
+	request_body {
+		max_size 22MB
+	}
 	@backend path /api/* /webhooks/* /docs* /redoc* /openapi.json
 	reverse_proxy @backend api:8000
 	reverse_proxy web:80

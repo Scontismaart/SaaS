@@ -24,6 +24,7 @@ STRIPE_PRICE_ENV_NAMES = (
     "STRIPE_PRICE_BUSINESS_YEARLY",
 )
 MODEL_ENV_NAMES = (
+    "AI_MODEL", "AI_MODEL_CHEAP", "AI_MODEL_PREMIUM", "AI_MODEL_FALLBACKS", "AI_MODEL_INTENT",
     "OPENROUTER_MODEL",
     "OPENROUTER_MODEL_CHEAP",
     "OPENROUTER_MODEL_PREMIUM",
@@ -37,6 +38,11 @@ FREE_MODELS = frozenset(
         "groq/openai/gpt-oss-120b",
     }
 )
+_OPENROUTER_FREE_MODEL = re.compile(r"^openrouter/[^/:\s]+/[^/:\s]+:free$")
+
+
+def is_openrouter_free_model(model: str) -> bool:
+    return bool(_OPENROUTER_FREE_MODEL.fullmatch(model))
 IMAGE_REFERENCE_ENV_NAMES = ("MELPIS_API_IMAGE_REF", "MELPIS_WEB_IMAGE_REF")
 LEGAL_IDENTITY_ENV_NAMES = (
     "LEGAL_ENTITY_NAME",
@@ -131,7 +137,16 @@ def validate(config):
     )
     for name in required:
         _require(config, errors, name)
-    _require(config, errors, "GROQ_API_KEY", prefix="gsk_", min_length=16)
+    provider = str(config.get("AI_PROVIDER") or "groq").strip().lower()
+    if provider == "groq":
+        _require(config, errors, "GROQ_API_KEY", prefix="gsk_", min_length=16)
+    elif provider == "openrouter":
+        _require(config, errors, "OPENROUTER_API_KEY", min_length=16)
+        _require(config, errors, "AI_MODEL", prefix="openrouter/")
+    else:
+        errors.append("AI_PROVIDER: unsupported free-only provider")
+    if str(config.get("AI_BASE_URL") or "").strip() or str(config.get("AI_API_KEY") or "").strip():
+        errors.append("AI_BASE_URL/AI_API_KEY: forbidden in free-only profile")
     for name in IMAGE_REFERENCE_ENV_NAMES:
         _require_digest_image_reference(config, errors, name)
     # Public legal copy is deliberately tokenized rather than fabricated. A
@@ -158,8 +173,6 @@ def validate(config):
     expected = {
         "APP_ENV": "production",
         "LLM_COST_POLICY": "free_only",
-        "GROQ_FREE_ACCOUNT_CONFIRMED": "true",
-        "GROQ_ZDR_CONFIRMED": "true",
         "AUTH_COOKIE_SECURE": "true",
         "RATE_LIMIT_BACKEND": "redis",
         "GOOGLE_CALENDAR_ENABLED": "false",
@@ -168,6 +181,10 @@ def validate(config):
     for name, expected_value in expected.items():
         if config.get(name) != expected_value:
             errors.append(f"{name}: must be {expected_value}")
+    if provider == "groq":
+        for name in ("GROQ_FREE_ACCOUNT_CONFIRMED", "GROQ_ZDR_CONFIRMED"):
+            if config.get(name) != "true":
+                errors.append(f"{name}: must be true")
 
     if str(config.get("DEMO_MODE", "")).lower() in {"true", "1", "yes"}:
         errors.append("DEMO_MODE: forbidden")
@@ -200,7 +217,8 @@ def validate(config):
 
     for name in MODEL_ENV_NAMES:
         models = (str(config.get(name) or "")).split(",")
-        if any(model.strip() not in FREE_MODELS for model in models if model.strip()):
+        allowed = (lambda model: model in FREE_MODELS) if provider == "groq" else is_openrouter_free_model
+        if any(not allowed(model.strip()) for model in models if model.strip()):
             errors.append(f"{name}: model outside free allowlist")
 
     for name in ("PUBLIC_APP_URL", "SUPABASE_URL"):

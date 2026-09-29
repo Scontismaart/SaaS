@@ -2,6 +2,9 @@
 # temporary DNS hostname, so Caddy never requests final-domain certificates early.
 {$PUBLIC_HOST} {
 	encode zstd gzip
+	request_body {
+		max_size 22MB
+	}
 	@backend path /api/* /webhooks/* /docs* /redoc* /openapi.json
 	reverse_proxy @backend api:8000
 	reverse_proxy web:80

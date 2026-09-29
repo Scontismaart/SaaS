@@ -17,6 +17,7 @@ COPY design-tokens.css /usr/share/nginx/html/
 COPY landing/404.html /usr/share/nginx/html/
 COPY landing/robots.txt landing/sitemap.xml landing/*.jpg /usr/share/nginx/html/
 COPY landing/*.webp landing/*.svg /usr/share/nginx/html/
+COPY landing/brand/ /usr/share/nginx/html/brand/
 COPY inline-assets/ /usr/share/nginx/html/inline-assets/
 COPY landing/fonts/ /usr/share/nginx/html/fonts/
 COPY landing/settori/ /usr/share/nginx/html/settori/
@@ -33,7 +34,7 @@ COPY i18n-client.js /usr/share/nginx/html/
 COPY login.html login.js register.html register.js auth.js auth.css /usr/share/nginx/html/
 
 # ── Dashboard (sotto /app/) ─────────────────────────────────
-COPY index.html style.css app.js theme-init.js logo.webp i18n-client.js /usr/share/nginx/html/app/
+COPY index.html style.css app.js dialog-focus.js theme-init.js i18n-client.js /usr/share/nginx/html/app/
 COPY design-tokens.css /usr/share/nginx/html/app/
 COPY fonts/ /usr/share/nginx/html/app/fonts/
 COPY vendor/ /usr/share/nginx/html/app/vendor/

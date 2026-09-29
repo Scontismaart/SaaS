@@ -9,7 +9,7 @@
 # Per l'envsubst serve gettext; l'entrypoint ufficiale nginx esegue gli
 # script in /docker-entrypoint.d/ prima di avviare il daemon.
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.29-alpine AS runtime
 
 # ── Landing e pagine pubbliche multilingua (root del docroot) ─
 COPY landing/index.html landing/style.css landing/app.js landing/navbar.js /usr/share/nginx/html/

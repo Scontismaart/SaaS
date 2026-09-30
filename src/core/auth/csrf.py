@@ -14,6 +14,7 @@ MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 CSRF_EXEMPT_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
+    "/api/auth/signup/callback",
     "/api/health",
     "/api/health/live",
     "/api/health/ready",
@@ -86,9 +87,7 @@ def _same_origin(request: Request, origin: str) -> bool:
         return False
     if parsed.netloc == host:
         return True
-    if parsed.hostname == host:
-        return True
-    return False
+    return parsed.hostname == host
 
 
 def is_cookie_authenticated_mutation(request: Request) -> bool:

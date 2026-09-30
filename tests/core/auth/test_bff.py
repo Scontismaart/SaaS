@@ -1,7 +1,10 @@
 import os
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from fastapi import HTTPException
 
 import src.core.auth.bff as bff_module
 from src.core.auth.denylist import is_token_revoked
@@ -26,6 +29,7 @@ async def bff_client():
     """Client con solo il router /api/auth: per login/refresh/logout non
     serve il DB, basta mockare il modulo BFF verso Supabase."""
     from fastapi import FastAPI
+
     from src.core.auth.routes import router as auth_router
 
     app = FastAPI()
@@ -53,6 +57,38 @@ def _fake_token_response(access="at.1", refresh="rt.1"):
         "token_type": "bearer",
         "user": {"id": "u1", "email": "owner@test.com"},
     }
+
+
+class TestExchangePKCE:
+    @pytest.mark.parametrize(
+        ("upstream_status", "expected_status", "expected_detail"),
+        [
+            (400, 401, "Autorizzazione non valida"),
+            (401, 401, "Autorizzazione non valida"),
+            (403, 401, "Autorizzazione non valida"),
+            (408, 503, "Autorizzazione temporaneamente non disponibile"),
+            (429, 503, "Autorizzazione temporaneamente non disponibile"),
+            (500, 503, "Autorizzazione temporaneamente non disponibile"),
+            (503, 503, "Autorizzazione temporaneamente non disponibile"),
+        ],
+    )
+    async def test_exchange_pkce_sanitizes_status_and_retries_transient_failures(
+        self, monkeypatch, upstream_status, expected_status, expected_detail
+    ):
+        response = SimpleNamespace(
+            status_code=upstream_status,
+            json=lambda: {"message": "synthetic private provider detail"},
+        )
+        client = SimpleNamespace(post=AsyncMock(return_value=response))
+        monkeypatch.setattr(bff_module, "_client", AsyncMock(return_value=client))
+
+        with pytest.raises(HTTPException) as caught:
+            await bff_module.exchange_pkce("synthetic-code", "synthetic-verifier")
+
+        assert caught.value.status_code == expected_status
+        assert caught.value.detail == expected_detail
+        assert "synthetic private provider detail" not in str(caught.value.detail)
+        client.post.assert_awaited_once()
 
 
 async def _seed_membership(pg_pool, sample_org, auth_user_id, ruolo="owner"):

@@ -46,7 +46,7 @@
       <label for="reg-email">Work email</label>
       <input class="wizard-input" id="reg-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="register-error" placeholder="you@business.com">
       <label for="reg-password">Password</label>
-      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="password-rules register-error" placeholder="At least 10 characters with a symbol">
+      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" maxlength="256" required aria-describedby="password-rules register-error" placeholder="At least 10 characters with a symbol">
       <div class="pw-meter" aria-hidden="true"><div class="pw-meter-bar" id="pw-bar"></div></div>
       <ul class="pw-checks" id="password-rules" aria-live="polite">
         <li data-check="len">At least 10 characters</li>
@@ -63,7 +63,7 @@
         <button type="submit" class="review-analyze" id="register-save">Create my assistant</button>
       </div>
       <p class="accesso-success" id="register-success" role="status" tabindex="-1" hidden>
-        <strong>Account created.</strong> We sent you a verification email. Open the link to activate your account. <a id="success-login-link" href="/en/login/">Log in here</a>
+        <strong>Check your email.</strong> If this address can be registered, you will receive a link. Open it to confirm your address, then log in with the password you chose. <a id="success-login-link" href="/en/login/">Log in here</a>
       </p>
     </form>
 
@@ -74,6 +74,6 @@
 
 <script src="/config.js"></script>
 <script src="/auth.js?v=2"></script>
-<script src="/register.js?v=2"></script>
+<script src="/register.js?v=3"></script>
 </body>
 </html>

@@ -46,7 +46,7 @@
       <label for="reg-email">Email di lavoro</label>
       <input class="wizard-input" id="reg-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="register-error" placeholder="tu@attivita.it">
       <label for="reg-password">Password</label>
-      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="password-rules register-error" placeholder="Minimo 10 caratteri con un simbolo">
+      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" maxlength="256" required aria-describedby="password-rules register-error" placeholder="Minimo 10 caratteri con un simbolo">
       <div class="pw-meter" aria-hidden="true"><div class="pw-meter-bar" id="pw-bar"></div></div>
       <ul class="pw-checks" id="password-rules" aria-live="polite">
         <li data-check="len">Almeno 10 caratteri</li>
@@ -63,7 +63,7 @@
         <button type="submit" class="review-analyze" id="register-save">Crea il mio assistente</button>
       </div>
       <p class="accesso-success" id="register-success" role="status" tabindex="-1" hidden>
-        <strong>Account creato.</strong> Ti abbiamo inviato un'email di verifica: apri il link dentro l'email per attivare l'account, poi <a id="success-login-link" href="/accedi/">accedi da qui</a>.
+        <strong>Controlla la tua email.</strong> Se l'indirizzo può essere registrato, riceverai un link. Aprilo per confermare l'indirizzo, poi <a id="success-login-link" href="/accedi/">accedi con la password scelta</a>.
       </p>
     </form>
 
@@ -74,6 +74,6 @@
 
 <script src="/config.js"></script>
 <script src="/auth.js?v=2"></script>
-<script src="/register.js?v=2"></script>
+<script src="/register.js?v=3"></script>
 </body>
 </html>

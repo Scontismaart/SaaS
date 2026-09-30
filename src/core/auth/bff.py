@@ -138,7 +138,10 @@ async def exchange_pkce(auth_code: str, code_verifier: str) -> dict:
         headers={"apikey": _anon_key(), "Content-Type": "application/json"},
     )
     if resp.status_code >= 400:
-        # Stessa regola del login password: 401 generico, niente dettagli.
+        if resp.status_code in {408, 429} or resp.status_code >= 500:
+            # Transient provider/rate-limit failures retain the caller's PKCE flow.
+            raise HTTPException(503, "Autorizzazione temporaneamente non disponibile")
+        # Permanent PKCE/code rejection stays generic and does not expose details.
         raise HTTPException(401, "Autorizzazione non valida")
     return resp.json()
 

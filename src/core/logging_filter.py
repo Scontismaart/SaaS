@@ -65,6 +65,12 @@ _BEARER_RE = re.compile(r"(?i)\bBearer\s+[^\s,;\"']+")
 _JWT_RE = re.compile(
     r"\beyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\b"
 )
+_ABSOLUTE_HTTP_URL_RE = re.compile(r"\bhttps?://[^\s<>\"']+", re.IGNORECASE)
+_HTTP_REQUEST_TARGET_RE = re.compile(
+    r"\b(?P<method>GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\s+"
+    r"(?P<target>/[^\s<>\"']+)",
+    re.IGNORECASE,
+)
 _LOG_RECORD_FIELDS = frozenset(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 
 
@@ -86,6 +92,17 @@ def _is_sensitive_key(name: object) -> bool:
 
 def redact_sensitive_text(text: str) -> str:
     """Redact sensitive names case-insensitively, including URL-encoded keys."""
+    # Redact complete URL query strings before key=value parsing. Otherwise
+    # the generic parser can consume ``http://host/path?code=...`` as the
+    # harmless-looking pair ``http=//host/path?code=...`` and miss the code.
+    text = _ABSOLUTE_HTTP_URL_RE.sub(
+        lambda match: _sanitize_logged_url(match.group(0)), text
+    )
+    text = _HTTP_REQUEST_TARGET_RE.sub(
+        lambda match: f"{match.group('method')} {_sanitize_logged_url(match.group('target'))}",
+        text,
+    )
+
     def replace_header(match: re.Match) -> str:
         return f"{match.group('boundary')}{match.group('header')}{SENSITIVE_VALUE_REDACTED}"
 
@@ -135,6 +152,25 @@ def sanitize_telemetry_url(url: str) -> str:
         return SENSITIVE_VALUE_REDACTED
     authority = parts.netloc.rsplit("@", 1)[-1]
     return urlunsplit((parts.scheme, authority, parts.path, "", ""))
+
+
+def _sanitize_logged_url(url: str) -> str:
+    """Redact sensitive URL query values while preserving safe parameters."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return SENSITIVE_VALUE_REDACTED
+
+    query_parts = re.split(r"([&;])", parts.query)
+    for index in range(0, len(query_parts), 2):
+        key, separator, _value = query_parts[index].partition("=")
+        if separator and _is_sensitive_key(key):
+            query_parts[index] = f"{key}={SENSITIVE_VALUE_REDACTED}"
+
+    authority = parts.netloc.rsplit("@", 1)[-1]
+    return urlunsplit(
+        (parts.scheme, authority, parts.path, "".join(query_parts), "")
+    )
 
 class PIIRedactionFilter(logging.Filter):
     """Maschera PII nel testo gia' renderizzato del record di log.
@@ -204,5 +240,5 @@ def configure_logging(level: int = logging.INFO) -> None:
     # OAuth query values. Disable it at source even for manual CLI launches
     # that omit --no-access-log; keep Uvicorn errors available.
     logging.getLogger("uvicorn.access").disabled = True
-    for logger_name in ("uvicorn.error", "httpx"):
+    for logger_name in ("uvicorn.error", "httpx", "httpx2"):
         _ensure_redaction_filter(logging.getLogger(logger_name))

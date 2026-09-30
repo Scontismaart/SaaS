@@ -118,6 +118,32 @@ def test_redact_sensitive_text_handles_case_encoded_names_and_keeps_safe_fields(
     )
 
 
+def test_redact_sensitive_text_redacts_sensitive_absolute_and_relative_url_values():
+    cases = (
+        (
+            "HTTP Request: GET http://api-internal:8000/api/auth/signup/callback"
+            "?code=SYNTHETIC_CODE&state=SYNTHETIC_STATE&lang=it#SYNTHETIC_FRAGMENT",
+            "http://api-internal:8000/api/auth/signup/callback",
+        ),
+        (
+            "GET /api/auth/google/callback?code=SYNTHETIC_RELATIVE_CODE"
+            "&state=SYNTHETIC_RELATIVE_STATE&lang=it#SYNTHETIC_RELATIVE_FRAGMENT",
+            "/api/auth/google/callback",
+        ),
+    )
+
+    for text, expected_path in cases:
+        safe = redact_sensitive_text(text)
+        assert expected_path in safe
+        assert "lang=it" in safe
+        assert "SYNTHETIC_CODE" not in safe
+        assert "SYNTHETIC_STATE" not in safe
+        assert "SYNTHETIC_RELATIVE_CODE" not in safe
+        assert "SYNTHETIC_RELATIVE_STATE" not in safe
+        assert "SYNTHETIC_FRAGMENT" not in safe
+        assert "SYNTHETIC_RELATIVE_FRAGMENT" not in safe
+
+
 def test_redaction_covers_generic_and_mfa_enrollment_secrets():
     text = (
         "secret=SYNTHETIC_GENERIC_SECRET "
@@ -243,9 +269,26 @@ def test_configure_logging_disables_raw_uvicorn_access_but_keeps_errors():
     configure_logging()
     access_logger = logging.getLogger("uvicorn.access")
     error_logger = logging.getLogger("uvicorn.error")
+    test_client_logger = logging.getLogger("httpx2")
     assert access_logger.disabled is True
     assert error_logger.disabled is False
     assert any(isinstance(item, PIIRedactionFilter) for item in error_logger.filters)
+    redaction_filter = next(
+        item for item in test_client_logger.filters if isinstance(item, PIIRedactionFilter)
+    )
+    record = logging.LogRecord(
+        "httpx2",
+        logging.INFO,
+        "_client.py",
+        1085,
+        "HTTP Request: GET http://api-internal:8000/api/auth/signup/callback?code=SYNTHETIC_AUTH_CODE",
+        (),
+        None,
+    )
+    redaction_filter.filter(record)
+    assert "SYNTHETIC_AUTH_CODE" not in record.getMessage()
+    assert "http://api-internal:8000/api/auth/signup/callback" in record.getMessage()
+    assert "?code=[REDACTED]" in record.getMessage()
 
 
 def test_formatting_failure_suppresses_raw_message_and_still_redacts_extra():

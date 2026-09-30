@@ -26,8 +26,6 @@ Prerequisiti: **Python 3.12**, **Docker Desktop** (per PostgreSQL locale) e **No
 3. Esecuzione locale: `uvicorn src.api.main:app --reload --no-proxy-headers --no-access-log`.
 4. Stack completo con Docker: `docker compose --profile dev up -d` (il profilo `dev` aggiunge `postgres-dev` per lo sviluppo locale).
 
-Per ricreare soltanto l'API dello stack QA staging locale, usare `scripts/restart_staging_qa_api.ps1`. Lo script richiede il file ignorato `.env.staging.qa.local`, verifica il progetto staging e mantiene i job disabilitati.
-
 ## Test
 
 Suite completa su Windows:

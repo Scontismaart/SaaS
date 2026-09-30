@@ -7,21 +7,17 @@ def test_api_container_disables_uvicorn_access_log():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     production_compose = (ROOT / "compose.production.yml").read_text(encoding="utf-8")
     local_compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-    staging_script = (ROOT / "scripts/restart_staging_qa_api.ps1").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
     docker_cmd = next(line for line in dockerfile.splitlines() if line.startswith('CMD ["uvicorn"'))
     production_cmd = next(line for line in production_compose.splitlines() if "command: [uvicorn" in line)
     local_cmd = next(line for line in local_compose.splitlines() if "command: [uvicorn" in line)
-    staging_cmd = next(line for line in staging_script.splitlines() if "uvicorn src.api.main:app" in line)
     local_readme_cmd = next(line for line in readme.splitlines() if "Esecuzione locale:" in line)
 
     assert all(
         "--no-access-log" in command
-        for command in (docker_cmd, production_cmd, local_cmd, staging_cmd, local_readme_cmd)
+        for command in (docker_cmd, production_cmd, local_cmd, local_readme_cmd)
     )
-    assert "APP_ENV" in staging_script
-    assert "MELPIS_BACKGROUND_JOBS_ENABLED" in staging_script
 
 
 def test_caddy_access_logs_redact_auth_callback_query_values():

@@ -1,4 +1,5 @@
 import os
+import re
 from unittest.mock import patch
 import httpx
 import pytest
@@ -333,7 +334,10 @@ async def test_same_question_uses_live_profile_and_knowledge_context_after_confi
     old_fact = "Massaggio Relax: 25 euro, durata 50 minuti."
     new_fact = "Massaggio Relax: 40 euro, durata 50 minuti."
     assert old_fact in first["task"] and new_fact not in first["task"]
-    assert second["task"] == first["task"]
+    def without_live_clock(prompt: str) -> str:
+        return re.sub(r"\bore \d{2}:\d{2}\b", "ore <time>", prompt)
+
+    assert without_live_clock(second["task"]) == without_live_clock(first["task"])
     assert new_fact in third["task"] and old_fact not in third["task"]
     assert first["role"] == "Assistente clienti di Oasi del Benessere SPA"
     assert second["role"] == "Assistente clienti di Oasi SPA Milano"

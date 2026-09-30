@@ -1,31 +1,49 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_api_container_disables_uvicorn_access_log():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     production_compose = (ROOT / "compose.production.yml").read_text(encoding="utf-8")
-    assert "--no-access-log" in dockerfile
-    assert "--no-access-log" in production_compose
+    local_compose = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
+    staging_script = (ROOT / "scripts/restart_staging_qa_api.ps1").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    docker_cmd = next(line for line in dockerfile.splitlines() if line.startswith('CMD ["uvicorn"'))
+    production_cmd = next(line for line in production_compose.splitlines() if "command: [uvicorn" in line)
+    local_cmd = next(line for line in local_compose.splitlines() if "command: [uvicorn" in line)
+    staging_cmd = next(line for line in staging_script.splitlines() if "uvicorn src.api.main:app" in line)
+    local_readme_cmd = next(line for line in readme.splitlines() if "Esecuzione locale:" in line)
+
+    assert all(
+        "--no-access-log" in command
+        for command in (docker_cmd, production_cmd, local_cmd, staging_cmd, local_readme_cmd)
+    )
+    assert "APP_ENV" in staging_script
+    assert "MELPIS_BACKGROUND_JOBS_ENABLED" in staging_script
 
 
 def test_caddy_access_logs_redact_auth_callback_query_values():
-    sensitive_query_keys = (
-        "code",
-        "state",
-        "error_description",
-        "access_token",
-        "refresh_token",
-        "id_token",
-        "code_verifier",
+    sensitive_headers = (
+        "Cookie",
+        "Referer",
+        "Set-Cookie",
+        "Location",
+        "Authorization",
+        "Proxy-Authorization",
+        "X-API-Key",
+        "X-CSRF-Token",
     )
     for name in ("Caddyfile.temporary", "Caddyfile.final"):
         config = (ROOT / name).read_text(encoding="utf-8")
-        assert "request>uri query {" in config
-        for key in sensitive_query_keys:
-            assert f"replace {key} [redacted]" in config
+        assert "request>uri regexp `\\?.*$` `?[QUERY REDACTED]`" in config
+        for header in sensitive_headers:
+            if header in {"Set-Cookie", "Location"}:
+                assert f"resp_headers>{header} delete" in config
+                assert f"request>headers>{header} delete" not in config
+                continue
+            assert f"request>headers>{header} delete" in config
 
 
 def test_app_reload_revalidates_back_forward_cached_dashboard():

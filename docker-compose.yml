@@ -2,6 +2,7 @@ services:
   api:
     build: .
     image: whatsapp-ai-responder:latest
+    command: [uvicorn, src.api.main:app, --host, 0.0.0.0, --port, "8000", --no-proxy-headers, --no-access-log]
     env_file: .env
     ports:
       - "8000:8000"

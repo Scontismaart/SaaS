@@ -23,8 +23,10 @@ Prerequisiti: **Python 3.12**, **Docker Desktop** (per PostgreSQL locale) e **No
    - `ENCRYPTION_KEY`: generare una chiave Fernet con `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
    - `META_APP_SECRET` e `META_VERIFY_TOKEN`: obbligatorie per il webhook WhatsApp; senza di esse l'app parte comunque ma il webhook non viene montato e Meta non può raggiungerti.
 2. Migrazioni database: i file SQL in `src/core/db/migrations/` si applicano in ordine via `psql`; il workflow CI `.github/workflows/migrations.yml` mostra il pattern esatto. Vengono applicati anche `src/whatsapp/schema.sql`, `src/core/db/schema.sql` e `src/core/db/triggers.sql`.
-3. Esecuzione locale: `uvicorn src.api.main:app --reload`.
+3. Esecuzione locale: `uvicorn src.api.main:app --reload --no-proxy-headers --no-access-log`.
 4. Stack completo con Docker: `docker compose --profile dev up -d` (il profilo `dev` aggiunge `postgres-dev` per lo sviluppo locale).
+
+Per ricreare soltanto l'API dello stack QA staging locale, usare `scripts/restart_staging_qa_api.ps1`. Lo script richiede il file ignorato `.env.staging.qa.local`, verifica il progetto staging e mantiene i job disabilitati.
 
 ## Test
 

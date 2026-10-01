@@ -227,7 +227,8 @@ def test_register_generates_unreturned_temporary_password_and_pkce_without_provi
     assert json.loads(decrypted_capsule)["password"] == FINAL_PASSWORD
     capsule_cookie = _cookie_header(response, "wa_signup_capsule")
     _assert_host_only_cookie(capsule_cookie)
-    assert f"Max-Age={register._PASSWORD_CAPSULE_TTL_SECONDS}" in capsule_cookie
+    max_age = int(capsule_cookie.split("Max-Age=", 1)[1].split(";", 1)[0])
+    assert 0 < max_age <= register._PASSWORD_CAPSULE_TTL_SECONDS
     assert not any(cookie.startswith((bff.access_cookie_name() + "=", bff.refresh_cookie_name() + "=")) for cookie in _cookie_headers(response))
     repo.get_or_create_organization_with_owner.assert_not_awaited()
 

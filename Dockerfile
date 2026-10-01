@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # -- Stage 1: build dipendenze --------------------------------------
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 WORKDIR /build
 
@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # -- Stage 2: runtime -------------------------------------------------
-FROM python:3.12-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 
 # Utente non-root: uid/gid fissi per compatibilita' con volume permissions
 RUN groupadd -g 1000 appuser && \

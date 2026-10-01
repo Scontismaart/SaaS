@@ -1,5 +1,13 @@
 @import url('/app/design-tokens.css');
 
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-latin.woff2') format('woff2');
+}
+
 /* Font self-hosted: Outfit variabile (300 — 800), stesso set della landing. */
 @font-face {
   font-family: 'Outfit';
@@ -12359,18 +12367,32 @@ html[data-theme="light"] .sidebar-mark {
    DASHBOARD SHELL — integrated canvas and inset workspace
    ============================================================ */
 .app-shell {
-  --app-bg: #0b0c0d;
-  --workspace-bg: #101112;
-  --surface-1: #131416;
+  --app-bg: #141516;
+  --panel-bg: #0e0f10;
+  --workspace-bg: var(--app-bg);
+  --view-bg: var(--app-bg);
+  --surface-1: var(--panel-bg);
   --surface-2: #17181a;
-  --surface-hover: #1a1b1d;
+  --surface-hover: #1c1d1f;
   --surface-selected: #1d1e20;
-  --border-subtle: rgba(255, 255, 255, .055);
-  --border-default: rgba(255, 255, 255, .08);
-  --border-strong: rgba(255, 255, 255, .11);
-  --text-primary: rgba(255, 255, 255, .9);
-  --text-secondary: rgba(255, 255, 255, .6);
+  --border-subtle: #222427;
+  --border-default: #222427;
+  --border-strong: #303236;
+  --text-primary: #eeeeee;
+  --text-secondary: #8a8f98;
   --text-tertiary: rgba(255, 255, 255, .38);
+  --icon-stroke-subtle: #3e4249;
+  --melpis-canvas: var(--view-bg);
+  --melpis-surface: var(--panel-bg);
+  --melpis-surface-raised: var(--surface-2);
+  --melpis-surface-hover: var(--surface-hover);
+  --melpis-line: var(--border-default);
+  --melpis-line-strong: var(--border-strong);
+  --melpis-ink: var(--text-primary);
+  --melpis-muted: var(--text-secondary);
+  --melpis-subtle: var(--text-tertiary);
+  --font-body: "Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Geist Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -12391,6 +12413,7 @@ html[data-theme="light"] .sidebar-mark {
   min-height: 0;
   padding: 8px;
   overflow: hidden;
+  font-family: var(--font-body);
   color: var(--text-primary);
   background: var(--app-bg);
 }
@@ -12410,13 +12433,14 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) > .sidebar {
   border: 0;
   border-top: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--panel-bg);
   box-shadow: none;
   outline: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   z-index: 1;
 }
+.app-shell > .sidebar::after { display: none; }
 
 .sidebar-brand {
   padding: 8px 10px 6px;
@@ -12469,11 +12493,13 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) > .sidebar {
 }
 
 .nav-item.active .nav-icon { color: var(--text-primary); }
+.app-shell > .sidebar .nav-item:not(.active) .nav-icon { color: var(--icon-stroke-subtle); }
+.app-shell > .sidebar .nav-item:hover:not(.active) .nav-icon { color: var(--text-secondary); }
 .nav-icon, .nav-icon svg { width: 16px; height: 16px; }
 
 .sidebar-account-wrap {
   padding: 9px 6px 4px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 0;
 }
 
 .sidebar-account-btn,
@@ -12534,7 +12560,12 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) > .main {
   -webkit-backdrop-filter: none;
 }
 
-.topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -.015em; }
+body .app-shell > .main > .topbar,
+body .app-shell:has(.inbox-view:not(.view-hidden)) > .main > .topbar {
+  background: var(--workspace-bg);
+}
+
+.topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -.025em; }
 .main > .view { min-height: 0; overflow: auto; }
 
 /* Inbox is one workspace frame: list, thread and details are divider-separated regions. */
@@ -12548,7 +12579,8 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-view:not(.view-hidden)
   max-height: none;
   padding: 0;
   overflow: hidden;
-  background: var(--workspace-bg);
+  color: var(--text-primary);
+  background: var(--view-bg);
 }
 
 body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-grid-layout {
@@ -12573,7 +12605,7 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-col-detail {
   height: 100%;
   border: 0 !important;
   border-radius: 0;
-  background: var(--workspace-bg) !important;
+  background: var(--view-bg) !important;
   box-shadow: none !important;
 }
 
@@ -12682,7 +12714,7 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-conv-preview { margin-
 body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-detail-content {
   grid-template-columns: minmax(0, 1fr) minmax(230px, clamp(230px, 18vw, 270px));
   grid-template-rows: 48px auto minmax(0, 1fr) auto;
-  background: var(--workspace-bg);
+  background: var(--view-bg);
 }
 
 body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-detail-header {
@@ -12710,7 +12742,7 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-status-strip {
 body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-messages-container {
   padding: 14px 18px;
   gap: 10px;
-  background: var(--workspace-bg) !important;
+  background: var(--view-bg) !important;
   background-image: none !important;
 }
 
@@ -12777,7 +12809,7 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-context-panel {
   padding: 12px 11px;
   overflow-y: auto;
   border-left: 1px solid var(--border-default);
-  background: var(--workspace-bg);
+  background: var(--view-bg);
 }
 
 body .app-shell:has(.inbox-view:not(.view-hidden)) .inbox-context-title { margin: 2px 0 13px; font-size: 13px; font-weight: 600; }
@@ -12816,7 +12848,7 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) :is(button, a, input, textare
     margin: 0;
     padding: 0;
     border-right: 1px solid var(--border-default);
-    background: var(--app-bg);
+    background: var(--panel-bg);
     transform: translateX(calc(-100% - 20px));
     visibility: hidden;
     transition: transform .22s ease, visibility .22s ease;
@@ -12879,7 +12911,7 @@ body .app-shell:has(.inbox-view:not(.view-hidden)) :is(button, a, input, textare
 html[data-theme="dark"] body .app-shell > .sidebar {
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--panel-bg);
   box-shadow: none;
 }
 html[data-theme="dark"] body .app-shell > .main {
@@ -12897,7 +12929,7 @@ html[data-theme="dark"] body .app-shell > .main {
   --card-bg: var(--surface-1);
   --line: var(--border-default);
   --border: var(--border-default);
-  --dashboard-bg: var(--workspace-bg);
+  --dashboard-bg: var(--view-bg);
   --dashboard-surface: var(--surface-1);
   --dashboard-surface-raised: var(--surface-2);
   --dashboard-surface-subtle: var(--surface-1);
@@ -12907,7 +12939,7 @@ html[data-theme="dark"] body .app-shell > .main {
   --dashboard-text-muted: var(--text-secondary);
   --dashboard-text-dim: var(--text-tertiary);
   color: var(--text-primary);
-  background: var(--workspace-bg);
+  background: var(--view-bg);
 }
 .app-shell > .main > .view:is([data-view-panel="panoramica"], [data-view-panel="prenotazioni"], [data-view-panel="recensioni"], [data-view-panel="team"], [data-view-panel="assistente"], [data-view-panel="conoscenza"], [data-view-panel="configurazione-ai"]) {
   padding: 0 20px 24px;
@@ -13001,7 +13033,7 @@ html[data-theme="dark"] body .app-shell > .main {
 .app-shell > .main > .view :is(button, input, select, textarea):disabled { opacity: .5; cursor: not-allowed; }
 
 /* Panoramica: compact metrics and continuous operational lists. */
-html[data-theme="dark"] .app-shell .view[data-view-panel="panoramica"] { background: var(--workspace-bg); }
+html[data-theme="dark"] .app-shell .view[data-view-panel="panoramica"] { background: var(--view-bg); }
 .app-shell .view[data-view-panel="panoramica"] .panoramica-header { padding-block: 14px; }
 .app-shell .view[data-view-panel="panoramica"] .panoramica-quote { display: none; }
 .app-shell .view[data-view-panel="panoramica"] .kpi-row { gap: 10px; margin: 0 0 14px; }
@@ -13254,7 +13286,7 @@ html[data-theme="dark"] body .app-shell .view[data-view-panel="panoramica"] .kpi
 .app-shell .view[data-view-panel="assistente"] .chat-avatar { width: 30px; height: 30px; border: 1px solid var(--border-default); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text-primary); box-shadow: none; }
 .app-shell .view[data-view-panel="assistente"] .chat-name { color: var(--text-primary); font-size: 13px; font-weight: 600; }
 .app-shell .view[data-view-panel="assistente"] .chat-status { color: var(--text-tertiary); font-size: 11px; }
-.app-shell .view[data-view-panel="assistente"] .chat-body { flex: 1 1 auto; min-height: 0; padding: 16px; background: var(--workspace-bg); background-image: none; }
+.app-shell .view[data-view-panel="assistente"] .chat-body { flex: 1 1 auto; min-height: 0; padding: 16px; background: var(--view-bg); background-image: none; }
 .app-shell .view[data-view-panel="assistente"] .chat-instructions { max-width: 620px; margin: 0 auto 14px; padding: 9px 11px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-secondary); font-size: 11px; box-shadow: none; }
 .app-shell .view[data-view-panel="assistente"] :is(.bubble-in, .bubble-out) { max-width: min(78%, 540px); padding: 9px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: var(--surface-2); color: var(--text-primary); font-size: 12px; box-shadow: none; }
 .app-shell .view[data-view-panel="assistente"] .chat-suggestions { flex-wrap: wrap; gap: 6px; padding: 9px 12px; overflow-x: visible; border-top: 1px solid var(--border-subtle); background: transparent; }

@@ -45,7 +45,7 @@ async def test_cookie_mutation_requires_origin_and_csrf(monkeypatch):
     monkeypatch.setenv("DEMO_MODE", "false")
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
     monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
-    async def fake_logout(access_token):
+    async def fake_logout(access_token, *, scope="local"):
         return None
     monkeypatch.setattr("src.core.auth.bff.logout", fake_logout)
     from src.api.main import app

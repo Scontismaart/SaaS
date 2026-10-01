@@ -46,7 +46,7 @@
       <label for="reg-email">Correo de trabajo</label>
       <input class="wizard-input" id="reg-email" type="email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required aria-describedby="register-error" placeholder="tu@negocio.es">
       <label for="reg-password">Contraseña</label>
-      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="password-rules register-error" placeholder="Mínimo 10 caracteres con un símbolo">
+      <input class="wizard-input" id="reg-password" type="password" autocomplete="new-password" minlength="10" maxlength="256" required aria-describedby="password-rules register-error" placeholder="Mínimo 10 caracteres con un símbolo">
       <div class="pw-meter" aria-hidden="true"><div class="pw-meter-bar" id="pw-bar"></div></div>
       <ul class="pw-checks" id="password-rules" aria-live="polite">
         <li data-check="len">Al menos 10 caracteres</li>
@@ -63,7 +63,7 @@
         <button type="submit" class="review-analyze" id="register-save">Crear mi asistente</button>
       </div>
       <p class="accesso-success" id="register-success" role="status" tabindex="-1" hidden>
-        <strong>Cuenta creada.</strong> Te hemos enviado un correo de verificación. Abre el enlace para activar tu cuenta. <a id="success-login-link" href="/es/iniciar-sesion/">Inicia sesión aquí</a>
+        <strong>Revisa tu correo.</strong> Si se puede registrar esta dirección, recibirás un enlace. Ábrelo para confirmar tu dirección y luego inicia sesión con la contraseña que elegiste. <a id="success-login-link" href="/es/iniciar-sesion/">Inicia sesión aquí</a>
       </p>
     </form>
 
@@ -74,6 +74,6 @@
 
 <script src="/config.js"></script>
 <script src="/auth.js?v=2"></script>
-<script src="/register.js?v=2"></script>
+<script src="/register.js?v=3"></script>
 </body>
 </html>

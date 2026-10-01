@@ -2,7 +2,7 @@
 
 Il frontend NON tocca mai i token: invia email+password a /api/auth/login, il
 backend scambia le credenziali con Supabase Auth via REST e salva la sessione
-in cookie HttpOnly+Secure+SameSite=Strict. I token restano inaccessibili a JS
+in cookie HttpOnly+Secure+SameSite=Lax. I token restano inaccessibili a JS
 (nessun localStorage), eliminando la superficie XSS sui token.
 
 Conforme al design in docs/CHECKLIST-PRE-LANCIO.md (sostituzione auth
@@ -138,7 +138,10 @@ async def exchange_pkce(auth_code: str, code_verifier: str) -> dict:
         headers={"apikey": _anon_key(), "Content-Type": "application/json"},
     )
     if resp.status_code >= 400:
-        # Stessa regola del login password: 401 generico, niente dettagli.
+        if resp.status_code in {408, 429} or resp.status_code >= 500:
+            # Transient provider/rate-limit failures retain the caller's PKCE flow.
+            raise HTTPException(503, "Autorizzazione temporaneamente non disponibile")
+        # Permanent PKCE/code rejection stays generic and does not expose details.
         raise HTTPException(401, "Autorizzazione non valida")
     return resp.json()
 
@@ -164,13 +167,13 @@ async def refresh(refresh_token: str, user_key: str) -> dict:
                 del _refresh_locks[user_key]
 
 
-async def logout(access_token: str) -> None:
-    """Revoca della sessione su Supabase. Best-effort: se il token è già
-    scaduto/revocato la chiamata fallisce ma il logout locale è comunque ok."""
+async def logout(access_token: str, *, scope: str = "local") -> None:
+    """Revoca la sessione corrente su Supabase (non gli altri dispositivi)."""
     client = await _client()
     try:
         await client.post(
             f"{_supabase_url()}/auth/v1/logout",
+            params={"scope": scope},
             headers={"apikey": _anon_key(), "Authorization": f"Bearer {access_token}"},
         )
     except httpx.HTTPError:

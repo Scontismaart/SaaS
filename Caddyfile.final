@@ -15,7 +15,17 @@
 	}
 	log {
 		output stdout
-		format json
+		format filter {
+			request>uri regexp `\?.*$` `?[QUERY REDACTED]`
+			request>headers>Cookie delete
+			request>headers>Referer delete
+			resp_headers>Set-Cookie delete
+			resp_headers>Location delete
+			request>headers>Authorization delete
+			request>headers>Proxy-Authorization delete
+			request>headers>X-API-Key delete
+			request>headers>X-CSRF-Token delete
+		}
 	}
 }
 

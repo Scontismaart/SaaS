@@ -1,9 +1,13 @@
 import os
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
+from fastapi import HTTPException
 
 import src.core.auth.bff as bff_module
+from src.core.auth.denylist import is_token_revoked
 
 API_KEY = "test-api-key-12345"
 
@@ -25,6 +29,7 @@ async def bff_client():
     """Client con solo il router /api/auth: per login/refresh/logout non
     serve il DB, basta mockare il modulo BFF verso Supabase."""
     from fastapi import FastAPI
+
     from src.core.auth.routes import router as auth_router
 
     app = FastAPI()
@@ -52,6 +57,38 @@ def _fake_token_response(access="at.1", refresh="rt.1"):
         "token_type": "bearer",
         "user": {"id": "u1", "email": "owner@test.com"},
     }
+
+
+class TestExchangePKCE:
+    @pytest.mark.parametrize(
+        ("upstream_status", "expected_status", "expected_detail"),
+        [
+            (400, 401, "Autorizzazione non valida"),
+            (401, 401, "Autorizzazione non valida"),
+            (403, 401, "Autorizzazione non valida"),
+            (408, 503, "Autorizzazione temporaneamente non disponibile"),
+            (429, 503, "Autorizzazione temporaneamente non disponibile"),
+            (500, 503, "Autorizzazione temporaneamente non disponibile"),
+            (503, 503, "Autorizzazione temporaneamente non disponibile"),
+        ],
+    )
+    async def test_exchange_pkce_sanitizes_status_and_retries_transient_failures(
+        self, monkeypatch, upstream_status, expected_status, expected_detail
+    ):
+        response = SimpleNamespace(
+            status_code=upstream_status,
+            json=lambda: {"message": "synthetic private provider detail"},
+        )
+        client = SimpleNamespace(post=AsyncMock(return_value=response))
+        monkeypatch.setattr(bff_module, "_client", AsyncMock(return_value=client))
+
+        with pytest.raises(HTTPException) as caught:
+            await bff_module.exchange_pkce("synthetic-code", "synthetic-verifier")
+
+        assert caught.value.status_code == expected_status
+        assert caught.value.detail == expected_detail
+        assert "synthetic private provider detail" not in str(caught.value.detail)
+        client.post.assert_awaited_once()
 
 
 async def _seed_membership(pg_pool, sample_org, auth_user_id, ruolo="owner"):
@@ -187,16 +224,58 @@ class TestRefresh:
             calls.append(rt)
             return _fake_token_response(access="at.2", refresh="rt.2")
 
+        async def fake_verify(token, *, allow_expired=False):
+            assert token == "old-access-token"
+            assert allow_expired is True
+            return {"sub": "u1"}
+
         monkeypatch.setattr(bff_module, "refresh", fake_refresh)
+        monkeypatch.setattr("src.core.auth.dependencies.verify_supabase_jwt", fake_verify)
         resp = await bff_client.post(
             "/api/auth/refresh",
-            headers={"Cookie": "wa_rt=old-refresh-token; wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
+            headers={"Cookie": "wa_at=old-access-token; wa_rt=old-refresh-token; wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
         )
         assert resp.status_code == 200
         assert calls == ["old-refresh-token"]
+        assert await is_token_revoked("old-refresh-token")
+        assert await is_token_revoked("old-access-token")
         set_cookies = resp.headers.get_list("set-cookie")
         assert any(c.startswith("wa_at=at.2") for c in set_cookies)
         assert any(c.startswith("wa_rt=rt.2") for c in set_cookies)
+
+    async def test_refresh_rejects_identity_change_without_setting_cookies(
+        self, bff_client, monkeypatch
+    ):
+        async def fake_refresh(rt, user_key):
+            return _fake_token_response(access="at.other", refresh="rt.other") | {
+                "user": {"id": "another-user"}
+            }
+
+        async def fake_verify(token, *, allow_expired=False):
+            return {"sub": "expected-user"}
+
+        revoked = []
+
+        async def fake_logout(access_token, *, scope="local"):
+            revoked.append((access_token, scope))
+
+        monkeypatch.setattr(bff_module, "refresh", fake_refresh)
+        monkeypatch.setattr("src.core.auth.dependencies.verify_supabase_jwt", fake_verify)
+        monkeypatch.setattr(bff_module, "logout", fake_logout)
+        resp = await bff_client.post(
+            "/api/auth/refresh",
+            headers={
+                "Cookie": "wa_at=mismatch-access-token; wa_rt=mismatch-refresh-token; wa_csrf=csrf",
+                "Origin": "http://test",
+                "X-CSRF-Token": "csrf",
+            },
+        )
+        assert resp.status_code == 401
+        assert "set-cookie" not in resp.headers
+        assert "at.other" not in resp.text and "rt.other" not in resp.text
+        assert revoked == [("at.other", "local")]
+        assert await is_token_revoked("mismatch-access-token")
+        assert await is_token_revoked("mismatch-refresh-token")
 
     async def test_refresh_single_flight(self, monkeypatch):
         """Il single-flight sta DENTRO bff.refresh (lock per-token): due
@@ -249,21 +328,60 @@ class TestLogout:
     async def test_logout_revokes_and_clears_cookie(self, bff_client, monkeypatch):
         revoked = []
 
-        async def fake_logout(access_token):
-            revoked.append(access_token)
+        monkeypatch.setenv("AUTH_COOKIE_SECURE", "true")
+
+        async def fake_logout(access_token, *, scope="local"):
+            revoked.append((access_token, scope))
 
         monkeypatch.setattr(bff_module, "logout", fake_logout)
         resp = await bff_client.post(
             "/api/auth/logout",
-            headers={"Cookie": "wa_at=at.1; wa_rt=rt.1; wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
+            headers={"Cookie": "__Host-wa_at=at.1; __Host-wa_rt=rt.1; __Host-wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
         )
         assert resp.status_code == 200
-        assert revoked == ["at.1"]
+        assert revoked == [("at.1", "local")]
         set_cookies = resp.headers.get_list("set-cookie")
         # i cookie di sessione vengono scaduti (Max-Age=0 o expiry nel passato)
-        assert any("wa_at" in c and "Max-Age=0" in c for c in set_cookies)
-        assert any("wa_rt" in c and "Max-Age=0" in c for c in set_cookies)
-        assert any("wa_csrf" in c and "Max-Age=0" in c for c in set_cookies)
+        for cookie_name in ("__Host-wa_at", "__Host-wa_rt"):
+            cookie = next(c for c in set_cookies if c.startswith(cookie_name + "="))
+            assert "Max-Age=0" in cookie
+            assert "Secure" in cookie
+            assert "HttpOnly" in cookie
+            assert "SameSite=lax" in cookie
+            assert "Path=/" in cookie
+            assert "Domain=" not in cookie
+        csrf_cookie = next(c for c in set_cookies if c.startswith("__Host-wa_csrf="))
+        assert "Max-Age=0" in csrf_cookie
+        assert "Secure" in csrf_cookie
+        assert "SameSite=strict" in csrf_cookie
+        assert "HttpOnly" not in csrf_cookie
+        assert "Path=/" in csrf_cookie
+        assert "Domain=" not in csrf_cookie
+
+    async def test_supabase_logout_revokes_only_current_session(self, monkeypatch):
+        requests = []
+
+        async def capture(request):
+            requests.append(request)
+            return httpx.Response(204)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(capture))
+
+        async def fake_client():
+            return client
+
+        monkeypatch.setattr(bff_module, "_client", fake_client)
+        monkeypatch.setenv("SUPABASE_URL", "https://myproj.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "anon-test-key")
+        try:
+            await bff_module.logout("access-token-test")
+        finally:
+            await client.aclose()
+
+        assert len(requests) == 1
+        assert requests[0].url.path == "/auth/v1/logout"
+        assert requests[0].url.params["scope"] == "local"
+        assert requests[0].headers["Authorization"] == "Bearer access-token-test"
 
 
 class TestTenantIsolation:

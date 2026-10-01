@@ -11,11 +11,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import os
 import time
-from typing import Any
 
-from src.core.rate_limit import get_rate_limiter
+from fastapi import HTTPException
 
 _DEFAULT_TTL = 3600
 _KEY_PREFIX = "auth:revoked"
@@ -39,7 +39,7 @@ def _estimate_ttl_from_jwt(token: str, default_ttl: int = _DEFAULT_TTL) -> int:
             if isinstance(exp, (int, float)):
                 remaining = int(exp - time.time())
                 return max(remaining, 60)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - malformed JWTs use the safe TTL fallback
             pass
     return default_ttl
 
@@ -67,12 +67,12 @@ async def revoke_token(token: str, ttl_seconds: int | None = None) -> None:
             async with redis_client:
                 await redis_client.set(f"{_KEY_PREFIX}:{token_key}", "1", ex=ttl)
             return
-        except Exception as e:
-            import logging
+        except Exception as e:  # noqa: BLE001 - authentication revocation fails closed
             logging.getLogger("src.core.auth.denylist").critical(
-                "REDIS_DENYLIST_DOWN: Impossibile salvare la revoca su Redis: %s", e
+                "REDIS_DENYLIST_DOWN operation=revoke error_type=%s",
+                type(e).__name__,
             )
-            raise RuntimeError(f"Storage sessioni distribuito non disponibile: {e}") from e
+            raise RuntimeError("Storage sessioni distribuito non disponibile") from None
 
     # In-memory backend (esclusivamente quando RATE_LIMIT_BACKEND != 'redis', es. test/dev)
     now = time.time()
@@ -104,16 +104,15 @@ async def is_token_revoked(token: str) -> bool:
             async with redis_client:
                 exists = await redis_client.exists(f"{_KEY_PREFIX}:{token_key}")
                 return bool(exists)
-        except Exception as e:
-            import logging
-            from fastapi import HTTPException
+        except Exception as e:  # noqa: BLE001 - session checks fail closed on backend errors
             logging.getLogger("src.core.auth.denylist").critical(
-                "REDIS_DENYLIST_DOWN: Impossibile verificare lo stato del token su Redis: %s", e
+                "REDIS_DENYLIST_DOWN operation=check error_type=%s",
+                type(e).__name__,
             )
             raise HTTPException(
                 status_code=503,
                 detail="Servizio di autenticazione temporaneamente non disponibile (storage sessioni non raggiungibile)",
-            ) from e
+            ) from None
 
     now = time.time()
     expires_at = _memory_denylist.get(token_key)

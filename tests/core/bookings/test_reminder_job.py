@@ -1,11 +1,18 @@
 from datetime import date, time, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import pytest
 
 pytestmark = pytest.mark.asyncio
+BUSINESS_TZ = ZoneInfo("Europe/Rome")
+
+
+def _business_today() -> date:
+    """Use the same calendar date as the booking jobs, independent of CI TZ."""
+    return datetime.now(BUSINESS_TZ).date()
 
 
 async def test_send_reminders_sends_for_tomorrow(booking_service, repo, sample_org, settings):
-    tomorrow = date.today() + timedelta(days=1)
+    tomorrow = _business_today() + timedelta(days=1)
     b = await repo.create_booking(organization_id=sample_org["id"], nome_cliente="Mario",
         telefono="+393331234567", data=tomorrow, ora=time(20, 0), coperti=4, stato="confermata")
     from src.core.bookings.reminder_job import send_reminders_for_org
@@ -17,7 +24,7 @@ async def test_send_reminders_sends_for_tomorrow(booking_service, repo, sample_o
 
 
 async def test_send_reminders_skips_in_attesa(booking_service, repo, sample_org, settings):
-    tomorrow = date.today() + timedelta(days=1)
+    tomorrow = _business_today() + timedelta(days=1)
     await repo.create_booking(organization_id=sample_org["id"], nome_cliente="Mario",
         data=tomorrow, ora=time(20, 0), coperti=4, stato="in_attesa")
     from src.core.bookings.reminder_job import send_reminders_for_org
@@ -28,7 +35,7 @@ async def test_send_reminders_skips_in_attesa(booking_service, repo, sample_org,
 async def test_reminder_timeout_flags_no_reply(booking_service, repo, sample_org, settings):
     yesterday = datetime.now(timezone.utc) - timedelta(hours=13)
     b = await repo.create_booking(organization_id=sample_org["id"], nome_cliente="Mario",
-        telefono="+393331234567", data=date.today(), ora=time(20, 0), coperti=4, stato="confermata")
+        telefono="+393331234567", data=_business_today(), ora=time(20, 0), coperti=4, stato="confermata")
     await repo.update_booking_reminder_status(sample_org["id"], b["id"], "sent")
     async with repo.pool.acquire() as conn:
         await conn.execute("""
@@ -42,7 +49,7 @@ async def test_reminder_timeout_flags_no_reply(booking_service, repo, sample_org
 
 
 async def test_no_show_job_marks_da_verificare(booking_service, repo, sample_org, settings):
-    today = date.today()
+    today = _business_today()
     b = await repo.create_booking(organization_id=sample_org["id"], nome_cliente="Mario",
         data=today, ora=time(20, 0), coperti=4, stato="confermata")
     from src.core.bookings.no_show_job import mark_da_verificare_for_org
@@ -53,7 +60,7 @@ async def test_no_show_job_marks_da_verificare(booking_service, repo, sample_org
 
 
 async def test_no_show_job_skips_completata(booking_service, repo, sample_org, settings):
-    today = date.today()
+    today = _business_today()
     await repo.create_booking(organization_id=sample_org["id"], nome_cliente="Mario",
         data=today, ora=time(20, 0), coperti=4, stato="completata",
         completata_at=datetime.now(timezone.utc))

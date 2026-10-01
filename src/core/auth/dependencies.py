@@ -71,7 +71,7 @@ async def _get_supabase_jwks() -> list[dict]:
     return JWKS_CACHE["keys"]
 
 
-async def verify_supabase_jwt(token: str) -> dict:
+async def verify_supabase_jwt(token: str, *, allow_expired: bool = False) -> dict:
     from jose import ExpiredSignatureError, JWTError, jwt
 
     jwks = await _get_supabase_jwks()
@@ -112,6 +112,15 @@ async def verify_supabase_jwt(token: str) -> dict:
                 )
             except JWTError:
                 continue
+            if allow_expired:
+                return jwt.decode(
+                    token,
+                    key,
+                    algorithms=algorithms,
+                    audience=expected_aud,
+                    issuer=expected_iss,
+                    options={**options, "verify_exp": False},
+                )
             raise HTTPException(401, "Sessione scaduta: rinnova l'accesso")
         except JWTError:
             continue
@@ -130,7 +139,7 @@ async def get_token(
         return credential.strip()
     if x_api_key:
         return f"apikey:{x_api_key}"
-    # BFF (task18): sessione in cookie HttpOnly+Secure+SameSite=Strict.
+    # BFF (task18): sessione in cookie HttpOnly+Secure+SameSite=Lax.
     # L'access token viaggia nel cookie, mai nel JS/localStorage.
     from src.core.auth import bff
     cookie_token = request.cookies.get(bff.access_cookie_name())

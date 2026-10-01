@@ -4,9 +4,10 @@ Contratto:
 - start: 302 verso authorize Supabase con challenge S256 + cookie HttpOnly
   temporanei (verifier, next). Nessuno `state` custom nell'URL: lo genera
   Supabase internamente (passarne uno rompe il flusso con bad_oauth_state).
-- callback: happy path scambia il codice col verifier del cookie e imposta
-  i cookie di sessione BFF; lo `state` di ritorno è opaco (uuid Supabase) e
-  non viene confrontato. Qualsiasi anomalia (cookie assenti, errore OAuth,
+- callback: Supabase valida il proprio state prima di emettere il code; il
+  callback PKCE dell'app può essere code-only. L'app rifiuta parametri
+  ambigui/malformati, lega il code al verifier cookie e imposta i cookie BFF.
+  Qualsiasi anomalia (cookie assenti, errore OAuth,
   scambio fallito, provisioning fallito) fa fail-closed con redirect a
   /accedi/?errore=google senza cookie di sessione.
 - primo accesso Google: se l'utente non ha membership viene creata org +
@@ -194,7 +195,9 @@ class TestGoogleCallback:
         )
         assert resp.headers["location"] == "/app/?view=inbox"
 
-    async def test_callback_without_state_still_exchanges(self, oauth_client, monkeypatch):
+    async def test_callback_pkce_code_only_supabase_validates_state(
+        self, oauth_client, monkeypatch
+    ):
         called = []
 
         async def fake_exchange(code, verifier):
@@ -212,6 +215,104 @@ class TestGoogleCallback:
         assert resp.status_code == 302
         assert resp.headers["location"] == "/app/"
         assert called
+
+    async def test_supabase_state_error_fails_closed(self, oauth_client, monkeypatch):
+        called = []
+
+        async def fake_exchange(code, verifier):
+            called.append((code, verifier))
+            return _fake_token_response()
+
+        monkeypatch.setattr(bff_module, "exchange_pkce", fake_exchange)
+        start = await self._do_start(oauth_client)
+        resp = await oauth_client.get(
+            "/api/auth/google/callback?error_code=bad_oauth_state",
+            headers={"Cookie": _cookie_header(start)},
+        )
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/accedi/?errore=google"
+        assert not called
+        assert any(
+            c.startswith("wa_oauth_verifier=") and "Max-Age=0" in c
+            for c in resp.headers.get_list("set-cookie")
+        )
+
+    async def test_callback_rejects_ambiguous_or_malformed_state(
+        self, oauth_client, monkeypatch
+    ):
+        called = []
+
+        async def fake_exchange(code, verifier):
+            called.append((code, verifier))
+            return _fake_token_response()
+
+        monkeypatch.setattr(bff_module, "exchange_pkce", fake_exchange)
+        start = await self._do_start(oauth_client)
+        cookies = _cookie_header(start)
+        for query in (
+            "code=one&code=two",
+            "code=c&state=one&state=two",
+            "code=c&state=bad%0Astate",
+        ):
+            resp = await oauth_client.get(
+                f"/api/auth/google/callback?{query}",
+                headers={"Cookie": cookies},
+            )
+            assert resp.status_code == 302
+            assert resp.headers["location"] == "/accedi/?errore=google"
+        assert not called
+
+    async def test_secure_callback_sets_and_consumes_host_cookies(
+        self, oauth_client, monkeypatch
+    ):
+        monkeypatch.setenv("AUTH_COOKIE_SECURE", "true")
+
+        async def fake_exchange(code, verifier):
+            return _fake_token_response()
+
+        monkeypatch.setattr(bff_module, "exchange_pkce", fake_exchange)
+        start = await self._do_start(oauth_client)
+        start_cookies = start.headers.get_list("set-cookie")
+        verifier_cookie = next(c for c in start_cookies if c.startswith("__Host-wa_oauth_verifier="))
+        assert "Secure" in verifier_cookie
+        assert "HttpOnly" in verifier_cookie
+        assert "SameSite=lax" in verifier_cookie
+        assert "Path=/" in verifier_cookie
+        assert "Max-Age=600" in verifier_cookie
+        assert "Domain=" not in verifier_cookie
+
+        resp = await oauth_client.get(
+            "/api/auth/google/callback?code=short-lived-code",
+            headers={"Cookie": _cookie_header(start)},
+        )
+        assert resp.status_code == 302
+        assert resp.headers["location"] == "/app/"
+        assert "short-lived-code" not in resp.headers["location"]
+        assert "at.oauth" not in resp.text and "rt.oauth" not in resp.text
+        cookies = resp.headers.get_list("set-cookie")
+        for cookie_name in ("__Host-wa_at", "__Host-wa_rt"):
+            cookie = next(c for c in cookies if c.startswith(cookie_name + "="))
+            assert "Secure" in cookie
+            assert "HttpOnly" in cookie
+            assert "SameSite=lax" in cookie
+            assert "Path=/" in cookie
+            assert "Max-Age=" not in cookie
+            assert "Expires=" not in cookie
+            assert "Domain=" not in cookie
+        csrf_cookie = next(c for c in cookies if c.startswith("__Host-wa_csrf="))
+        assert "Secure" in csrf_cookie
+        assert "SameSite=strict" in csrf_cookie
+        assert "HttpOnly" not in csrf_cookie
+        assert "Path=/" in csrf_cookie
+        assert "Domain=" not in csrf_cookie
+        for cookie_name in ("__Host-wa_oauth_verifier", "__Host-wa_oauth_next"):
+            cookie = next(c for c in cookies if c.startswith(cookie_name + "="))
+            assert "Max-Age=0" in cookie
+            assert "Secure" in cookie
+            assert "HttpOnly" in cookie
+            assert "SameSite=lax" in cookie
+            assert "Path=/" in cookie
+            assert "Domain=" not in cookie
 
     async def test_callback_missing_code_fails_closed(self, oauth_client):
         start = await self._do_start(oauth_client)

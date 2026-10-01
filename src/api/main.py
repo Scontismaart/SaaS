@@ -100,10 +100,34 @@ from src.instagram.router import create_router as create_instagram_router
 from src.instagram.repository import InstagramRepository
 
 
+def _background_jobs_enabled_from_env() -> bool:
+    """Resolve whether this API process may run its in-process job loops."""
+    app_env = os.getenv(
+        "APP_ENV", os.getenv("ENVIRONMENT", "development")
+    ).strip().lower()
+    configured = os.getenv("MELPIS_BACKGROUND_JOBS_ENABLED")
+
+    # Staging runtimes must opt in explicitly; this prevents an Auth-only test
+    # deployment from silently starting queues or scheduled maintenance.
+    if app_env == "staging" and configured is None:
+        raise RuntimeError("MELPIS_BACKGROUND_JOBS_ENABLED must be explicit in staging")
+    if configured is None:
+        return True
+
+    value = configured.strip().lower()
+    if value not in {"true", "false"}:
+        raise RuntimeError("MELPIS_BACKGROUND_JOBS_ENABLED must be 'true' or 'false'")
+    if value == "false" and app_env != "staging":
+        raise RuntimeError("Background jobs may only be disabled when APP_ENV=staging")
+    return value == "true"
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from src.core.startup_guard import assert_production_safe
     assert_production_safe()
+    background_jobs_enabled = _background_jobs_enabled_from_env()
+    app.state.background_jobs_enabled = background_jobs_enabled
     # Config globale — settato incondizionatamente, prima di qualsiasi
     # dipendenza dal DB, cosi' e' disponibile anche in modalita' demo
     # (DATABASE_URL assente o DB irraggiungibile).
@@ -111,7 +135,8 @@ async def lifespan(app: FastAPI):
         stripe_trial_days=int(os.getenv("STRIPE_TRIAL_DAYS", "7")),
     )
     reset_memory_rate_limiter()
-    start_worker()
+    if background_jobs_enabled:
+        start_worker()
     app.state.inbound_task = None
     app.state.retry_task = None
     app.state.governance_task = None
@@ -248,9 +273,10 @@ async def lifespan(app: FastAPI):
                     # or when a persistent database error needs operator action.
                     await asyncio.sleep(0.05 if processed else 1.0)
 
-            app.state.inbound_task = asyncio.create_task(_inbound_loop())
-            app.state.retry_task = asyncio.create_task(_retry_loop())
-            app.state.governance_task = asyncio.create_task(_governance_loop())
+            if background_jobs_enabled:
+                app.state.inbound_task = asyncio.create_task(_inbound_loop())
+                app.state.retry_task = asyncio.create_task(_retry_loop())
+                app.state.governance_task = asyncio.create_task(_governance_loop())
         except Exception as e:
             logger.warning("[startup] Database connection failed: %s. Running without pool.", e)
             app.state.repo = None
@@ -266,12 +292,13 @@ async def lifespan(app: FastAPI):
             app.state.orchestrator = ConversationOrchestrator(
                 booking_service=app.state.booking_service,
             )
-            _imposta_fonte_dati_per_scheduler()
-            try:
-                from src.core.documenti.embeddings import _modello
-                asyncio.create_task(asyncio.to_thread(_modello))
-            except Exception as e:
-                logger.warning("[startup] Embedding model warmup warning: %s", e)
+            if background_jobs_enabled:
+                _imposta_fonte_dati_per_scheduler()
+                try:
+                    from src.core.documenti.embeddings import _modello
+                    asyncio.create_task(asyncio.to_thread(_modello))
+                except Exception as e:
+                    logger.warning("[startup] Embedding model warmup warning: %s", e)
     else:
         app.state.repo = None
         app.state.pool = None
@@ -286,11 +313,14 @@ async def lifespan(app: FastAPI):
         app.state.orchestrator = ConversationOrchestrator(
             booking_service=app.state.booking_service,
         )
-        _imposta_fonte_dati_per_scheduler()
-    avvia_scheduler()
+        if background_jobs_enabled:
+            _imposta_fonte_dati_per_scheduler()
+    if background_jobs_enabled:
+        avvia_scheduler()
     yield
-    ferma_scheduler()
-    stop_email_worker()
+    if background_jobs_enabled:
+        ferma_scheduler()
+        stop_email_worker()
     background_tasks = [
         task for task in (
             getattr(app.state, "inbound_task", None),
@@ -410,6 +440,9 @@ async def _rate_limit_check(key: str, limit: int | None = None,
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
+    if request.url.path.startswith("/api/auth/mfa"):
+        response.headers["Cache-Control"] = "no-store, private"
+        response.headers["Pragma"] = "no-cache"
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -506,9 +539,12 @@ async def liveness_check(request: Request):
     """
     workers_ok = True
     worker_status = {}
+    jobs_enabled = getattr(request.app.state, "background_jobs_enabled", True)
     for task_name in ("inbound_task", "retry_task", "governance_task"):
         task = getattr(request.app.state, task_name, None)
-        if task is not None:
+        if not jobs_enabled:
+            worker_status[task_name] = "disabled"
+        elif task is not None:
             if task.done():
                 exc = task.exception() if not task.cancelled() else "cancelled"
                 worker_status[task_name] = "stopped: worker failure" if exc else "stopped"
@@ -521,6 +557,7 @@ async def liveness_check(request: Request):
 
     payload = {
         "status": "ok" if workers_ok else "unhealthy",
+        "background_jobs": "enabled" if jobs_enabled else "disabled",
         "workers": worker_status,
     }
     if not workers_ok:
@@ -537,6 +574,8 @@ async def readiness_check(request: Request):
     """
     checks: dict[str, str] = {}
     healthy = True
+    jobs_enabled = getattr(request.app.state, "background_jobs_enabled", True)
+    checks["background_jobs"] = "enabled" if jobs_enabled else "disabled"
 
     pool = getattr(request.app.state, "pool", None)
     if pool is None:

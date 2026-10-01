@@ -46,7 +46,7 @@ services:
 
   api:
     <<: *api
-    command: [uvicorn, src.api.main:app, --host, 0.0.0.0, --port, "8000", --no-proxy-headers]
+    command: [uvicorn, src.api.main:app, --host, 0.0.0.0, --port, "8000", --no-proxy-headers, --no-access-log]
     mem_limit: 1536m
     cpus: 0.75
     healthcheck:

@@ -260,13 +260,19 @@ async function apiFetch(url, options = {}) {
     }
     if (isMfa) {
       res.mfaRequired = true;
+      const mfaMessage = typeof t === "function"
+        ? t("settings:mfa.required_toast")
+        : "Questa operazione richiede una verifica in due passaggi.";
       toast(
-        "Questa operazione richiede la verifica a due fattori (MFA), non ancora disponibile nella dashboard.",
+        mfaMessage,
         "warning",
         8000,
         {
-          testo: "Contatta assistenza",
-          onClick: () => window.open("mailto:assistenza@melpis.it?subject=Richiesta%20abilitazione%20MFA", "_blank"),
+          testo: typeof t === "function" ? t("settings:mfa.open_security") : "Apri Sicurezza",
+          onClick: () => {
+            if (window.MelpisMfa?.openForStepUp) window.MelpisMfa.openForStepUp();
+            else apriVistaImpostazioni("sicurezza");
+          },
         }
       );
     }
@@ -274,6 +280,11 @@ async function apiFetch(url, options = {}) {
   segnaReteOk();
   return res;
 }
+
+// Small bridge for the isolated MFA UI module; session tokens remain in cookies.
+window.MelpisAPI = window.MelpisAPI || {};
+window.MelpisAPI.fetch = apiFetch;
+window.MelpisAPI.base = API_BASE;
 
 const RUOLO_LABEL = {
   owner: "Proprietario",
@@ -841,6 +852,8 @@ function attivaCategoriaImpostazioni(cat) {
     if (typeof caricaAccount === "function") caricaAccount();
   } else if (targetCat === "audit") {
     if (typeof caricaAudit === "function") caricaAudit();
+  } else if (targetCat === "sicurezza") {
+    window.MelpisMfa?.loadStatus?.();
   }
 }
 
@@ -5940,6 +5953,14 @@ notifBell?.addEventListener("click", () => {
 /* ============================================================
    AVVIO
    ============================================================ */
+
+// Una pagina /app/ ripristinata dalla back-forward cache potrebbe contenere
+// DOM autenticato precedente al logout. Ricarica per riverificare la sessione.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && window.location.pathname.startsWith("/app/")) {
+    window.location.reload();
+  }
+});
 
 (async function avvia() {
   const pendingInvite = new URLSearchParams(window.location.hash.slice(1)).get("team-invite")

@@ -126,6 +126,7 @@ class TestEndToEndLoginAccessLogoutReplayBlocked:
     """
 
     def test_stolen_or_copied_token_rejected_after_logout(self, monkeypatch):
+        monkeypatch.setenv("DEMO_MODE", "false")
         app = FastAPI()
         app.include_router(auth_router)
 
@@ -134,6 +135,9 @@ class TestEndToEndLoginAccessLogoutReplayBlocked:
             return {"ok": True, "user_id": user["auth_user_id"]}
 
         client = TestClient(app)
+
+        unauthenticated = client.get("/api/dashboard/secret-data")
+        assert unauthenticated.status_code == 401
 
         # Genera token e mock decodifica JWT valida
         fake_token = _make_fake_jwt(user_id="usr-abc-999")
@@ -164,6 +168,64 @@ class TestEndToEndLoginAccessLogoutReplayBlocked:
         resp_replay_cookie = client.get("/api/dashboard/secret-data")
         assert resp_replay_cookie.status_code == 401
         assert "revocata" in resp_replay_cookie.json()["detail"].lower()
+
+    def test_expired_session_cannot_access_protected_endpoint(self, monkeypatch):
+        app = FastAPI()
+
+        @app.get("/api/dashboard/secret-data")
+        async def protected_endpoint(user: dict = Depends(get_current_user)):
+            return {"ok": True}
+
+        async def expired_token(token: str):
+            raise HTTPException(status_code=401, detail="Sessione scaduta")
+
+        monkeypatch.setattr(deps, "verify_supabase_jwt", expired_token)
+        client = TestClient(app)
+        response = client.get(
+            "/api/dashboard/secret-data",
+            headers={"Authorization": "Bearer expired-signed-token"},
+        )
+        assert response.status_code == 401
+
+    def test_new_login_after_logout_creates_usable_fresh_session(self, monkeypatch):
+        monkeypatch.setenv("DEMO_MODE", "false")
+        monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
+        app = FastAPI()
+        app.include_router(auth_router)
+
+        @app.get("/api/dashboard/secret-data")
+        async def protected_endpoint(user: dict = Depends(get_current_user)):
+            return {"user_id": user["auth_user_id"]}
+
+        async def fake_login(email, password):
+            return {
+                "access_token": "fresh-access-after-logout",
+                "refresh_token": "fresh-refresh-after-logout",
+                "user": {"id": "usr-abc-999", "email": email},
+            }
+
+        async def fake_verify(token: str):
+            return {"sub": "usr-abc-999", "email": "test@example.com", "aal": "aal1"}
+
+        monkeypatch.setattr(bff, "login", fake_login)
+        monkeypatch.setattr(deps, "verify_supabase_jwt", fake_verify)
+        monkeypatch.setattr(bff, "logout", AsyncMock(return_value=None))
+        client = TestClient(app)
+
+        old_token = _make_fake_jwt(user_id="usr-abc-999")
+        client.cookies.set(bff.access_cookie_name(), old_token)
+        client.cookies.set(bff.refresh_cookie_name(), "refresh-before-logout")
+        assert client.post("/api/auth/logout").status_code == 200
+        assert client.get("/api/dashboard/secret-data").status_code == 401
+
+        login = client.post(
+            "/api/auth/login",
+            json={"email": "test@example.com", "password": "test-only-password"},
+        )
+        assert login.status_code == 200
+        protected = client.get("/api/dashboard/secret-data")
+        assert protected.status_code == 200
+        assert protected.json()["user_id"] == "usr-abc-999"
 
 
 class TestRedisFailClosedBehavior:

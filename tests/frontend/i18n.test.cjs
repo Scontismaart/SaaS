@@ -154,6 +154,34 @@ test("i18n: dashboard bundles stay synchronized and cover visible Settings, AI, 
     ...Array.from(dashboard.matchAll(/data-i18n(?:-[a-z]+)?="([^"]+)"/g), (match) => match[1]),
     ...Array.from(appCode.matchAll(/t\("((?:settings|inbox|dashboard):[^\"]+)"\)/g), (match) => match[1]),
   ]);
+  [
+    "inbox:filters.empty_no_conversations",
+    "inbox:filters.empty_connect_channels",
+    "inbox:filters.connect_channels",
+    "inbox:filters.empty_waiting",
+    "inbox:filters.empty_no_results",
+    "inbox:filters.empty_filter_results",
+    "inbox:filters.show_all",
+    "inbox:filters.escalation_failed",
+    "inbox:filters.status_strip_ai",
+    "inbox:filters.status_strip_pending",
+    "inbox:filters.status_strip_resolved",
+    "inbox:filters.empty_title",
+    "inbox:filters.empty_thread_text",
+    "inbox:filters.ticket_resolved",
+    "inbox:filters.manual_reply_claim",
+    "inbox:chat.claim_loading",
+    "inbox:chat.claim_btn",
+    "inbox:chat.release_btn",
+    "inbox:chat.close_ticket",
+    "inbox:chat.type_message",
+    "inbox:chat.claimed_by_you",
+    "inbox:chat.claimed_by_other",
+    ...[
+      "received_pending_ai", "processing", "handled", "queued", "sending_ambiguous",
+      "sent", "delivered", "read", "failed",
+    ].map((status) => `inbox:chat.message_status.${status}`),
+  ].forEach((key) => keys.add(key));
   const resolveKey = (bundle, key) => {
     const separator = key.indexOf(":");
     let namespace = separator >= 0 ? key.slice(0, separator) : "common";
@@ -196,6 +224,159 @@ test("i18n: dashboard bundles stay synchronized and cover visible Settings, AI, 
   ]) {
     assert.ok(appCode.includes(`t("${key}")`), `dynamic AI copy uses ${key}`);
   }
+});
+
+test("i18n: Inbox renders resolved translations in every supported language", async () => {
+  const root = path.resolve(__dirname, "../..");
+  const html = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
+  const clientCode = fs.readFileSync(path.join(root, "web/i18n-client.js"), "utf8");
+  const dom = new JSDOM(html, { url: "http://localhost:4174/app/", runScripts: "outside-only" });
+  const inbox = dom.window.document.querySelector('[data-view-panel="inbox"]');
+  assert.ok(inbox, "Inbox panel exists in the dashboard shell");
+
+  dom.window.localStorage.setItem("melpis_lang", "it");
+  dom.window.fetch = async (url) => {
+    const relative = new URL(String(url), dom.window.location.href).pathname.replace(/^\/+/, "");
+    const filePath = path.join(root, "web", relative);
+    const exists = fs.existsSync(filePath);
+    return {
+      ok: exists,
+      status: exists ? 200 : 404,
+      json: async () => JSON.parse(fs.readFileSync(filePath, "utf8")),
+    };
+  };
+  dom.window.eval(clientCode);
+  const i18n = dom.window.MelpisI18n;
+  await i18n.init({ namespaces: ["inbox"] });
+
+  for (const language of SUPPORTED_LANGS) {
+    if (language !== "it") await i18n.setLanguage(language);
+    for (const el of inbox.querySelectorAll("[data-i18n]")) {
+      assert.doesNotMatch(el.textContent.trim(), /^(?:inbox:)?filters\./, `${language} resolves ${el.dataset.i18n}`);
+    }
+    for (const attribute of ["data-i18n-placeholder", "data-i18n-aria", "data-i18n-title"]) {
+      for (const el of inbox.querySelectorAll(`[${attribute}]`)) {
+        const targetAttribute = attribute === "data-i18n-placeholder" ? "placeholder" : attribute === "data-i18n-aria" ? "aria-label" : "title";
+        assert.doesNotMatch(el.getAttribute(targetAttribute) || "", /^(?:inbox:)?filters\./, `${language} resolves ${el.getAttribute(attribute)}`);
+      }
+    }
+  }
+
+  dom.window.close();
+});
+
+test("i18n: dynamic Inbox copy resolves in every supported language", async () => {
+  const clientCode = fs.readFileSync(path.resolve(__dirname, "../../web/i18n-client.js"), "utf8");
+  const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", {
+    url: "https://melpis.it/app/",
+    runScripts: "outside-only",
+  });
+  dom.window.fetch = async (url) => {
+    const relative = String(url).replace(/^\//, "").split("?")[0];
+    const filePath = path.join(path.resolve(__dirname, "../../web"), relative);
+    return {
+      ok: fs.existsSync(filePath),
+      status: fs.existsSync(filePath) ? 200 : 404,
+      json: async () => JSON.parse(fs.readFileSync(filePath, "utf8")),
+    };
+  };
+  dom.window.eval(clientCode);
+  const i18n = dom.window.MelpisI18n;
+  await i18n.init();
+
+  const keys = [
+    "inbox:filters.empty_no_conversations",
+    "inbox:filters.empty_connect_channels",
+    "inbox:filters.connect_channels",
+    "inbox:filters.empty_waiting",
+    "inbox:filters.empty_no_results",
+    "inbox:filters.empty_filter_results",
+    "inbox:filters.show_all",
+    "inbox:filters.escalation_failed",
+    "inbox:filters.status_strip_ai",
+    "inbox:filters.status_strip_pending",
+    "inbox:filters.status_strip_resolved",
+    "inbox:filters.empty_title",
+    "inbox:filters.empty_thread_text",
+    "inbox:filters.ticket_resolved",
+    "inbox:filters.manual_reply_claim",
+    "inbox:chat.claim_loading",
+    "inbox:chat.claim_btn",
+    "inbox:chat.release_btn",
+    "inbox:chat.close_ticket",
+    "inbox:chat.type_message",
+    "inbox:chat.claimed_by_you",
+    "inbox:chat.claimed_by_other",
+    ...[
+      "received_pending_ai", "processing", "handled", "queued", "sending_ambiguous",
+      "sent", "delivered", "read", "failed",
+    ].map((status) => `inbox:chat.message_status.${status}`),
+  ];
+
+  for (const language of SUPPORTED_LANGS) {
+    await i18n.setLanguage(language);
+    for (const key of keys) {
+      const value = i18n.t(key);
+      assert.equal(typeof value, "string", `${language} has a string for ${key}`);
+      assert.notEqual(value, key, `${language} does not expose raw key ${key}`);
+      assert.ok(value.trim(), `${language} has non-empty copy for ${key}`);
+    }
+    const claimedByName = i18n.t("inbox:chat.claimed_by_other", { name: "Alex" });
+    assert.ok(claimedByName.includes("Alex"), `${language} interpolates the assigned operator`);
+    assert.doesNotMatch(claimedByName, /\{\{\s*name\s*\}\}/, `${language} resolves the operator placeholder`);
+  }
+  dom.window.close();
+});
+
+test("Inbox language refresh re-renders loaded state without fetching ticket data", () => {
+  const appCode = fs.readFileSync(path.resolve(__dirname, "../../web/app.js"), "utf8");
+  const helper = appCode.match(/function aggiornaInboxPerLingua\(\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(helper, "Inbox localization refresh helper exists");
+  assert.match(appCode, /window\.addEventListener\("melpis:lang-changed",[\s\S]*?aggiornaInboxPerLingua\(\);/);
+
+  const dom = new JSDOM("<!doctype html><html><body><div id=\"inbox-list\"></div></body></html>", {
+    runScripts: "outside-only",
+  });
+  dom.window.eval(`
+    const inboxState = { selectedTicketId: "ticket-1" };
+    window.listRenderCount = 0;
+    window.detailRenderArgs = null;
+    function renderInboxConversazioni() { window.listRenderCount += 1; }
+    function caricaDettaglioTicket(...args) { window.detailRenderArgs = args; }
+    ${helper}
+    window.refreshInboxLanguage = aggiornaInboxPerLingua;
+  `);
+  dom.window.refreshInboxLanguage();
+  assert.equal(dom.window.listRenderCount, 1);
+  assert.equal(JSON.stringify(dom.window.detailRenderArgs), JSON.stringify(["ticket-1", true, {
+    refreshMessages: false,
+    forceRender: true,
+  }]));
+  dom.window.close();
+});
+
+test("Inbox claim loading state survives a language-driven action rerender", () => {
+  const appCode = fs.readFileSync(path.resolve(__dirname, "../../web/app.js"), "utf8");
+  const helper = appCode.match(/function aggiornaStatoPulsanteClaimInbox\(button, ticketId\) \{[\s\S]*?\n\}/)?.[0];
+  assert.ok(helper, "claim button state helper exists");
+  const dom = new JSDOM("<!doctype html><html><body><button></button></body></html>", {
+    runScripts: "outside-only",
+  });
+  dom.window.eval(`
+    const inboxState = { pendingClaims: new Set(["ticket-1"]) };
+    function t(key) { return key; }
+    ${helper}
+    window.updateClaimButton = aggiornaStatoPulsanteClaimInbox;
+  `);
+
+  const button = dom.window.document.querySelector("button");
+  dom.window.updateClaimButton(button, "ticket-1");
+  assert.equal(button.disabled, true);
+  assert.equal(button.textContent, "inbox:chat.claim_loading");
+  dom.window.updateClaimButton(button, "ticket-2");
+  assert.equal(button.disabled, false);
+  assert.equal(button.textContent, "inbox:chat.claim_btn");
+  dom.window.close();
 });
 
 test("i18n: every dashboard runtime _tDash key is translated in all dashboard bundles", () => {

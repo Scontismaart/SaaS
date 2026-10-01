@@ -4785,6 +4785,7 @@ let inboxState = {
   selectedTicketId: null,
   tickets: [],
   team: [],
+  pendingClaims: new Set(),
   isLoading: false,
 };
 
@@ -4795,17 +4796,38 @@ const TICKET_STATUS_LABEL = {
   RESOLVED: "Risolto",
 };
 
+function labelStatoTicketInbox(status) {
+  const translationKey = {
+    AI_ACTIVE: "inbox:filters.status_ai",
+    PENDING_STAFF: "inbox:filters.status_pending",
+    CLAIMED: "inbox:filters.status_claimed",
+    RESOLVED: "inbox:filters.status_resolved",
+  }[status];
+  return translationKey ? t(translationKey) : TICKET_STATUS_LABEL[status] || status || "Aperta";
+}
+
 const MESSAGE_STATUS_LABEL = {
-  received_pending_ai: "ricevuto",
-  processing: "in lavorazione",
-  handled: "gestito",
-  queued: "in coda",
-  sending_ambiguous: "invio incerto",
-  sent: "inviato",
-  delivered: "consegnato",
-  read: "letto",
-  failed: "non inviato",
+  received_pending_ai: "received_pending_ai",
+  processing: "processing",
+  handled: "handled",
+  queued: "queued",
+  sending_ambiguous: "sending_ambiguous",
+  sent: "sent",
+  delivered: "delivered",
+  read: "read",
+  failed: "failed",
 };
+
+function labelStatoMessaggioInbox(status) {
+  const key = MESSAGE_STATUS_LABEL[status];
+  return key ? t(`inbox:chat.message_status.${key}`) : status;
+}
+
+function aggiornaStatoPulsanteClaimInbox(button, ticketId) {
+  const isPending = inboxState.pendingClaims.has(String(ticketId));
+  button.disabled = isPending;
+  button.textContent = t(isPending ? "inbox:chat.claim_loading" : "inbox:chat.claim_btn");
+}
 
 const AVATAR_COLOR_PALETTES = [
   { bg: "#EBF5FF", text: "#1E40AF" },
@@ -4957,6 +4979,12 @@ async function caricaInbox(silent = false) {
     const newSig = newTickets.map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.escalation_failed}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
 
     inboxState.tickets = newTickets;
+    inboxState.pendingClaims.forEach((ticketId) => {
+      const updatedTicket = newTickets.find((item) => String(item.id) === ticketId);
+      if (!updatedTicket || !["PENDING_STAFF", "AI_ACTIVE"].includes(updatedTicket.ticket_status)) {
+        inboxState.pendingClaims.delete(ticketId);
+      }
+    });
 
     if (teamRes.ok) {
       try {
@@ -5075,9 +5103,9 @@ function renderInboxConversazioni() {
         container.appendChild(
           _emptyState(
             ICONS.inbox,
-            "Nessuna conversazione",
-            "Collega il tuo account WhatsApp Business o Instagram per iniziare a ricevere i messaggi dei clienti.",
-            "Collega i canali",
+            t("inbox:filters.empty_no_conversations"),
+            t("inbox:filters.empty_connect_channels"),
+            t("inbox:filters.connect_channels"),
             () => {
               apriVistaImpostazioni("whatsapp");
             }
@@ -5087,8 +5115,7 @@ function renderInboxConversazioni() {
         container.appendChild(
           _emptyState(
             ICONS.inbox,
-            "In attesa di nuovi messaggi",
-            "Le conversazioni dei clienti su WhatsApp e Instagram compariranno automaticamente qui in tempo reale."
+            t("inbox:filters.empty_waiting")
           )
         );
       }
@@ -5096,9 +5123,9 @@ function renderInboxConversazioni() {
       container.appendChild(
         _emptyState(
           ICONS.inbox,
-          "Nessun risultato",
-          "Non ci sono conversazioni corrispondenti ai filtri attivi.",
-          "Mostra tutte",
+          t("inbox:filters.empty_no_results"),
+          t("inbox:filters.empty_filter_results"),
+          t("inbox:filters.show_all"),
           () => {
             inboxState.channelFilter = "all";
             inboxState.statusFilter = "all";
@@ -5154,7 +5181,6 @@ function renderInboxConversazioni() {
 
     topLine.appendChild(nameEl);
     topLine.appendChild(timeEl);
-
     // Meta Line: Canale + Stato
     const metaLine = document.createElement("div");
     metaLine.className = "inbox-conv-meta-line";
@@ -5176,7 +5202,7 @@ function renderInboxConversazioni() {
     const statusPill = document.createElement("span");
     statusPill.className = `conv-status-pill status-${(t.ticket_status || "").toLowerCase()}`;
 
-    let statusText = TICKET_STATUS_LABEL[t.ticket_status] || t.ticket_status;
+    let statusText = labelStatoTicketInbox(t.ticket_status);
     let statusIcon = "";
     if (t.ticket_status === "AI_ACTIVE") {
       statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4" stroke="currentColor" stroke-width="1.8"/></svg>';
@@ -5184,7 +5210,7 @@ function renderInboxConversazioni() {
       statusIcon = '<span class="inbox-dot-red"></span>';
     } else if (t.ticket_status === "CLAIMED") {
       statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>';
-      if (t.assigned_nome) statusText = `Preso da ${t.assigned_nome}`;
+      if (t.assigned_nome) statusText = t("inbox:chat.claimed_by_other", { name: t.assigned_nome });
     } else if (t.ticket_status === "RESOLVED") {
       statusIcon = '<svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg>';
     }
@@ -5201,7 +5227,7 @@ function renderInboxConversazioni() {
     if (t.escalation_failed) {
       const alert = document.createElement("span");
       alert.className = "conv-status-pill status-pending_staff";
-      alert.textContent = "Escalation non riuscita: intervento richiesto";
+      alert.textContent = t("inbox:filters.escalation_failed");
       alert.setAttribute("role", "alert");
       metaLine.appendChild(alert);
     }
@@ -5350,7 +5376,10 @@ function _renderMsgRow(m, ticket) {
   const meta = document.createElement("div");
   meta.className = "inbox-msg-meta";
   const quando = formatInboxDate(m.created_at);
-  const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
+  const status = labelStatoMessaggioInbox(m.status);
+  meta.dataset.createdAt = m.created_at || "";
+  meta.dataset.status = m.status || "";
+  meta.dataset.direction = m.direction || "";
   meta.textContent = isInbound ? quando : `${quando} · ${status}`;
   bubble.appendChild(meta);
 
@@ -5359,7 +5388,7 @@ function _renderMsgRow(m, ticket) {
   return row;
 }
 
-async function caricaDettaglioTicket(ticketId, silent = false) {
+async function caricaDettaglioTicket(ticketId, silent = false, { refreshMessages = true, forceRender = false } = {}) {
   const emptyEl = document.getElementById("inbox-detail-empty");
   const contentEl = document.getElementById("inbox-detail-content");
   if (!contentEl) return;
@@ -5379,6 +5408,13 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
   const avatarEl = document.getElementById("inbox-detail-avatar");
   const channelBadge = document.getElementById("inbox-detail-channel");
   const actionsEl = document.getElementById("inbox-detail-actions");
+  const contextNumber = document.getElementById("inbox-context-number");
+  const contextChannel = document.getElementById("inbox-context-channel");
+  const contextStatus = document.getElementById("inbox-context-status");
+  const contextPriority = document.getElementById("inbox-context-priority");
+  const contextAssigned = document.getElementById("inbox-context-assigned");
+  const contextLastMessage = document.getElementById("inbox-context-last-message");
+  const detailStatus = document.getElementById("inbox-detail-status");
 
   if (nameEl) nameEl.textContent = ticket.phone_number || "Cliente";
   if (phoneEl) phoneEl.textContent = ticket.phone_number || "";
@@ -5391,6 +5427,21 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
   }
 
   const isIg = (ticket.canale || "").toLowerCase() === "instagram";
+  const channelName = isIg ? "Instagram" : "WhatsApp";
+  const statusName = labelStatoTicketInbox(ticket.ticket_status);
+  const priorityName = t(ticket.priorita === "alta" ? "inbox:filters.priority_high" : "inbox:filters.priority_normal");
+  const assignedMember = inboxState.team.find((member) => String(member.user_id) === String(ticket.assigned_to));
+  const assignedName = ticket.assigned_nome || assignedMember?.nome || assignedMember?.email || t(ticket.assigned_to ? "inbox:filters.assigned_generic" : "inbox:filters.unassigned");
+  if (contextNumber) contextNumber.textContent = ticket.phone_number || "—";
+  if (contextChannel) contextChannel.textContent = channelName;
+  if (contextStatus) contextStatus.textContent = statusName;
+  if (contextPriority) contextPriority.textContent = priorityName;
+  if (contextAssigned) contextAssigned.textContent = assignedName;
+  if (contextLastMessage) contextLastMessage.textContent = formatInboxDate(ticket.last_message_at || ticket.created_at);
+  if (detailStatus) {
+    detailStatus.textContent = statusName;
+    detailStatus.dataset.status = (ticket.ticket_status || "").toLowerCase();
+  }
   if (channelBadge) {
     channelBadge.className = `inbox-channel-badge ${isIg ? "ig" : "wa"}`;
     channelBadge.innerHTML = isIg
@@ -5399,7 +5450,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
   }
 
   // Pulsanti Azione (Claim / Resolve / Release / Assign)
-  if (actionsEl && (!silent || actionsEl.dataset.ticketId !== ticket.id || actionsEl.dataset.ticketStatus !== ticket.ticket_status)) {
+  if (actionsEl && (forceRender || !silent || actionsEl.dataset.ticketId !== ticket.id || actionsEl.dataset.ticketStatus !== ticket.ticket_status)) {
     actionsEl.dataset.ticketId = ticket.id;
     actionsEl.dataset.ticketStatus = ticket.ticket_status;
     actionsEl.innerHTML = "";
@@ -5410,7 +5461,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
       assignSel.className = "inbox-action-select";
       const placeholderOpt = document.createElement("option");
       placeholderOpt.value = "";
-      placeholderOpt.textContent = "Assegna a…";
+      placeholderOpt.textContent = t("inbox:filters.assign_placeholder");
       placeholderOpt.disabled = true;
       placeholderOpt.selected = !ticket.assigned_to;
       assignSel.appendChild(placeholderOpt);
@@ -5418,7 +5469,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
       inboxState.team.forEach((m) => {
         const opt = document.createElement("option");
         opt.value = m.user_id;
-        opt.textContent = `${m.nome || m.email}${m.user_id === ticket.assigned_to ? " (assegnato)" : ""}`;
+        opt.textContent = `${m.nome || m.email}${m.user_id === ticket.assigned_to ? t("inbox:filters.assigned_suffix") : ""}`;
         if (m.user_id === ticket.assigned_to) opt.selected = true;
         assignSel.appendChild(opt);
       });
@@ -5451,11 +5502,13 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
       const claimBtn = document.createElement("button");
       claimBtn.type = "button";
       claimBtn.className = "inbox-action-btn primary";
-      claimBtn.textContent = "Prendi in carico";
-      claimBtn.title = "Prendi in carico la conversazione per rispondere manualmente";
+      aggiornaStatoPulsanteClaimInbox(claimBtn, ticket.id);
+      claimBtn.title = t("inbox:chat.claim_btn");
       claimBtn.addEventListener("click", async () => {
-        claimBtn.disabled = true;
-        claimBtn.textContent = "Carico…";
+        const ticketId = String(ticket.id);
+        if (inboxState.pendingClaims.has(ticketId)) return;
+        inboxState.pendingClaims.add(ticketId);
+        aggiornaStatoPulsanteClaimInbox(claimBtn, ticket.id);
         try {
           const res = await apiFetch(`${API_BASE}/api/inbox/claim/${encodeURIComponent(ticket.id)}`, {
             method: "POST",
@@ -5467,8 +5520,8 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
           await caricaInbox();
         } catch (err) {
           toast(err.message, "error");
-          claimBtn.disabled = false;
-          claimBtn.textContent = "Prendi in carico";
+          inboxState.pendingClaims.delete(ticketId);
+          aggiornaStatoPulsanteClaimInbox(claimBtn, ticket.id);
         }
       });
       actionsEl.appendChild(claimBtn);
@@ -5479,8 +5532,8 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
       const releaseBtn = document.createElement("button");
       releaseBtn.type = "button";
       releaseBtn.className = "inbox-action-btn";
-      releaseBtn.textContent = "Rilascia";
-      releaseBtn.title = "Rilascia all'assistente AI o ad altri operatori";
+      releaseBtn.textContent = t("inbox:chat.release_btn");
+      releaseBtn.title = t("inbox:chat.release_btn");
       releaseBtn.addEventListener("click", async () => {
         releaseBtn.disabled = true;
         try {
@@ -5498,8 +5551,8 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
       const resolveBtn = document.createElement("button");
       resolveBtn.type = "button";
       resolveBtn.className = "inbox-action-btn primary";
-      resolveBtn.textContent = "Risolvi";
-      resolveBtn.title = "Segna la conversazione come risolta";
+      resolveBtn.textContent = t("inbox:chat.close_ticket");
+      resolveBtn.title = t("inbox:chat.close_ticket");
       resolveBtn.addEventListener("click", async () => {
         resolveBtn.disabled = true;
         try {
@@ -5525,24 +5578,29 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
     statusStrip.className = "inbox-status-strip";
     if (ticket.ticket_status === "AI_ACTIVE") {
       statusStrip.hidden = false;
-      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4" stroke="currentColor" stroke-width="1.8"/></svg><span>L\'assistente sta gestendo la conversazione</span>';
+      aiBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4" stroke="currentColor" stroke-width="1.8"/></svg><span>${t("inbox:filters.status_strip_ai")}</span>`;
     } else if (ticket.ticket_status === "PENDING_STAFF") {
       statusStrip.hidden = false;
       statusStrip.classList.add("pending");
-      aiBadge.innerHTML = '<span class="inbox-dot-red"></span><span>Questa conversazione richiede l\'intervento di un operatore.</span>';
+      aiBadge.innerHTML = `<span class="inbox-dot-red"></span><span>${t("inbox:filters.status_strip_pending")}</span>`;
     } else if (ticket.ticket_status === "CLAIMED") {
       statusStrip.hidden = false;
-      const assignedLabel = ticket.assigned_nome ? `In gestione da ${ticket.assigned_nome}` : "In gestione da te";
-      aiBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg><span>${assignedLabel}</span>`;
+      const assignedLabel = ticket.assigned_nome
+        ? t("inbox:chat.claimed_by_other", { name: ticket.assigned_nome })
+        : t("inbox:chat.claimed_by_you");
+      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/></svg>';
+      const assignedLabelEl = document.createElement("span");
+      assignedLabelEl.textContent = assignedLabel;
+      aiBadge.appendChild(assignedLabelEl);
     } else {
       statusStrip.hidden = false;
-      aiBadge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg><span>Conversazione risolta</span>';
+      aiBadge.innerHTML = `<svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M5 12l5 5L20 7" stroke="#10b981" stroke-width="2.2" stroke-linecap="round"/></svg><span>${t("inbox:filters.status_strip_resolved")}</span>`;
     }
   }
 
   // 3. Thread Messaggi (Zero-Flicker)
   const threadContainer = document.getElementById("inbox-thread-messages");
-  if (threadContainer) {
+  if (threadContainer && refreshMessages) {
     const isNewTicket = threadContainer.dataset.ticketId !== ticket.id;
     threadContainer.dataset.ticketId = ticket.id;
 
@@ -5574,7 +5632,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
             if (meta) {
               const isInbound = m.direction === "inbound";
               const quando = formatInboxDate(m.created_at);
-              const status = MESSAGE_STATUS_LABEL[m.status] || m.status;
+              const status = labelStatoMessaggioInbox(m.status);
               const expectedText = isInbound ? quando : `${quando} · ${status}`;
               if (meta.textContent !== expectedText) {
                 meta.textContent = expectedText;
@@ -5588,7 +5646,11 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
 
         threadContainer.innerHTML = "";
         if (!messages.length) {
-          threadContainer.innerHTML = '<div class="inbox-empty-thread"><div class="inbox-empty-thread-icon"><svg viewBox="0 0 24 24" fill="none" width="28" height="28" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg></div><p class="inbox-empty-text">Nessun messaggio in questa conversazione.</p></div>';
+          threadContainer.innerHTML = '<div class="inbox-empty-thread"><div class="inbox-empty-thread-icon"><svg viewBox="0 0 24 24" fill="none" width="28" height="28" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m3 7 9 6 9-6"/></svg></div><p class="inbox-empty-text"></p><p class="inbox-empty-subtext"></p></div>';
+          const emptyTitle = threadContainer.querySelector(".inbox-empty-text");
+          const emptySubtext = threadContainer.querySelector(".inbox-empty-subtext");
+          if (emptyTitle) emptyTitle.textContent = t("inbox:filters.empty_title");
+          if (emptySubtext) emptySubtext.textContent = t("inbox:filters.empty_thread_text");
         } else {
           messages.forEach((m) => {
             const row = _renderMsgRow(m, ticket);
@@ -5617,6 +5679,19 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
     }
   }
 
+  if (threadContainer && !refreshMessages) {
+    const emptyTitle = threadContainer.querySelector(".inbox-empty-text");
+    const emptySubtext = threadContainer.querySelector(".inbox-empty-subtext");
+    if (emptyTitle) emptyTitle.textContent = t("inbox:filters.empty_title");
+    if (emptySubtext) emptySubtext.textContent = t("inbox:filters.empty_thread_text");
+    threadContainer.querySelectorAll(".inbox-msg-meta[data-created-at]").forEach((meta) => {
+      const timestamp = formatInboxDate(meta.dataset.createdAt);
+      meta.textContent = meta.dataset.direction === "inbound"
+        ? timestamp
+        : `${timestamp} · ${labelStatoMessaggioInbox(meta.dataset.status)}`;
+    });
+  }
+
   // 4. Input Box Risposta
   const replyForm = document.getElementById("inbox-reply-form");
   const disabledBanner = document.getElementById("inbox-reply-disabled-banner");
@@ -5629,7 +5704,7 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
     if (disabledBanner) disabledBanner.hidden = true;
     if (msgInput) {
       msgInput.disabled = false;
-      msgInput.placeholder = `Scrivi un messaggio su ${isIg ? "Instagram" : "WhatsApp"}…`;
+      msgInput.placeholder = t("inbox:chat.type_message");
       if (!silent) msgInput.focus();
     }
     if (sendBtn) sendBtn.disabled = false;
@@ -5638,11 +5713,12 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
     if (disabledBanner) disabledBanner.hidden = false;
     const disabledText = document.getElementById("inbox-reply-disabled-text");
     if (disabledText) {
-      disabledText.textContent = ticket.ticket_status === "RESOLVED"
-        ? "Questa conversazione è risolta."
-        : "Per rispondere manualmente, prendi prima in carico la conversazione.";
+      disabledText.textContent = t(ticket.ticket_status === "RESOLVED"
+        ? "inbox:filters.ticket_resolved"
+        : "inbox:filters.manual_reply_claim");
     }
     if (claimInlineBtn) {
+      claimInlineBtn.textContent = t("inbox:chat.claim_btn");
       claimInlineBtn.style.display = ticket.ticket_status === "RESOLVED" ? "none" : "inline-block";
       claimInlineBtn.onclick = async () => {
         try {
@@ -5654,8 +5730,8 @@ async function caricaDettaglioTicket(ticketId, silent = false) {
           if (!res.ok) throw new Error("Impossibile fare il claim.");
           toast("Preso in carico", "success");
           await caricaInbox();
-        } catch (e) {
-          toast(e.message, "error");
+        } catch (err) {
+          toast(err.message, "error");
         }
       };
     }
@@ -6317,11 +6393,23 @@ let caricaTimezone;
     if (typeof aggiornaDataTopbar === "function") {
       aggiornaDataTopbar();
     }
+    aggiornaInboxPerLingua();
     if (typeof toast === "function") {
       toast(typeof t === "function" ? t("dashboard.toast.saved") : "Lingua aggiornata", "success");
     }
   });
 })();
+
+function aggiornaInboxPerLingua() {
+  if (!document.getElementById("inbox-list")) return;
+  renderInboxConversazioni();
+  if (inboxState.selectedTicketId) {
+    void caricaDettaglioTicket(inboxState.selectedTicketId, true, {
+      refreshMessages: false,
+      forceRender: true,
+    });
+  }
+}
 
 /* ============================================================
    CONFIGURAZIONE AI — Identità, Tono, Multilingua e Regole

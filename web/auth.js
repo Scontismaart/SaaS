@@ -8,19 +8,27 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
 }
 
 const AUTH_PARAMS = new URLSearchParams(window.location.search);
-const NEXT_PATH = safeNext(AUTH_PARAMS.get("next"));
+// Nginx places the complete, still-encoded request URI in a fragment because an
+// unescaped '&' in a query-valued next would otherwise become a login parameter.
+const HASH_NEXT = window.location.hash.startsWith("#next=")
+  ? window.location.hash.slice("#next=".length)
+  : null;
+const NEXT_PATH = safeNext(HASH_NEXT ?? AUTH_PARAMS.get("next"));
 
 function safeNext(raw) {
-  if (
-    raw &&
-    raw.startsWith("/") &&
-    !raw.startsWith("//") &&
-    !raw.includes("\\") &&
-    !raw.includes("://")
-  ) {
-    return raw;
+  if (typeof raw !== "string" || !raw.startsWith("/") || raw.startsWith("//")
+    || raw.includes("\\") || /[\u0000-\u001f\u007f]/.test(raw)) return "/app/";
+
+  try {
+    const parsed = new URL(raw, window.location.origin);
+    if (parsed.origin !== window.location.origin || parsed.username || parsed.password) return "/app/";
+    // Avoid browser/server disagreement after percent-decoding path separators,
+    // backslashes, or control bytes (including repeatedly encoded forms).
+    if (/%(?:25)*(?:0[0-9a-f]|1[0-9a-f]|7f|2f|5c)/i.test(parsed.pathname)) return "/app/";
+  } catch {
+    return "/app/";
   }
-  return "/app/";
+  return raw;
 }
 
 function vaiADestinazione() {

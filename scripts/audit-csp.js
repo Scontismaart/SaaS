@@ -38,7 +38,7 @@ for (const directive of ["script-src", "style-src"]) {
 const fullCalendarCss = path.join(root, "vendor", "fullcalendar.css");
 const fullCalendarBundle = path.join(root, "vendor", "fullcalendar.min.js");
 const dashboard = fs.readFileSync(path.join(root, "index.html"), "utf8");
-if (!fs.existsSync(fullCalendarCss) || !/href="vendor\/fullcalendar\.css"/.test(dashboard)) {
+if (!fs.existsSync(fullCalendarCss) || !/href="\/?(?:app\/)?vendor\/fullcalendar\.css"/.test(dashboard)) {
   findings.push("FullCalendar CSS must be an explicit same-origin stylesheet");
 }
 if (fs.existsSync(fullCalendarBundle) && /function _e\(e\)\{let t=Re\.get\(e\)/.test(fs.readFileSync(fullCalendarBundle, "utf8"))) {

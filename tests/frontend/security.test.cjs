@@ -34,5 +34,16 @@ test("assigned name is rendered as text, not executable markup", () => {
   });
   assert.equal(statusPill.querySelector("img"), null);
   assert.match(statusPill.textContent, /<img/);
+
+  const detailStatusFragment = source.match(/const assignedLabelEl = document\.createElement\("span"\);\s*assignedLabelEl\.textContent = assignedLabel;\s*aiBadge\.appendChild\(assignedLabelEl\);/);
+  assert.ok(detailStatusFragment, "detail status must append the assigned name as text");
+  const aiBadge = dom.window.document.createElement("div");
+  vm.runInNewContext(detailStatusFragment[0], {
+    aiBadge,
+    document: dom.window.document,
+    assignedLabel: '<img src=x onerror="alert(1)">',
+  });
+  assert.equal(aiBadge.querySelector("img"), null);
+  assert.match(aiBadge.textContent, /<img/);
   dom.window.close();
 });

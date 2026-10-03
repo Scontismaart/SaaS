@@ -85,6 +85,7 @@ def install_test_identity():
                 "organization_id": str(org_id) if org_id else None,
                 "ruolo": ruolo,
                 "auth_user_id": user_id,
+                "session_id": f"test-session-{user_id}",
                 "user_id": user_id,
             }
 

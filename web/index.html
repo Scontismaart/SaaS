@@ -8,8 +8,8 @@
 <link rel="icon" href="/brand/melpis-symbol-dark.svg" type="image/svg+xml">
 <link rel="manifest" href="/brand/melpis.webmanifest">
 <link rel="apple-touch-icon" sizes="180x180" href="/brand/melpis-app-icon.svg">
-<script src="theme-init.js"></script>
-<link rel="stylesheet" href="style.css?v=phase3-auth-mfa-1">
+<script src="/app/theme-init.js"></script>
+<link rel="stylesheet" href="/app/style.css?v=ui-linear-dashboard-9">
 <link rel="stylesheet" href="/brand/brand-logo.css">
 <script defer src="/brand/brand-logo.js"></script>
 </head>
@@ -21,69 +21,82 @@
 
   <!-- ============ SIDEBAR ============ -->
   <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="sidebar-brand-row">
-        <span class="sidebar-mark is-1cd97b70ca2e" aria-hidden="true">
-          <brand-logo variant="symbol" theme="auto" size="lg"></brand-logo>
-        </span>
-        <div class="sidebar-brand-text">
-          <span class="sidebar-brand-eyebrow" data-i18n="dashboard:sidebar.brand_eyebrow">Pannello</span>
-          <span class="sidebar-brand-name" id="business-name">La tua attività</span>
-              </div>
+    <div class="sidebar-header">
+      <div class="sidebar-header-row">
+        <span class="sidebar-brand-name">Melpis</span>
+        <div class="sidebar-header-actions">
+          <div class="global-search" id="global-search">
+            <button type="button" class="global-search-toggle" id="global-search-toggle" aria-label="Ricerca globale" data-i18n-aria="dashboard:topbar.search_aria" title="Ricerca globale" data-i18n-title="dashboard:topbar.search_aria" aria-expanded="false" aria-controls="global-search-input">
+              <svg class="global-search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </button>
+            <input type="search" id="global-search-input" placeholder="Cerca ticket, prenotazioni, clienti..." data-i18n-placeholder="dashboard:topbar.search_placeholder" aria-label="Ricerca globale" data-i18n-aria="dashboard:topbar.search_aria" autocomplete="off" hidden>
+            <div class="global-search-results" id="global-search-results" hidden></div>
+          </div>
+          <div class="notif-wrap">
+            <button type="button" class="bell-btn" id="notif-bell" aria-haspopup="menu" aria-expanded="false" aria-controls="notif-panel" aria-label="Centro notifiche" data-i18n-aria="dashboard:topbar.notifications" title="Novità non ancora viste" data-i18n-title="dashboard:topbar.notifications_title">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 9.5a6 6 0 1 0-12 0v2.9c0 .6-.24 1.18-.66 1.6L4.1 15.24c-.63.63-.19 1.76.71 1.76h14.38c.9 0 1.34-1.13.71-1.76l-1.24-1.24a2.26 2.26 0 0 1-.66-1.6V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+              <span class="bell-badge" id="bell-badge" hidden></span>
+            </button>
+            <div class="notif-panel" id="notif-panel" role="menu" aria-label="Elenco notifiche" hidden>
+              <span class="notif-panel-title" data-i18n="dashboard:topbar.notifications_title">Notifiche</span>
+              <div class="notif-list" id="notif-list"></div>
             </div>
-
+          </div>
+        </div>
+      </div>
+    </div>
     <nav class="sidebar-nav" id="sidebar-nav" aria-label="Sezioni del pannello" data-i18n-aria="dashboard:sidebar.nav_aria">
       <span class="nav-group-label" aria-hidden="true" data-i18n="dashboard:sidebar.group_main">Principale</span>
-      <button class="nav-item active" type="button" data-view="panoramica">
+      <a class="nav-item active" href="/app/overview" data-app-view="panoramica" data-view="panoramica" aria-current="page">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7.5" height="7.5" rx="1.5" stroke="currentColor" stroke-width="1.8"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_panoramica">Panoramica</span>
-      </button>
-      <button class="nav-item" type="button" data-view="inbox">
+      </a>
+      <a class="nav-item" href="/app/inbox" data-app-view="inbox" data-view="inbox">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5h16v11H4v-11Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 8l8 6 8-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_inbox">Inbox</span> <span class="nav-badge" data-notification-badge="inbox" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="prenotazioni">
+      </a>
+      <a class="nav-item" href="/app/bookings" data-app-view="prenotazioni" data-view="prenotazioni">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5v3M17 3.5v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_prenotazioni">Prenotazioni</span> <span class="nav-badge" data-notification-badge="prenotazioni" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="recensioni">
+      </a>
+      <a class="nav-item" href="/app/reviews" data-app-view="recensioni" data-view="recensioni">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5l2.66 5.4 5.96.87-4.31 4.2 1.02 5.93L12 17l-5.33 2.9 1.02-5.93-4.31-4.2 5.96-.87L12 3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_recensioni">Recensioni</span> <span class="nav-badge" data-notification-badge="recensioni" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="team" id="nav-item-team">
+      </a>
+      <a class="nav-item" href="/app/team" data-app-view="team" data-view="team" id="nav-item-team">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_team">Team &amp; Collaboratori</span>
-      </button>
+      </a>
 
       <span class="nav-group-label" aria-hidden="true" data-i18n="dashboard:sidebar.group_assistant">Assistente</span>
-      <button class="nav-item" type="button" data-view="assistente">
+      <a class="nav-item" href="/app/ai-simulator" data-app-view="assistente" data-view="assistente">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5h16v10H9l-4 4v-4H4v-10Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_assistente">Simulatore AI</span>
-      </button>
-      <button class="nav-item" type="button" data-view="conoscenza">
+      </a>
+      <a class="nav-item" href="/app/knowledge" data-app-view="conoscenza" data-view="conoscenza">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21V5.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8.5 7.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_conoscenza">Conoscenza</span> <span class="nav-badge" data-notification-badge="conoscenza" hidden></span>
-      </button>
-      <button class="nav-item" type="button" data-view="configurazione-ai">
+      </a>
+      <a class="nav-item" href="/app/ai-settings" data-app-view="configurazione-ai" data-view="configurazione-ai">
         <span class="nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4M9 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </span>
         <span data-i18n="dashboard:sidebar.nav_configurazione_ai">Configurazione AI</span>
-      </button>
+      </a>
     </nav>
 
     <div class="sidebar-account-wrap">
@@ -93,14 +106,15 @@
           <div class="sidebar-account-info">
             <span class="sidebar-account-email" id="sidebar-account-email">utente@melpis.it</span>
             <span class="sidebar-account-plan" id="sidebar-account-plan">Piano e abbonamento</span>
+            <span id="business-name" hidden></span>
           </div>
           <svg class="sidebar-account-chevron" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 10 5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="sidebar-account-dropdown" id="sidebar-account-dropdown" role="menu" hidden>
-          <button type="button" class="sidebar-dropdown-item" id="sidebar-menu-impostazioni" data-view="impostazioni" role="menuitem">
+          <a class="sidebar-dropdown-item" id="sidebar-menu-impostazioni" href="/app/settings" data-app-view="impostazioni" data-view="impostazioni" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.55a.5.5 0 0 0 .12-.64l-1.9-3.3a.5.5 0 0 0-.61-.22l-2.36.95a7.6 7.6 0 0 0-2.6-1.5L13.7.94a.5.5 0 0 0-.5-.42h-3.8a.5.5 0 0 0-.5.42l-.35 2.5c-.96.35-1.83.87-2.6 1.5l-2.36-.95a.5.5 0 0 0-.6.22l-1.91 3.3a.5.5 0 0 0 .12.64l2.01 1.56a7.6 7.6 0 0 0 0 3L2.2 14.27a.5.5 0 0 0-.12.64l1.9 3.3c.13.21.39.3.61.21l2.36-.95c.77.64 1.64 1.16 2.6 1.51l.35 2.5c.04.24.25.42.5.42h3.8c.25 0 .46-.18.5-.42l.35-2.5c.96-.35 1.83-.87 2.6-1.5l2.36.94c.22.09.48 0 .6-.22l1.91-3.3a.5.5 0 0 0-.12-.63l-2.01-1.57Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
             <span data-i18n="dashboard:sidebar.menu_impostazioni">Impostazioni</span>
-          </button>
+          </a>
           <button type="button" class="sidebar-dropdown-item" id="sidebar-menu-piano" role="menuitem">
             <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><rect x="3" y="5.5" width="18" height="13" rx="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3 10h18M6.5 14.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
             <span data-i18n="dashboard:sidebar.menu_piano">Piano e abbonamento</span>
@@ -139,30 +153,8 @@
           <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <span class="topbar-title" id="topbar-title" data-i18n="dashboard:topbar.title_panoramica">Panoramica</span>
-        <div class="global-search" id="global-search">
-          <svg class="global-search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-          <input type="search" id="global-search-input" placeholder="Cerca ticket, prenotazioni, clienti..." data-i18n-placeholder="dashboard:topbar.search_placeholder" aria-label="Ricerca globale" data-i18n-aria="dashboard:topbar.search_aria" autocomplete="off">
-          <div class="global-search-results" id="global-search-results" hidden></div>
-        </div>
       </div>
       <div class="topbar-right">
-        <div class="topbar-date-wrap" id="topbar-date-wrap">
-          <svg class="topbar-date-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5v3M17 3.5v3M4.5 9h15M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <div class="topbar-date-text">
-            <span class="topbar-meta" id="topbar-date"></span>
-            <span class="topbar-weekday" id="topbar-weekday"></span>
-          </div>
-        </div>
-        <div class="notif-wrap">
-          <button type="button" class="bell-btn" id="notif-bell" aria-haspopup="menu" aria-expanded="false" aria-controls="notif-panel" aria-label="Centro notifiche" data-i18n-aria="dashboard:topbar.notifications" title="Novità non ancora viste" data-i18n-title="dashboard:topbar.notifications_title">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 9.5a6 6 0 1 0-12 0v2.9c0 .6-.24 1.18-.66 1.6L4.1 15.24c-.63.63-.19 1.76.71 1.76h14.38c.9 0 1.34-1.13.71-1.76l-1.24-1.24a2.26 2.26 0 0 1-.66-1.6V9.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-            <span class="bell-badge" id="bell-badge" hidden></span>
-          </button>
-          <div class="notif-panel" id="notif-panel" role="menu" aria-label="Elenco notifiche" hidden>
-            <span class="notif-panel-title" data-i18n="dashboard:topbar.notifications_title">Notifiche</span>
-            <div class="notif-list" id="notif-list"></div>
-          </div>
-        </div>
         <button type="button" class="accesso-btn" id="accesso-btn" data-i18n="dashboard:topbar.login_btn">Accedi</button>
       </div>
     </header>
@@ -255,13 +247,13 @@
             <span class="priority-count-badge" id="priority-count-badge"></span>
           </div>
           <ul class="priority-list" id="priority-list"></ul>
-          <button type="button" class="priority-inbox-link" id="priority-inbox-link" data-view="inbox">
+          <a class="priority-inbox-link" id="priority-inbox-link" href="/app/inbox" data-app-view="inbox" data-view="inbox">
             <span class="priority-inbox-link-left">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M4 6.5h16v11H4v-11Z"/><path d="M4 8l8 6 8-6"/></svg>
               <span data-i18n="dashboard:overview.go_to_inbox">Vai all'Inbox</span>
             </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="m9 18 6-6-6-6"/></svg>
-          </button>
+          </a>
         </div>
 
         <div class="dash-card activity-card">
@@ -270,9 +262,9 @@
               <svg class="dash-card-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg>
               <span class="dash-card-title" data-i18n="dashboard:overview.recent_activity">Attività recente</span>
             </div>
-            <button type="button" class="activity-view-all-btn" id="activity-view-all-btn" data-view="inbox">
+            <a class="activity-view-all-btn" id="activity-view-all-btn" href="/app/inbox" data-app-view="inbox" data-view="inbox">
               <span data-i18n="dashboard:overview.view_all">Visualizza tutte</span> →
-            </button>
+            </a>
           </div>
           <ul class="ticket-list" id="ticket-list"></ul>
         </div>
@@ -1471,28 +1463,20 @@
       </form>
     </section>
 
-    <!-- ---------- VISTA: INBOX (Layout 2 colonne HITL) ---------- -->
+    <!-- ---------- VISTA: INBOX ---------- -->
     <section class="view view-hidden inbox-view" data-view-panel="inbox">
       <div class="inbox-grid-layout" id="inbox-grid">
-        <!-- COLONNA 1: LISTA CONVERSAZIONI CON FILTRI INTEGRATI -->
+        <!-- Lista conversazioni -->
         <div class="inbox-col-list" id="inbox-list-panel" aria-label="Lista conversazioni" data-i18n-aria="inbox:filters.list_aria">
           <div class="inbox-list-header">
             <div class="inbox-list-header-top">
-              <h3 class="inbox-panel-title" data-i18n="inbox:filters.conversations">Conversazioni</h3>
+              <h3 class="inbox-panel-title" data-i18n="inbox:filters.inbox_title">Inbox</h3>
               <span class="inbox-list-count" id="inbox-total-count">0</span>
             </div>
 
-            <!-- Ricerca veloce -->
-            <div class="inbox-search-wrap">
-              <svg class="inbox-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="search" class="inbox-search-input" id="inbox-search-input" placeholder="Cerca per numero o testo…" data-i18n-placeholder="inbox:filters.search_chats" aria-label="Cerca nelle conversazioni" data-i18n-aria="inbox:filters.search_aria" autocomplete="off">
-            </div>
-
-            <!-- Filtri unificati -->
+            <!-- Filtri rapidi: canale e modalità di gestione -->
             <div class="inbox-filter-groups">
-              <!-- Riga 1: Canali -->
-              <div class="inbox-filter-row" role="group" aria-label="Filtra per canale" data-i18n-aria="inbox:filters.channel_aria">
-                <span class="inbox-filter-row-label" data-i18n="inbox:filters.channel">Canale</span>
+              <div class="inbox-filter-row inbox-channel-filter-row" role="group" aria-label="Filtra per canale" data-i18n-aria="inbox:filters.channel_aria">
                 <div class="inbox-chips-group">
                   <button type="button" class="inbox-chip active" data-inbox-channel="all">
                     <span data-i18n="inbox:filters.all">Tutti</span>
@@ -1515,14 +1499,13 @@
                 </div>
               </div>
 
-              <!-- Riga 2: Stato & Gestione -->
-              <div class="inbox-filter-row" role="group" aria-label="Filtra per stato e gestione" data-i18n-aria="inbox:filters.status_aria">
+              <div class="inbox-filter-row inbox-status-filter-row" role="group" aria-label="Filtra per stato e gestione" data-i18n-aria="inbox:filters.status_aria">
                 <span class="inbox-filter-row-label" data-i18n="inbox:filters.status">Stato</span>
                 <div class="inbox-chips-group">
                   <button type="button" class="inbox-chip active" data-inbox-status="all">
                     <span data-i18n="inbox:filters.all">Tutti</span>
                   </button>
-                  <button type="button" class="inbox-chip" data-inbox-status="ai">
+                  <button type="button" class="inbox-chip" data-inbox-status="ai" aria-label="Filtra conversazioni gestite dall'assistente AI" data-i18n-aria="inbox:filters.ai_filter_aria">
                     <svg viewBox="0 0 24 24" fill="none" width="12" height="12" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="8.5" cy="12" r="1.5" fill="currentColor"/><circle cx="15.5" cy="12" r="1.5" fill="currentColor"/><path d="M12 2v4"/></svg>
                     <span>AI</span>
                   </button>
@@ -1542,13 +1525,19 @@
                 </div>
               </div>
             </div>
+
+            <!-- Ricerca veloce -->
+            <div class="inbox-search-wrap">
+              <svg class="inbox-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="search" class="inbox-search-input" id="inbox-search-input" placeholder="Cerca per numero o testo…" data-i18n-placeholder="inbox:filters.search_chats" aria-label="Cerca nelle conversazioni" data-i18n-aria="inbox:filters.search_aria" autocomplete="off">
+            </div>
           </div>
 
           <!-- Elenco conversazioni scrollabile -->
           <div class="inbox-conversations-wrap" id="inbox-list"></div>
         </div>
 
-        <!-- COLONNA 2: DETTAGLIO CONVERSAZIONE (Destra) -->
+        <!-- Conversazione e stato di presa in carico -->
         <section class="inbox-col-detail" id="inbox-detail-panel" aria-label="Dettaglio conversazione" data-i18n-aria="inbox:filters.detail_aria">
           <!-- Stato vuoto se nessuna conversazione selezionata -->
           <div class="inbox-detail-placeholder" id="inbox-detail-empty">
@@ -1577,8 +1566,8 @@
 
                 <div class="inbox-detail-header-badges">
                   <span class="inbox-channel-badge" id="inbox-detail-channel"></span>
+                  <span class="inbox-detail-status" id="inbox-detail-status"></span>
                 </div>
-                <div class="inbox-detail-actions" id="inbox-detail-actions"></div>
               </div>
             </header>
 
@@ -1607,10 +1596,36 @@
 
               <!-- Avviso quando non CLAIMED -->
               <div class="inbox-reply-disabled-banner" id="inbox-reply-disabled-banner" hidden>
-                <span id="inbox-reply-disabled-text">Per rispondere manualmente, prendi prima in carico la conversazione.</span>
-                <button type="button" class="inbox-btn-claim-inline" id="inbox-claim-inline-btn">Prendi in carico</button>
+                <span id="inbox-reply-disabled-text" data-i18n="inbox:filters.manual_reply_claim">Per rispondere manualmente, prendi prima in carico la conversazione.</span>
+                <button type="button" class="inbox-btn-claim-inline" id="inbox-claim-inline-btn" data-i18n="inbox:chat.claim_btn">Prendi in carico</button>
               </div>
             </div>
+
+            <!-- Dettagli contatto e azioni esistenti -->
+            <aside class="inbox-context-panel" id="inbox-context-panel" aria-label="Dettagli e azioni conversazione" data-i18n-aria="inbox:filters.context_aria">
+              <section class="inbox-context-section">
+                <h3 class="inbox-context-title" data-i18n="inbox:filters.details_title">Dettagli</h3>
+                <h4 class="inbox-context-kicker" data-i18n="inbox:filters.information">Informazioni</h4>
+                <dl class="inbox-detail-facts">
+                  <div class="inbox-detail-fact"><dt data-i18n="inbox:filters.number">Numero</dt><dd id="inbox-context-number">—</dd></div>
+                  <div class="inbox-detail-fact"><dt data-i18n="inbox:filters.channel">Canale</dt><dd id="inbox-context-channel">—</dd></div>
+                  <div class="inbox-detail-fact"><dt data-i18n="inbox:filters.status">Stato</dt><dd id="inbox-context-status">—</dd></div>
+                  <div class="inbox-detail-fact"><dt data-i18n="inbox:filters.priority">Priorità</dt><dd id="inbox-context-priority">—</dd></div>
+                  <div class="inbox-detail-fact"><dt data-i18n="inbox:filters.assigned_to">Assegnato a</dt><dd id="inbox-context-assigned">—</dd></div>
+                  <div class="inbox-detail-fact"><dt data-i18n="inbox:filters.last_message">Ultimo messaggio</dt><dd id="inbox-context-last-message">—</dd></div>
+                </dl>
+              </section>
+
+              <section class="inbox-context-section inbox-context-actions-section">
+                <h4 class="inbox-context-kicker" data-i18n="inbox:filters.quick_actions">Azioni rapide</h4>
+                <div class="inbox-detail-actions" id="inbox-detail-actions"></div>
+              </section>
+
+              <section class="inbox-context-section inbox-context-notes">
+                <h4 class="inbox-context-kicker" data-i18n="inbox:filters.notes_title">Note</h4>
+                <p class="inbox-note-unavailable" data-i18n="inbox:filters.notes_unavailable">Le note interne non sono ancora disponibili.</p>
+              </section>
+            </aside>
           </div>
         </section>
       </div>
@@ -2794,13 +2809,14 @@
 </div>
 
 <script src="/config.js"></script>
-<link rel="stylesheet" href="vendor/fullcalendar.css">
-<script src="vendor/fullcalendar.min.js"></script>
-<script src="vendor/dompurify.min.js"></script>
-<script src="vendor/i18next.min.js"></script>
-<script src="/i18n-client.js?v=phase3-auth-mfa-1"></script>
-<script src="dialog-focus.js"></script>
-<script src="app.js?v=phase3-auth-mfa-1"></script>
-<script src="mfa.js?v=phase3-auth-mfa-1"></script>
+<link rel="stylesheet" href="/app/vendor/fullcalendar.css">
+<script src="/app/vendor/fullcalendar.min.js"></script>
+<script src="/app/vendor/dompurify.min.js"></script>
+<script src="/app/vendor/i18next.min.js"></script>
+<script src="/i18n-client.js?v=ui-linear-dashboard-2"></script>
+<script src="/app/dialog-focus.js"></script>
+<script src="/app/dashboard-router.js?v=1"></script>
+<script src="/app/app.js?v=ui-linear-dashboard-2"></script>
+<script src="/app/mfa.js?v=phase3-auth-mfa-1"></script>
 </body>
 </html>

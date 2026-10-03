@@ -41,10 +41,11 @@ async def test_redis_rate_limiter_shared_across_instances():
     assert redis.ttl["rl:tenant:org"] == 60
 
 
-async def test_cookie_mutation_requires_origin_and_csrf(monkeypatch):
+async def test_cookie_mutation_requires_origin_and_csrf(monkeypatch, tmp_path):
     monkeypatch.setenv("DEMO_MODE", "false")
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
     monkeypatch.setenv("CORS_ORIGINS", "https://app.example.com")
+    monkeypatch.setenv("CREWAI_STORAGE_DIR", str(tmp_path / "crewai"))
     async def fake_logout(access_token, *, scope="local"):
         return None
     monkeypatch.setattr("src.core.auth.bff.logout", fake_logout)

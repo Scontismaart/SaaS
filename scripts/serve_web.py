@@ -127,8 +127,26 @@ class DevHandler(BaseHTTPRequestHandler):
         elif path == "/app/" or path == "/app/index.html":
             target = WEB / "index.html"
         elif path.startswith("/app/"):
-            rel_sub = path[len("/app/"):]
-            target = WEB / rel_sub
+            try:
+                rel_sub = urllib.parse.unquote(path[len("/app/"):], errors="strict")
+            except UnicodeDecodeError:
+                self.send_error(400, "Invalid UTF-8 in dashboard path")
+                return
+            if "\\" in rel_sub or any(ord(char) < 32 or ord(char) == 127 for char in rel_sub):
+                self.send_error(404)
+                return
+            candidate = (WEB / rel_sub).resolve()
+            try:
+                candidate.relative_to(WEB.resolve())
+            except ValueError:
+                self.send_error(404)
+                return
+            if candidate.is_dir():
+                candidate = candidate / "index.html"
+            if candidate.is_file():
+                target = candidate
+            elif not Path(rel_sub).suffix:
+                target = WEB / "index.html"
         elif path in ("/login.js", "/register.js", "/auth.js", "/auth.css", "/config.js"):
             target = WEB / path.lstrip("/")
         elif (LANDING / path.lstrip("/")).is_file():

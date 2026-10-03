@@ -12,6 +12,7 @@ import re
 import secrets
 import time
 from uuid import UUID
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
@@ -92,14 +93,19 @@ def _safe_next(next_path: str | None) -> str:
         return "/app/"
     # I valori cookie con caratteri speciali tornano quotati dal browser.
     path = next_path.strip('"')
-    if (
-        path.startswith("/")
-        and not path.startswith("//")
-        and "\\" not in path
-        and "://" not in path
-    ):
-        return path
-    return "/app/"
+    if not path.startswith("/") or path.startswith("//") or "\\" in path:
+        return "/app/"
+    if any(ord(char) < 32 or ord(char) == 127 for char in path):
+        return "/app/"
+    try:
+        parsed = urlsplit(path)
+    except ValueError:
+        return "/app/"
+    if parsed.scheme or parsed.netloc:
+        return "/app/"
+    if re.search(r"%(?:25)*(?:0[0-9a-f]|1[0-9a-f]|7f|2f|5c)", parsed.path, re.IGNORECASE):
+        return "/app/"
+    return path
 
 
 class LoginRequest(BaseModel):

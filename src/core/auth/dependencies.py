@@ -173,6 +173,8 @@ async def get_current_user(
         "organization_id": None,
         "ruolo": None,
         "source": "jwt",
+        # Stable across access-token refresh; internal OAuth session binding.
+        "session_id": payload.get("session_id"),
         # Audit 1.4: aal (authenticator assurance level) serve per il gate
         # MFA sui Tier-1 sensibili (billing, GDPR hard-delete/export). Lo
         # estraiamo dal JWT qui, una sola volta, e require_mfa lo legge dal

@@ -57,8 +57,14 @@ async function signupBody(search) {
 }
 
 test("signup forwards one URL-decoded next value", async () => {
-  const body = await signupBody("?next=%2Farea%2Fsettings%2F");
-  assert.equal(body.next, "/area/settings/");
+  const body = await signupBody("?next=%2Fapp%2Finbox");
+  assert.equal(body.next, "/app/inbox");
+});
+
+test("signup forwards the canonical Settings tab next value", async () => {
+  const next = "/app/settings?tab=calendar&source=signup";
+  const body = await signupBody(`?next=${encodeURIComponent(next)}`);
+  assert.equal(body.next, next);
 });
 
 test("signup omits ambiguous duplicate next values", async () => {

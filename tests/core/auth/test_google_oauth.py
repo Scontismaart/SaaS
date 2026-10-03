@@ -125,12 +125,35 @@ class TestGoogleStart:
                 assert "httponly" in c.lower()
 
     async def test_start_next_path_preserved(self, oauth_client):
-        resp = await oauth_client.get("/api/auth/google/start?next=/app/")
-        assert resp.cookies["wa_oauth_next"].strip('"') == "/app/"
+        resp = await oauth_client.get(
+            "/api/auth/google/start", params={"next": "/app/inbox?filter=open"}
+        )
+        assert resp.cookies["wa_oauth_next"].strip('"') == "/app/inbox?filter=open"
+
+    async def test_start_settings_tab_next_path_preserved(self, oauth_client):
+        next_path = "/app/settings?tab=calendar&source=google"
+        resp = await oauth_client.get(
+            "/api/auth/google/start", params={"next": next_path}
+        )
+        assert resp.cookies["wa_oauth_next"].strip('"') == next_path
 
     async def test_start_open_redirect_blocked(self, oauth_client):
         resp = await oauth_client.get(
             "/api/auth/google/start", params={"next": "//evil.com"}
+        )
+        assert resp.cookies["wa_oauth_next"].strip('"') == "/app/"
+
+    @pytest.mark.parametrize(
+        "next_path",
+        [
+            "https://evil.com", "//evil.com", r"/\\evil.com", "/%0A/evil.com",
+            "/%250A/evil.com", "/%2f%2fevil.com", "/%252f%252fevil.com",
+            "/line\nbreak", "/tab\tpath", "/del\x7fpath", "/c0\x01path",
+        ],
+    )
+    async def test_start_rejects_unsafe_next_paths(self, oauth_client, next_path):
+        resp = await oauth_client.get(
+            "/api/auth/google/start", params={"next": next_path}
         )
         assert resp.cookies["wa_oauth_next"].strip('"') == "/app/"
 
@@ -142,10 +165,9 @@ class TestGoogleStart:
 
 class TestGoogleCallback:
     async def _do_start(self, oauth_client, next_path=None):
-        url = "/api/auth/google/start"
-        if next_path:
-            url += f"?next={next_path}"
-        return await oauth_client.get(url)
+        if next_path is not None:
+            return await oauth_client.get("/api/auth/google/start", params={"next": next_path})
+        return await oauth_client.get("/api/auth/google/start")
 
     async def test_callback_happy_path_sets_session_cookies(
         self, oauth_client, monkeypatch
@@ -187,13 +209,28 @@ class TestGoogleCallback:
 
         monkeypatch.setattr(bff_module, "exchange_pkce", fake_exchange)
 
-        start = await self._do_start(oauth_client, next_path="/app/?view=inbox")
+        start = await self._do_start(oauth_client, next_path="/app/inbox?filter=open")
         resp = await oauth_client.get(
             "/api/auth/google/callback",
             params={"code": "c", "state": "opaque-supabase-uuid"},
             headers={"Cookie": _cookie_header(start)},
         )
-        assert resp.headers["location"] == "/app/?view=inbox"
+        assert resp.headers["location"] == "/app/inbox?filter=open"
+
+    async def test_callback_honors_settings_tab_next_cookie(self, oauth_client, monkeypatch):
+        async def fake_exchange(code, verifier):
+            return _fake_token_response()
+
+        monkeypatch.setattr(bff_module, "exchange_pkce", fake_exchange)
+
+        next_path = "/app/settings?tab=calendar&source=google"
+        start = await self._do_start(oauth_client, next_path=next_path)
+        resp = await oauth_client.get(
+            "/api/auth/google/callback",
+            params={"code": "c", "state": "opaque-supabase-uuid"},
+            headers={"Cookie": _cookie_header(start)},
+        )
+        assert resp.headers["location"] == next_path
 
     async def test_callback_pkce_code_only_supabase_validates_state(
         self, oauth_client, monkeypatch

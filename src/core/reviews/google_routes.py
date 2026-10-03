@@ -13,6 +13,9 @@ from google_auth_oauthlib.flow import Flow
 from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.oauth_callback import safe_oauth_callback
+from src.core.auth.oauth_state import (
+    create_bound_oauth_nonce, is_bound_oauth_nonce, validate_oauth_callback_context,
+)
 from src.core.google_feature_flags import google_business_enabled
 from src.core.reviews.google_service import GoogleBusinessService
 
@@ -85,7 +88,7 @@ async def google_reviews_auth(
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
 
-    nonce = uuid.uuid4().hex
+    nonce = create_bound_oauth_nonce("reviews_google", org_id, user)
     pool = request.app.state.pool
     async with pool.acquire() as conn:
         await conn.execute(
@@ -122,8 +125,10 @@ async def google_reviews_oauth2callback(request: Request):
         uuid.UUID(org_id)
     except ValueError:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
-    if len(nonce) != 32 or any(c not in "0123456789abcdef" for c in nonce):
+    if not is_bound_oauth_nonce(nonce):
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_state")
+    if not await validate_oauth_callback_context(request, "reviews_google", org_id, nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_context")
     pool = request.app.state.pool
 
     async with pool.acquire() as conn:
@@ -157,6 +162,10 @@ async def google_reviews_oauth2callback(request: Request):
         return RedirectResponse(
             url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=no_refresh_token"
         )
+
+    # Recheck live session/owner authorization after the provider exchange.
+    if not await validate_oauth_callback_context(request, "reviews_google", org_id, nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=invalid_context")
 
     service = _get_service(request)
     enc_access = service.encrypt_secret(creds.token)

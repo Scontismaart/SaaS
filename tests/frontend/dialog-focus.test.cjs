@@ -56,7 +56,7 @@ test("dashboard dialogs manage initial focus, keyboard loop, Escape, and focus r
 });
 
 test("dashboard booking and confirmation dialogs use the focus manager", () => {
-  assert.match(pageSource, /<script src="dialog-focus\.js"><\/script>\s*<script src="app\.js/);
+  assert.match(pageSource, /<script src="\/app\/dialog-focus\.js"><\/script>[\s\S]*?<script src="\/app\/app\.js/);
   assert.match(appSource, /MelpisDialogFocus\.handleKeydown\(modal, event/);
   assert.match(appSource, /MelpisDialogFocus\.open\(bookingModal\)/);
   assert.match(appSource, /MelpisDialogFocus\.close\(bookingModal\)/);

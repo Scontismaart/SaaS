@@ -272,10 +272,14 @@ def test_signup_logs_only_sanitized_upstream_status_and_keeps_generic_response(
 @pytest.mark.parametrize(
     ("requested_next", "expected_location"),
     [
+        ("/app/inbox", "/app/inbox"),
+        ("/app/settings", "/app/settings"),
         ("/area/impostazioni/", "/area/impostazioni/"),
         ("https://attacker.test/steal", SUCCESS_LOCATION),
         ("//attacker.test/steal", SUCCESS_LOCATION),
         ("/%2f%2fattacker.test/steal", SUCCESS_LOCATION),
+        ("/%0A/attacker.test", SUCCESS_LOCATION),
+        ("/line\nbreak", SUCCESS_LOCATION),
     ],
 )
 def test_callback_redirects_only_to_strict_internal_next(

@@ -265,6 +265,23 @@ test("i18n: Inbox renders resolved translations in every supported language", as
   dom.window.close();
 });
 
+test("dashboard navigation hrefs stay canonical in IT, EN, FR, ES, and DE", () => {
+  const root = path.resolve(__dirname, "../..");
+  const html = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
+  const routes = [
+    "/app/overview", "/app/inbox", "/app/bookings", "/app/reviews",
+    "/app/team", "/app/ai-simulator", "/app/knowledge", "/app/ai-settings",
+  ];
+  const dom = new JSDOM(html, { url: "https://melpis.test/app/overview" });
+  const anchors = [...dom.window.document.querySelectorAll(".nav-item[data-app-view]")];
+  assert.equal(anchors.length, routes.length);
+  for (const lang of ["it", "en", "fr", "es", "de"]) {
+    dom.window.document.documentElement.lang = lang;
+    assert.deepEqual(anchors.map((anchor) => anchor.getAttribute("href")), routes);
+  }
+  dom.window.close();
+});
+
 test("i18n: dynamic Inbox copy resolves in every supported language", async () => {
   const clientCode = fs.readFileSync(path.resolve(__dirname, "../../web/i18n-client.js"), "utf8");
   const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", {
@@ -419,7 +436,7 @@ test("FullCalendar uses only the deployed same-origin stylesheet under CSP", () 
   const dashboard = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
   const vendor = fs.readFileSync(path.join(root, "web/vendor/fullcalendar.min.js"), "utf8");
   assert.match(headers, /style-src 'self';/);
-  assert.match(dashboard, /<link rel="stylesheet" href="vendor\/fullcalendar\.css">/);
+  assert.match(dashboard, /<link rel="stylesheet" href="\/app\/vendor\/fullcalendar\.css">/);
   assert.ok(fs.statSync(path.join(root, "web/vendor/fullcalendar.css")).size > 1000);
   assert.doesNotMatch(vendor, /function _e\(e\)\{let t=Re\.get\(e\)/, "runtime style creation is removed");
   childProcess.execFileSync(process.execPath, ["scripts/externalize-fullcalendar-styles.js", "--check"], {

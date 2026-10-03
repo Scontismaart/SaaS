@@ -371,9 +371,9 @@ document.getElementById("sidebar-menu-piano")?.addEventListener("click", () => {
   apriVistaImpostazioni("piano");
 });
 
-document.getElementById("sidebar-menu-impostazioni")?.addEventListener("click", () => {
+document.getElementById("sidebar-menu-impostazioni")?.addEventListener("click", (event) => {
+  if (!window.MelpisDashboardRouter?.isOrdinaryPrimaryClick(event)) return;
   chiudiSidebarAccountMenu();
-  apriVistaImpostazioni("generale");
 });
 
 /* Login su pagina dedicata /accedi/, registrazione su /registrati/
@@ -658,6 +658,16 @@ const navItems = document.querySelectorAll(".nav-item");
 const topbarTitle = document.getElementById("topbar-title");
 const topbarDate = document.getElementById("topbar-date");
 const views = document.querySelectorAll(".view");
+let activeDashboardView = null;
+let dashboardViewTransition = 0;
+let overviewSummaryRequest = 0;
+let overviewPriorityRequest = 0;
+let overviewReportRequest = 0;
+let inboxListRequest = 0;
+let inboxDetailRequest = 0;
+let bookingListRequest = 0;
+let bookingAvailabilityRequest = 0;
+let dashboardRouter = null;
 function resetDashboardScroll() {
   const scrollingElement = document.scrollingElement || document.documentElement;
   scrollingElement.scrollTop = 0;
@@ -739,6 +749,95 @@ function segnaNotificheViste(viewName) {
   aggiornaCampana();
 }
 
+async function renderDashboardView(viewName) {
+  const transition = ++dashboardViewTransition;
+  activeDashboardView = viewName;
+  segnaNotificheViste(viewName);
+  chiudiMenuMobile();
+  chiudiSidebarAccountMenu();
+
+  navItems.forEach((item) => {
+    const active = item.dataset.view === viewName;
+    item.classList.toggle("active", active);
+    if (active) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
+  });
+  views.forEach((view) => {
+    view.classList.toggle("view-hidden", view.dataset.viewPanel !== viewName);
+  });
+  resetDashboardScroll();
+
+  const titleKeys = {
+    panoramica: "title_panoramica",
+    inbox: "title_inbox",
+    prenotazioni: "title_prenotazioni",
+    recensioni: "title_recensioni",
+    team: "title_team",
+    assistente: "title_assistente",
+    conoscenza: "title_conoscenza",
+    "configurazione-ai": "title_configurazione_ai",
+    impostazioni: "title_impostazioni",
+    account: "title_account",
+    onboarding: "title_configurazione_ai",
+  };
+  topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[viewName] || "title_panoramica"}`;
+  topbarTitle.textContent = t(topbarTitle.dataset.i18n);
+
+  if (viewName === "impostazioni") {
+    const routerApi = window.MelpisDashboardRouter;
+    const tab = routerApi?.settingsTabFromSearch(window.location.search) || "generale";
+    const search = routerApi?.settingsSearchForTab(window.location.search, tab);
+    if (search !== undefined && search !== window.location.search) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${window.location.pathname}${search}${window.location.hash}`,
+      );
+    }
+    attivaCategoriaImpostazioni(tab);
+    aggiornaTitoloImpostazioni(tab);
+  }
+  if (viewName === "account") caricaAccount();
+
+  if (viewName === "panoramica") {
+    avviaPanoramicaPolling();
+    aggiornaRiepilogo();
+    aggiornaPrioritari();
+    aggiornaReport();
+  } else {
+    fermaPanoramicaPolling();
+  }
+  if (viewName === "team") caricaTeam();
+  if (viewName === "recensioni") aggiornaRecensioni();
+  if (viewName === "documenti" || viewName === "conoscenza") aggiornaConoscenzaCompleta();
+  if (viewName === "configurazione-ai" && typeof caricaConfigurazioneAI === "function") {
+    caricaConfigurazioneAI();
+  }
+
+  if (viewName === "inbox") {
+    avviaInboxPolling();
+    caricaInbox();
+  } else {
+    fermaInboxPolling();
+  }
+
+  sincronizzaPollingPrenotazioni();
+  if (viewName !== "prenotazioni") return;
+
+  await aggiornaImpostazioniPrenotazioni();
+  if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
+  inizializzaCalendarioPrenotazioni();
+  await aggiornaPrenotazioni();
+  if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
+  await aggiornaSemaforo();
+  if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
+  if (bookingCalendar) {
+    bookingCalendar.updateSize();
+    bookingCalendar.render();
+  }
+  renderTabellaPrenotazioniGiorno();
+}
+
 /* Destinazioni di fallback per chiavi di viste non più presenti nella nav
    (notifiche salvate prima della riorganizzazione, link memorizzati):
    apre la vista contenitore e, se prevista, il tab giusto dentro
@@ -758,30 +857,19 @@ const VIEW_FALLBACK = {
 };
 
 function apriVistaImpostazioni(cat = "generale") {
-  segnaNotificheViste("impostazioni");
-  chiudiMenuMobile();
-  chiudiSidebarAccountMenu();
-
-  navItems.forEach((n) => n.classList.remove("active"));
-  views.forEach((v) => {
-    v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
+  const routerApi = window.MelpisDashboardRouter;
+  if (!routerApi || !dashboardRouter) return false;
+  const tab = routerApi.normalizeSettingsTab(cat);
+  const search = routerApi.settingsSearchForTab(window.location.search, tab);
+  const navigated = dashboardRouter.navigateTo("impostazioni", {
+    search,
+    hash: window.location.hash,
+    replaceSuffix: true,
   });
-  resetDashboardScroll();
+  if (!navigated) return false;
 
-  const titleKeys = {
-    piano: "title_account",
-    fatturazione: "title_account",
-    whatsapp: "title_whatsapp",
-    instagram: "title_instagram",
-    calendar: "title_calendar",
-    reviews: "title_reviews_settings",
-    "booking-pms": "title_pms",
-    airtable: "title_airtable",
-  };
-  topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[cat] || "title_impostazioni"}`;
-  topbarTitle.textContent = t(topbarTitle.dataset.i18n);
-
-  attivaCategoriaImpostazioni(cat);
+  chiudiSidebarAccountMenu();
+  return true;
 }
 
 function apriView(key) {
@@ -789,9 +877,11 @@ function apriView(key) {
     apriVistaImpostazioni("generale");
     return true;
   }
-  const btn = document.querySelector(`.nav-item[data-view="${key}"]`);
-  if (btn) {
-    btn.click();
+  if (window.MelpisDashboardRouter?.pathForView(key)) {
+    return dashboardRouter?.navigateTo(key) || false;
+  }
+  if (key === "account") {
+    apriVistaImpostazioni("piano");
     return true;
   }
   const dest = VIEW_FALLBACK[key];
@@ -801,7 +891,7 @@ function apriView(key) {
     return true;
   }
   const container = document.querySelector(`.nav-item[data-view="${dest.view}"]`);
-  if (container) container.click();
+  if (container) apriView(dest.view);
   if (dest.tab) attivaCategoriaImpostazioni(dest.tab);
   return true;
 }
@@ -857,12 +947,38 @@ function attivaCategoriaImpostazioni(cat) {
   }
 }
 
+function aggiornaTitoloImpostazioni(cat) {
+  const titleKeys = {
+    piano: "title_account",
+    fatturazione: "title_account",
+    whatsapp: "title_whatsapp",
+    instagram: "title_instagram",
+    calendar: "title_calendar",
+    reviews: "title_reviews_settings",
+    "booking-pms": "title_pms",
+    airtable: "title_airtable",
+  };
+  topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[cat] || "title_impostazioni"}`;
+  topbarTitle.textContent = t(topbarTitle.dataset.i18n);
+}
+
+function navigaTabImpostazioni(cat) {
+  const routerApi = window.MelpisDashboardRouter;
+  const tab = routerApi?.normalizeSettingsTab(cat) || "generale";
+  if (!routerApi || !dashboardRouter) return false;
+  return dashboardRouter.navigateTo("impostazioni", {
+    search: routerApi.settingsSearchForTab(window.location.search, tab),
+    hash: window.location.hash,
+    replaceSuffix: true,
+  });
+}
+
 function attivaTabImpostazioni(tab) {
-  attivaCategoriaImpostazioni(tab);
+  navigaTabImpostazioni(tab);
 }
 
 document.querySelectorAll("[data-settings-cat-btn]").forEach((btn) => {
-  btn.addEventListener("click", () => attivaCategoriaImpostazioni(btn.dataset.settingsCatBtn));
+  btn.addEventListener("click", () => navigaTabImpostazioni(btn.dataset.settingsCatBtn));
 });
 
 // Ricerca live nelle impostazioni
@@ -939,92 +1055,7 @@ function aggiornaDataTopbar() {
 }
 aggiornaDataTopbar();
 
-navItems.forEach((btn) => {
-  btn.addEventListener("click", async () => {
-    const viewName = btn.dataset.view;
-    segnaNotificheViste(viewName);
-
-    // Su mobile il drawer resta aperto dopo la navigazione: chiudilo sempre
-    chiudiMenuMobile();
-
-    navItems.forEach((n) => n.classList.remove("active"));
-    btn.classList.add("active");
-
-    if (viewName === "account") {
-      views.forEach((v) => {
-        v.classList.toggle("view-hidden", v.dataset.viewPanel !== "impostazioni");
-      });
-      topbarTitle.dataset.i18n = "dashboard:topbar.title_account";
-      topbarTitle.textContent = t(topbarTitle.dataset.i18n);
-      attivaCategoriaImpostazioni("piano");
-      caricaAccount();
-      return;
-    }
-
-    views.forEach((v) => {
-      v.classList.toggle("view-hidden", v.dataset.viewPanel !== viewName);
-    });
-    resetDashboardScroll();
-
-    const titleKeys = {
-      panoramica: "title_panoramica",
-      inbox: "title_inbox",
-      prenotazioni: "title_prenotazioni",
-      recensioni: "title_recensioni",
-      team: "title_team",
-      assistente: "title_assistente",
-      conoscenza: "title_conoscenza",
-      "configurazione-ai": "title_configurazione_ai",
-      impostazioni: "title_impostazioni",
-      account: "title_account",
-      onboarding: "title_configurazione_ai",
-    };
-    topbarTitle.dataset.i18n = `dashboard:topbar.${titleKeys[viewName] || "title_panoramica"}`;
-    topbarTitle.textContent = t(topbarTitle.dataset.i18n);
-    if (viewName === "impostazioni") {
-      attivaCategoriaImpostazioni("generale");
-    }
-    if (viewName === "account") caricaAccount();
-
-    if (viewName === "panoramica") {
-      avviaPanoramicaPolling();
-      aggiornaRiepilogo();
-      aggiornaPrioritari();
-    } else {
-      fermaPanoramicaPolling();
-    }
-    if (viewName === "team") {
-      caricaTeam();
-    }
-    if (viewName === "recensioni") {
-      aggiornaRecensioni();
-    }
-    if (viewName === "prenotazioni") {
-      await aggiornaImpostazioniPrenotazioni();
-      inizializzaCalendarioPrenotazioni();
-      await aggiornaPrenotazioni();
-      await aggiornaSemaforo();
-      if (bookingCalendar) {
-        bookingCalendar.updateSize();
-        bookingCalendar.render();
-      }
-      renderTabellaPrenotazioniGiorno();
-    }
-    if (viewName === "documenti" || viewName === "conoscenza") {
-      aggiornaConoscenzaCompleta();
-    }
-    if (viewName === "configurazione-ai") {
-      if (typeof caricaConfigurazioneAI === "function") caricaConfigurazioneAI();
-    }
-    if (viewName === "inbox") {
-      avviaInboxPolling();
-      caricaInbox();
-    } else {
-      fermaInboxPolling();
-    }
-    chiudiMenuMobile();
-  });
-});
+// The authenticated router owns semantic navigation; view rendering remains here.
 
 /* ============================================================
    ONBOARDING
@@ -1623,7 +1654,7 @@ onboardingEls.testBtn?.addEventListener("click", async () => {
 });
 
 onboardingEls.openDocs?.addEventListener("click", () => {
-  document.querySelector('[data-view="conoscenza"]')?.click();
+  apriView("conoscenza");
 });
 
 onboardingEls.uploadDoc?.addEventListener("click", async () => {
@@ -1782,6 +1813,8 @@ let bookingAvailability = new Map();
 let bookingRecords = [];
 let bookingPendingOnly = false;
 let bookingEditingId = null;
+let bookingFormTransition = 0;
+let bookingDetailTransition = 0;
 let bookingPollTimer = null;
 let bookingSnapshot = new Map();
 const bookingModal = document.getElementById("booking-modal");
@@ -1830,6 +1863,7 @@ function aggiornaAzioniPrenotazione(p) {
   const completedBtn = document.getElementById("booking-completed-btn");
   const editBtn = document.getElementById("booking-edit-btn");
   if (!confermaBtn || !rifiutaBtn || !annullaBtn || !noShowBtn || !completedBtn || !editBtn) return;
+  [confermaBtn, rifiutaBtn, annullaBtn, noShowBtn, completedBtn, editBtn].forEach((button) => { button.disabled = false; });
   const stato = statoNormalizzatoPrenotazione(p);
   const finale = STATI_FINALI_PRENOTAZIONE.includes(stato);
   confermaBtn.hidden = staff || finale || stato === "confermata";
@@ -1844,6 +1878,11 @@ function aggiornaAzioniPrenotazione(p) {
 async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo = "", descrizione = "", label = "Conferma" } = {}) {
   const p = prenotazioneCorrente;
   if (!p?.id) return;
+  const transition = dashboardViewTransition;
+  const formTransition = bookingFormTransition;
+  let detailTransition = ++bookingDetailTransition;
+  const selectedDate = bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
+  const isCurrent = () => transition === dashboardViewTransition && activeDashboardView === "prenotazioni" && formTransition === bookingFormTransition && detailTransition === bookingDetailTransition && prenotazioneCorrente?.id === p.id && selectedDate === (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
   if (chiediConferma) {
     const ok = await confermaDestructiva({ titolo, descrizione, label });
     if (!ok) return;
@@ -1851,15 +1890,20 @@ async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo
   const bottoni = ["booking-confirm-btn", "booking-reject-btn", "booking-cancel-btn", "booking-no-show-btn", "booking-completed-btn", "booking-edit-btn"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
-  bottoni.forEach((b) => { b.disabled = true; });
+  if (isCurrent()) bottoni.forEach((b) => { b.disabled = true; });
   try {
     const res = await apiFetch(`${API_BASE}/api/bookings/${encodeURIComponent(p.id)}/${azione}`, { method: "POST" });
+    if (!isCurrent()) return;
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
+      if (!isCurrent()) return;
       throw new Error(errData.detail || "Operazione non riuscita.");
     }
-    prenotazioneCorrente = await res.json();
+    const updated = await res.json();
+    if (!isCurrent()) return;
+    prenotazioneCorrente = updated;
     chiudiDettaglioPrenotazione();
+    detailTransition = bookingDetailTransition;
     toast(
       azione === "confirm" ? "Prenotazione confermata."
         : azione === "reject" ? "Prenotazione rifiutata."
@@ -1873,9 +1917,10 @@ async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo
       p.data ? aggiornaSemaforo(p.data) : Promise.resolve(),
     ]);
   } catch (err) {
+    if (!isCurrent()) return;
     toast(err.message || "Errore di connessione.", "error");
   } finally {
-    bottoni.forEach((b) => { b.disabled = false; });
+    if (isCurrent()) bottoni.forEach((b) => { b.disabled = false; });
   }
 }
 
@@ -1938,6 +1983,7 @@ function formattaUnitaVerticale(num, singolare = false) {
 
 function apriDettaglioPrenotazione(prenotazione) {
   if (!bookingModal || !prenotazione) return;
+  bookingDetailTransition++;
   const valore = (dato, fallback = "Non indicato") => dato || fallback;
   const data = prenotazione.data
     ? new Date(`${prenotazione.data}T12:00:00`).toLocaleDateString(localeCorrente(), {
@@ -1961,6 +2007,7 @@ function apriDettaglioPrenotazione(prenotazione) {
 
 function chiudiDettaglioPrenotazione() {
   if (!bookingModal) return;
+  bookingDetailTransition++;
   if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(bookingModal);
   else bookingModal.hidden = true;
   document.body.classList.remove("booking-modal-open");
@@ -1969,6 +2016,7 @@ function chiudiDettaglioPrenotazione() {
 function apriBookingModal(id, options = {}) {
   const modal = document.getElementById(id);
   if (!modal) return;
+  if (id === "booking-create-modal") bookingFormTransition++;
   if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(modal, options);
   else modal.hidden = false;
   document.body.classList.add("booking-modal-open");
@@ -1977,6 +2025,7 @@ function apriBookingModal(id, options = {}) {
 function chiudiBookingModal(id, options = {}) {
   const modal = document.getElementById(id);
   if (!modal) return;
+  if (id === "booking-create-modal") bookingFormTransition++;
   if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal, options);
   else modal.hidden = true;
   if (![...document.querySelectorAll(".booking-modal")].some((element) => !element.hidden)) {
@@ -2173,11 +2222,16 @@ function renderTabellaPrenotazioniGiorno(data = null) {
 }
 
 async function aggiornaPrenotazioni() {
-  if (!bookingCalendarEl) return;
+  if (!bookingCalendarEl || activeDashboardView !== "prenotazioni") return;
+  const transition = dashboardViewTransition;
+  const request = ++bookingListRequest;
+  const isCurrent = () => request === bookingListRequest && transition === dashboardViewTransition && activeDashboardView === "prenotazioni";
   try {
     const res = await apiFetch(`${API_BASE}/api/bookings`);
+    if (!isCurrent()) return;
     if (!res.ok) return;
     const raw = await res.json().catch(() => []);
+    if (!isCurrent()) return;
     const prenotazioni = Array.isArray(raw) ? raw : [];
     bookingRecords = prenotazioni;
     const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
@@ -2223,6 +2277,7 @@ async function aggiornaPrenotazioni() {
     verificaPrenotazioneAggiornata(prenotazioni);
     bookingSnapshot = new Map(prenotazioni.map((p) => [String(p.id), JSON.stringify(p)]));
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Impossibile caricare le prenotazioni:", err);
   }
 }
@@ -2277,8 +2332,14 @@ function verificaPrenotazioneAggiornata(prenotazioni) {
 }
 
 async function aggiornaSemaforo(data = null) {
-  if (!availabilityList) return;
-  const targetDate = data ? _toDateKey(data) : (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
+  if (!availabilityList || activeDashboardView !== "prenotazioni") return;
+  const transition = dashboardViewTransition;
+  const selectedDate = () => bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
+  const targetDate = data ? _toDateKey(data) : selectedDate();
+  // Mutation refreshes can reference a day that is no longer selected.
+  if (targetDate !== selectedDate()) return;
+  const request = ++bookingAvailabilityRequest;
+  const isCurrent = () => request === bookingAvailabilityRequest && transition === dashboardViewTransition && activeDashboardView === "prenotazioni" && targetDate === selectedDate();
   availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString(localeCorrente(), {
     weekday: "short",
     day: "2-digit",
@@ -2286,8 +2347,10 @@ async function aggiornaSemaforo(data = null) {
   });
   try {
     const res = await apiFetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
+    if (!isCurrent()) return;
     if (!res.ok) return;
     const raw = await res.json().catch(() => []);
+    if (!isCurrent()) return;
     const slots = Array.isArray(raw) ? raw : [];
     bookingAvailability = new Map(slots.map((slot) => [String(slot.ora).slice(0, 5), slot]));
     availabilityList.innerHTML = "";
@@ -2305,6 +2368,7 @@ async function aggiornaSemaforo(data = null) {
     renderTabellaPrenotazioniGiorno(targetDate);
     bookingCalendar?.render();
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Impossibile caricare il semaforo:", err);
   }
 }
@@ -2328,11 +2392,14 @@ function aggiornaRiepilogoPrenotazioni(data, slots) {
 }
 
 async function aggiornaImpostazioniPrenotazioni() {
-  if (!bookingSettingsGrid || bookingSettingsGrid.children.length) return;
+  if (!bookingSettingsGrid || bookingSettingsGrid.children.length || activeDashboardView !== "prenotazioni") return;
+  const transition = dashboardViewTransition;
   try {
     const res = await apiFetch(`${API_BASE}/api/bookings/settings`);
+    if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
     if (!res.ok) return;
     const data = await res.json();
+    if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
     const capienze = data.capienze_orarie || {};
     bookingOpenHours = capienze;
     const standard = document.getElementById("booking-standard-capacity");
@@ -2351,6 +2418,13 @@ async function aggiornaImpostazioniPrenotazioni() {
 bookingForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   bookingStatusText.textContent = "";
+  const transition = dashboardViewTransition;
+  const submittedEditingId = bookingEditingId;
+  let expectedEditingId = submittedEditingId;
+  let formTransition = ++bookingFormTransition;
+  const selectedDate = () => bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
+  let expectedDate = selectedDate();
+  const isCurrent = () => transition === dashboardViewTransition && activeDashboardView === "prenotazioni" && formTransition === bookingFormTransition && expectedEditingId === bookingEditingId && expectedDate === selectedDate();
   const payload = {
     nome_cliente: document.getElementById("booking-name").value.trim(),
     telefono: document.getElementById("booking-phone").value.trim(),
@@ -2360,16 +2434,18 @@ bookingForm?.addEventListener("submit", async (e) => {
     note: document.getElementById("booking-note").value.trim(),
   };
   try {
-    const res = await apiFetch(`${API_BASE}/api/bookings${bookingEditingId ? `/${encodeURIComponent(bookingEditingId)}` : ""}`, {
-      method: bookingEditingId ? "PUT" : "POST",
+    const res = await apiFetch(`${API_BASE}/api/bookings${submittedEditingId ? `/${encodeURIComponent(submittedEditingId)}` : ""}`, {
+      method: submittedEditingId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    if (!isCurrent()) return;
     if (!res.ok) {
       const err = await res.json().catch(() => null);
+      if (!isCurrent()) return;
       throw new Error(err?.detail?.messaggio || err?.detail || "Errore salvataggio");
     }
-    const wasEditing = Boolean(bookingEditingId);
+    const wasEditing = Boolean(submittedEditingId);
     bookingForm.reset();
     document.getElementById("booking-date").value = payload.data;
     bookingStatusText.textContent = wasEditing ? "Modifica salvata." : "Prenotazione aggiunta.";
@@ -2379,11 +2455,19 @@ bookingForm?.addEventListener("submit", async (e) => {
     if (bookingCalendar) {
       bookingCalendar.gotoDate(payload.data);
     }
+    // The successful save closed its own form and selected its saved day.
+    // Subsequent refreshes still belong to this exact UI context.
+    formTransition = bookingFormTransition;
+    expectedEditingId = bookingEditingId;
+    expectedDate = selectedDate();
     await aggiornaPrenotazioni();
+    if (!isCurrent()) return;
     await aggiornaSemaforo(payload.data);
+    if (!isCurrent()) return;
     renderTabellaPrenotazioniGiorno(payload.data);
   } catch (err) {
-    bookingStatusText.textContent = bookingEditingId ? "Modifica non salvata, riprova." : err.message;
+    if (!isCurrent()) return;
+    bookingStatusText.textContent = submittedEditingId ? "Modifica non salvata, riprova." : err.message;
     bookingStatusText.style.color = "var(--red)";
   }
 });
@@ -3128,6 +3212,7 @@ const reportSuggestions = document.getElementById("report-suggestions");
 const reportSuggestionsList = document.getElementById("report-suggestions-list");
 const reportTimestamp = document.getElementById("report-timestamp");
 const reportRefresh = document.getElementById("report-refresh");
+let reportRefreshHtml = reportRefresh ? reportRefresh.innerHTML : "";
 const reportEmptyHint = document.getElementById("report-empty-hint");
 
 /* Export CSV prenotazioni (endpoint /api/report/csv) */
@@ -3177,7 +3262,16 @@ document.getElementById("booking-export-csv")?.addEventListener("click", () => {
 });
 
 async function aggiornaReport(forza = false) {
-  const origHtml = reportRefresh ? reportRefresh.innerHTML : "";
+  const transition = dashboardViewTransition;
+  const view = activeDashboardView;
+  const request = ++overviewReportRequest;
+  const isCurrent = () => request === overviewReportRequest && transition === dashboardViewTransition && activeDashboardView === view;
+  if (reportRefresh && !reportRefresh.disabled) reportRefreshHtml = reportRefresh.innerHTML;
+  const origHtml = reportRefreshHtml;
+  if (!forza && reportRefresh?.disabled) {
+    reportRefresh.disabled = false;
+    reportRefresh.innerHTML = origHtml;
+  }
   if (forza && reportRefresh) {
     reportRefresh.disabled = true;
     reportRefresh.textContent = "Generazione in corso...";
@@ -3185,11 +3279,13 @@ async function aggiornaReport(forza = false) {
   try {
     const url = `${API_BASE}/api/report${forza ? "?forza=true" : ""}`;
     const res = await apiFetch(url);
+    if (!isCurrent()) return;
     if (!res.ok) {
       if (forza) toast("Impossibile aggiornare il report in questo momento. Riprova più tardi.", "error");
       return;
     }
     const report = await res.json().catch(() => ({}));
+    if (!isCurrent()) return;
     if (!report || !report.statistiche) return;
     reportSection.hidden = false;
     if (reportEmptyHint) reportEmptyHint.hidden = true;
@@ -3215,10 +3311,11 @@ async function aggiornaReport(forza = false) {
     }
     if (forza) toast("Report aggiornato con successo!", "success");
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Impossibile caricare il report:", err);
     if (forza) toast("Errore di connessione durante l'aggiornamento del report.", "error");
   } finally {
-    if (forza && reportRefresh) {
+    if (forza && reportRefresh && isCurrent()) {
       reportRefresh.disabled = false;
       reportRefresh.innerHTML = origHtml;
     }
@@ -3332,11 +3429,16 @@ async function caricaStatoOnboarding() {
 }
 
 async function aggiornaPrioritari(silent = false) {
+  if (activeDashboardView !== "panoramica") return;
+  const transition = dashboardViewTransition;
+  const request = ++overviewPriorityRequest;
+  const isCurrent = () => request === overviewPriorityRequest && transition === dashboardViewTransition && activeDashboardView === "panoramica";
   if (!silent && !priorityList.children.length) {
     priorityList.innerHTML = _skeletonList(3);
   }
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
+    if (!isCurrent()) return;
     if (!res.ok) {
       if (!silent) {
         priorityList.innerHTML = "";
@@ -3345,7 +3447,10 @@ async function aggiornaPrioritari(silent = false) {
       return;
     }
     const rawEventi = await res.json().catch(() => []);
+    if (!isCurrent()) return;
     const eventi = Array.isArray(rawEventi) ? rawEventi : [];
+    const cfg = eventi.length === 0 ? await caricaStatoOnboarding() : null;
+    if (!isCurrent()) return;
     const countBadge = document.getElementById("priority-count-badge");
     if (countBadge) {
       countBadge.textContent = eventi.length ? _tDash("overview.runtime.priority_count", "{{count}} elementi", { count: eventi.length }) : "";
@@ -3353,7 +3458,6 @@ async function aggiornaPrioritari(silent = false) {
     }
     priorityList.innerHTML = "";
     if (eventi.length === 0) {
-      const cfg = await caricaStatoOnboarding();
       const li = document.createElement("li");
       if (!cfg.isFullyConfigured) {
         li.className = "onboarding-checklist-item";
@@ -3451,6 +3555,7 @@ async function aggiornaPrioritari(silent = false) {
       priorityList.appendChild(li);
     });
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Impossibile aggiornare gli eventi prioritari:", err);
     priorityList.innerHTML = "";
     priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), aggiornaPrioritari));
@@ -3543,6 +3648,7 @@ function applicaBadgeTrend(elId, trendObj) {
 }
 
 function _toDateKey(d) {
+  if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
   const date = d instanceof Date ? d : new Date(d);
   if (isNaN(date.getTime())) return "";
   const year = date.getFullYear();
@@ -3581,11 +3687,16 @@ function fermaPanoramicaPolling() {
 }
 
 async function aggiornaRiepilogo(silent = false) {
+  if (activeDashboardView !== "panoramica") return;
+  const transition = dashboardViewTransition;
+  const request = ++overviewSummaryRequest;
+  const isCurrent = () => request === overviewSummaryRequest && transition === dashboardViewTransition && activeDashboardView === "panoramica";
   if (!silent && !ticketList.children.length) {
     ticketList.innerHTML = _skeletonList(3);
   }
   try {
     const res = await apiFetch(`${API_BASE}/api/dashboard`);
+    if (!isCurrent()) return;
     if (!res.ok) {
       if (!silent) {
         ticketList.innerHTML = "";
@@ -3594,6 +3705,7 @@ async function aggiornaRiepilogo(silent = false) {
       return;
     }
     const rawStorico = await res.json().catch(() => []);
+    if (!isCurrent()) return;
     const storico = Array.isArray(rawStorico) ? rawStorico : [];
 
     // Calcolo 7 giorni storici
@@ -3686,7 +3798,7 @@ async function aggiornaRiepilogo(silent = false) {
         _tDash("overview.runtime.waiting_title", "In attesa di conversazioni"),
         _tDash("overview.runtime.waiting_desc", "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale."),
         _tDash("overview.runtime.try_simulator", "Prova nel simulatore"),
-        () => document.querySelector('[data-view="assistente"]')?.click()
+        () => apriView("assistente")
       ));
       return;
     }
@@ -3753,6 +3865,7 @@ async function aggiornaRiepilogo(silent = false) {
       ticketList.appendChild(li);
     });
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Impossibile aggiornare il riepilogo:", err);
     if (!silent) {
       ticketList.innerHTML = "";
@@ -3761,12 +3874,6 @@ async function aggiornaRiepilogo(silent = false) {
   }
 }
 
-document.getElementById("priority-inbox-link")?.addEventListener("click", () => {
-  if (typeof apriView === "function") apriView("inbox");
-});
-document.getElementById("activity-view-all-btn")?.addEventListener("click", () => {
-  if (typeof apriView === "function") apriView("inbox");
-});
 /* ============================================================
    KNOWLEDGE BASE RISTRUTTURATA (4 CATEGORIE)
    ============================================================ */
@@ -4952,7 +5059,10 @@ function fermaInboxPolling() {
 
 async function caricaInbox(silent = false) {
   const container = document.getElementById("inbox-list");
-  if (!container) return;
+  if (!container || activeDashboardView !== "inbox") return;
+  const transition = dashboardViewTransition;
+  const request = ++inboxListRequest;
+  const isCurrent = () => request === inboxListRequest && transition === dashboardViewTransition && activeDashboardView === "inbox";
 
   if (!silent && !inboxState.tickets.length) {
     container.innerHTML = _skeletonList(4);
@@ -4963,6 +5073,7 @@ async function caricaInbox(silent = false) {
       apiFetch(`${API_BASE}/api/inbox/tickets?limit=100`),
       apiFetch(`${API_BASE}/api/inbox/team`).catch(() => ({ ok: false })),
     ]);
+    if (!isCurrent()) return;
 
     if (!ticketsRes.ok) {
       if (!silent) {
@@ -4973,6 +5084,9 @@ async function caricaInbox(silent = false) {
     }
 
     const data = await ticketsRes.json();
+    if (!isCurrent()) return;
+    const teamData = teamRes.ok ? await teamRes.json().catch(() => ({ members: [] })) : null;
+    if (!isCurrent()) return;
     const newTickets = data.tickets || [];
 
     const prevSig = (inboxState.tickets || []).map(t => `${t.id}:${t.last_message_at}:${t.ticket_status}:${t.escalation_failed}:${t.unread_count || 0}:${t.last_message_preview}`).join("|");
@@ -4986,14 +5100,7 @@ async function caricaInbox(silent = false) {
       }
     });
 
-    if (teamRes.ok) {
-      try {
-        const teamData = await teamRes.json();
-        inboxState.team = teamData.members || [];
-      } catch (e) {
-        inboxState.team = [];
-      }
-    }
+    if (teamData) inboxState.team = teamData.members || [];
 
     aggiornaContatoriFiltri();
 
@@ -5024,6 +5131,7 @@ async function caricaInbox(silent = false) {
       }
     }
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Errore caricamento inbox:", err);
     if (!silent) {
       container.innerHTML = "";
@@ -5389,6 +5497,10 @@ function _renderMsgRow(m, ticket) {
 }
 
 async function caricaDettaglioTicket(ticketId, silent = false, { refreshMessages = true, forceRender = false } = {}) {
+  if (activeDashboardView !== "inbox" || inboxState.selectedTicketId !== ticketId) return;
+  const transition = dashboardViewTransition;
+  const request = refreshMessages ? ++inboxDetailRequest : inboxDetailRequest;
+  const isCurrent = () => request === inboxDetailRequest && transition === dashboardViewTransition && activeDashboardView === "inbox" && inboxState.selectedTicketId === ticketId;
   const emptyEl = document.getElementById("inbox-detail-empty");
   const contentEl = document.getElementById("inbox-detail-content");
   if (!contentEl) return;
@@ -5610,8 +5722,10 @@ async function caricaDettaglioTicket(ticketId, silent = false, { refreshMessages
 
     try {
       const res = await apiFetch(`${API_BASE}/api/inbox/tickets/${encodeURIComponent(ticket.id)}/messages?limit=200`);
+      if (!isCurrent()) return;
       if (!res.ok) throw new Error("Errore recupero messaggi");
       const msgData = await res.json();
+      if (!isCurrent()) return;
       const messages = msgData.messages || [];
 
       const renderedMsgRows = threadContainer.querySelectorAll(".inbox-msg-row[data-msg-id]");
@@ -5659,7 +5773,7 @@ async function caricaDettaglioTicket(ticketId, silent = false, { refreshMessages
         }
 
         const scrollToBottom = () => {
-          if (threadContainer) {
+          if (threadContainer && isCurrent()) {
             threadContainer.scrollTop = threadContainer.scrollHeight;
           }
         };
@@ -5672,6 +5786,7 @@ async function caricaDettaglioTicket(ticketId, silent = false, { refreshMessages
         }
       }
     } catch (err) {
+      if (!isCurrent()) return;
       console.error("Errore caricamento thread:", err);
       if (!silent) {
         threadContainer.innerHTML = '<p class="inbox-empty error" style="text-align:center; padding:20px;">Impossibile caricare lo storico dei messaggi.</p>';
@@ -5679,6 +5794,7 @@ async function caricaDettaglioTicket(ticketId, silent = false, { refreshMessages
     }
   }
 
+  if (!isCurrent()) return;
   if (threadContainer && !refreshMessages) {
     const emptyTitle = threadContainer.querySelector(".inbox-empty-text");
     const emptySubtext = threadContainer.querySelector(".inbox-empty-subtext");
@@ -5744,6 +5860,8 @@ async function inviaRispostaInbox() {
   if (!inboxState.selectedTicketId) return;
   const ticket = inboxState.tickets.find((t) => t.id === inboxState.selectedTicketId);
   if (!ticket || ticket.ticket_status !== "CLAIMED") return;
+  const transition = dashboardViewTransition;
+  const isCurrent = () => transition === dashboardViewTransition && activeDashboardView === "inbox" && inboxState.selectedTicketId === ticket.id;
 
   const msgInput = document.getElementById("inbox-message-input");
   const sendBtn = document.getElementById("inbox-send-btn");
@@ -5766,24 +5884,30 @@ async function inviaRispostaInbox() {
         idempotency_key: idempotencyKey,
       }),
     });
+    if (!isCurrent()) return;
 
     if (!res.ok) {
       const errData = await res.json().catch(() => ({}));
+      if (!isCurrent()) return;
       throw new Error(errData.detail || "Invio risposta fallito.");
     }
 
     msgInput.value = "";
     toast("Messaggio inviato", "success");
     await caricaDettaglioTicket(ticket.id);
+    if (!isCurrent()) return;
     await caricaInbox();
   } catch (err) {
+    if (!isCurrent()) return;
     console.error("Errore invio messaggio:", err);
     toast(err.message, "error");
   } finally {
-    if (sendBtn) sendBtn.disabled = false;
-    if (msgInput) {
-      msgInput.disabled = false;
-      msgInput.focus();
+    if (isCurrent()) {
+      if (sendBtn) sendBtn.disabled = false;
+      if (msgInput) {
+        msgInput.disabled = false;
+        msgInput.focus();
+      }
     }
   }
 }
@@ -6064,11 +6188,23 @@ window.addEventListener("pageshow", (event) => {
     vaiAdAccesso();
     return;
   }
+  if (await accettaInvitoDaLink()) return;
+
+  if (document.getElementById("booking-date")) {
+    document.getElementById("booking-date").value = oggiIso();
+  }
+  dashboardRouter = window.MelpisDashboardRouter.createDashboardRouter({
+    window,
+    render: renderDashboardView,
+  });
+  dashboardRouter.start();
+  gestisciCalendarRedirect();
+  gestisciReviewsRedirect();
+
   document.body.classList.add("authenticated");
   document.querySelectorAll(".app-shell").forEach((el) => {
     el.style.visibility = "";
   });
-  if (await accettaInvitoDaLink()) return;
   if (sessionStorage.getItem("melpis_benvenuto")) {
     sessionStorage.removeItem("melpis_benvenuto");
     toast("Benvenuto in Melpis: il tuo periodo di prova è attivo.", "success");
@@ -6076,10 +6212,6 @@ window.addEventListener("pageshow", (event) => {
   if (typeof window.caricaProfiloImpostazioni === "function") {
     await window.caricaProfiloImpostazioni();
   }
-  aggiornaRiepilogo();
-  aggiornaPrioritari();
-  avviaPanoramicaPolling();
-  aggiornaReport();
   if (typeof window.aggiornaConteggio === "function") {
     window.aggiornaConteggio();
   }
@@ -6088,9 +6220,6 @@ window.addEventListener("pageshow", (event) => {
   setInterval(aggiornaNotifiche, 30000);
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     mostraBannerRete("Connessione persa — i dati non si aggiornano. Controlla la rete.");
-  }
-  if (document.getElementById("booking-date")) {
-    document.getElementById("booking-date").value = oggiIso();
   }
 })();
 
@@ -6102,6 +6231,7 @@ window.addEventListener("pageshow", (event) => {
   const wrap = document.getElementById("global-search");
   const input = document.getElementById("global-search-input");
   const results = document.getElementById("global-search-results");
+  const toggle = document.getElementById("global-search-toggle");
   if (!wrap || !input || !results) return;
 
   let debounceTimer = null;
@@ -6111,6 +6241,29 @@ window.addEventListener("pageshow", (event) => {
     results.hidden = true;
     results.innerHTML = "";
   }
+
+  function chiudiRicerca() {
+    chiudi();
+    wrap.classList.remove("is-open");
+    input.hidden = true;
+    input.blur();
+    toggle?.setAttribute("aria-expanded", "false");
+  }
+
+  function apriRicerca() {
+    wrap.classList.add("is-open");
+    input.hidden = false;
+    toggle?.setAttribute("aria-expanded", "true");
+    input.focus();
+  }
+
+  toggle?.addEventListener("click", () => {
+    if (wrap.classList.contains("is-open")) {
+      chiudiRicerca();
+    } else {
+      apriRicerca();
+    }
+  });
 
   function apriCon(html) {
     results.innerHTML = html;
@@ -6214,14 +6367,14 @@ window.addEventListener("pageshow", (event) => {
   });
 
   input.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { chiudi(); input.blur(); }
+    if (e.key === "Escape") chiudiRicerca();
   });
 
   results.addEventListener("click", (e) => {
     const row = e.target.closest(".gs-row");
     if (!row) return;
     const view = row.dataset.view;
-    chiudi();
+    chiudiRicerca();
     input.value = "";
     if (view === "impostazioni") {
       apriVistaImpostazioni(row.dataset.tab || "generale");
@@ -6232,7 +6385,7 @@ window.addEventListener("pageshow", (event) => {
   });
 
   document.addEventListener("click", (e) => {
-    if (!wrap.contains(e.target)) chiudi();
+    if (!wrap.contains(e.target)) chiudiRicerca();
   });
 
   document.addEventListener("keydown", (e) => {
@@ -6240,7 +6393,7 @@ window.addEventListener("pageshow", (event) => {
     const t = e.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
     e.preventDefault();
-    input.focus();
+    apriRicerca();
   });
 })();
 
@@ -7473,14 +7626,14 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
   }
 });
 
-/* Gestione redirect OAuth callback */
-(function gestisciCalendarRedirect() {
+/* Gestione redirect OAuth callback, eseguita dopo Auth e router. */
+function gestisciCalendarRedirect() {
   const params = new URLSearchParams(window.location.search);
   const cal = params.get("calendar");
   if (cal === "connected") {
     const url = new URL(window.location);
     url.searchParams.delete("calendar");
-    window.history.replaceState({}, "", url);
+    window.history.replaceState(window.history.state, "", url);
     apriVistaImpostazioni("calendar");
     setTimeout(() => toast("Google Calendar connesso con successo!", "success"), 400);
   } else if (cal === "error") {
@@ -7488,7 +7641,7 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
     const url = new URL(window.location);
     url.searchParams.delete("calendar");
     url.searchParams.delete("reason");
-    window.history.replaceState({}, "", url);
+    window.history.replaceState(window.history.state, "", url);
     apriVistaImpostazioni("calendar");
     const msgs = {
       no_refresh_token: "Autorizzazione negata: la tua app Google non è in produzione. Aggiungi il tuo account come test user nella Google Cloud Console.",
@@ -7500,7 +7653,7 @@ document.getElementById("integ-calendar-disconnect")?.addEventListener("click", 
     };
     setTimeout(() => toast(msgs[reason] || `Errore: ${reason}`, "error"), 400);
   }
-})();
+}
 
 /* ============================================================
    GOOGLE RECENSIONI (BUSINESS PROFILE) — stato, connect, sync, disconnect
@@ -7676,8 +7829,8 @@ document.getElementById("integ-reviews-disconnect")?.addEventListener("click", a
   }
 });
 
-/* Gestione redirect OAuth callback per Google Reviews */
-(function gestisciReviewsRedirect() {
+/* Gestione redirect OAuth callback per Google Reviews, dopo Auth e router. */
+function gestisciReviewsRedirect() {
   const params = new URLSearchParams(window.location.search);
   const rev = params.get("reviews_google");
   if (!rev) return;
@@ -7685,7 +7838,7 @@ document.getElementById("integ-reviews-disconnect")?.addEventListener("click", a
   if (rev === "connected") {
     const url = new URL(window.location);
     url.searchParams.delete("reviews_google");
-    window.history.replaceState({}, "", url);
+    window.history.replaceState(window.history.state, "", url);
     if (typeof apriVistaImpostazioni === "function") {
       apriVistaImpostazioni("reviews");
     }
@@ -7695,7 +7848,7 @@ document.getElementById("integ-reviews-disconnect")?.addEventListener("click", a
     const url = new URL(window.location);
     url.searchParams.delete("reviews_google");
     url.searchParams.delete("reason");
-    window.history.replaceState({}, "", url);
+    window.history.replaceState(window.history.state, "", url);
     if (typeof apriVistaImpostazioni === "function") {
       apriVistaImpostazioni("reviews");
     }
@@ -7709,7 +7862,7 @@ document.getElementById("integ-reviews-disconnect")?.addEventListener("click", a
     };
     setTimeout(() => toast(msgs[reason] || `Errore autorizzazione Google: ${reason}`, "error"), 400);
   }
-})();
+}
 
 /* ============================================================
    INTEGRAZIONE GESTIONALE PRENOTAZIONI (PMS / BOOKING FRAMEWORK - FASE 2)
@@ -9091,7 +9244,7 @@ async function accettaInvitoDaLink() {
   }
   const accepted = await res.json();
   localStorage.setItem("melpis_selected_organization", accepted.organization_id);
-  window.location.replace("/app/");
+  window.location.replace("/app/team");
   return true;
 }
 document.getElementById("btn-refresh-team")?.addEventListener("click", caricaTeam);

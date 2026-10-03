@@ -1,5 +1,7 @@
+import atexit
 import glob
 import os
+import tempfile
 
 os.environ.setdefault("TC_HOST", "localhost")
 
@@ -8,6 +10,12 @@ import pytest
 import uuid
 
 CI = os.getenv("CI")
+
+# Some core tests import CrewAI while pytest is collecting modules. Keep its
+# SQLite/RAG storage outside the developer's AppData directory for this run.
+_CREWAI_TEST_STORAGE = tempfile.TemporaryDirectory(prefix="melpis-crewai-tests-")
+os.environ["CREWAI_STORAGE_DIR"] = _CREWAI_TEST_STORAGE.name
+atexit.register(_CREWAI_TEST_STORAGE.cleanup)
 
 _dsn = os.getenv(
     "TEST_DB_DSN",

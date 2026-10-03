@@ -11,6 +11,9 @@ from google_auth_oauthlib.flow import Flow
 
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.oauth_callback import safe_oauth_callback
+from src.core.auth.oauth_state import (
+    create_bound_oauth_nonce, is_bound_oauth_nonce, validate_oauth_callback_context,
+)
 from src.core.google_feature_flags import google_calendar_enabled
 
 logger = logging.getLogger(__name__)
@@ -65,7 +68,7 @@ async def calendar_auth(
         raise HTTPException(400, "X-Organization-Id header required")
     _require_calendar_enabled()
 
-    nonce = uuid.uuid4().hex
+    nonce = create_bound_oauth_nonce("calendar", org_id, user)
     pool = request.app.state.pool
     async with pool.acquire() as conn:
         await conn.execute(
@@ -102,8 +105,10 @@ async def calendar_oauth2callback(request: Request):
         uuid.UUID(org_id)
     except ValueError:
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_state")
-    if len(nonce) != 32 or any(c not in "0123456789abcdef" for c in nonce):
+    if not is_bound_oauth_nonce(nonce):
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_state")
+    if not await validate_oauth_callback_context(request, "calendar", org_id, nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_context")
     pool = request.app.state.pool
 
     async with pool.acquire() as conn:
@@ -145,6 +150,10 @@ async def calendar_oauth2callback(request: Request):
         return RedirectResponse(
             url=f"{FRONTEND_REDIRECT}?calendar=error&reason=no_refresh_token"
         )
+
+    # Authorization may be revoked while Google's network exchange is running.
+    if not await validate_oauth_callback_context(request, "calendar", org_id, nonce):
+        return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=invalid_context")
 
     # Cifra i token con la stessa Fernet del service. Il DB NON salva mai
     # token in chiaro: _get_credentials assume formato Fernet, quindi ogni

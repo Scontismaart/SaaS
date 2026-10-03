@@ -51,7 +51,10 @@ def test_channel_credentials_require_owner_mfa(role, aal, channel):
     ],
 )
 @pytest.mark.parametrize("role,aal", [("manager", "aal2"), ("owner", "aal1")])
-def test_all_credential_writes_require_owner_and_mfa(router_name, method, path, payload, role, aal):
+def test_all_credential_writes_require_owner_and_mfa(
+    router_name, method, path, payload, role, aal, monkeypatch, tmp_path,
+):
+    monkeypatch.setenv("CREWAI_STORAGE_DIR", str(tmp_path / "crewai"))
     from src.api.routes.airtable import router as airtable_router
     from src.api.routes.integrations import router as integrations_router
     from src.core.calendar.routes import router as calendar_router
@@ -232,21 +235,30 @@ class _OneShotNoncePool:
         ("reviews", "reviews_google"),
     ],
 )
-async def test_oauth_provider_denial_consumes_nonce_once(callback, channel, caplog):
+async def test_oauth_provider_denial_consumes_nonce_once(callback, channel, caplog, monkeypatch):
     if callback == "calendar":
         from src.core.calendar.routes import calendar_oauth2callback as handler
     else:
         from src.core.reviews.google_routes import google_reviews_oauth2callback as handler
 
     org_id = "11111111-1111-1111-1111-111111111111"
-    nonce = "a" * 32
+    from src.core.auth import bff, dependencies
+    from src.core.auth.oauth_state import create_bound_oauth_nonce
+
+    monkeypatch.setenv("ENCRYPTION_KEY", "GT4pFJ9wm5vlxRS2MSmSF3tjbThnKnon-sgG5TVYILE=")
+    user = {"source": "jwt", "aal": "aal2", "auth_user_id": "synthetic-user", "session_id": "synthetic-session"}
+    monkeypatch.setattr(dependencies, "get_current_user", AsyncMock(return_value=user))
+    nonce = create_bound_oauth_nonce(channel, org_id, user)
     pool = _OneShotNoncePool()
     request = SimpleNamespace(
         query_params={
             "state": f"{org_id}:{nonce}",
             "error": "private-provider-error",
         },
-        app=SimpleNamespace(state=SimpleNamespace(pool=pool)),
+        cookies={bff.access_cookie_name(): "synthetic-cookie"},
+        app=SimpleNamespace(state=SimpleNamespace(pool=pool, repo=SimpleNamespace(
+            get_membership_by_auth=AsyncMock(return_value={"organization_id": org_id, "ruolo": "owner"}),
+        ))),
     )
 
     denied = await handler(request)

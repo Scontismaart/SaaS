@@ -245,7 +245,8 @@ async def test_oauth_provider_denial_consumes_nonce_once(callback, channel, capl
     from src.core.auth import bff, dependencies
     from src.core.auth.oauth_state import create_bound_oauth_nonce
 
-    monkeypatch.setenv("ENCRYPTION_KEY", "GT4pFJ9wm5vlxRS2MSmSF3tjbThnKnon-sgG5TVYILE=")
+    # Deterministic 32-byte Fernet key for this isolated test.
+    monkeypatch.setenv("ENCRYPTION_KEY", "A" * 43 + "=")
     user = {"source": "jwt", "aal": "aal2", "auth_user_id": "synthetic-user", "session_id": "synthetic-session"}
     monkeypatch.setattr(dependencies, "get_current_user", AsyncMock(return_value=user))
     nonce = create_bound_oauth_nonce(channel, org_id, user)

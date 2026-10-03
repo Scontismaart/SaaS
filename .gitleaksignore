@@ -70,3 +70,6 @@ fb32b7276c32bf00f3c8566a8791ab74d157760b:tests/core/test_reviews_lingue.py:gener
 3fff8464dff75ff9da538741fbef53a0e9989c42:docs/operations/external_booking_integrations.md:generic-api-key:63
 3fff8464dff75ff9da538741fbef53a0e9989c42:docs/operations/external_booking_integrations.md:generic-api-key:147
 3fff8464dff75ff9da538741fbef53a0e9989c42:docs/operations/external_booking_integrations.md:generic-api-key:192
+# Reviewed Gitleaks false positives: deterministic Fernet test fixtures introduced by PR #56 (2026-10-03).
+e7f21b02074e887db529817c48cf6bfa65c05800:tests/unit/auth/test_credential_boundaries.py:generic-api-key:248
+e7f21b02074e887db529817c48cf6bfa65c05800:tests/unit/auth/test_oauth_session_binding.py:generic-api-key:23

@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import date, datetime
-from typing import Any
-
 import asyncpg
 
 from src.core.db.scoping import TenantScopedRepository, system_scope
@@ -173,18 +171,38 @@ class BillingRepository(TenantScopedRepository):
                    "suspension_notified_at", "ai_accounting_blocked"}
         if not data or not set(data) <= allowed:
             raise ValueError("Invalid billing fields")
-        sets = ", ".join(f"{k} = ${i+2}" for i, k in enumerate(data))
-        values = list(data.values())
+        fields = (
+            "stripe_customer_id", "subscription_id", "subscription_status", "plan",
+            "messages_used_this_period", "messages_limit", "users_limit",
+            "whatsapp_numbers_limit", "current_period_start", "current_period_end",
+            "trial_start", "trial_end", "suspension_notified_at", "ai_accounting_blocked",
+        )
+        values = [organization_id]
+        for field in fields:
+            values.extend((field in data, data.get(field)))
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"""UPDATE organizations SET {sets}
+                """UPDATE organizations SET
+                    stripe_customer_id = CASE WHEN $2 THEN $3 ELSE stripe_customer_id END,
+                    subscription_id = CASE WHEN $4 THEN $5 ELSE subscription_id END,
+                    subscription_status = CASE WHEN $6 THEN $7 ELSE subscription_status END,
+                    plan = CASE WHEN $8 THEN $9 ELSE plan END,
+                    messages_used_this_period = CASE WHEN $10 THEN $11 ELSE messages_used_this_period END,
+                    messages_limit = CASE WHEN $12 THEN $13 ELSE messages_limit END,
+                    users_limit = CASE WHEN $14 THEN $15 ELSE users_limit END,
+                    whatsapp_numbers_limit = CASE WHEN $16 THEN $17 ELSE whatsapp_numbers_limit END,
+                    current_period_start = CASE WHEN $18 THEN $19 ELSE current_period_start END,
+                    current_period_end = CASE WHEN $20 THEN $21 ELSE current_period_end END,
+                    trial_start = CASE WHEN $22 THEN $23 ELSE trial_start END,
+                    trial_end = CASE WHEN $24 THEN $25 ELSE trial_end END,
+                    suspension_notified_at = CASE WHEN $26 THEN $27 ELSE suspension_notified_at END,
+                    ai_accounting_blocked = CASE WHEN $28 THEN $29 ELSE ai_accounting_blocked END
                     WHERE id = $1
                     RETURNING stripe_customer_id, subscription_id, subscription_status,
                               plan, messages_used_this_period, messages_limit,
                               users_limit, whatsapp_numbers_limit,
                               current_period_start, current_period_end,
                               trial_start, trial_end""",
-                organization_id,
                 *values,
             )
             return dict(row)

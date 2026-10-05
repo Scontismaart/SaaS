@@ -55,42 +55,26 @@ class ReviewRepository(TenantScopedRepository):
 
     async def list_reviews(self, organization_id, stato=None, fonte=None,
                            page=1, limit=20):
-        clauses = []
-        args = [organization_id]
-        idx = 2
-        if stato:
-            clauses.append(f"stato = ${idx}")
-            args.append(stato)
-            idx += 1
-        if fonte:
-            clauses.append(f"fonte = ${idx}")
-            args.append(fonte)
-            idx += 1
-        where_extra = (" AND " + " AND ".join(clauses)) if clauses else ""
         offset = (page - 1) * limit
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                f"SELECT * FROM reviews WHERE organization_id = $1{where_extra} ORDER BY created_at DESC LIMIT ${idx} OFFSET ${idx + 1}",
-                *args, limit, offset,
+                """SELECT * FROM reviews
+                   WHERE organization_id = $1
+                     AND ($2::text IS NULL OR stato = $2)
+                     AND ($3::text IS NULL OR fonte = $3)
+                   ORDER BY created_at DESC LIMIT $4 OFFSET $5""",
+                organization_id, stato or None, fonte or None, limit, offset,
             )
             return [dict(r) for r in rows]
 
     async def count_reviews(self, organization_id, stato=None, fonte=None) -> int:
-        clauses = []
-        args = [organization_id]
-        idx = 2
-        if stato:
-            clauses.append(f"stato = ${idx}")
-            args.append(stato)
-            idx += 1
-        if fonte:
-            clauses.append(f"fonte = ${idx}")
-            args.append(fonte)
-        where_extra = (" AND " + " AND ".join(clauses)) if clauses else ""
         async with self.pool.acquire() as conn:
             return await conn.fetchval(
-                f"SELECT COUNT(*) FROM reviews WHERE organization_id = $1{where_extra}",
-                *args,
+                """SELECT COUNT(*) FROM reviews
+                   WHERE organization_id = $1
+                     AND ($2::text IS NULL OR stato = $2)
+                     AND ($3::text IS NULL OR fonte = $3)""",
+                organization_id, stato or None, fonte or None,
             )
 
     async def update_review(self, organization_id, review_id, **kwargs):
@@ -99,12 +83,28 @@ class ReviewRepository(TenantScopedRepository):
         campi_non_ammessi = set(kwargs) - self._CAMPI_REVIEW_AGGIORNABILI
         if campi_non_ammessi:
             raise ValueError(f"Campi non aggiornabili: {sorted(campi_non_ammessi)}")
-        sets = ", ".join(f"{k} = ${i + 3}" for i, k in enumerate(kwargs))
-        values = list(kwargs.values())
+        fields = (
+            "bozza_risposta", "sentiment", "categoria",
+            "richiede_revisione_urgente", "stato", "external_id",
+            "published_at", "is_anonymized",
+        )
+        values = [organization_id, review_id]
+        for field in fields:
+            values.extend((field in kwargs, kwargs.get(field)))
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
-                f"UPDATE reviews SET {sets} WHERE organization_id = $1 AND id = $2 RETURNING *",
-                organization_id, review_id, *values,
+                """UPDATE reviews SET
+                       bozza_risposta = CASE WHEN $3 THEN $4 ELSE bozza_risposta END,
+                       sentiment = CASE WHEN $5 THEN $6 ELSE sentiment END,
+                       categoria = CASE WHEN $7 THEN $8 ELSE categoria END,
+                       richiede_revisione_urgente = CASE WHEN $9 THEN $10 ELSE richiede_revisione_urgente END,
+                       stato = CASE WHEN $11 THEN $12 ELSE stato END,
+                       external_id = CASE WHEN $13 THEN $14 ELSE external_id END,
+                       published_at = CASE WHEN $15 THEN $16 ELSE published_at END,
+                       is_anonymized = CASE WHEN $17 THEN $18 ELSE is_anonymized END
+                   WHERE organization_id = $1 AND id = $2
+                   RETURNING *""",
+                *values,
             )
             return dict(row) if row else None
 

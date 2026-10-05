@@ -191,13 +191,12 @@ class AirtableConnectionRepository(TenantScopedRepository):
                    scopes, is_active, created_at, updated_at
             FROM airtable_connections
             WHERE organization_id = $1
+              AND (NOT $2::boolean OR is_active = TRUE)
+            ORDER BY created_at DESC
         """
-        if only_active:
-            query += " AND is_active = TRUE"
-        query += " ORDER BY created_at DESC"
 
         async with self.scoped_conn(organization_id) as conn:
-            rows = await conn.fetch(query, organization_id)
+            rows = await conn.fetch(query, organization_id, only_active)
             return [dict(r) for r in rows]
 
     async def disconnect(
@@ -341,19 +340,16 @@ class AirtableMappingRepository(TenantScopedRepository):
         if isinstance(organization_id, str):
             organization_id = uuid.UUID(organization_id)
 
-        params: list[Any] = [organization_id]
         query = """
             SELECT id, organization_id, base_id, table_id_or_name, entity_type,
                    field_mappings, required_fields, is_active, created_at, updated_at
             FROM airtable_field_mappings
             WHERE organization_id = $1
+              AND ($2::text IS NULL OR base_id = $2)
+              AND (NOT $3::boolean OR is_active = TRUE)
+            ORDER BY created_at ASC
         """
-        if base_id:
-            params.append(base_id.strip())
-            query += f" AND base_id = ${len(params)}"
-        if only_active:
-            query += " AND is_active = TRUE"
-        query += " ORDER BY created_at ASC"
+        params = [organization_id, base_id.strip() if base_id else None, only_active]
 
         async with self.scoped_conn(organization_id) as conn:
             rows = await conn.fetch(query, *params)
@@ -516,6 +512,7 @@ class AirtableWebhookRepository(TenantScopedRepository):
                     specification = EXCLUDED.specification,
                     is_active = EXCLUDED.is_active,
                     updated_at = NOW()
+                WHERE airtable_webhooks.organization_id = EXCLUDED.organization_id
                 RETURNING id, organization_id, base_id, webhook_id, mac_secret_encrypted,
                           cursor, notification_url, specification, is_active, created_at, updated_at
                 """,
@@ -536,6 +533,7 @@ class AirtableWebhookRepository(TenantScopedRepository):
                 data["specification"] = json.loads(data["specification"])
             return AirtableWebhookSubscription(**data)
 
+    @system_scope("tenant resolution: globally unique Airtable webhook id before MAC verification")
     async def get_subscription_by_webhook_id(
         self,
         webhook_id: str,
@@ -780,13 +778,10 @@ class AirtableWebhookRepository(TenantScopedRepository):
                    event_type, payload, status, error_message, created_at, processed_at
             FROM airtable_webhook_events
             WHERE organization_id = $1
+              AND ($2::text IS NULL OR base_id = $2)
+            ORDER BY created_at DESC LIMIT $3
         """
-        params: list[Any] = [organization_id]
-        if base_id:
-            query += " AND base_id = $2"
-            params.append(base_id.strip())
-        query += " ORDER BY created_at DESC LIMIT $" + str(len(params) + 1)
-        params.append(limit)
+        params = [organization_id, base_id.strip() if base_id else None, limit]
 
         async with self.scoped_conn(organization_id) as conn:
             rows = await conn.fetch(query, *params)

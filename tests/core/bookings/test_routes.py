@@ -1,9 +1,9 @@
 import os
+import uuid
 import pytest
 import httpx
 from unittest.mock import MagicMock
 from fastapi import Depends, HTTPException
-from src.core.bookings.service import BookingService
 
 API_KEY = "test-api-key-12345"
 
@@ -124,6 +124,36 @@ async def test_get_booking_not_found(async_client, sample_org):
         "X-Organization-Id": str(sample_org["id"]),
     })
     assert resp.status_code == 404
+
+
+async def test_other_organization_booking_cannot_be_read_or_updated(
+    async_client, pg_pool, repo, tomorrow
+):
+    other_org_id = uuid.uuid4()
+    await pg_pool.execute(
+        "INSERT INTO organizations (id, name) VALUES ($1, 'Other Booking Org')",
+        other_org_id,
+    )
+    foreign = await repo.create_booking(
+        organization_id=other_org_id,
+        nome_cliente="Tenant B guest",
+        data=tomorrow,
+        ora="18:00",
+        coperti=2,
+    )
+    headers = {"X-API-Key": API_KEY}
+
+    read = await async_client.get(f"/api/bookings/{foreign['id']}", headers=headers)
+    update = await async_client.put(
+        f"/api/bookings/{foreign['id']}",
+        json={"nome_cliente": "Tampered by tenant A"},
+        headers=headers,
+    )
+
+    assert read.status_code == 404
+    assert update.status_code == 404
+    unchanged = await repo.get_booking(other_org_id, foreign["id"])
+    assert unchanged["nome_cliente"] == "Tenant B guest"
 
 
 async def test_confirm_booking(async_client, sample_org):

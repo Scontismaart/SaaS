@@ -4,7 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from run_inbound_processor import process_cycle
-from src.core.workers.webhook_inbox_worker import WebhookInboxWorker
+from src.core.workers.webhook_inbox_worker import TransactionPool, WebhookInboxWorker
+from src.whatsapp.idempotency import WEBHOOK_IDEMPOTENCY_SQL
 
 
 @pytest.mark.asyncio
@@ -67,6 +68,20 @@ class _Pool:
     @asynccontextmanager
     async def acquire(self):
         yield self.conn
+
+
+@pytest.mark.asyncio
+async def test_transaction_pool_only_forwards_the_reviewed_idempotency_query():
+    conn = _Connection()
+    pool = TransactionPool(conn)
+
+    await pool.fetchrow(WEBHOOK_IDEMPOTENCY_SQL, "wamid", "message", "")
+    conn.fetchrow.assert_awaited_once_with(
+        WEBHOOK_IDEMPOTENCY_SQL, "wamid", "message", ""
+    )
+
+    with pytest.raises(ValueError, match="only the webhook idempotency query"):
+        await pool.fetchrow("SELECT * FROM messages")
 
 
 @pytest.mark.asyncio

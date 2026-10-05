@@ -247,21 +247,15 @@ async def calendar_settings(
         raise HTTPException(400, "X-Organization-Id header required")
     _require_calendar_enabled()
     pool = request.app.state.pool
-    sets = []
-    vals = []
-    idx = 2
-    if body.sync_enabled is not None:
-        sets.append(f"sync_enabled = ${idx}")
-        vals.append(body.sync_enabled)
-        idx += 1
-    if body.calendar_id is not None:
-        sets.append(f"calendar_id = ${idx}")
-        vals.append(body.calendar_id)
-        idx += 1
-    if not sets:
+    if body.sync_enabled is None and body.calendar_id is None:
         raise HTTPException(400, "Nessun campo da aggiornare")
-    sets.append("updated_at = NOW()")
-    sql = f"UPDATE google_calendar_credentials SET {', '.join(sets)} WHERE organization_id = $1"
     async with pool.acquire() as conn:
-        await conn.execute(sql, org_id, *vals)
+        await conn.execute(
+            """UPDATE google_calendar_credentials
+               SET sync_enabled = COALESCE($2, sync_enabled),
+                   calendar_id = COALESCE($3, calendar_id),
+                   updated_at = NOW()
+               WHERE organization_id = $1""",
+            org_id, body.sync_enabled, body.calendar_id,
+        )
     return {"detail": "Impostazioni calendario aggiornate"}

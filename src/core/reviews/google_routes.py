@@ -261,28 +261,20 @@ async def google_reviews_settings(
     if blocco:
         raise HTTPException(status_code=403, detail=blocco)
     pool = request.app.state.pool
-    sets = []
-    vals = []
-    idx = 2
-    if body.account_name is not None:
-        sets.append(f"account_name = ${idx}")
-        vals.append(body.account_name)
-        idx += 1
-    if body.location_name is not None:
-        sets.append(f"location_name = ${idx}")
-        vals.append(body.location_name)
-        idx += 1
-    if not sets:
+    if body.account_name is None and body.location_name is None:
         raise HTTPException(400, "Nessun campo da aggiornare")
-    sets.extend([
-        "review_page_token = NULL",
-        "review_page_account_name = NULL",
-        "review_page_location_name = NULL",
-    ])
-    sets.append("updated_at = NOW()")
-    sql = f"UPDATE google_business_credentials SET {', '.join(sets)} WHERE organization_id = $1"
     async with pool.acquire() as conn:
-        await conn.execute(sql, org_id, *vals)
+        await conn.execute(
+            """UPDATE google_business_credentials
+               SET account_name = COALESCE($2, account_name),
+                   location_name = COALESCE($3, location_name),
+                   review_page_token = NULL,
+                   review_page_account_name = NULL,
+                   review_page_location_name = NULL,
+                   updated_at = NOW()
+               WHERE organization_id = $1""",
+            org_id, body.account_name, body.location_name,
+        )
     return {"detail": "Impostazioni Google Business aggiornate"}
 
 

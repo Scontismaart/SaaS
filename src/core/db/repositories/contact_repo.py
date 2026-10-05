@@ -56,10 +56,12 @@ class ContactRepository(TenantScopedRepository):
                 row = await conn.fetchrow("""
                     INSERT INTO contact_consent_log (id, contact_id, event_type, method,
                                                       triggering_message_id, matched_text)
-                    VALUES ($1, $2, $3, $4, $5, $6)
+                    SELECT $1, c.id, $3, $4, $5, $6
+                    FROM contacts c
+                    WHERE c.id = $2::uuid AND c.organization_id = $7::uuid
                     RETURNING *
                 """, uuid.uuid4(), contact_id, event_type, method,
-                    triggering_message_id, matched_text)
+                    triggering_message_id, matched_text, organization_id)
                 new_status = "granted" if event_type == "opt_in" else "withdrawn"
                 await conn.execute("""
                     UPDATE contacts SET consent_status = $1,

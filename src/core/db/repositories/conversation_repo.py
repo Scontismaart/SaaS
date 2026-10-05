@@ -63,7 +63,7 @@ class ConversationRepository(TenantScopedRepository):
                               lm.content_text AS last_message_preview,
                               (c.ticket_status <> 'RESOLVED' AND EXISTS (
                                   SELECT 1 FROM messages failed
-                                  WHERE failed.organization_id = c.organization_id
+                                  WHERE failed.organization_id = $1::uuid
                                     AND failed.conversation_id = c.id
                                     AND failed.deleted_at IS NULL
                                     AND failed.handling_type = 'escalation_failed'
@@ -72,11 +72,12 @@ class ConversationRepository(TenantScopedRepository):
                        FROM conversations c
                        LEFT JOIN user_profiles u ON u.id = c.assigned_to
                        LEFT JOIN contacts ct ON ct.id = c.contact_id
+                                                AND ct.organization_id = $1::uuid
                        JOIN organizations o ON o.id = c.organization_id
                        LEFT JOIN LATERAL (
                            SELECT e.priorita
                            FROM event_log e
-                           WHERE e.organization_id = c.organization_id
+                           WHERE e.organization_id = $1::uuid
                              AND e.dettagli->>'conversation_id' = c.id::text
                            ORDER BY CASE e.priorita WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END,
                                     e.created_at DESC
@@ -85,11 +86,13 @@ class ConversationRepository(TenantScopedRepository):
                        LEFT JOIN LATERAL (
                            SELECT m.content_text
                            FROM messages m
-                           WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
+                           WHERE m.organization_id = $1::uuid
+                             AND m.conversation_id = c.id AND m.deleted_at IS NULL
                            ORDER BY m.created_at DESC
                            LIMIT 1
                        ) lm ON TRUE
-                       WHERE c.organization_id = $1::uuid AND c.deleted_at IS NULL
+                       WHERE c.organization_id = $1::uuid
+                         AND c.deleted_at IS NULL
                    )
                    SELECT * FROM enriched
                    WHERE ($2::text IS NULL OR ticket_status = $2)
@@ -117,7 +120,7 @@ class ConversationRepository(TenantScopedRepository):
                               lm.content_text AS last_message_preview,
                               (c.ticket_status <> 'RESOLVED' AND EXISTS (
                                   SELECT 1 FROM messages failed
-                                  WHERE failed.organization_id = c.organization_id
+                                  WHERE failed.organization_id = $2::uuid
                                     AND failed.conversation_id = c.id
                                     AND failed.deleted_at IS NULL
                                     AND failed.handling_type = 'escalation_failed'
@@ -126,11 +129,12 @@ class ConversationRepository(TenantScopedRepository):
                        FROM conversations c
                        LEFT JOIN user_profiles u ON u.id = c.assigned_to
                        LEFT JOIN contacts ct ON ct.id = c.contact_id
+                                                AND ct.organization_id = $2::uuid
                        JOIN organizations o ON o.id = c.organization_id
                        LEFT JOIN LATERAL (
                            SELECT e.priorita
                            FROM event_log e
-                           WHERE e.organization_id = c.organization_id
+                           WHERE e.organization_id = $2::uuid
                              AND e.dettagli->>'conversation_id' = c.id::text
                            ORDER BY CASE e.priorita WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END,
                                     e.created_at DESC
@@ -139,7 +143,8 @@ class ConversationRepository(TenantScopedRepository):
                        LEFT JOIN LATERAL (
                            SELECT m.content_text
                            FROM messages m
-                           WHERE m.conversation_id = c.id AND m.deleted_at IS NULL
+                           WHERE m.organization_id = $2::uuid
+                             AND m.conversation_id = c.id AND m.deleted_at IS NULL
                            ORDER BY m.created_at DESC
                            LIMIT 1
                        ) lm ON TRUE
@@ -166,14 +171,18 @@ class ConversationRepository(TenantScopedRepository):
                    LEFT JOIN LATERAL (
                        SELECT value AS feedback_customer
                        FROM message_feedback mf
-                       WHERE mf.message_id = m.id AND mf.source = 'customer_emoji'
+                       WHERE mf.message_id = m.id
+                         AND mf.organization_id = $2::uuid
+                         AND mf.source = 'customer_emoji'
                        LIMIT 1
                    ) fc ON TRUE
                    LEFT JOIN LATERAL (
                        SELECT COUNT(*) FILTER (WHERE value = 'up') AS up,
                               COUNT(*) FILTER (WHERE value = 'down') AS down
                        FROM message_feedback mf
-                       WHERE mf.message_id = m.id AND mf.source = 'staff_ui'
+                       WHERE mf.message_id = m.id
+                         AND mf.organization_id = $2::uuid
+                         AND mf.source = 'staff_ui'
                    ) fs ON TRUE
                    WHERE m.conversation_id = $1::uuid
                      AND m.organization_id = $2::uuid

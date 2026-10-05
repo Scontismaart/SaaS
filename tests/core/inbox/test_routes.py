@@ -178,6 +178,32 @@ class TestInboxAPI:
             response = await client.get(f"/api/inbox/tickets/{uuid.uuid4()}")
             assert response.status_code == 404
 
+    async def test_other_organization_ticket_cannot_be_read_or_claimed(self, async_client, pg_pool):
+        _repo, _pool, app = async_client
+        org_a, profile_a, _conv_a = await self._create_org_with_staff(pg_pool)
+        org_b, _profile_b, conv_b = await self._create_org_with_staff(pg_pool)
+
+        from src.whatsapp.repository import Repository as WRepo
+        wrepo = WRepo(pool=pg_pool)
+        escalated = await wrepo.escalate_to_human(str(conv_b["id"]), str(org_b["id"]))
+        assert escalated is not None
+        before = await wrepo.get_conversation(str(conv_b["id"]), str(org_b["id"]))
+        assert before["ticket_status"] == "PENDING_STAFF"
+
+        async with await _make_client(app, org_a["id"], profile_a["id"]) as client:
+            read = await client.get(f"/api/inbox/tickets/{conv_b['id']}")
+            mutation = await client.post(
+                f"/api/inbox/claim/{conv_b['id']}",
+                json={"expected_version": before["version"]},
+            )
+
+        assert read.status_code == 404
+        assert mutation.status_code == 404
+        after = await wrepo.get_conversation(str(conv_b["id"]), str(org_b["id"]))
+        assert after["ticket_status"] == before["ticket_status"]
+        assert after["assigned_to"] is None
+        assert after["version"] == before["version"]
+
     async def test_release_ticket(self, async_client):
         repo, pg_pool, app = async_client
         org, profile, conv = await self._create_org_with_staff(pg_pool)
@@ -766,7 +792,7 @@ class TestReplyDispatchPerCanale:
         mock_wa_load.assert_not_called()
 
     async def test_reply_on_instagram_ticket_without_account_409(self, async_client):
-        from unittest.mock import patch, MagicMock
+        from unittest.mock import patch
         from src.whatsapp.repository import Repository as WRepo
 
         repo, pg_pool, app = async_client

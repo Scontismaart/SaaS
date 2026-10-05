@@ -73,3 +73,7 @@ fb32b7276c32bf00f3c8566a8791ab74d157760b:tests/core/test_reviews_lingue.py:gener
 # Reviewed Gitleaks false positives: deterministic Fernet test fixtures introduced by PR #56 (2026-10-03).
 e7f21b02074e887db529817c48cf6bfa65c05800:tests/unit/auth/test_credential_boundaries.py:generic-api-key:248
 e7f21b02074e887db529817c48cf6bfa65c05800:tests/unit/auth/test_oauth_session_binding.py:generic-api-key:23
+
+# Reviewed false positive: SHA-256 of the tenant scanner's membership SQL literal,
+# not a credential. Pin the exception to this historical commit, file and line.
+370b93dc64ab376f43085763ebe709442a22c237:scripts/check_tenant_scoping.py:generic-api-key:102

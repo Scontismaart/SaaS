@@ -33,18 +33,16 @@ async def get_prenotazioni_completate(
     if not stati:
         return []
 
-    placeholders = ", ".join(f"${i}" for i in range(4, 4 + len(stati)))
-
     async with pool.acquire() as conn:
-        rows = await conn.fetch(f"""
+        rows = await conn.fetch("""
             SELECT data, ora, coperti, nome_cliente, stato
             FROM bookings
             WHERE organization_id = $1
               AND data >= $2
               AND data <= $3
-              AND stato IN ({placeholders})
+              AND stato = ANY($4::text[])
             ORDER BY data, ora
-        """, org_id, inizio, fine, *stati)
+        """, org_id, inizio, fine, stati)
     return [dict(r) for r in rows]
 
 

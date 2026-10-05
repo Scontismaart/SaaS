@@ -231,7 +231,14 @@ async def test_insert_and_update_delivery_attempt(repo: Repository, pg_pool):
     attempt = await repo.insert_delivery_attempt(msg["id"], next_retry_at=datetime.now(timezone.utc))
     assert attempt["status"] == "pending"
     updated = await repo.update_delivery_attempt(attempt["id"], "succeeded", error_details=None)
+    assert updated["id"] == attempt["id"]
     assert updated["status"] == "succeeded"
+    assert updated["message_id"] == msg["id"]
+    async with pg_pool.acquire() as conn:
+        parent_status = await conn.fetchval(
+            "SELECT status FROM messages WHERE id = $1", msg["id"]
+        )
+    assert parent_status == "queued"
 
 
 @pytest.mark.asyncio

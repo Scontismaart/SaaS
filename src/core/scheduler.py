@@ -242,6 +242,7 @@ def _run_nonce_cleanup():
     asyncio.run(_con_pool_esimero(_nonce_cleanup_job))
 
 
+@system_scope("trusted scheduler: cleanup globale nonces OAuth scaduti")
 async def _nonce_cleanup_job(pool):
     async with pool.acquire() as conn:
         result = await conn.execute(

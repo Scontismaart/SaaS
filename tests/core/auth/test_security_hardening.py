@@ -144,3 +144,60 @@ async def test_rls_blocks_cross_tenant_direct_query(pg_pool, sample_org, other_o
         await conn.execute("RESET ROLE")
 
     assert [r["nome"] for r in rows] == ["own.pdf"]
+
+
+async def test_outbound_dedup_rls_is_enabled_and_backend_path_survives(
+    pg_pool, sample_org, other_org,
+):
+    from src.core.db.repositories.message_repo import MessageRepository
+
+    message_a = uuid.uuid4()
+    message_b = uuid.uuid4()
+    async with pg_pool.acquire() as conn:
+        await conn.execute(
+            "INSERT INTO outbound_dedup (message_id, organization_id, response_text) "
+            "VALUES ($1, $2, 'private-a'), ($3, $4, 'private-b')",
+            message_a, sample_org["id"], message_b, other_org["id"],
+        )
+        rls_enabled = await conn.fetchval(
+            "SELECT relrowsecurity FROM pg_class "
+            "WHERE oid = 'public.outbound_dedup'::regclass"
+        )
+        assert rls_enabled is True
+
+        # Model the client grants that existed before hardening so this proves
+        # the deny policy itself, not just a missing table privilege.
+        await conn.execute(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON public.outbound_dedup "
+            "TO authenticated"
+        )
+        await conn.execute("GRANT USAGE ON SCHEMA public TO authenticated")
+        await conn.execute("SET ROLE authenticated")
+        try:
+            visible = await conn.fetch(
+                "SELECT message_id FROM outbound_dedup WHERE organization_id = $1",
+                other_org["id"],
+            )
+            assert visible == []
+            assert await conn.execute(
+                "UPDATE outbound_dedup SET response_text = 'stolen' "
+                "WHERE message_id = $1",
+                message_b,
+            ) == "UPDATE 0"
+            assert await conn.execute(
+                "DELETE FROM outbound_dedup WHERE message_id = $1", message_b
+            ) == "DELETE 0"
+            with pytest.raises(Exception, match="row-level security"):
+                await conn.execute(
+                    "INSERT INTO outbound_dedup "
+                    "(message_id, organization_id, response_text) "
+                    "VALUES ($1, $2, 'client-write')",
+                    uuid.uuid4(), sample_org["id"],
+                )
+        finally:
+            await conn.execute("RESET ROLE")
+
+    backend = MessageRepository(pool=pg_pool)
+    await backend.save_outbound_dedup(message_a, sample_org["id"], "backend-write")
+    result = await backend.get_outbound_dedup(sample_org["id"], message_a)
+    assert result == {"response_text": "backend-write"}

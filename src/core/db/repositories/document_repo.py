@@ -51,24 +51,21 @@ class DocumentRepository(TenantScopedRepository):
         if not fields:
             return await self.get_document(organization_id, document_id)
 
-        set_clauses = ["updated_at = NOW()"]
         vals = [document_id, organization_id]
-        idx = 3
+        for col in ("nome", "tipo", "fonte", "is_active", "stato", "errore", "metadata"):
+            value = json.dumps(fields[col]) if col == "metadata" and col in fields else fields.get(col)
+            vals.extend((col in fields, value))
 
-        for col in ("nome", "tipo", "fonte", "is_active", "stato", "errore"):
-            if col in fields:
-                set_clauses.append(f"{col} = ${idx}")
-                vals.append(fields[col])
-                idx += 1
-
-        if "metadata" in fields:
-            set_clauses.append(f"metadata = ${idx}::jsonb")
-            vals.append(json.dumps(fields["metadata"]))
-            idx += 1
-
-        sql = f"""
+        sql = """
             UPDATE documents
-            SET {', '.join(set_clauses)}
+            SET nome = CASE WHEN $3 THEN $4 ELSE nome END,
+                tipo = CASE WHEN $5 THEN $6 ELSE tipo END,
+                fonte = CASE WHEN $7 THEN $8 ELSE fonte END,
+                is_active = CASE WHEN $9 THEN $10 ELSE is_active END,
+                stato = CASE WHEN $11 THEN $12 ELSE stato END,
+                errore = CASE WHEN $13 THEN $14 ELSE errore END,
+                metadata = CASE WHEN $15 THEN $16::jsonb ELSE metadata END,
+                updated_at = NOW()
             WHERE id = $1 AND organization_id = $2
             RETURNING *
         """
@@ -125,18 +122,19 @@ class DocumentRepository(TenantScopedRepository):
         """Ricerca semantica vettoriale su document_chunks. Implementazione canonica unificata."""
         async with self.pool.acquire() as conn:
             vec_str = self._vec_str(embedding)
-            active_filter = "AND d.is_active = TRUE AND d.stato = 'indicizzata'" if only_active else ""
-            sql = f"""
+            sql = """
                 SELECT dc.id, dc.content, dc.metadata, dc.chunk_index,
                        dc.document_id, d.nome as document_name, d.tipo, d.stato, d.is_active,
                        dc.embedding <=> $2::vector AS distance
                 FROM document_chunks dc
                 JOIN documents d ON d.id = dc.document_id
-                WHERE dc.organization_id = $1 {active_filter}
+                              AND d.organization_id = $1
+                WHERE dc.organization_id = $1
+                  AND (NOT $4::boolean OR (d.is_active = TRUE AND d.stato = 'indicizzata'))
                 ORDER BY dc.embedding <=> $2::vector
                 LIMIT $3
             """
-            rows = await conn.fetch(sql, organization_id, vec_str, k)
+            rows = await conn.fetch(sql, organization_id, vec_str, k, only_active)
             results = [dict(r) for r in rows]
             for r in results:
                 if isinstance(r.get("metadata"), str):
@@ -192,6 +190,7 @@ class DocumentRepository(TenantScopedRepository):
                            COUNT(dc.id) AS chunk
                     FROM documents d
                     LEFT JOIN document_chunks dc ON dc.document_id = d.id
+                                                  AND dc.organization_id = $1
                     WHERE d.organization_id = $1 AND d.tipo = $2
                     GROUP BY d.id
                     ORDER BY d.caricato_il DESC, d.nome
@@ -203,6 +202,7 @@ class DocumentRepository(TenantScopedRepository):
                            COUNT(dc.id) AS chunk
                     FROM documents d
                     LEFT JOIN document_chunks dc ON dc.document_id = d.id
+                                                  AND dc.organization_id = $1
                     WHERE d.organization_id = $1
                     GROUP BY d.id
                     ORDER BY d.caricato_il DESC, d.nome
@@ -220,6 +220,7 @@ class DocumentRepository(TenantScopedRepository):
                        dc.document_id, d.nome as document_name, d.tipo, d.stato, d.is_active
                 FROM document_chunks dc
                 JOIN documents d ON d.id = dc.document_id
+                              AND d.organization_id = $1
                 WHERE dc.organization_id = $1 AND d.is_active = TRUE
                 ORDER BY d.caricato_il DESC
             """, organization_id)
@@ -256,6 +257,7 @@ class DocumentRepository(TenantScopedRepository):
                     ORDER BY question_embedding <=> $2::vector
                     LIMIT 1
                 )
+                  AND organization_id = $1::uuid
                 RETURNING *
             """, organization_id, self._vec_str(embedding), max_distance)
             return dict(row) if row else None

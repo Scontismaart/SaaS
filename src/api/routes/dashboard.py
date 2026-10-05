@@ -46,6 +46,7 @@ _DASHBOARD_EVENTI_CTE = """\nWITH raw_events AS (
                 (SELECT out_m.content_text 
                  FROM messages out_m 
                  WHERE e.dettagli->>'conversation_id' IS NOT NULL
+                   AND out_m.organization_id = $1
                    AND out_m.conversation_id = (e.dettagli->>'conversation_id')::uuid 
                    AND out_m.direction = 'outbound' 
                    AND out_m.created_at >= e.created_at 
@@ -75,6 +76,7 @@ _DASHBOARD_EVENTI_CTE = """\nWITH raw_events AS (
                 (SELECT out_m.content_text 
                  FROM messages out_m 
                  WHERE out_m.conversation_id = m.conversation_id 
+                   AND out_m.organization_id = $1
                    AND out_m.direction = 'outbound' 
                    AND out_m.created_at >= m.created_at 
                  ORDER BY out_m.created_at ASC LIMIT 1),
@@ -94,6 +96,7 @@ _DASHBOARD_EVENTI_CTE = """\nWITH raw_events AS (
           AND NOT EXISTS (
               SELECT 1 FROM event_log e 
               WHERE e.organization_id = m.organization_id 
+                AND e.organization_id = $1
                 AND e.source_id = m.id
           )
         
@@ -119,6 +122,7 @@ _DASHBOARD_EVENTI_CTE = """\nWITH raw_events AS (
           AND NOT EXISTS (
               SELECT 1 FROM event_log e 
               WHERE e.organization_id = r.organization_id 
+                AND e.organization_id = $1
                 AND e.source_id = r.id
           )
     )

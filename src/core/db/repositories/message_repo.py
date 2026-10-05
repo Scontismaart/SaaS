@@ -93,35 +93,22 @@ class MessageRepository(TenantScopedRepository):
                 return None
             if not apply_status_update(current["status"], new_status):
                 return dict(current)
-            set_parts = ["status = $2"]
-            params = [message_id, new_status]
-            idx = 3
-            if wam_id:
-                set_parts.append(f"wam_id = ${idx}")
-                params.append(wam_id)
-                idx += 1
-            if error_code:
-                set_parts.append(f"error_code = ${idx}")
-                params.append(error_code)
-                idx += 1
-            if error_title:
-                set_parts.append(f"error_title = ${idx}")
-                params.append(error_title)
-                idx += 1
-            if error_details:
-                set_parts.append(f"error_details = ${idx}::jsonb")
-                params.append(json.dumps(error_details))
-                idx += 1
-            if new_status == "sent":
-                set_parts.append("sent_at = NOW()")
-            elif new_status == "delivered":
-                set_parts.append("delivered_at = NOW()")
-            elif new_status == "read":
-                set_parts.append("read_at = NOW()")
-            set_parts.append("updated_at = NOW()")
             row = await conn.fetchrow(
-                f"UPDATE messages SET {', '.join(set_parts)} WHERE id = $1 AND organization_id = ${idx}::uuid RETURNING *",
-                *params, organization_id
+                """UPDATE messages
+                   SET status = $3,
+                       wam_id = COALESCE(NULLIF($4, ''), wam_id),
+                       error_code = COALESCE(NULLIF($5, ''), error_code),
+                       error_title = COALESCE(NULLIF($6, ''), error_title),
+                       error_details = COALESCE($7::jsonb, error_details),
+                       sent_at = CASE WHEN $3 = 'sent' THEN NOW() ELSE sent_at END,
+                       delivered_at = CASE WHEN $3 = 'delivered' THEN NOW() ELSE delivered_at END,
+                       read_at = CASE WHEN $3 = 'read' THEN NOW() ELSE read_at END,
+                       updated_at = NOW()
+                   WHERE id = $1 AND organization_id = $2::uuid
+                   RETURNING *""",
+                message_id, organization_id, new_status,
+                wam_id or None, error_code or None, error_title or None,
+                json.dumps(error_details) if error_details else None,
             )
             return dict(row) if row else None
 
@@ -268,18 +255,22 @@ class MessageRepository(TenantScopedRepository):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 rows = await conn.fetch("""
-                    SELECT * FROM message_delivery_attempts
-                    WHERE status = 'pending' AND next_retry_at <= NOW()
-                    ORDER BY next_retry_at
+                    SELECT a.*, m.organization_id
+                    FROM message_delivery_attempts a
+                    JOIN messages m ON m.id = a.message_id
+                    WHERE a.status = 'pending' AND a.next_retry_at <= NOW()
+                    ORDER BY a.next_retry_at
                     LIMIT $1
-                    FOR UPDATE SKIP LOCKED
+                    FOR UPDATE OF a SKIP LOCKED
                 """, limit)
                 if rows:
                     ids = [r["id"] for r in rows]
-                    await conn.execute(
-                        "UPDATE message_delivery_attempts SET status = 'processing', claimed_at = NOW() WHERE id = ANY($1)",
-                        ids,
-                    )
+                    await conn.execute("""
+                        UPDATE message_delivery_attempts a
+                        SET status = 'processing', claimed_at = NOW()
+                        FROM messages m
+                        WHERE m.id = a.message_id AND a.id = ANY($1)
+                    """, ids)
                 return [dict(r) for r in rows]
 
     @system_scope("tabella indiretta (via messages), solo worker")
@@ -287,7 +278,9 @@ class MessageRepository(TenantScopedRepository):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 INSERT INTO message_delivery_attempts (id, message_id, next_retry_at)
-                VALUES ($1, $2, $3)
+                SELECT $1, m.id, $3
+                FROM messages m
+                WHERE m.id = $2
                 RETURNING *
             """, uuid.uuid4(), message_id, next_retry_at)
             return dict(row)
@@ -296,10 +289,11 @@ class MessageRepository(TenantScopedRepository):
     async def update_delivery_attempt(self, attempt_id, status, error_details=None):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                UPDATE message_delivery_attempts
+                UPDATE message_delivery_attempts a
                 SET status = $2, error_details = $3::jsonb
-                WHERE id = $1
-                RETURNING *
+                FROM messages m
+                WHERE m.id = a.message_id AND a.id = $1
+                RETURNING a.*
             """, attempt_id, status, json.dumps(error_details) if error_details else None)
             return dict(row) if row else None
 
@@ -343,8 +337,10 @@ class MessageRepository(TenantScopedRepository):
                 RETURNING *
             """, str(timeout_minutes))
             attempts = await conn.fetch("""
-                UPDATE message_delivery_attempts SET status = 'pending', claimed_at = NULL
-                WHERE status = 'processing' AND claimed_at < NOW() - ($1 || ' minutes')::INTERVAL
+                UPDATE message_delivery_attempts a SET status = 'pending', claimed_at = NULL
+                WHERE a.status = 'processing'
+                  AND a.claimed_at < NOW() - ($1 || ' minutes')::INTERVAL
+                  AND EXISTS (SELECT 1 FROM messages m WHERE m.id = a.message_id)
                 RETURNING *
             """, str(timeout_minutes))
             return [dict(r) for r in dead] + [dict(r) for r in msgs] + [dict(r) for r in attempts]
@@ -378,11 +374,13 @@ class MessageRepository(TenantScopedRepository):
             return dict(row) if row else None
 
     async def save_outbound_dedup(self, message_id: uuid.UUID, org_id: uuid.UUID, response_text: str):
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(org_id) as conn:
             await conn.execute("""
                 INSERT INTO outbound_dedup (message_id, organization_id, response_text)
                 VALUES ($1, $2, $3)
-                ON CONFLICT (message_id) DO UPDATE SET response_text = EXCLUDED.response_text
+                ON CONFLICT (message_id) DO UPDATE
+                    SET response_text = EXCLUDED.response_text
+                    WHERE outbound_dedup.organization_id = EXCLUDED.organization_id
             """, message_id, org_id, response_text)
 
     async def get_last_ai_outbound_message(self, organization_id,
@@ -412,7 +410,7 @@ class MessageRepository(TenantScopedRepository):
     async def registra_feedback(self, organization_id, message_id, conversation_id,
                                 source: str, value: str,
                                 created_by_user_id=None) -> dict:
-        async with self.pool.acquire() as conn:
+        async with self.scoped_conn(organization_id) as conn:
             if source == "customer_emoji":
                 row = await conn.fetchrow("""
                     INSERT INTO message_feedback
@@ -420,6 +418,7 @@ class MessageRepository(TenantScopedRepository):
                     VALUES ($1, $2::uuid, $3::uuid, $4::uuid, 'customer_emoji', $5)
                     ON CONFLICT (message_id) WHERE source = 'customer_emoji'
                         DO UPDATE SET value = EXCLUDED.value
+                        WHERE message_feedback.organization_id = EXCLUDED.organization_id
                     RETURNING *
                 """, uuid.uuid4(), organization_id, message_id, conversation_id, value)
             else:
@@ -430,6 +429,7 @@ class MessageRepository(TenantScopedRepository):
                     VALUES ($1, $2::uuid, $3::uuid, $4::uuid, 'staff_ui', $5, $6::uuid)
                     ON CONFLICT (message_id, created_by_user_id) WHERE source = 'staff_ui'
                         DO UPDATE SET value = EXCLUDED.value
+                        WHERE message_feedback.organization_id = EXCLUDED.organization_id
                     RETURNING *
                 """, uuid.uuid4(), organization_id, message_id, conversation_id,
                     value, created_by_user_id)
@@ -667,7 +667,6 @@ class MessageRepository(TenantScopedRepository):
                 # provider tokens. Retrying this same idempotency key reuses it.
                 return True
 
-    @system_scope("GDPR export per tenant di risposte idempotenti del simulatore")
     async def get_simulation_requests_by_org(self, organization_id: uuid.UUID | str) -> list[dict]:
         org_id = uuid.UUID(str(organization_id))
         async with self.scoped_conn(org_id) as conn:

@@ -21,8 +21,12 @@ class TransactionPool:
     async def acquire(self):
         yield self.connection
 
-    async def fetchrow(self, *args, **kwargs):
-        return await self.connection.fetchrow(*args, **kwargs)
+    async def fetchrow(self, sql, *args, **kwargs):
+        from src.whatsapp.idempotency import WEBHOOK_IDEMPOTENCY_SQL
+
+        if sql != WEBHOOK_IDEMPOTENCY_SQL:
+            raise ValueError("TransactionPool accepts only the webhook idempotency query")
+        return await self.connection.fetchrow(sql, *args, **kwargs)
 
 
 class WebhookInboxWorker:

@@ -186,6 +186,12 @@ class BookingService:
                               richiede_intervento=False, id_conversazione="", source_message_id=None,
                               organization_id=None, verticale=None, external_service_id=None):
         org_id = org_id or organization_id
+        # Replay must resolve persisted success before checking a now-full slot.
+        lookup = getattr(self.repo, "get_booking_for_message", None)
+        if source_message_id and lookup:
+            existing = await lookup(org_id, source_message_id)
+            if isinstance(existing, dict) and existing.get("id"):
+                return existing
         values = self._validated_booking_values(
             nome_cliente, telefono, data, ora, coperti, note
         )
@@ -208,6 +214,10 @@ class BookingService:
         # richieste concorrenti possono superare entrambe la verifica di
         # capienza e overbookare lo slot.
         async with self._slot_lock(org_id, data, ora):
+            if source_message_id and lookup:
+                existing = await lookup(org_id, source_message_id)
+                if isinstance(existing, dict) and existing.get("id"):
+                    return existing
             disp = await self.verifica_disponibilita(org_id, data, ora, coperti)
             if coperti > disp.coperti_liberi:
                 raise SlotPienoError(
@@ -230,7 +240,9 @@ class BookingService:
             try:
                 await self.calendar_service.sync_booking_state(booking, org_id)
             except Exception:
-                logger.exception("calendar=sync_fail create_booking id=%s", booking.get("id"))
+                logger.error("calendar=sync_fail create_booking id=%s", booking.get("id"))
+                booking["external_sync_status"] = "failed"
+                booking["richiede_intervento"] = True
 
         # Sincronizzazione gestionale esterno tramite BookingAdapterRouter (Send-Then-Mark)
         if self.booking_router and org_id:
@@ -290,17 +302,22 @@ class BookingService:
                 )
                 if not ext_res.success and ext_res.sync_status == "failed":
                     logger.warning(
-                        "External booking sync failed for booking %s: %s",
-                        booking.get("id"), ext_res.error_message
+                        "External booking sync failed for booking %s",
+                        booking.get("id")
                     )
                     booking["external_sync_status"] = "failed"
                     booking["richiede_intervento"] = True
                 else:
-                    booking["external_sync_status"] = ext_res.sync_status
+                    if booking.get("external_sync_status") != "failed":
+                        booking["external_sync_status"] = ext_res.sync_status
                     booking["external_booking_id"] = ext_res.external_booking_id
             except Exception as e:
-                logger.exception("booking_router dispatch failed for booking %s: %s", booking.get("id"), e)
+                logger.error("booking_router dispatch failed for booking %s error_type=%s", booking.get("id"), type(e).__name__)
+                booking["external_sync_status"] = "failed"
+                booking["richiede_intervento"] = True
 
+        if booking.get("richiede_intervento"):
+            await self.repo.mark_booking_requires_intervention(org_id, booking["id"])
         return booking
 
     @staticmethod

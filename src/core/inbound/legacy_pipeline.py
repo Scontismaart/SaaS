@@ -13,6 +13,7 @@ from src.agents.prompts import (
     formatta_disponibilita,
 )
 from src.core.bookings.service import SlotPienoError
+from src.core.ai_safety import apply_booking_result, booking_failed, record_ai_attempts, replay_requires_intervention, validate_ai_input
 from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import recupera_contesto_documenti
 from src.core.guardrails import faq_cache
@@ -56,10 +57,7 @@ def _profile_from_dict(raw: dict | str | None, fallback_name: str = "Attivita") 
     try:
         validated = WhatsAppBusinessProfile.model_validate(raw)
     except ValidationError as e:
-        logger.error("business_profile validation failed", extra={
-            "errors": e.errors(),
-            "raw": raw,
-        })
+        logger.error("business_profile validation failed error_type=%s", type(e).__name__)
         validated = WhatsAppBusinessProfile()
     return ProfiloAttivita(
         nome=validated.nome or fallback_name,
@@ -112,6 +110,7 @@ class LegacyInboundPipeline:
         claim_result: dict,
         heartbeat_coro=None,
     ) -> LegacyExecutionResult:
+        validate_ai_input(text)
         result = LegacyExecutionResult()
 
         messaggio = MessaggioInput(
@@ -122,7 +121,7 @@ class LegacyInboundPipeline:
         )
 
         intent_fn = _get_proc_symbol("classifica_intent", classifica_intent)
-        intent_result = await intent_fn(text)
+        intent_result = await intent_fn(text, allow_llm=False)
         result.intent_result = intent_result
 
         if intent_result.source == "llm":
@@ -139,7 +138,7 @@ class LegacyInboundPipeline:
                     },
                 )
             except Exception as e:
-                logger.warning("Intent usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
+                logger.warning("Intent usage logging failed for org %s msg %s: %s", org_id, msg["id"],type(e).__name__)
 
         q_emb = None
         faq_cache_mod = _get_proc_symbol("faq_cache", faq_cache)
@@ -148,7 +147,7 @@ class LegacyInboundPipeline:
                 q_emb = await faq_cache_mod.embedding_query(text)
                 cached_answer = await faq_cache_mod.cerca_in_cache(str(org_id), text, self.repo, q_emb=q_emb)
             except Exception as e:
-                logger.warning("FAQ cache lookup failed for org %s msg %s: %s", org_id, msg["id"], e)
+                logger.warning("FAQ cache lookup failed for org %s msg %s: %s", org_id, msg["id"],type(e).__name__)
                 cached_answer = None
 
             if cached_answer:
@@ -163,7 +162,7 @@ class LegacyInboundPipeline:
                         },
                     )
                 except Exception as e:
-                    logger.warning("Cache hit usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
+                    logger.warning("Cache hit usage logging failed for org %s msg %s: %s", org_id, msg["id"],type(e).__name__)
 
                 result.handled = True
                 result.response_text = cached_answer
@@ -195,11 +194,12 @@ class LegacyInboundPipeline:
             return result
 
         if await self.repo.check_booking_exists(msg["id"], org_id):
-            result.response_text = "Ho confermato la tua prenotazione!"
-            result.richiede_umano = False
+            existing_booking = await self.repo.get_booking_for_message(org_id, msg["id"])
+            result.response_text = "Richiesta di prenotazione già registrata. Lo staff può verificarne lo stato."
+            result.richiede_umano = replay_requires_intervention(existing_booking)
             await self.repo.save_ai_reply(
                 msg["id"],
-                reply={"text": result.response_text, "richiede_umano": False, "motivo": "booking_exists"},
+                reply={"text": result.response_text, "richiede_umano": result.richiede_umano, "motivo": "booking_exists"},
                 organization_id=org_id,
             )
             return result
@@ -240,7 +240,7 @@ class LegacyInboundPipeline:
                     if ultimo_in is not None:
                         cronologia.append((ultimo_in, ""))
                 except Exception as e:
-                    logger.warning("Recupero cronologia fallito per conv %s: %s", conversation_id_str, e)
+                    logger.warning("Recupero cronologia fallito per conv %s: %s", conversation_id_str,type(e).__name__)
 
             # Pre-fetch semaforo: estrae date dal testo e dalla cronologia recente
             contesto_disp = ""
@@ -263,7 +263,7 @@ class LegacyInboundPipeline:
                         if all_slots:
                             contesto_disp = formatta_disp_fn(all_slots)
                 except Exception as e:
-                    logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id, e)
+                    logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id,type(e).__name__)
 
             genera_risp_fn = _get_proc_symbol("genera_risposta_async", genera_risposta_async)
             risposta = await genera_risp_fn(
@@ -280,6 +280,7 @@ class LegacyInboundPipeline:
         finally:
             if heartbeat_task:
                 heartbeat_task.cancel()
+            await record_ai_attempts(self.repo, org_id, usage, msg["id"], msg.get("conversation_id"))
 
         valida_fn = _get_proc_symbol("valida_risposta", valida_risposta)
         applica_guard_fn = _get_proc_symbol("applica_guardrail", applica_guardrail)
@@ -301,7 +302,7 @@ class LegacyInboundPipeline:
                         },
                     )
                 except Exception as e:
-                    logger.warning("Guardrail usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
+                    logger.warning("Guardrail usage logging failed for org %s msg %s: %s", org_id, msg["id"],type(e).__name__)
 
         try:
             route_fn = _get_proc_symbol("route_llm", route_llm)
@@ -315,54 +316,56 @@ class LegacyInboundPipeline:
                     intent=intent_result.intent,
                 )
             )
-            await self.repo.record_usage(
-                org_id,
-                "ai_response",
-                quantity=1,
-                metadata={
-                    "channel": canale,
-                    "model": route.model,
-                    "tier": route.tier,
-                    "reason": route.reason,
-                    "intent": intent_result.intent,
-                    "intent_source": intent_result.source,
-                    "prompt_variant": variante_prompt,
-                    "conversation_id": str(msg.get("conversation_id", "")),
-                    "message_id": str(msg["id"]),
-                    **{
-                        k: usage[k]
-                        for k in (
-                            "model_effettivo",
-                            "fallback_usato",
-                            "latenza_ms",
-                            "prompt_tokens",
-                            "completion_tokens",
-                            "total_tokens",
-                        )
-                        if k in usage
+            if not usage.get("attempts"):
+                await self.repo.record_usage(
+                    org_id,
+                    "ai_response",
+                    quantity=1,
+                    metadata={
+                        "channel": canale,
+                        "model": route.model,
+                        "tier": route.tier,
+                        "reason": route.reason,
+                        "intent": intent_result.intent,
+                        "intent_source": intent_result.source,
+                        "prompt_variant": variante_prompt,
+                        "conversation_id": str(msg.get("conversation_id", "")),
+                        "message_id": str(msg["id"]),
+                        **{
+                            k: usage[k]
+                            for k in (
+                                "model_effettivo",
+                                "fallback_usato",
+                                "latenza_ms",
+                                "prompt_tokens",
+                                "completion_tokens",
+                                "total_tokens",
+                                "attempts",
+                            )
+                            if k in usage
+                        },
+                        "stima_costo_eur": stima_costo_fn(
+                            usage.get("model_effettivo") or route.model,
+                            usage.get("prompt_tokens"),
+                            usage.get("completion_tokens"),
+                        ),
                     },
-                    "stima_costo_eur": stima_costo_fn(
-                        usage.get("model_effettivo") or route.model,
-                        usage.get("prompt_tokens"),
-                        usage.get("completion_tokens"),
-                    ),
-                },
-            )
+                )
         except Exception as e:
-            logger.warning("AI usage logging failed for org %s msg %s: %s", org_id, msg["id"], e)
+            logger.warning("AI usage logging failed for org %s msg %s: %s", org_id, msg["id"],type(e).__name__)
 
         strategy = get_vertical_strategy(profilo.verticale, organization_id=str(org_id))
         risposta.prenotazione = strategy.valida_e_arricchisci_prenotazione(risposta.prenotazione, text)
         pren = risposta.prenotazione
         result.pren = pren
 
-        if pren and pren.data and pren.ora and pren.coperti:
-            if self.booking_service:
+        if pren and pren.data and pren.ora and pren.coperti and not risposta.richiede_umano:
+            if self.booking_service and org_id and msg.get("id"):
                 try:
                     created = await self.booking_service.create_booking(
                         org_id=org_id,
                         nome_cliente=pren.nome_cliente or ("Cliente Instagram" if canale == "instagram" else "Cliente WhatsApp"),
-                        telefono=pren.telefono or ("" if canale == "instagram" else content.get("from", "")),
+                        telefono="" if canale == "instagram" else messaggio.telefono_mittente,
                         data=pren.data,
                         ora=pren.ora,
                         coperti=pren.coperti,
@@ -372,8 +375,10 @@ class LegacyInboundPipeline:
                         id_conversazione=str(msg.get("conversation_id", "")),
                         source_message_id=str(msg["id"]),
                     )
+                    apply_booking_result(risposta, created)
                     logger.info("Booking %s created from AI response for org %s", created["id"], org_id)
                 except SlotPienoError as e:
+                    booking_failed(risposta)
                     if e.alternative:
                         alt_text = " o ".join(e.alternative)
                         risposta.risposta += f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone. Ti andrebbe bene alle {alt_text}?"
@@ -381,7 +386,10 @@ class LegacyInboundPipeline:
                         risposta.risposta += f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone. Posso chiedere allo staff una fascia alternativa."
                     risposta.motivo = "slot_prenotazione_pieno"
                 except Exception as e:
-                    logger.error("Booking creation from AI failed for org %s: %s", org_id, e)
+                    logger.error("Booking creation from AI failed for org %s error_type=%s", org_id, type(e).__name__)
+                    booking_failed(risposta)
+            else:
+                booking_failed(risposta)
 
         result.response_text = risposta.risposta
         result.richiede_umano = bool(risposta.richiede_umano)

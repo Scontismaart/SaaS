@@ -75,7 +75,7 @@ def validate_review_draft(draft: str, source: str, knowledge: str = "") -> None:
         raise ValueError("unsupported price in review draft")
 
 
-async def record_review_usage(repo, org_id: str, usage: dict) -> None:
+async def record_review_usage(repo, org_id: str, usage: dict, *, task_type="review", context=None) -> None:
     """Persist every actual provider attempt directly, without an outbox hold.
 
     `usage` accepts either the new attempts list or a legacy single attempt.
@@ -105,7 +105,8 @@ async def record_review_usage(repo, org_id: str, usage: dict) -> None:
         cost = stima_costo_eur(model, prompt_tokens, completion_tokens) if valid else None
         valid = valid and cost is not None
         common = {
-            "task_type": "review", "model": model,
+            **(context or {}),
+            "task_type": task_type, "model": model,
             "prompt_tokens": prompt_tokens if isinstance(prompt_tokens, int) else None,
             "completion_tokens": completion_tokens if isinstance(completion_tokens, int) else None,
             "total_tokens": attempt.get("total_tokens"),

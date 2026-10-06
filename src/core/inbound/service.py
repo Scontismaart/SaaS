@@ -9,6 +9,7 @@ import uuid
 from typing import Any, Callable
 
 from src.core.security_logger import security_audit
+from src.core.ai_safety import replay_requires_intervention
 from src.core.billing.suspension import is_org_suspended
 from src.core.channels.base import ChannelOutboundPort
 from src.core.channels.delivery import DeliveryUnconfirmed, provider_message_id
@@ -458,13 +459,14 @@ class InboundProcessingService:
                     except Exception:
                         risposta_text = ai_cached
             elif await self.repo.check_booking_exists(msg["id"], org_id):
-                risposta_text = "Ho confermato la tua prenotazione!"
-                richiede_umano = False
+                existing_booking = await self.repo.get_booking_for_message(org_id, msg["id"])
+                risposta_text = "Richiesta di prenotazione già registrata. Lo staff può verificarne lo stato."
+                richiede_umano = replay_requires_intervention(existing_booking)
                 await self.repo.save_ai_reply(
                     msg["id"],
                     reply={
                         "text": risposta_text,
-                        "richiede_umano": False,
+                        "richiede_umano": richiede_umano,
                         "motivo": "booking_exists",
                     },
                     organization_id=org_id,
@@ -558,7 +560,7 @@ class InboundProcessingService:
                         sender_name=content.get("from") or content.get("from_") or "",
                         business_profile=business_profile_raw,
                         is_simulation=True,
-                        record_billing_usage=False,
+                        record_billing_usage=True,
                     )
                     shadow_out = await self.orchestrator.orchestrate(shadow_req)
                     logger.info(

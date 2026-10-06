@@ -107,6 +107,7 @@ async def ricevi_messaggio(
     payload_hash = None
     claim_token = None
     if org_id is not None:
+        await enforce_org_rate_limit(str(org_id), "ai_simulator", 20, 60)
         if not idempotency_key:
             raise HTTPException(status_code=400, detail="Header Idempotency-Key richiesto")
         try:

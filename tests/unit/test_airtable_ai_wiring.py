@@ -56,7 +56,7 @@ class TestToolThreading:
         return ProfiloAttivita(nome="Test", tipo_attivita="ristorante",
                                tono="cordiale", orari="12-15")
 
-    def test_crea_crew_passes_tools_to_agent(self):
+    def test_crea_crew_rejects_injected_crm_tools(self):
         from src.agents.responder_agent import crea_crew
         from src.integrations.airtable.ai_service import AirtableAIService
         from src.integrations.airtable.ai_tools import FindCustomerTool
@@ -68,7 +68,7 @@ class TestToolThreading:
         crew = crea_crew(
             profilo, MessaggioInput(testo="ciao", canale="whatsapp"),
             tools=tools)
-        assert list(crew.agents[0].tools) == tools
+        assert not crew.agents[0].tools
 
     def test_crea_crew_default_no_tools(self):
         from src.agents.responder_agent import crea_crew
@@ -128,7 +128,8 @@ class TestSelectGate:
             organization_id=ORG, factory=factory)
         names = [t.name for t in tools]
         assert "airtable_delete_record" not in names
-        assert set(names) == {"airtable_find_customer", "airtable_create_customer"}
+        assert names == []
+        factory.assert_not_awaited()
         assert "airtable_delete_record" in FASE_A_EXCLUDED_TOOLS
 
 
@@ -142,16 +143,16 @@ class TestBuildForOrg:
         assert tools == []
 
     @pytest.mark.asyncio
-    async def test_active_connection_builds_tools_without_delete(self):
+    async def test_active_connection_cannot_enable_crm_ai(self):
         conn_repo = MagicMock()
         conn_repo.get_default_active_connection = AsyncMock(return_value={
             "base_id": "appTest123", "is_active": True})
         tools = await build_airtable_tools_for_org(
             ORG, conn_repo, MagicMock(), MagicMock())
         names = [t.name for t in tools]
-        assert len(names) == 7
+        assert names == []
+        conn_repo.get_default_active_connection.assert_not_awaited()
         assert "airtable_delete_record" not in names
-        assert "airtable_find_customer" in names
         # Tenant binding: ogni tool vincolato all'org, mai nello schema LLM
         for t in tools:
             assert str(t.organization_id) == str(ORG)
@@ -188,7 +189,7 @@ def _intent_patch(intent):
 
 class TestOrchestrateWiring:
     @pytest.mark.asyncio
-    async def test_booking_intent_receives_tools(self):
+    async def test_booking_intent_cannot_receive_crm_tools(self):
         deps = _mock_dependencies()
         factory = AsyncMock(return_value=[_tool("airtable_find_customer")])
         orchestrator = ConversationOrchestrator(
@@ -207,12 +208,12 @@ class TestOrchestrateWiring:
             req = OrchestrationInput(organization_id=ORG, text="cercami il cliente Rossi")
             result = await orchestrator.orchestrate(req)
 
-        factory.assert_awaited_once_with(ORG)
-        assert mock_gen.call_args[1]["tools"] == factory.return_value
+        factory.assert_not_awaited()
+        assert mock_gen.call_args[1]["tools"] is None
         assert result.response_text == "Trovato!"
         # Usage attribution per offerta tool
         calls = deps["billing_repo"].record_usage.call_args_list
-        assert any(c[0][1] == "airtable_ai_tools" for c in calls)
+        assert not any(c[0][1] == "airtable_ai_tools" for c in calls)
 
     @pytest.mark.asyncio
     async def test_faq_intent_no_tools(self):

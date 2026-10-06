@@ -19,6 +19,7 @@ from src.agents.prompts import (
     formatta_disponibilita,
 )
 from src.core.bookings import SlotPienoError
+from src.core.ai_safety import apply_booking_result, booking_failed, record_ai_attempts, validate_ai_input
 from src.core.crew_runner import genera_risposta_async
 from src.core.documenti.rag_context import ContestoDocumenti, recupera_contesto_documenti
 from src.core.guardrails import faq_cache
@@ -56,7 +57,7 @@ def profile_from_raw(raw: dict | str | None, fallback_name: str = "Attivita") ->
     try:
         validated = WhatsAppBusinessProfile.model_validate(raw)
     except ValidationError as e:
-        logger.error("business_profile validation failed", extra={"errors": e.errors(), "raw": raw})
+        logger.error("business_profile validation failed error_type=%s", type(e).__name__)
         validated = WhatsAppBusinessProfile()
     return ProfiloAttivita(
         nome=validated.nome or fallback_name,
@@ -98,6 +99,7 @@ class ConversationOrchestrator:
 
     async def orchestrate(self, req: OrchestrationInput) -> OrchestrationOutput:
         """Esegue l'intero workflow decisionale dell'AI Receptionist per un messaggio."""
+        validate_ai_input(req.text)
         org_id = req.organization_id
         if isinstance(org_id, str):
             try:
@@ -125,10 +127,10 @@ class ConversationOrchestrator:
                         richiede_umano=False,
                     )
             except Exception as e:
-                logger.warning("Fast-path matching failed: %s", e)
+                logger.warning("Fast-path matching failed: %s",type(e).__name__)
 
         # 3. Classificazione Intent
-        intent_result = await classifica_intent(req.text)
+        intent_result = await classifica_intent(req.text, allow_llm=False)
         if (
             intent_result.source == "llm"
             and org_id
@@ -147,7 +149,7 @@ class ConversationOrchestrator:
                     },
                 )
             except Exception as e:
-                logger.warning("Intent usage logging failed for org %s: %s", org_id, e)
+                logger.warning("Intent usage logging failed for org %s: %s", org_id,type(e).__name__)
 
         # 4. FAQ Cache semantica vettoriale
         q_emb = None
@@ -156,7 +158,7 @@ class ConversationOrchestrator:
                 q_emb = await faq_cache.embedding_query(req.text)
                 cached_answer = await faq_cache.cerca_in_cache(str(org_id), req.text, self.doc_repo, q_emb=q_emb)
             except Exception as e:
-                logger.warning("FAQ cache lookup failed for org %s: %s", org_id, e)
+                logger.warning("FAQ cache lookup failed for org %s: %s", org_id,type(e).__name__)
                 cached_answer = None
 
             if cached_answer:
@@ -172,7 +174,7 @@ class ConversationOrchestrator:
                             },
                         )
                     except Exception as e:
-                        logger.warning("Cache hit usage logging failed for org %s: %s", org_id, e)
+                        logger.warning("Cache hit usage logging failed for org %s: %s", org_id,type(e).__name__)
                 return OrchestrationOutput(
                     response_text=cached_answer,
                     source="faq_cache",
@@ -187,7 +189,7 @@ class ConversationOrchestrator:
             try:
                 contesto = await recupera_contesto_documenti(str(org_id), req.text, self.doc_repo, q_emb=q_emb)
             except Exception as e:
-                logger.warning("RAG retrieval failed for org %s: %s", org_id, e)
+                logger.warning("RAG retrieval failed for org %s: %s", org_id,type(e).__name__)
 
         # 6. Ricostruzione Cronologia Multi-Turn
         cronologia, testi_cronologia = await self._resolve_history(org_id, req)
@@ -201,7 +203,7 @@ class ConversationOrchestrator:
             try:
                 billing_state = await self.billing_repo.get_org_subscription_state(org_id)
             except Exception as e:
-                logger.warning("Failed to fetch billing state for org %s: %s", org_id, e)
+                logger.warning("Failed to fetch billing state for org %s: %s", org_id,type(e).__name__)
 
         variante_prompt = assegna_variante(str(org_id)) if org_id else "control"
         usage: dict = {}
@@ -221,7 +223,7 @@ class ConversationOrchestrator:
             if req.is_simulation:
                 airtable_tools = filter_simulation_airtable_tools(airtable_tools, True)
         except Exception as e:
-            logger.warning("Airtable tools selection failed for org %s: %s", org_id, e)
+            logger.warning("Airtable tools selection failed for org %s: %s", org_id,type(e).__name__)
             airtable_tools = []
         if airtable_tools and org_id and req.record_billing_usage and self.billing_repo:
             try:
@@ -236,7 +238,7 @@ class ConversationOrchestrator:
                     },
                 )
             except Exception as e:
-                logger.warning("Airtable tools usage logging failed for org %s: %s", org_id, e)
+                logger.warning("Airtable tools usage logging failed for org %s: %s", org_id,type(e).__name__)
 
         try:
             canale_enum = (
@@ -254,18 +256,23 @@ class ConversationOrchestrator:
             telefono_mittente=req.sender_phone,
         )
 
-        risposta = await genera_risposta_async(
-            messaggio,
-            profilo,
-            cronologia=cronologia,
-            billing=billing_state,
-            contesto_documenti=contesto.testo,
-            intent=intent_result.intent,
-            variante=variante_prompt,
-            contesto_disponibilita=contesto_disp,
-            usage_sink=usage,
-            tools=airtable_tools or None,
-        )
+        try:
+            risposta = await genera_risposta_async(
+                messaggio,
+                profilo,
+                cronologia=cronologia,
+                billing=billing_state,
+                contesto_documenti=contesto.testo,
+                intent=intent_result.intent,
+                variante=variante_prompt,
+                contesto_disponibilita=contesto_disp,
+                usage_sink=usage,
+                tools=airtable_tools or None,
+            )
+        finally:
+            if req.record_billing_usage:
+                await record_ai_attempts(self.billing_repo, org_id, usage, req.message_id, req.conversation_id,
+                    task_type="simulatore" if req.is_simulation else "customer_message")
 
         # 9. Guardrail Pipeline & Filtering
         esito = valida_risposta(risposta, contesto.chunks, profilo)
@@ -288,7 +295,7 @@ class ConversationOrchestrator:
                         },
                     )
                 except Exception as e:
-                    logger.warning("Guardrail usage logging failed for org %s: %s", org_id, e)
+                    logger.warning("Guardrail usage logging failed for org %s: %s", org_id,type(e).__name__)
 
         # 10. LLM Routing & Cost Governance (Invariante 8)
         usage_metrics = {}
@@ -320,6 +327,7 @@ class ConversationOrchestrator:
                         "prompt_tokens",
                         "completion_tokens",
                         "total_tokens",
+                        "attempts",
                     )
                     if k in usage
                 },
@@ -329,7 +337,7 @@ class ConversationOrchestrator:
                     usage.get("completion_tokens"),
                 ),
             }
-            if org_id and req.record_billing_usage and self.billing_repo:
+            if org_id and req.record_billing_usage and self.billing_repo and not usage.get("attempts"):
                 # Per il simulatore autenticato, aggiunge il task_type "simulatore"
                 event_metadata = {**usage_metrics}
                 if req.is_simulation:
@@ -338,7 +346,7 @@ class ConversationOrchestrator:
                     org_id, "ai_response", quantity=1, metadata=event_metadata
                 )
         except Exception as e:
-            logger.warning("AI usage tracking failed for org %s: %s", org_id, e)
+            logger.warning("AI usage tracking failed for org %s: %s", org_id,type(e).__name__)
 
         # 11. Vertical Strategy & Booking Creation / Validation
         strategy = get_vertical_strategy(profilo.verticale, organization_id=str(org_id) if org_id else None)
@@ -349,7 +357,7 @@ class ConversationOrchestrator:
         disponibilita_slot = None
         slot_full_alternatives = []
 
-        if pren and pren.data and pren.ora and pren.coperti:
+        if pren and pren.data and pren.ora and pren.coperti and not risposta.richiede_umano:
             if req.is_simulation:
                 # MODALITA' SIMULAZIONE: solo verifica capienza in sola lettura (Invariante 5)
                 # Non acquisisce slot_lock e non scrive mai in bookings
@@ -362,19 +370,18 @@ class ConversationOrchestrator:
                             slot.model_dump() if hasattr(slot, "model_dump") else slot
                         )
                     except Exception as e:
-                        logger.warning("Simulation availability check failed: %s", e)
+                        logger.warning("Simulation availability check failed: %s",type(e).__name__)
             else:
                 # CANALE REALE: creazione deterministica con slot_lock e gestione SlotPienoError
-                if self.booking_service and org_id:
+                if self.booking_service and org_id and req.message_id:
                     try:
                         nome = pren.nome_cliente or (
                             req.sender_name
                             or ("Cliente Instagram" if req.channel == "instagram" else "Cliente WhatsApp")
                         )
-                        tel = pren.telefono or req.sender_phone
+                        tel = req.sender_phone
                         orig = "Instagram" if req.channel == "instagram" else "WhatsApp"
-                        try:
-                            created = await self.booking_service.create_booking(
+                        created = await self.booking_service.create_booking(
                                 organization_id=org_id,
                                 nome_cliente=nome,
                                 data=pren.data,
@@ -386,21 +393,8 @@ class ConversationOrchestrator:
                                 richiede_intervento=risposta.richiede_umano,
                                 id_conversazione=req.conversation_id,
                                 source_message_id=str(req.message_id) if req.message_id else None,
-                            )
-                        except TypeError:
-                            created = await self.booking_service.create_booking(
-                                org_id=org_id,
-                                nome_cliente=nome,
-                                data=pren.data,
-                                ora=pren.ora,
-                                coperti=pren.coperti,
-                                telefono=tel,
-                                note=pren.note or "",
-                                origine=orig,
-                                richiede_intervento=risposta.richiede_umano,
-                                id_conversazione=req.conversation_id,
-                                source_message_id=str(req.message_id) if req.message_id else None,
-                            )
+                        )
+                        apply_booking_result(risposta, created)
                         booking_created = created
                         logger.info(
                             "Booking %s created from AI response for org %s",
@@ -408,6 +402,7 @@ class ConversationOrchestrator:
                             org_id,
                         )
                     except SlotPienoError as e:
+                        booking_failed(risposta)
                         slot_full_alternatives = e.alternative or []
                         if e.alternative:
                             alt_text = " o ".join(e.alternative)
@@ -416,7 +411,10 @@ class ConversationOrchestrator:
                             risposta.risposta += f" Mi dispiace, alle {pren.ora} siamo al completo per {pren.coperti} persone. Posso chiedere allo staff una fascia alternativa."
                         risposta.motivo = "slot_prenotazione_pieno"
                     except Exception as e:
-                        logger.error("Booking creation from AI failed for org %s: %s", org_id, e)
+                        logger.error("Booking creation from AI failed for org %s error_type=%s", org_id, type(e).__name__)
+                        booking_failed(risposta)
+                else:
+                    booking_failed(risposta)
 
         # 12. Salvataggio in FAQ Cache (se abilitata, intent faq, non bloccata da guardrail e non simulazione)
         if (
@@ -439,7 +437,7 @@ class ConversationOrchestrator:
                     prompt_variant=variante_prompt,
                 )
             except Exception as e:
-                logger.warning("FAQ cache store failed for org %s: %s", org_id, e)
+                logger.warning("FAQ cache store failed for org %s: %s", org_id,type(e).__name__)
 
         return OrchestrationOutput(
             response_text=risposta.risposta,
@@ -468,7 +466,7 @@ class ConversationOrchestrator:
                 if db_profile:
                     return profile_from_raw(db_profile)
             except Exception as e:
-                logger.warning("Profile resolution from DB failed for org %s: %s", org_id, e)
+                logger.warning("Profile resolution from DB failed for org %s: %s", org_id,type(e).__name__)
         return ProfiloAttivita(
             nome="Attività",
             tipo_attivita="attività commerciale",
@@ -512,7 +510,7 @@ class ConversationOrchestrator:
                     if ultimo_in is not None:
                         cronologia.append((ultimo_in, ""))
             except Exception as e:
-                logger.warning("History resolution failed for conv %s: %s", req.conversation_id, e)
+                logger.warning("History resolution failed for conv %s: %s", req.conversation_id,type(e).__name__)
 
         return cronologia, testi
 
@@ -535,5 +533,5 @@ class ConversationOrchestrator:
                 if all_slots:
                     return formatta_disponibilita(all_slots)
         except Exception as e:
-            logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id, e)
+            logger.warning("Semaforo pre-fetch failed for org %s: %s", org_id,type(e).__name__)
         return ""

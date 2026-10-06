@@ -310,6 +310,7 @@ async def test_slot_full_offers_alternatives(mock_dependencies):
         req = OrchestrationInput(
             organization_id=org_id,
             text="Vorrei prenotare per 6 alle 20:30",
+            message_id=uuid.uuid4(),
             is_simulation=False,
         )
         result = await orchestrator.orchestrate(req)

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from src.core import ai_safety
 from typing import Any, Awaitable, Callable
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,9 @@ async def build_airtable_tools_for_org(
     """
     from src.integrations.airtable.ai_service import AirtableAIService
     from src.integrations.airtable.ai_tools import create_airtable_tools
+
+    if not ai_safety.CRM_AI_TOOLS_ENABLED:
+        return []
 
     try:
         conn = await connection_repo.get_default_active_connection(organization_id)
@@ -75,6 +79,9 @@ async def select_airtable_tools(
 ) -> list:
     """Gate di offerta tool: intent allowlist + kill-switch budget + factory."""
     from src.core.llm_routing import _budget_is_low
+
+    if not ai_safety.CRM_AI_TOOLS_ENABLED:
+        return []
 
     if not factory or not organization_id:
         return []

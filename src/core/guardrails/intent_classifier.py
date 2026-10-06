@@ -99,7 +99,7 @@ def _parse_llm_output(raw: str) -> IntentResult | None:
 
 
 def _llm_enabled() -> bool:
-    return os.getenv("GUARDRAIL_INTENT_LLM_ENABLED", "true").strip().lower() in ("1", "true", "yes", "on")
+    return os.getenv("GUARDRAIL_INTENT_LLM_ENABLED", "false").strip().lower() in ("1", "true", "yes", "on")
 
 
 def _modello_intent() -> str:
@@ -116,16 +116,17 @@ def _modello_intent() -> str:
 # Alias pubblico: i chiamanti loggano il modello usato nell'usage event.
 modello_intent = _modello_intent
 
-async def classifica_intent(testo: str) -> IntentResult:
+async def classifica_intent(testo: str, *, allow_llm: bool = True) -> IntentResult:
     """Classifica l'intento del messaggio. Non solleva mai: il peggio che
     possa accadere e' l'esito euristico (source="heuristic")."""
     esito = _euristica(testo)
-    if esito.confidence >= _LLM_TRIGGER_CONFIDENZA or not _llm_enabled():
+    if esito.confidence >= _LLM_TRIGGER_CONFIDENZA or not allow_llm or not _llm_enabled():
         return esito
 
     try:
-        llm = crea_llm(model=_modello_intent(), temperature=0.0)
         timeout = float(os.getenv("GUARDRAIL_INTENT_TIMEOUT", str(_TIMEOUT_DEFAULT)))
+        timeout = max(0.1, min(timeout, _TIMEOUT_DEFAULT))
+        llm = crea_llm(model=_modello_intent(), temperature=0.0, timeout=timeout)
         raw = await asyncio.wait_for(
             asyncio.to_thread(llm.call, _PROMPT_CLASSIFICATORE.format(testo=testo)),
             timeout=timeout,

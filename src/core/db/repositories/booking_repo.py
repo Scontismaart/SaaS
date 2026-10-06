@@ -271,3 +271,18 @@ class BookingRepository(TenantScopedRepository):
                 org_id, str(msg_id)
             )
             return bool(row)
+
+    async def get_booking_for_message(self, organization_id, source_message_id):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM bookings WHERE organization_id = $1 AND source_message_id = $2",
+                organization_id, str(source_message_id),
+            )
+            return dict(row) if row else None
+
+    async def mark_booking_requires_intervention(self, organization_id, booking_id):
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE bookings SET richiede_intervento = TRUE, updated_at = NOW() WHERE organization_id = $1 AND id = $2",
+                organization_id, booking_id,
+            )

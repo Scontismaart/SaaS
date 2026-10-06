@@ -190,4 +190,5 @@ def applica_guardrail(risposta: RispostaOutput, esito: EsitoValidazione) -> Risp
         "risposta": FALLBACK_STAFF_TEXT,
         "richiede_umano": True,
         "motivo": f"guardrail_{esito.motivo}",
+        "prenotazione": None,
     })

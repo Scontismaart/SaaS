@@ -444,7 +444,9 @@ async def _mfa_auth_request(
     if resp.status_code == 404:
         raise HTTPException(404, "Fattore MFA non trovato")
     if resp.status_code == 422:
-        raise HTTPException(422, "Codice MFA non valido o scaduto")
+        if path.endswith("/verify"):
+            raise HTTPException(422, "Codice MFA non valido o scaduto")
+        raise HTTPException(422, "Impossibile completare la configurazione MFA")
     if resp.status_code == 429:
         raise HTTPException(429, "Troppe richieste MFA. Riprova tra poco")
     if resp.status_code >= 400:
@@ -569,7 +571,8 @@ async def mfa_enroll(request: Request):
             except (UnicodeDecodeError, ValueError):
                 svg_source = ""
         if (
-            0 < len(svg_source) <= 32_768
+            # GoTrue emits a rect-based QR (~320 KB), not a compact path SVG.
+            0 < len(svg_source) <= 524_288
             and "<!DOCTYPE" not in svg_source.upper()
             and "<!ENTITY" not in svg_source.upper()
         ):
@@ -585,6 +588,15 @@ async def mfa_enroll(request: Request):
                     "rect": {"x", "y", "width", "height", "fill"},
                 }
                 nodes = list(root.iter())
+                # Convert only GoTrue's two literal styles. Arbitrary CSS,
+                # URLs and other attributes remain forbidden by the allowlist.
+                for node in nodes:
+                    style = node.attrib.get("style")
+                    if node.tag == "{http://www.w3.org/2000/svg}rect" and style in {
+                        "fill:black;stroke:none", "fill:white;stroke:none",
+                    }:
+                        node.attrib.pop("style")
+                        node.set("fill", "black" if style.startswith("fill:black;") else "white")
                 def safe_tag_name(node):
                     tag = node.tag
                     if not isinstance(tag, str):

@@ -216,14 +216,16 @@ async function tentaRefresh() {
 
 async function apiFetch(url, options = {}) {
   const method = (options.method || "GET").toUpperCase();
+  const safeMethod = ["GET", "HEAD", "OPTIONS"].includes(method);
   const headers = { ...(options.headers || {}) };
   const selectedOrg = localStorage.getItem("melpis_selected_organization");
   if (selectedOrg) headers["X-Organization-Id"] = selectedOrg;
-  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    const token = csrfToken();
-    if (token) headers["X-CSRF-Token"] = token;
-  }
   async function tenta() {
+    if (!safeMethod) {
+      const token = csrfToken();
+      if (token) headers["X-CSRF-Token"] = token;
+      else delete headers["X-CSRF-Token"];
+    }
     try {
       return await fetch(url, { ...options, headers, credentials: "include" });
     } catch (err) {
@@ -233,12 +235,16 @@ async function apiFetch(url, options = {}) {
   }
   let res = await tenta();
   if (res.status === 401 && !url.includes("/api/auth/")) {
-    const refreshRes = await tentaRefresh();
-    if (refreshRes.ok) {
-      res = await tenta();
-    } else {
-      sessione = null;
-      aggiornaBottoneAccesso();
+    try {
+      const refreshRes = await tentaRefresh();
+      if (refreshRes.ok) res = await tenta();
+    } catch (err) {
+      invalidaSessione();
+      vaiAdAccesso();
+      throw err;
+    }
+    if (res.status === 401) {
+      invalidaSessione();
       vaiAdAccesso();
     }
   }
@@ -362,8 +368,7 @@ document.addEventListener("keydown", (e) => {
 
 document.getElementById("sidebar-logout-btn")?.addEventListener("click", async () => {
   chiudiSidebarAccountMenu();
-  await faiLogout();
-  window.location.href = "/accedi/";
+  if (await faiLogout()) window.location.href = "/accedi/";
 });
 
 document.getElementById("sidebar-menu-piano")?.addEventListener("click", () => {
@@ -430,14 +435,29 @@ async function caricaSessione() {
   }
 }
 
+function invalidaSessione() {
+  sessione = null;
+  document.body.classList.remove("authenticated");
+  aggiornaBottoneAccesso();
+}
+
 async function faiLogout() {
   try {
-    await apiFetch(`${API_BASE}/api/auth/logout`, {
+    const response = await apiFetch(`${API_BASE}/api/auth/logout`, {
       method: "POST",
     });
-  } catch { /* best effort */ }
-  sessione = null;
-  aggiornaBottoneAccesso();
+    if (!response.ok) throw new Error("Logout rejected");
+    invalidaSessione();
+    // Notify same-origin tabs without persisting credentials or private data.
+    // Storage being unavailable must not turn a completed logout into failure.
+    try {
+      localStorage.setItem("melpis_auth_logout", `${Date.now()}:${Math.random()}`);
+    } catch { /* the current tab is already signed out */ }
+    return true;
+  } catch {
+    toast("Uscita non completata. Riprova: la sessione potrebbe essere ancora attiva.", "error");
+    return false;
+  }
 }
 
 document.getElementById("accesso-btn")?.addEventListener("click", () => {
@@ -6156,8 +6176,20 @@ notifBell?.addEventListener("click", () => {
 
 // Una pagina /app/ ripristinata dalla back-forward cache potrebbe contenere
 // DOM autenticato precedente al logout. Ricarica per riverificare la sessione.
+window.addEventListener("storage", (event) => {
+  if (event.key === "melpis_auth_logout" && event.newValue && window.location.pathname.startsWith("/app/")) {
+    invalidaSessione();
+    vaiAdAccesso();
+  }
+});
+window.addEventListener("pagehide", () => {
+  document.body.classList.remove("authenticated");
+});
 window.addEventListener("pageshow", (event) => {
+  document.body.dataset.authPageshowPersisted = String(event.persisted);
   if (event.persisted && window.location.pathname.startsWith("/app/")) {
+    document.body.classList.remove("authenticated");
+    console.debug("[Auth] BFCache restore: private shell hidden; session revalidation required");
     window.location.reload();
   }
 });

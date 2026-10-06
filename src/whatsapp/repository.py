@@ -356,6 +356,9 @@ class Repository(TenantScopedRepository):
     async def check_booking_exists(self, msg_id: str, org_id: str) -> bool:
         return await self._msg_repo.check_booking_exists(msg_id, org_id)
 
+    async def get_booking_for_message(self, organization_id, source_message_id):
+        return await self._booking_repo.get_booking_for_message(organization_id, source_message_id)
+
     async def save_ai_reply(self, msg_id: str, reply: dict | str, richiede_umano: bool = False,
                             motivo: str = "", *, organization_id) -> None:
         return await self._msg_repo.save_ai_reply(

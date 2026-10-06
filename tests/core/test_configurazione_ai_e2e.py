@@ -277,7 +277,7 @@ async def test_same_question_uses_live_profile_and_knowledge_context_after_confi
     monkeypatch.setattr("src.agents.responder_agent.crea_llm", lambda **_kwargs: "mock-runtime")
     monkeypatch.setattr(
         "src.core.receptionist.conversation_orchestrator.classifica_intent",
-        lambda _text: _async_value(IntentResult(intent="faq", confidence=1.0, source="test")),
+        lambda _text, **_kwargs: _async_value(IntentResult(intent="faq", confidence=1.0, source="test")),
     )
     monkeypatch.setattr(
         "src.core.receptionist.conversation_orchestrator.faq_cache.cache_enabled",

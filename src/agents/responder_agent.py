@@ -48,7 +48,11 @@ def crea_responder_agent(
         llm=crea_llm(model=model, route_request=route_request),
         verbose=False,
         allow_delegation=False,
-        tools=tools,
+        # Phase 5: no untrusted model tool execution, including injected tools.
+        # Keep the API for a future application-authorized tool implementation.
+        tools=None,
+        max_iter=3,
+        max_retry_limit=1,
     )
 
 

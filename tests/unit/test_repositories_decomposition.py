@@ -147,6 +147,11 @@ async def test_whatsapp_repo_delegates_to_specialized():
     assert res_book is False
     wa_repo._msg_repo.check_booking_exists.assert_awaited_once_with(str(msg_id), str(org_id))
 
+    wa_repo._booking_repo.get_booking_for_message = AsyncMock(return_value={"id": str(msg_id)})
+    replay = await wa_repo.get_booking_for_message(org_id, str(msg_id))
+    assert replay["id"] == str(msg_id)
+    wa_repo._booking_repo.get_booking_for_message.assert_awaited_once_with(org_id, str(msg_id))
+
     res_cache = await wa_repo.faq_cache_lookup(org_id, [0.1] * 384)
     assert res_cache is None
     wa_repo._doc_repo.faq_cache_lookup.assert_awaited_once_with(org_id, [0.1] * 384, max_distance=0.08)

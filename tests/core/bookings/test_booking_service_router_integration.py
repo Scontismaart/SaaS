@@ -24,6 +24,8 @@ ORG_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 @pytest.fixture
 def mock_booking_repo():
     repo = MagicMock()
+    repo.get_booking_for_message = AsyncMock(return_value=None)
+    repo.mark_booking_requires_intervention = AsyncMock()
     repo.list_bookings = AsyncMock(return_value=[])
     repo.get_booking_settings = AsyncMock(
         return_value={"capienze_orarie": {"10:00": 10, "11:00": 10}}

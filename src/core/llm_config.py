@@ -68,6 +68,7 @@ def crea_llm(
     temperature: float = 0.4,
     route_request: LLMRouteRequest | None = None,
     max_tokens: int | None = None,
+    timeout: float | None = None,
 ) -> LLM:
     selected_model = model
     if selected_model is None and route_request is not None:
@@ -97,10 +98,11 @@ def crea_llm(
     llm_params: dict[str, object] = {
         **provider.client_params(selected_model, api_key, os.getenv("AI_BASE_URL", "").strip() or None),
         "temperature": temperature,
-        "max_tokens": max_tokens,
+        "max_tokens": max(1, min(max_tokens, 1000)),
         # CrewAI's LLM timeout is passed to LiteLLM/provider HTTP clients.
         # This bounds a provider call even when the surrounding thread cannot be cancelled.
-        "timeout": LLM_TIMEOUT_SECONDS,
+        "timeout": min(LLM_TIMEOUT_SECONDS, max(0.1, timeout)) if timeout is not None else LLM_TIMEOUT_SECONDS,
+        "num_retries": 1,
     }
 
     return LLM(**llm_params)

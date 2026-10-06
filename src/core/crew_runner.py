@@ -8,6 +8,7 @@ di cambiare tutto il resto (UI, canale, provider LLM) senza toccare i
 moduli a monte.
 """
 
+import asyncio
 import time
 
 from src.agents.responder_agent import crea_crew
@@ -18,6 +19,35 @@ from src.core.llm_config import (
     route_llm,
 )
 from src.models.schemas import MessaggioInput, ProfiloAttivita, RispostaOutput
+from src.core.ai_safety import AI_INPUT_MAX_CHARS
+from src.core.llm_config import LLM_TIMEOUT_SECONDS
+
+
+def _execution_gate(messaggio, billing):
+    if len(messaggio.testo) > AI_INPUT_MAX_CHARS:
+        raise RuntimeError("AI input limit exceeded")
+    ratio = budget_ratio_from_billing(billing)
+    if billing and (billing.get("ai_accounting_blocked") or (ratio is not None and ratio <= 0)):
+        raise RuntimeError("AI budget unavailable")
+
+
+def _bounded_history(history):
+    return [(str(user_text)[:2000], str(reply_text)[:2000]) for user_text, reply_text in (history or [])[-12:]]
+
+
+def _record_attempt(sink, crew, model, reason, started, fallback):
+    if sink is None:
+        return
+    metrics = getattr(crew, "usage_metrics", None)
+    attempt = {"model": model, "reason": reason, "fallback": fallback,
+               "latency_ms": int((time.monotonic() - started) * 1000)}
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        value = getattr(metrics, key, None)
+        attempt[key] = value if isinstance(value, int) else None
+    attempts = sink.setdefault("attempts", [])
+    attempts.append(attempt)
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        sink[key] = sum(a[key] for a in attempts) if all(a[key] is not None for a in attempts) else None
 
 
 def _riempi_sink(sink: dict | None, model: str, fallback_usato: bool, inizio: float, crew) -> None:
@@ -83,22 +113,27 @@ def genera_risposta(
     un errore esplicito che una risposta silenziosamente sbagliata
     mandata a un cliente reale.
     """
+    _execution_gate(messaggio, billing)
     route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)
     errors: list[str] = []
     inizio = time.monotonic()
-    for idx, model in enumerate([route.model, *route.fallback_models]):
+    for idx, model in enumerate([route.model, *route.fallback_models][:3]):
+        crew = None
+        started = time.monotonic()
         try:
-            crew = crea_crew(profilo, messaggio, cronologia, route_request=route_request,
+            crew = crea_crew(profilo, messaggio, _bounded_history(cronologia), route_request=route_request,
                              model=model, variante=variante,
                              contesto_disponibilita=contesto_disponibilita,
-                             tentativi_falliti=tentativi_falliti, tools=tools)
+                             tentativi_falliti=tentativi_falliti, tools=None)
             out = _validate_output(crew.kickoff())
             _riempi_sink(usage_sink, model, idx > 0, inizio, crew)
             return out
         except Exception as exc:
-            errors.append(f"{model}: {exc}")
-    raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors))
+            errors.append(type(exc).__name__)
+        finally:
+            _record_attempt(usage_sink, crew, model, route.reason, started, idx > 0)
+    raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors)) from None
 
 
 async def genera_risposta_async(
@@ -123,21 +158,29 @@ async def genera_risposta_async(
     Audit 3.3: limitata dal semaforo globale LLM_CONCURRENCY_SEM per non
     saturare il rate-limit/budget condiviso del provider LLM quando piu'
     tenant generano risposte in parallelo."""
+    _execution_gate(messaggio, billing)
     route_request = _route_request_for_message(messaggio, billing, intent)
     route = route_llm(route_request)
     errors: list[str] = []
     inizio = time.monotonic()
     async with LLM_CONCURRENCY_SEM:
-        for idx, model in enumerate([route.model, *route.fallback_models]):
+        for idx, model in enumerate([route.model, *route.fallback_models][:3]):
+            crew = None
+            started = time.monotonic()
             try:
-                crew = crea_crew(profilo, messaggio, cronologia=cronologia,
+                crew = crea_crew(profilo, messaggio, cronologia=_bounded_history(cronologia),
                                  route_request=route_request, model=model,
-                                 contesto_documenti=contesto_documenti, variante=variante,
+                                 contesto_documenti=contesto_documenti[:12000], variante=variante,
                                  contesto_disponibilita=contesto_disponibilita,
-                                 tentativi_falliti=tentativi_falliti, tools=tools)
-                out = _validate_output(await crew.kickoff_async())
+                                 tentativi_falliti=tentativi_falliti, tools=None)
+                remaining = LLM_TIMEOUT_SECONDS - (time.monotonic() - inizio)
+                if remaining <= 0:
+                    break
+                out = _validate_output(await asyncio.wait_for(crew.kickoff_async(), timeout=remaining))
                 _riempi_sink(usage_sink, model, idx > 0, inizio, crew)
                 return out
             except Exception as exc:
-                errors.append(f"{model}: {exc}")
-    raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors))
+                errors.append(type(exc).__name__)
+            finally:
+                _record_attempt(usage_sink, crew, model, route.reason, started, idx > 0)
+    raise RuntimeError("Tutti i modelli configurati hanno fallito. " + " | ".join(errors)) from None

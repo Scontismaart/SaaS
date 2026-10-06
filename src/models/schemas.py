@@ -19,7 +19,7 @@ class CanaleMessaggio(str, Enum):
 
 
 class MessaggioInput(BaseModel):
-    testo: str
+    testo: str = Field(max_length=12000)
     canale: CanaleMessaggio = Field(default=CanaleMessaggio.DEMO)
     timestamp: datetime = Field(default_factory=datetime.now)
     id_conversazione: str = Field(default="demo-001")

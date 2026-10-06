@@ -8,11 +8,17 @@ Contratto:
 - iss e aud restano verificati.
 """
 
+import base64
+import hashlib
+import hmac
+import json
 import time
 import uuid
+from unittest.mock import Mock
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
+from cryptography.hazmat.primitives import serialization
 from jose import jwk as jose_jwk
 from jose import jwt
 
@@ -169,3 +175,42 @@ async def test_nessuna_chiave_valida_fail_closed(patch_jwks):
     with pytest.raises(deps.HTTPException) as exc:
         await deps.verify_supabase_jwt("qualsiasi.token.qui")
     assert exc.value.status_code == 403
+
+
+@pytest.mark.parametrize("alg,key_factory", [("RS256", _rsa_key), ("ES256", _ec_key)])
+@pytest.mark.parametrize("missing_alg", [False, True])
+@pytest.mark.parametrize("allow_expired", [False, True])
+@pytest.mark.parametrize("exp_offset", [-600, 600])
+async def test_der_public_key_hmac_forgery_rejected(
+    monkeypatch, patch_jwks, alg, key_factory, missing_alg, allow_expired, exp_offset
+):
+    """CVE-2026-85394: public DER bytes must never authorize HS256 JWTs."""
+    key = key_factory()
+    der = key.public_key().public_bytes(
+        serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    def encode(value):
+        return base64.urlsafe_b64encode(value).rstrip(b"=")
+
+    header = encode(json.dumps({"alg": "HS256", "typ": "JWT"}).encode())
+    payload = encode(json.dumps({"sub": "forged-test-user", "aud": AUD, "iss": ISS,
+                                 "exp": int(time.time()) + exp_offset}).encode())
+    signed = header + b"." + payload
+    token = (signed + b"." + encode(hmac.new(der, signed, hashlib.sha256).digest())).decode()
+
+    # Positive control: this is a real library exploit, not an invalid token.
+    assert jwt.decode(token, der, algorithms=[alg, "HS256"], audience=AUD, issuer=ISS,
+                      options={"verify_exp": False})["sub"] == "forged-test-user"
+    jwk = _make_jwk(key, alg)
+    if missing_alg:
+        jwk.pop("alg")
+    await patch_jwks([jwk])
+    decoder = Mock(wraps=jwt.decode)
+    monkeypatch.setattr(jwt, "decode", decoder)
+    with pytest.raises(deps.HTTPException) as exc:
+        await deps.verify_supabase_jwt(token, allow_expired=allow_expired)
+    assert exc.value.status_code == 403
+    assert decoder.called
+    for call in decoder.call_args_list:
+        assert call.kwargs["algorithms"]
+        assert set(call.kwargs["algorithms"]) <= {"RS256", "ES256"}

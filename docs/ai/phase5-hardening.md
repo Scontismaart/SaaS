@@ -24,4 +24,20 @@
 - Provider errors expose coarse exception types only. Business profile validation
   does not log raw profile contents. No real provider is needed by regression tests.
 
-No migration, production deployment, merge, or Phase 6 work is part of this change.
+No migration, production deployment or Phase 6 work is part of this change.
+Merge is permitted only after the required GitHub gates pass and security review approves.
+
+## Dependency audit review (2026-10-06)
+
+`python-jose==3.5.0` has a residual DER public key/HMAC algorithm-confusion flaw
+([upstream report](https://github.com/mpdavis/python-jose/issues/414),
+[CVE-2026-85394](https://osv.dev/vulnerability/CVE-2026-85394)). No newer PyPI
+release is available. This is not a library fix or a false-positive finding.
+The sole production entry point, `verify_supabase_jwt`, explicitly permits only
+RS256/ES256 in all decode paths, including expired-token refresh; never HS256.
+Sixteen regression cases construct genuine DER/HS256 forgeries, demonstrate the
+upstream exploit with a mixed allowlist, and require application rejection with
+403 for RSA/EC JWKS, with/without `alg`, fresh/expired tokens and both refresh modes.
+The reviewed audit residual matches only that exact package version and CVE.
+Other versions, new advisory IDs and incomplete reports still fail closed.
+Reassess this residual whenever the dependency or JWT entry points change.

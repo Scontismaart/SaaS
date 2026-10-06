@@ -47,6 +47,23 @@ async function flush() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+test("enrollment 422 is not mislabeled as an invalid OTP", async () => {
+  const { dom } = setup([
+    { status: 200, body: { aal: "aal1", factors: [] } },
+    { status: 422, body: { detail: "raw provider secret-data" } },
+    { status: 200, body: { aal: "aal1", factors: [] } },
+  ]);
+  await dom.window.MelpisMfa.loadStatus();
+  dom.window.document.getElementById("security-mfa-enroll-start").click();
+  await flush();
+  await flush();
+  const message = dom.window.document.getElementById("security-mfa-status").textContent;
+  assert.match(message, /operazione MFA/);
+  assert.doesNotMatch(message, /Codice errato|secret-data|provider/);
+  assert.equal(dom.window.document.getElementById("security-mfa-enrollment").hidden, true);
+  dom.window.close();
+});
+
 test("MFA enrollment keeps QR and secret transient, promotes session, and clears setup data", async () => {
   const { dom, calls } = setup([
     { status: 200, body: { aal: "aal1", factors: [] } },

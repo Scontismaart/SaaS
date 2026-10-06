@@ -53,10 +53,10 @@
     show("security-mfa-challenge", false);
   }
 
-  function errorMessage(statusCode) {
+  function errorMessage(statusCode, path) {
     if (statusCode === 401) return tr("session_expired", "La sessione è scaduta. Accedi di nuovo.");
     if (statusCode === 409) return tr("conflict", "Controlla lo stato della configurazione MFA e riprova.");
-    if (statusCode === 422) return tr("code_invalid", "Codice errato o scaduto. Controlla l'app e riprova.");
+    if (statusCode === 422 && path === "/verify") return tr("code_invalid", "Codice errato o scaduto. Controlla l'app e riprova.");
     if (statusCode === 429) return tr("rate_limited", "Troppe richieste. Attendi qualche minuto e riprova.");
     if (statusCode === 403) return tr("not_allowed", "La sessione non può completare questa operazione.");
     if (statusCode === 428) return tr("recent_auth_required", "Per configurare l'autenticatore, esci e accedi di nuovo; completa la configurazione entro 5 minuti.");
@@ -74,7 +74,7 @@
       throw new Error(tr("request_error", "Non è stato possibile completare l'operazione MFA. Riprova."));
     }
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(errorMessage(response.status));
+    if (!response.ok) throw new Error(errorMessage(response.status, path));
     return data;
   }
 

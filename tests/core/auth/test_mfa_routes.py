@@ -175,6 +175,52 @@ async def test_enrollment_returns_qr_and_secret_no_store_without_logging(client,
     assert QR_SECRET not in caplog.text
 
 
+@pytest.mark.parametrize("style,count,expected", [
+    ("fill:black;stroke:none", 6000, 200),
+    ("fill:white;stroke:none", 6000, 200),
+    ("fill:url(https://untrusted.test);stroke:none", 1, 502),
+    ("fill:black;stroke:none", 10001, 502),
+])
+async def test_enrollment_handles_bounded_gotrue_rect_qr(client, monkeypatch, caplog, style, count, expected):
+    import base64
+
+    _fake_jwt(monkeypatch)
+    svg = '<svg xmlns="http://www.w3.org/2000/svg">' + (
+        f'<rect x="0" y="0" width="1" height="1" style="{style}"/>' * count
+    ) + '</svg>'
+    bodies = iter([
+        (200, _user()),
+        (200, {"id": FACTOR_ID, "type": "totp", "totp": {"qr_code": svg, "secret": QR_SECRET}}),
+    ])
+    auth_client, _ = _mock_auth_client(monkeypatch, lambda _req: next(bodies))
+    try:
+        response = await client.post("/api/auth/mfa/enroll", headers=_session_headers())
+    finally:
+        await auth_client.aclose()
+    assert response.status_code == expected
+    if expected == 200:
+        assert len(svg) > 32768
+        sanitized = base64.b64decode(response.json()["qr_code"].split(",", 1)[1]).decode()
+        assert "style=" not in sanitized
+        assert 'fill="black"' in sanitized or 'fill="white"' in sanitized
+        assert "url(" not in sanitized
+    assert QR_SECRET not in caplog.text
+
+
+async def test_enrollment_422_does_not_claim_invalid_otp(client, monkeypatch):
+    _fake_jwt(monkeypatch)
+    bodies = iter([(200, _user()), (422, {"error_code": "mfa_totp_enroll_disabled", "msg": "provider secret-data"})])
+    auth_client, _ = _mock_auth_client(monkeypatch, lambda _req: next(bodies))
+    try:
+        response = await client.post("/api/auth/mfa/enroll", headers=_session_headers())
+    finally:
+        await auth_client.aclose()
+    assert response.status_code == 422
+    assert "configurazione MFA" in response.json()["detail"]
+    assert "Codice MFA" not in response.text
+    assert "secret-data" not in response.text
+
+
 async def test_enrollment_blocks_duplicate_verified_and_pending_factors(client, monkeypatch):
     _fake_jwt(monkeypatch)
     auth_client, requests = _mock_auth_client(

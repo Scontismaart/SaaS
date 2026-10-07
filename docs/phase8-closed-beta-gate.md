@@ -1,7 +1,8 @@
 # Phase 8 — closed beta gate
 
-Status: **FAIL / NO-GO**. Phase 7 is incomplete and temporarily deferred.
-An application-wide access-revocation blocker was found in final review.
+Status: **Revocation/JIT micro-fix resolved / closed beta NO-GO**.
+Phase 7 is incomplete and temporarily deferred. The access-revocation finding
+is addressed by the additive lifecycle policy described below.
 Baseline: `origin/main` `2383640889fd1ef12cd141e076caccf489ed2eaa`.
 This separate branch does not contain unmerged Phase 7 changes. No deploy,
 provider configuration, production credentials or real users are in scope.
@@ -20,7 +21,7 @@ provider configuration, production credentials or real users are in scope.
 | python-jose residual CVE-2026-85394 | NON-BLOCKING, mitigated not fixed | RS256/ES256-only verification; exact-version/advisory policy and regression |
 | Staging deployment and provider smoke | DEFERRED BEFORE PUBLIC/PRODUCTION | No deployment in this task |
 | Backup/restore for real customer data | BLOCKER BEFORE REAL CUSTOMER DATA | `docs/DEPLOY.md` explicitly requires a verified encrypted backup/restore drill |
-| Complete access revocation / JIT provisioning | P1 BLOCKER CLOSED BETA | Removing all memberships can create a fresh owner org for a still-valid JWT; an explicit application-level revocation/provisioning policy is required |
+| Complete access revocation / JIT provisioning | RESOLVED | Durable server-only lifecycle prevents reprovisioning and gates old JWTs |
 
 `roadmap-pubblicazione.md` is absent from this baseline. `docs/product/roadmap.md`
 is a stub; the historical master launch roadmap is not current certification.
@@ -49,7 +50,7 @@ delivery, legal approval, production secret rotation or backup recovery.
   The web image now normalizes that shell script to LF during build. The normal
   nginx entrypoint is retained; missing legal configuration still blocks startup.
 
-### Autonomous verification
+### Initial release-guard verification (before migration 059)
 
 - Disposable PostgreSQL 16/pgvector: base schemas, triggers and all 55 ordered
   `0*.sql` migrations applied from zero and reapplied successfully; 41 RLS
@@ -85,6 +86,26 @@ delivery, legal approval, production secret rotation or backup recovery.
   legal config blocks web; incomplete production config blocks API startup.
 - Graphify: one successful update; optional SQL parser unavailable, non-blocking.
 
+### Final revocation/JIT micro-fix verification
+
+- Real PostgreSQL and cryptographically verified RSA JWT regressions: 17 passed.
+  Same JWT after membership removal is denied; no organization/membership is
+  recreated. Disabled accounts, OAuth, multi-org, concurrent JIT/disable,
+  profile recreation, migration replay and direct authenticated-role RLS covered.
+- Auth/security plus relevant tenant, AI and webhook tests: 601 passed.
+- Full Python coverage: 2,506 unique cases. The logical run was resumed without
+  repeating completed cases after a public embedding-model download stalled;
+  the remaining run used the verified public cache offline. One legacy test
+  expected RuntimeError instead of the new earlier PermissionError denial.
+  Its exact expectation and zero-side-effect assertions were corrected, then
+  registration/revocation tests rerun. Final coverage: 2,473 passed, 33 existing
+  live-provider skips, zero unresolved failures/errors. PR CI runs the complete
+  suite afresh on the committed tree; its result is the final release gate.
+- Ruff CI selectors, Python compilation, tenant guard and diff check PASS.
+  No frontend or dependency edits; standard CI reconfirms their existing gates.
+- Micro-fix Graphify update attempted but extraction stalled; stopped,
+  non-blocking. No staging/production or Phase 7 resources touched.
+
 ## Operational safety and objective stop criteria
 
 The first permitted local cohort uses synthetic data only, at most **10 named
@@ -96,33 +117,48 @@ No production/staging Auth settings were changed or certified here.
 [Auth configuration](https://supabase.com/docs/guides/auth/general-configuration)
 documents the provider-side control.
 
-**Access-removal gate: FAIL.** Removing all memberships is not a reliable account
-lockout. `get_organization_context` auto-provisions an owner organization when
-memberships are empty, and the OAuth callback invokes the same provisioning
-method. `OrganizationRepository.get_or_create_organization_with_owner` creates a
-fresh trial/owner membership for an existing profile. A valid JWT can therefore
-regain application access, although it does not regain the removed tenant's data.
-The actual dependency was reproduced with an already-verified synthetic identity
-and empty-then-created memberships; repository SQL was reviewed to confirm that
-this is not an invented mock-only behavior.
+### Durable access removal / first provisioning (migration 059)
 
-Provider ban and global logout stop new login/refresh but are not instant
-invalidation of every issued JWT. Application logout only deny-lists tokens
-presented by that logout; it is not a user-wide revocation mechanism. Do not use
-membership deletion, browser cookie deletion or destructive profile deletion as
-a claimed safe global lockout. See [admin ban](https://supabase.com/docs/reference/javascript/auth-admin-updateuserbyid)
-and [session semantics](https://supabase.com/docs/guides/auth/sessions).
+`auth_access_lifecycle` is server-only, keyed to the immutable Auth identity,
+not the editable profile or a JWT/client flag. New Auth identities receive a
+never-provisioned row. Every membership grant, including invitation acceptance,
+marks provisioning atomically; membership/profile removal never resets history.
+Existing identities are conservatively backfilled as previously provisioned:
+the old schema cannot prove that a legacy identity with no memberships is new.
+Migration replay preserves new-user, provisioned and disabled states.
 
-Closing this gate requires a separately reviewed application account/session
-revocation policy that also constrains both JIT call sites. This changes the Auth
-provisioning model, not release configuration, so Phase 8 stops short of that
-architectural change. No auth/tenant source behavior was altered to conceal the
-finding. Until resolved and regression-tested, do not onboard external beta users.
+All provisioning wrappers share one row-locked policy: enabled existing members
+reuse their organization; enabled never-provisioned users can create one org;
+previously provisioned users without memberships and disabled/missing-state
+identities are denied. Removing one membership preserves other legitimate orgs.
+OAuth and email-confirmation provisioning use this same repository policy.
 
-The automated security suite remains green, but does not test account-wide
-revocation after deleting **every** membership; a passing suite is not proof of
-this missing operational capability. Auth/session certification from Phase 6 is
-preserved for its original scope, not extended to this newly identified case.
+For an operator, use the trusted backend capability
+`await repo.disable_auth_access(auth_user_id)` with an explicitly verified QA/beta
+principal UUID. This idempotently sets `disabled_at`, shares the JIT row lock,
+and never deletes profiles, memberships, organizations or tenant data. No public
+route or write RPC exposes this capability. On an authorized administrative DB
+connection the equivalent parameterized operation is:
+
+```sql
+UPDATE public.auth_access_lifecycle
+SET disabled_at = COALESCE(disabled_at, NOW()) WHERE auth_user_id = $1::uuid;
+```
+
+After commit, already-issued JWTs cannot access protected app routes, obtain app
+login/refresh cookies, modify credentials/MFA through the app, or trigger JIT.
+Missing state denies access. A restrictive profile RLS gate additionally denies
+the direct Supabase tenant-data path; existing tenant policies resolve membership
+through profiles. The own-subject read-only SQL helper cannot change state.
+Client roles cannot edit the lifecycle or execute its mutation trigger functions.
+
+This is an application/data cutoff, not deletion of the provider identity.
+Supabase Auth ban/global logout remain optional complementary operator actions;
+they are not substitutes for this durable policy. Requests already admitted before
+disable commits can finish; JIT and invitation grants serialize with disable.
+Do not clear lifecycle history to restore access or delete/recreate a profile.
+Any reactivation requires a separately authorized operator review and explicit
+membership grant; no automatic reactivation endpoint is added here.
 
 CRM AI tools remain source-owned OFF and cannot be enabled by clients/prompts.
 Tenant suspension/quota, budget/rate-limit kill switches and deterministic
@@ -152,3 +188,5 @@ Rollback follows `docs/DEPLOY.md`: retain previous API/web digest references,
 restore those references together, and do not remove additive migrations. A
 failed migration requires stopped traffic and a verified restore. Artifact and
 runbook checks do not certify a real host rollback or encrypted off-site recovery.
+Do not serve authenticated traffic with pre-lifecycle application code after
+adopting migration 059: that code does not enforce the durable revocation gate.

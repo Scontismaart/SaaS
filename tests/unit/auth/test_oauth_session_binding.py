@@ -83,6 +83,7 @@ async def flow_env(request, monkeypatch):
         return dict(membership) if membership and org == ORG_A else None
 
     repo = SimpleNamespace(
+        get_auth_access_allowed=AsyncMock(return_value=True),
         get_memberships_by_auth=AsyncMock(return_value=[dict(membership)]),
         get_membership_by_auth=AsyncMock(side_effect=exact_membership),
     )
@@ -241,8 +242,12 @@ async def test_missing_or_invalid_binding_key_fails_closed_at_start(flow_env, mo
 async def test_session_id_stays_internal(flow_env):
     env = flow_env
     from src.core.auth.routes import me
-    user = await dependencies.get_current_user(SimpleNamespace(), token="session-a")
+    request = SimpleNamespace(
+        app=SimpleNamespace(state=SimpleNamespace(repo=env.repo)),
+    )
+    user = await dependencies.get_current_user(request, token="session-a")
     assert user["session_id"] == SESSION_A
+    env.repo.get_auth_access_allowed.assert_awaited_once_with(USER_A)
     assert "session_id" not in await me(user=user)
 
 

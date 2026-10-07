@@ -46,9 +46,22 @@ async def test_create_organization_with_owner(repo, pg_pool):
 
 
 @pytest.mark.asyncio
-async def test_create_organization_fails_without_user_profile(repo):
+async def test_create_organization_fails_without_user_profile(repo, pg_pool):
     # Nessun utente in auth.users: fail-closed, nessuna org orfana
-    with pytest.raises(RuntimeError):
+    async with pg_pool.acquire() as conn:
+        before = await conn.fetchrow(
+            "SELECT (SELECT count(*) FROM organizations) AS organizations, "
+            "(SELECT count(*) FROM organization_memberships) AS memberships"
+        )
+
+    with pytest.raises(PermissionError, match="Account access denied"):
         await repo.create_organization_with_owner(
             str(uuid.uuid4()), "Ghost Activity", trial_days=14
         )
+
+    async with pg_pool.acquire() as conn:
+        after = await conn.fetchrow(
+            "SELECT (SELECT count(*) FROM organizations) AS organizations, "
+            "(SELECT count(*) FROM organization_memberships) AS memberships"
+        )
+    assert after == before

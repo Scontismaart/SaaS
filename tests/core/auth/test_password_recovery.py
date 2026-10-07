@@ -12,6 +12,8 @@ Contratto:
 import httpx
 import pytest
 import respx
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 pytestmark = pytest.mark.asyncio
 
@@ -49,13 +51,19 @@ def set_env(monkeypatch):
 
 
 @pytest.fixture
-async def client():
+async def client(monkeypatch):
     from fastapi import FastAPI
 
     from src.core.auth.routes import router as auth_router
 
     app = FastAPI()
     app.include_router(auth_router)
+    app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
+
+    async def verify(_token, **_kwargs):
+        return {"sub": "recovery-user", "email": "owner@test.com"}
+
+    monkeypatch.setattr("src.core.auth.dependencies.verify_supabase_jwt", verify)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
@@ -110,6 +118,17 @@ class TestRecover:
 
 
 class TestReset:
+    @respx.mock
+    async def test_reset_disabled_account_is_rejected_before_supabase_update(self, client):
+        client._transport.app.state.repo.get_auth_access_allowed.return_value = False
+        route = respx.put(f"{SUPABASE}/auth/v1/user").respond(200)
+        response = await client.post(
+            "/api/auth/reset",
+            json={"access_token": "recovery-token-123", "password": "Nuova-Passw0rd!"},
+        )
+        assert response.status_code == 403
+        assert not route.called
+
     @respx.mock
     async def test_reset_token_valido_200_e_put_supabase(self, client):
         route = respx.put(f"{SUPABASE}/auth/v1/user").respond(

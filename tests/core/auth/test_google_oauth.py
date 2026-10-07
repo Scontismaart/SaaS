@@ -34,6 +34,7 @@ class FakeRepo:
     def __init__(self, memberships=None):
         self.memberships = memberships or []
         self.create_calls = []
+        self.guarded_calls = []
 
     async def get_memberships_by_auth(self, auth_user_id):
         return self.memberships
@@ -41,7 +42,9 @@ class FakeRepo:
     async def get_or_create_organization_with_owner(
         self, auth_user_id, nome_attivita, trial_days
     ):
-        self.create_calls.append((auth_user_id, nome_attivita, trial_days))
+        self.guarded_calls.append((auth_user_id, nome_attivita, trial_days))
+        if not self.memberships:
+            self.create_calls.append((auth_user_id, nome_attivita, trial_days))
         return {"organization_id": "org-1"}
 
 
@@ -451,11 +454,12 @@ class TestProvisioningPrimoAccesso:
         repo = _get_repo(oauth_client._transport.app)
         assert repo.create_calls[0][1] == "owner"
 
-    async def test_utente_gia_membro_non_riprovisiona(self, oauth_client, monkeypatch):
+    async def test_utente_gia_membro_esegue_guardia_senza_riprovisionare(self, oauth_client, monkeypatch):
         app = oauth_client._transport.app
         app.state.repo = FakeRepo(memberships=[{"organization_id": "org-1"}])
         resp = await self._do_callback(oauth_client, monkeypatch)
         assert resp.headers["location"] == "/app/"
+        assert len(_get_repo(app).guarded_calls) == 1
         assert _get_repo(app).create_calls == []
 
     async def test_provisioning_failure_fail_closed(self, oauth_client, monkeypatch):

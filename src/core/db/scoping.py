@@ -31,6 +31,7 @@ from typing import NamedTuple
 TABLE_SCOPE_CLASSIFICATION: dict[str, tuple[str, str]] = {
     "organizations": ("system/root", "Tenant root rows; selected by organization primary key."),
     "user_profiles": ("system/root", "User principal profile keyed by auth user, may belong to multiple organizations."),
+    "auth_access_lifecycle": ("system/root", "Server-only durable principal access and provisioning history keyed by immutable auth identity."),
     "organization_memberships": ("direct", "Membership is owned by exactly one organization."),
     "audit_log": ("direct", "Each audit event carries its organization_id."),
     "processed_stripe_events": ("platform/infra", "Stripe event idempotency ledger; organization_id is optional and event processing is platform-wide."),

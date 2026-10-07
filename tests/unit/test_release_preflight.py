@@ -53,6 +53,7 @@ def common_config():
         "SUPABASE_ANON_KEY": "anon-unit-safe-value",
         "ENCRYPTION_KEY": Fernet.generate_key().decode(),
         "PUBLIC_APP_URL": "https://melpis.it",
+        "CORS_ORIGINS": "https://melpis.it,https://app.melpis.it",
         "META_APP_SECRET": "meta-unit-safe-value",
         "META_VERIFY_TOKEN": "verify-unit-safe-value",
         "GROQ_API_KEY": "gsk_unit_safe_value",
@@ -119,6 +120,80 @@ def test_valid_commercial_bootstrap_configuration_passes():
 
 def test_valid_sandbox_configuration_passes():
     assert validate(sandbox_config()) == []
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    (
+        ("DATABASE_URL", "postgresql://u:p@db/x?sslmode=disable#sslmode=require"),
+        ("DATABASE_URL", "postgresql://u:sslmode=require@db/x?sslmode=disable"),
+        ("DATABASE_URL", "postgresql://u:p@db/x?sslmode=require&sslmode=disable"),
+        ("DATABASE_URL", "https://db/x?sslmode=require"),
+        ("DATABASE_URL", "postgresql://u:p@db:notaport/x?sslmode=require"),
+        ("DATABASE_URL", "postgresql://user:pass@db/x?sslmode=require"),
+        ("SUPABASE_URL", "http://project.supabase.co"),
+        ("SUPABASE_URL", "https://user:private@project.supabase.co"),
+        ("SUPABASE_ANON_KEY", "changeme"),
+        ("CORS_ORIGINS", "*"),
+        ("CORS_ORIGINS", "http://melpis.it"),
+        ("CORS_ORIGINS", "https://unapproved.invalid"),
+        ("CORS_ORIGINS", "https://melpis.it/path"),
+        ("CORS_ORIGINS", "https://user:private@melpis.it"),
+        ("CORS_ORIGINS", ""),
+        ("CSRF_TRUSTED_ORIGINS", "https://unapproved.invalid"),
+        ("TRUSTED_PROXY_CIDRS", "::/0"),
+        ("TRUSTED_PROXY_CIDRS", "0.0.0.0/1"),
+        ("TRUSTED_PROXY_CIDRS", ""),
+    ),
+)
+def test_network_config_fails_closed_in_preflight_and_runtime(monkeypatch, name, value):
+    from src.core.startup_guard import assert_production_safe
+
+    config = sandbox_config()
+    config[name] = value
+    assert any(name in finding for finding in validate(config))
+    for key, item in config.items():
+        monkeypatch.setenv(key, item)
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    with pytest.raises(RuntimeError, match=name):
+        assert_production_safe()
+
+
+@pytest.mark.parametrize("mode", ("require", "verify-ca", "verify-full"))
+def test_network_config_accepts_effective_tls_modes(monkeypatch, mode):
+    from src.core.startup_guard import assert_production_safe
+
+    config = sandbox_config()
+    config["DATABASE_URL"] = f"postgresql://u:p@db/x?sslmode={mode}"
+    assert validate(config) == []
+    for key, item in config.items():
+        monkeypatch.setenv(key, item)
+    monkeypatch.delenv("DEMO_MODE", raising=False)
+    assert_production_safe()
+
+
+def test_network_failures_never_echo_configuration_values():
+    from src.core.release_config import network_config_errors
+
+    config = sandbox_config()
+    config.update({
+        "DATABASE_URL": "postgresql://u:private-value@db/x?sslmode=disable",
+        "SUPABASE_URL": "https://u:private-value@project.supabase.co",
+        "CORS_ORIGINS": "https://u:private-value@melpis.it",
+    })
+    findings = network_config_errors(config)
+    assert len(findings) == 3
+    assert "private-value" not in " ".join(findings)
+
+
+def test_temporary_public_host_requires_its_own_explicit_origin():
+    from src.core.release_config import network_config_errors
+
+    config = sandbox_config()
+    config["PUBLIC_APP_URL"] = "https://beta.melpis.test"
+    assert any("CORS_ORIGINS" in finding for finding in network_config_errors(config))
+    config["CORS_ORIGINS"] = "https://beta.melpis.test"
+    assert network_config_errors(config) == []
 
 
 @pytest.mark.parametrize("name", LEGAL_IDENTITY_ENV_NAMES)

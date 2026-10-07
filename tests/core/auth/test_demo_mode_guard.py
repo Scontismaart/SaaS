@@ -11,6 +11,12 @@ from src.core.startup_guard import STRIPE_PRICE_ENV_NAMES, assert_production_saf
 def sandbox_production_baseline(monkeypatch):
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "true")
     monkeypatch.setenv("PUBLIC_APP_URL", "https://app.example.test")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:p@db/x?sslmode=require")
+    monkeypatch.setenv("SUPABASE_URL", "https://project.supabase.co")
+    monkeypatch.setenv("SUPABASE_ANON_KEY", "anon-unit-safe-value")
+    monkeypatch.setenv("CORS_ORIGINS", "https://app.example.test")
+    monkeypatch.setenv("TRUSTED_PROXY_CIDRS", "172.30.0.0/24")
+    monkeypatch.delenv("CSRF_TRUSTED_ORIGINS", raising=False)
     monkeypatch.setenv("LAUNCH_PROFILE", "sandbox")
     monkeypatch.setenv("SANDBOX_ONLY", "true")
     monkeypatch.setenv("LLM_COST_POLICY", "free_only")

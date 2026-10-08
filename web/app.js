@@ -7168,7 +7168,9 @@ async function caricaStatoWhatsApp() {
   const phoneDisplay = document.getElementById("integ-wa-phone-number-display");
   const connectedTitle = document.getElementById("integ-wa-connected-title");
   const connectedSub = document.getElementById("integ-wa-connected-sub");
+  const receptionStatus = document.getElementById("integ-wa-reception-status");
   const statoEl = document.getElementById("integ-whatsapp-stato");
+  if (receptionStatus) receptionStatus.textContent = "Non verificata";
 
   try {
     const res = await apiFetch(`${API_BASE}/api/whatsapp/settings`);
@@ -7199,7 +7201,10 @@ async function caricaStatoWhatsApp() {
       if (wizardCard) wizardCard.hidden = true;
       if (phoneDisplay) phoneDisplay.textContent = d.display_phone_number || d.phone_number_id || "Numero collegato";
       if (connectedTitle) connectedTitle.textContent = d.verified_name || "WhatsApp Business";
-      if (connectedSub) connectedSub.textContent = "Connesso e pronto a rispondere";
+      if (connectedSub) connectedSub.textContent = "Credenziali collegate; ricezione e consegna da verificare.";
+      if (receptionStatus) receptionStatus.textContent = d.webhook_active === true
+        ? "Da verificare con un messaggio reale"
+        : "Non attiva: configurazione webhook incompleta";
       if (statoEl) _aggiornaBadgeStato(statoEl, "connected");
     } else {
       if (connectedCard) connectedCard.hidden = true;

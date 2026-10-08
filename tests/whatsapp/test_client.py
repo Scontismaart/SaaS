@@ -58,14 +58,14 @@ class TestMetaClient:
         await client.close()
 
     @respx.mock
-    async def test_send_message_5xx_retryable(self, tenant_config, text_payload):
+    async def test_send_message_5xx_not_retried(self, tenant_config, text_payload):
         url = f"https://graph.facebook.com/v20.0/{tenant_config.phone_number_id}/messages"
         mock_route = respx.post(url)
         mock_route.respond(500, json={"error": {"message": "Internal error"}})
         client = MetaClient(tenant_config)
         with pytest.raises(httpx.HTTPStatusError):
             await client.send_message(text_payload)
-        assert mock_route.call_count == 3
+        assert mock_route.call_count == 1
         await client.close()
 
     @respx.mock
@@ -80,24 +80,38 @@ class TestMetaClient:
         await client.close()
 
     @respx.mock
-    async def test_send_message_timeout(self, tenant_config, text_payload):
+    async def test_send_message_ambiguous_timeout_not_retried(self, tenant_config, text_payload):
         url = f"https://graph.facebook.com/v20.0/{tenant_config.phone_number_id}/messages"
         respx.post(url).side_effect = httpx.TimeoutException("Request timed out")
         client = MetaClient(tenant_config)
         with pytest.raises(httpx.TimeoutException):
             await client.send_message(text_payload)
+        assert respx.calls.call_count == 1
         await client.close()
 
     @respx.mock
-    async def test_send_message_retry_3x_log(self, tenant_config, text_payload, caplog):
+    async def test_send_message_error_log_excludes_response_body(self, tenant_config, text_payload, caplog):
         caplog.set_level("WARNING")
         url = f"https://graph.facebook.com/v20.0/{tenant_config.phone_number_id}/messages"
         mock_route = respx.post(url)
-        mock_route.respond(500, json={"error": {"message": "Internal error"}})
+        mock_route.respond(500, json={"error": {"message": "private-provider-detail"}})
         client = MetaClient(tenant_config)
         with pytest.raises(httpx.HTTPStatusError):
             await client.send_message(text_payload)
-        assert mock_route.call_count == 3
+        assert mock_route.call_count == 1
         assert any("500" in r.message for r in caplog.records)
-        assert any("Internal error" in r.message for r in caplog.records)
+        assert all("private-provider-detail" not in r.message for r in caplog.records)
+        await client.close()
+
+    @respx.mock
+    async def test_send_message_connect_timeout_retries(self, tenant_config, text_payload):
+        url = f"https://graph.facebook.com/v20.0/{tenant_config.phone_number_id}/messages"
+        route = respx.post(url).mock(
+            side_effect=[httpx.ConnectTimeout("connect"), httpx.ConnectTimeout("connect"),
+                         httpx.ConnectTimeout("connect")]
+        )
+        client = MetaClient(tenant_config)
+        with pytest.raises(httpx.ConnectTimeout):
+            await client.send_message(text_payload)
+        assert route.call_count == 3
         await client.close()

@@ -7630,11 +7630,14 @@ async function caricaStatoCalendar() {
 }
 
 document.getElementById("integ-calendar-connect")?.addEventListener("click", async () => {
+  const url = new URL(`${API_BASE}/api/calendar/auth`, window.location.origin);
+  const selectedOrg = localStorage.getItem("melpis_selected_organization");
+  if (selectedOrg) url.searchParams.set("organization_id", selectedOrg);
   try {
-    const checkRes = await apiFetch(`${API_BASE}/api/calendar/auth`, { method: "GET", redirect: "manual" });
-    if (checkRes.status === 403) return;
-  } catch (_) {}
-  window.location.href = `${API_BASE}/api/calendar/auth`;
+    const checkRes = await apiFetch(url.href, { method: "GET", redirect: "manual" });
+    if (checkRes.status >= 400) return;
+  } catch (_) { return; }
+  window.location.href = url.href;
 });
 
 document.getElementById("integ-calendar-disconnect")?.addEventListener("click", async () => {
@@ -7776,11 +7779,14 @@ if (document.getElementById("reviews-google-summary-status")) {
 }
 
 document.getElementById("integ-reviews-connect")?.addEventListener("click", async () => {
+  const url = new URL(`${API_BASE}/api/reviews/google/auth`, window.location.origin);
+  const selectedOrg = localStorage.getItem("melpis_selected_organization");
+  if (selectedOrg) url.searchParams.set("organization_id", selectedOrg);
   try {
-    const checkRes = await apiFetch(`${API_BASE}/api/reviews/google/auth`, { method: "GET", redirect: "manual" });
-    if (checkRes.status === 403) return;
-  } catch (_) {}
-  window.location.href = `${API_BASE}/api/reviews/google/auth`;
+    const checkRes = await apiFetch(url.href, { method: "GET", redirect: "manual" });
+    if (checkRes.status >= 400) return;
+  } catch (_) { return; }
+  window.location.href = url.href;
 });
 
 document.getElementById("integ-reviews-sync")?.addEventListener("click", async () => {

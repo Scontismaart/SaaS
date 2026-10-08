@@ -72,9 +72,14 @@ def test_all_credential_writes_require_owner_and_mfa(
     }
     identity = {
         "source": "jwt", "organization_id": "org-1", "ruolo": role, "aal": aal,
+        "auth_user_id": "33333333-3333-3333-3333-333333333333",
+        "user_id": "44444444-4444-4444-4444-444444444444",
     }
     app = FastAPI()
     app.include_router(routers[router_name])
+    app.state.repo = SimpleNamespace(
+        get_memberships_by_auth=AsyncMock(return_value=[identity]),
+    )
     app.dependency_overrides[get_current_user] = lambda: identity
     app.dependency_overrides[get_organization_context] = lambda: identity
     response = TestClient(app).request(method, path, json=payload)
@@ -194,6 +199,7 @@ async def test_oauth_failure_has_safe_redirect_and_no_secret(channel, caplog):
     result = await fails()
     assert result.headers["location"] == f"/app/?{channel}=error&reason=server_error"
     assert "secret-token" not in caplog.text
+    assert "error_type=RuntimeError" in caplog.text
 
 
 class _OneShotNonceConnection:

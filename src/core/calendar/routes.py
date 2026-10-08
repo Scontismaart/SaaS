@@ -12,7 +12,8 @@ from google_auth_oauthlib.flow import Flow
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.oauth_callback import safe_oauth_callback
 from src.core.auth.oauth_state import (
-    create_bound_oauth_nonce, is_bound_oauth_nonce, validate_oauth_callback_context,
+    create_bound_oauth_nonce, exchange_google_oauth_token, is_bound_oauth_nonce,
+    oauth_pkce_verifier, oauth_start_owner, validate_oauth_callback_context,
 )
 from src.core.google_feature_flags import google_calendar_enabled
 
@@ -60,7 +61,7 @@ def _require_calendar_enabled() -> None:
 @router.get("/auth")
 async def calendar_auth(
     request: Request,
-    user: dict = Depends(require_ruolo("owner")),
+    user: dict = Depends(oauth_start_owner),
     mfa: dict = Depends(require_mfa()),
 ):
     org_id = user.get("organization_id")
@@ -77,6 +78,7 @@ async def calendar_auth(
         )
 
     flow = _make_flow()
+    flow.code_verifier = oauth_pkce_verifier("calendar", org_id, nonce)
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -134,10 +136,10 @@ async def calendar_oauth2callback(request: Request):
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?calendar=error&reason=missing_code")
 
     flow = _make_flow()
+    flow.code_verifier = oauth_pkce_verifier("calendar", org_id, nonce)
     # fetch_token e' una chiamata di rete sincrona bloccante: offload su
     # thread per non freeze-are l'event loop FastAPI.
-    import asyncio as _asyncio
-    await _asyncio.to_thread(flow.fetch_token, code=code)
+    await exchange_google_oauth_token(flow, code, SCOPES)
     creds = flow.credentials
 
     # Google non rilascia refresh_token se la app e' in stato "Testing"
@@ -175,7 +177,6 @@ async def calendar_oauth2callback(request: Request):
                    access_token = EXCLUDED.access_token,
                    refresh_token = EXCLUDED.refresh_token,
                    token_expiry = EXCLUDED.token_expiry,
-                   sync_enabled = true,
                    updated_at = NOW()""",
             org_id,
             enc_access,

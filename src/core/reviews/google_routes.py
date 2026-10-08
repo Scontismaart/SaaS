@@ -14,7 +14,8 @@ from src.api.routes.common import check_feature_blocked_by_plan
 from src.core.auth.dependencies import require_ruolo, require_mfa
 from src.core.auth.oauth_callback import safe_oauth_callback
 from src.core.auth.oauth_state import (
-    create_bound_oauth_nonce, is_bound_oauth_nonce, validate_oauth_callback_context,
+    create_bound_oauth_nonce, exchange_google_oauth_token, is_bound_oauth_nonce,
+    oauth_pkce_verifier, oauth_start_owner, validate_oauth_callback_context,
 )
 from src.core.google_feature_flags import google_business_enabled
 from src.core.reviews.google_service import GoogleBusinessService
@@ -75,7 +76,7 @@ def _require_business_enabled() -> None:
 @router.get("/auth")
 async def google_reviews_auth(
     request: Request,
-    user: dict = Depends(require_ruolo("owner")),
+    user: dict = Depends(oauth_start_owner),
     mfa: dict = Depends(require_mfa()),
 ):
     org_id = user.get("organization_id")
@@ -97,6 +98,7 @@ async def google_reviews_auth(
         )
 
     flow = _make_flow()
+    flow.code_verifier = oauth_pkce_verifier("reviews_google", org_id, nonce)
     auth_url, _ = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -154,7 +156,8 @@ async def google_reviews_oauth2callback(request: Request):
         return RedirectResponse(url=f"{FRONTEND_REDIRECT}?reviews_google=error&reason=missing_code")
 
     flow = _make_flow()
-    await asyncio.to_thread(flow.fetch_token, code=code)
+    flow.code_verifier = oauth_pkce_verifier("reviews_google", org_id, nonce)
+    await exchange_google_oauth_token(flow, code, SCOPES)
     creds = flow.credentials
 
     if not creds.refresh_token:

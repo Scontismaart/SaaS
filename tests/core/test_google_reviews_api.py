@@ -8,6 +8,7 @@ per external_id.
 from datetime import datetime, timedelta, timezone
 import json
 import asyncio
+import uuid
 from types import SimpleNamespace
 
 import pytest
@@ -50,13 +51,32 @@ async def async_client(repo, pg_pool, monkeypatch, sample_org, other_org, instal
     app.state.pool = pg_pool
     service = GoogleBusinessService(repo=repo, encryption_key=ENCRYPTION_KEY)
     app.state.reviews_service = service
-    install_test_identity(app, API_KEY, default_org_id=sample_org["id"])
+    # OAuth start resolves an exact membership from the verified Auth identity,
+    # rather than trusting the organization-context override used by old tests.
+    owner_id = uuid.uuid4()
+    await pg_pool.execute(
+        "INSERT INTO auth.users (id, email) VALUES ($1, $2)",
+        owner_id, "oauth-owner@example.test",
+    )
+    await pg_pool.execute(
+        """INSERT INTO user_profiles (id, auth_user_id, email)
+           VALUES ($1, $1, $2)
+           ON CONFLICT (auth_user_id) DO UPDATE SET id = EXCLUDED.id""",
+        owner_id, "oauth-owner@example.test",
+    )
+    await pg_pool.execute(
+        "INSERT INTO organization_memberships (organization_id, user_id, ruolo) "
+        "VALUES ($1, $2, 'owner')",
+        sample_org["id"], owner_id,
+    )
+    install_test_identity(app, API_KEY, default_org_id=sample_org["id"], user_id=str(owner_id))
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         try:
             yield c, service
         finally:
             app.dependency_overrides.clear()
+            await pg_pool.execute("DELETE FROM auth.users WHERE id = $1", owner_id)
 
 
 def _headers(org_id):
@@ -131,6 +151,144 @@ async def test_auth_richiede_mfa_owner(async_client, sample_org):
     resp = await client.get("/api/reviews/google/auth", headers={"Authorization": f"Bearer {API_KEY}-aal1"})
     assert resp.status_code == 403
     assert resp.headers["x-mfa-required"] == "true"
+
+
+@pytest.mark.parametrize("denied_context", ["foreign", "revoked", "staff"])
+async def test_oauth_start_checks_database_membership_before_nonce(
+    async_client, pg_pool, sample_org, other_org, denied_context,
+):
+    client, _ = async_client
+    selected = sample_org["id"]
+    if denied_context == "foreign":
+        selected = other_org["id"]
+    elif denied_context == "revoked":
+        await pg_pool.execute(
+            "DELETE FROM organization_memberships WHERE organization_id = $1",
+            selected,
+        )
+    else:
+        await pg_pool.execute(
+            "UPDATE organization_memberships SET ruolo = 'staff' WHERE organization_id = $1",
+            selected,
+        )
+    response = await client.get(
+        "/api/reviews/google/auth",
+        params={"organization_id": str(selected)},
+        headers={"Authorization": f"Bearer {API_KEY}"},
+    )
+    assert response.status_code == 403
+    assert await pg_pool.fetchval(
+        "SELECT COUNT(*) FROM oauth_nonces WHERE organization_id = ANY($1::uuid[])",
+        [sample_org["id"], other_org["id"]],
+    ) == 0
+
+
+async def test_calendar_oauth_reconnect_preserves_disabled_sync_and_fresh_default(
+    async_client, pg_pool, sample_org, other_org, repo, monkeypatch,
+):
+    from src.api.main import app
+    from src.core.auth.oauth_state import create_bound_oauth_nonce
+    from src.core.calendar import routes as calendar_routes
+    from src.core.calendar.service import GoogleCalendarService
+
+    monkeypatch.setenv("GOOGLE_CALENDAR_ENABLED", "true")
+    monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
+    client, _ = async_client
+    owner_id = await pg_pool.fetchval(
+        "SELECT user_id FROM organization_memberships WHERE organization_id = $1",
+        sample_org["id"],
+    )
+    await pg_pool.execute(
+        "INSERT INTO organization_memberships (organization_id, user_id, ruolo) "
+        "VALUES ($1, $2, 'owner')",
+        other_org["id"], owner_id,
+    )
+    callback_user = {
+        "source": "jwt",
+        "aal": "aal2",
+        "auth_user_id": str(owner_id),
+        "session_id": f"test-session-{owner_id}",
+    }
+    async def verify_test_session(_token):
+        return {
+            "sub": str(owner_id),
+            "session_id": callback_user["session_id"],
+            "aal": "aal2",
+        }
+
+    monkeypatch.setattr(
+        "src.core.auth.dependencies.verify_supabase_jwt", verify_test_session,
+    )
+    monkeypatch.setattr(
+        "src.core.auth.dependencies.is_token_revoked", AsyncMock(return_value=False),
+    )
+    service = GoogleCalendarService(repo=repo, encryption_key=ENCRYPTION_KEY)
+    monkeypatch.setattr(app.state, "calendar_service", service, raising=False)
+    monkeypatch.setattr(calendar_routes, "google_calendar_enabled", lambda: True)
+
+    flow = SimpleNamespace(
+        oauth2session=SimpleNamespace(token={}),
+        credentials=SimpleNamespace(
+            token="synthetic-access-token",
+            refresh_token="synthetic-refresh-token",
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1),
+        ),
+    )
+
+    async def mock_exchange(_flow, code, required_scopes):
+        assert code == "synthetic-code"
+        _flow.oauth2session.token = {"scope": " ".join(required_scopes)}
+
+    monkeypatch.setattr(calendar_routes, "_make_flow", lambda: flow)
+    monkeypatch.setattr(calendar_routes, "exchange_google_oauth_token", mock_exchange)
+    client.cookies.set("wa_at", API_KEY)
+
+    async def callback_for(org_id):
+        nonce = create_bound_oauth_nonce("calendar", str(org_id), callback_user)
+        await pg_pool.execute(
+            "INSERT INTO oauth_nonces (nonce, organization_id, created_at) "
+            "VALUES ($1, $2, NOW())",
+            nonce, org_id,
+        )
+        return await client.get(
+            "/api/calendar/oauth2callback",
+            params={"state": f"{org_id}:{nonce}", "code": "synthetic-code"},
+        )
+
+    encrypted_access = service.encrypt_secret("old-access-token")
+    encrypted_refresh = service.encrypt_secret("old-refresh-token")
+    await pg_pool.execute(
+        """INSERT INTO google_calendar_credentials
+           (organization_id, access_token, refresh_token, token_expiry,
+            calendar_id, sync_enabled)
+           VALUES ($1, $2, $3, NOW() + INTERVAL '30 days', 'calendar-to-preserve', false)""",
+        sample_org["id"], encrypted_access, encrypted_refresh,
+    )
+
+    reconnect = await callback_for(sample_org["id"])
+    assert reconnect.status_code == 307
+    assert reconnect.headers["location"] == "/app/?calendar=connected"
+    reconnected = await pg_pool.fetchrow(
+        """SELECT access_token, refresh_token, token_expiry, calendar_id, sync_enabled
+           FROM google_calendar_credentials WHERE organization_id = $1""",
+        sample_org["id"],
+    )
+    assert reconnected["sync_enabled"] is False
+    assert reconnected["calendar_id"] == "calendar-to-preserve"
+    assert service._decrypt(reconnected["access_token"]) == "synthetic-access-token"
+    assert service._decrypt(reconnected["refresh_token"]) == "synthetic-refresh-token"
+    assert "synthetic-access-token" not in reconnected["access_token"]
+    assert "synthetic-refresh-token" not in reconnected["refresh_token"]
+    assert abs((reconnected["token_expiry"] - flow.credentials.expiry).total_seconds()) < 1
+
+    fresh_connect = await callback_for(other_org["id"])
+    assert fresh_connect.status_code == 307
+    assert fresh_connect.headers["location"] == "/app/?calendar=connected"
+    fresh = await pg_pool.fetchrow(
+        "SELECT sync_enabled FROM google_calendar_credentials WHERE organization_id = $1",
+        other_org["id"],
+    )
+    assert fresh["sync_enabled"] is True
 
 
 # ── Settings ──────────────────────────────────────────────────
@@ -545,8 +703,8 @@ async def test_google_review_api_fetches_every_page_without_omission(monkeypatch
 
     assert [review["reviewId"] for review in reviews] == ["r1", "r2"]
     assert calls == [
-        {"accountsId": "accounts/a", "locationsId": "locations/l", "pageSize": 2},
-        {"accountsId": "accounts/a", "locationsId": "locations/l", "pageSize": 2,
+        {"parent": "accounts/a/locations/l", "pageSize": 2},
+        {"parent": "accounts/a/locations/l", "pageSize": 2,
          "pageToken": "next-page"},
     ]
 

@@ -93,6 +93,7 @@ async def flow_env(request, monkeypatch):
             "https://accounts.google.test/authorize?" + urlencode({"state": kw["state"]}), kw["state"],
         )),
         fetch_token=MagicMock(),
+        oauth2session=SimpleNamespace(token={"scope": module.SCOPES}),
         credentials=SimpleNamespace(token="synthetic-access", refresh_token="synthetic-refresh", expiry=None),
     )
     monkeypatch.setattr(calendar, "_make_flow", lambda: flow)
@@ -109,10 +110,13 @@ async def flow_env(request, monkeypatch):
         env = SimpleNamespace(channel=channel, prefix=prefix, client=client, pool=pool,
                               membership=membership, repo=repo, flow=flow, fernet=fernet)
 
-        async def start(token="session-a"):
+        async def start_response(token="session-a", *, params=None, headers=None):
             client.cookies.clear()
             client.cookies.set("wa_at", token)
-            response = await client.get(prefix + "/auth")
+            return await client.get(prefix + "/auth", params=params, headers=headers)
+
+        async def start(token="session-a", *, params=None, headers=None):
+            response = await start_response(token, params=params, headers=headers)
             assert response.status_code == 307
             return parse_qs(urlsplit(response.headers["location"]).query)["state"][0]
 
@@ -123,8 +127,86 @@ async def flow_env(request, monkeypatch):
             return await client.get(prefix + "/oauth2callback", params={"state": state, "code": "synthetic-code", **params})
 
         env.start = start
+        env.start_response = start_response
         env.callback = callback
         yield env
+
+
+async def test_multi_org_start_requires_explicit_organization(flow_env):
+    env = flow_env
+    env.repo.get_memberships_by_auth.return_value = [
+        dict(env.membership),
+        {"organization_id": ORG_B, "user_id": USER_A, "ruolo": "owner"},
+    ]
+
+    response = await env.start_response()
+
+    assert response.status_code == 403
+    assert env.pool.nonces == {}
+    env.flow.authorization_url.assert_not_called()
+
+
+async def test_selected_organization_is_bound_into_oauth_state(flow_env):
+    env = flow_env
+
+    state = await env.start(params={"organization_id": ORG_A})
+
+    assert state.startswith(ORG_A + ":")
+    assert (state.split(":", 1)[1], ORG_A) in env.pool.nonces
+    env.repo.get_membership_by_auth.assert_awaited_once_with(USER_A, ORG_A)
+
+
+async def test_foreign_organization_selector_is_rejected_before_nonce_creation(flow_env):
+    env = flow_env
+
+    response = await env.start_response(params={"organization_id": ORG_B})
+
+    assert response.status_code == 403
+    assert env.pool.nonces == {}
+    env.flow.authorization_url.assert_not_called()
+
+
+async def test_malformed_organization_selector_is_validation_error(flow_env):
+    env = flow_env
+
+    response = await env.start_response(params={"organization_id": "not-a-uuid"})
+
+    assert response.status_code == 422
+    assert env.pool.nonces == {}
+    env.flow.authorization_url.assert_not_called()
+
+
+async def test_conflicting_organization_header_and_query_are_rejected(flow_env):
+    env = flow_env
+
+    response = await env.start_response(
+        params={"organization_id": ORG_A}, headers={"X-Organization-Id": ORG_B},
+    )
+
+    assert response.status_code == 403
+    assert env.pool.nonces == {}
+    env.flow.authorization_url.assert_not_called()
+
+
+async def test_selected_organization_requires_owner_membership(flow_env):
+    env = flow_env
+    env.membership["ruolo"] = "manager"
+
+    response = await env.start_response(params={"organization_id": ORG_A})
+
+    assert response.status_code == 403
+    assert env.pool.nonces == {}
+    env.flow.authorization_url.assert_not_called()
+
+
+async def test_selected_organization_start_still_requires_aal2(flow_env):
+    env = flow_env
+
+    response = await env.start_response(token="aal1", params={"organization_id": ORG_A})
+
+    assert response.status_code == 403
+    assert env.pool.nonces == {}
+    env.flow.authorization_url.assert_not_called()
 
 
 def assert_rejected(env, response):

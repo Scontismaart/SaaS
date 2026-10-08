@@ -333,6 +333,64 @@ async def test_permanent_errors_fail_immediately_without_retry(status, expected_
     assert state["count"] == 1
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["POST", "PATCH", "DELETE"])
+@pytest.mark.parametrize(
+    "status,expected_exception,expected_calls",
+    [
+        (401, AirtableAuthError, 1),
+        (403, AirtableAuthError, 1),
+        (422, AirtableValidationError, 1),
+        (429, AirtableRateLimitError, 3),
+        (500, AirtableServerError, 1),
+    ],
+)
+async def test_mutations_retry_only_429_and_sanitize_error_details(
+    method, status, expected_exception, expected_calls
+):
+    calls = []
+    secret = "provider-secret-record-content"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(
+            status,
+            json={"error": {"type": "UNKNOWN_PROVIDER_TYPE", "message": secret}},
+        )
+
+    adapter, _ = make_adapter(handler, max_retries=2)
+    with pytest.raises(expected_exception) as exc_info:
+        await adapter._execute_request(method, "https://api.airtable.com/v0/appTest/tableTest")
+
+    error = exc_info.value
+    assert len(calls) == expected_calls
+    assert error.status_code == status
+    assert secret not in str(error)
+    assert secret not in repr(error)
+    assert secret not in repr(error.details)
+    assert error.details == {"status_code": status}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["POST", "PATCH", "DELETE"])
+async def test_mutation_read_timeout_is_not_retried_or_logged(method, caplog):
+    calls = []
+    secret = "provider-secret-timeout-detail"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        raise httpx.ReadTimeout(secret, request=request)
+
+    adapter, _ = make_adapter(handler, max_retries=2)
+    with pytest.raises(AirtableNetworkError) as exc_info:
+        await adapter._execute_request(method, "https://api.airtable.com/v0/appTest/tableTest")
+
+    assert len(calls) == 1
+    assert secret not in str(exc_info.value)
+    assert secret not in repr(exc_info.value)
+    assert all(secret not in record.message for record in caplog.records)
+
+
 # ── 7. CONCURRENT REQUESTS / RATE LIMITER ────────────────────────────────────
 
 

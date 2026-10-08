@@ -214,12 +214,12 @@ async def _calendar_sync_job(pool):
     repo = OrganizationRepository(pool)
     calendar_service = GoogleCalendarService(repo, encryption_key)
     orgs = await pool.fetch("""
-        SELECT id FROM google_calendar_credentials
+        SELECT organization_id FROM google_calendar_credentials
         WHERE sync_enabled = true
     """)
     created = 0
     for org in orgs:
-        org_id = org["id"]
+        org_id = org["organization_id"]
         bookings = await pool.fetch("""
             SELECT * FROM bookings
             WHERE organization_id = $1

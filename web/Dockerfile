@@ -63,6 +63,7 @@ RUN apk add --no-cache gettext python3 && \
         /usr/share/nginx/html/es/privacidad/index.html /usr/share/nginx/html/es/terminos/index.html /usr/share/nginx/html/es/cookies/index.html \
         /usr/share/nginx/html/fr/confidentialite/index.html /usr/share/nginx/html/fr/conditions/index.html /usr/share/nginx/html/fr/cookies/index.html \
         /usr/share/nginx/html/de/datenschutz/index.html /usr/share/nginx/html/de/agb/index.html /usr/share/nginx/html/de/cookies/index.html && \
+    sed -i 's/\r$//' /docker-entrypoint.d/50-render-legal-pages.sh && \
     chmod 0755 /docker-entrypoint.d/50-render-legal-pages.sh && \
     chown -R nginx:nginx /usr/share/nginx/html
 

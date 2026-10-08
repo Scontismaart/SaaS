@@ -66,6 +66,7 @@ def signup_client(monkeypatch):
 
     app = FastAPI()
     repo = SimpleNamespace(
+        get_auth_access_allowed=AsyncMock(return_value=True),
         get_or_create_organization_with_owner=AsyncMock(
             return_value={"organization_id": "123e4567-e89b-12d3-a456-426614174001"}
         )
@@ -623,6 +624,27 @@ def test_callback_exchanges_pkce_sets_final_password_session_and_provisions_afte
     for flow_cookie in ("wa_signup_code", "wa_signup_verifier", "wa_signup_email"):
         assert "Max-Age=0" in _cookie_header(response, flow_cookie)
     assert "trace_id=synthetic-trace-id" not in caplog.text
+
+
+def test_disabled_account_does_not_set_confirmed_password_or_issue_session(signup_client, monkeypatch):
+    from src.core.auth import bff as auth_bff
+
+    client, post, put, repo = signup_client
+    _begin_signup(client, post)
+    _stage_code(client)
+    monkeypatch.setattr(auth_bff, "exchange_pkce", AsyncMock(return_value=_session_payload()))
+    repo.get_auth_access_allowed.return_value = False
+
+    response = _complete_form(client)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == ERROR_LOCATION
+    repo.get_auth_access_allowed.assert_awaited_once_with(USER_ID)
+    put.assert_not_awaited()
+    assert not any(
+        cookie.startswith(("wa_at=", "wa_rt=", "wa_csrf="))
+        for cookie in _cookie_headers(response)
+    )
 
 
 @pytest.mark.parametrize("upstream_status", [429, 503])
@@ -1721,6 +1743,7 @@ def test_https_uses_host_prefixed_secure_flow_and_session_cookies(monkeypatch):
     monkeypatch.setattr(register.throttle, "record_event", AsyncMock())
     app = FastAPI()
     app.state.repo = SimpleNamespace(
+        get_auth_access_allowed=AsyncMock(return_value=True),
         get_or_create_organization_with_owner=AsyncMock(return_value={"organization_id": USER_ID})
     )
     app.include_router(register_router)

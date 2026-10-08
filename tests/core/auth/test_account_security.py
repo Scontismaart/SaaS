@@ -11,6 +11,8 @@ Contratto:
 
 import httpx
 import pytest
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 pytestmark = pytest.mark.asyncio
 
@@ -47,13 +49,19 @@ def set_env(monkeypatch):
 
 
 @pytest.fixture
-async def client():
+async def client(monkeypatch):
     from fastapi import FastAPI
 
     from src.core.auth.routes import router as auth_router
 
     app = FastAPI()
     app.include_router(auth_router)
+    app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
+
+    async def verify(_token, **_kwargs):
+        return {"sub": "test-auth-user", "email": "owner@test.com"}
+
+    monkeypatch.setattr("src.core.auth.dependencies.verify_supabase_jwt", verify)
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
@@ -92,6 +100,16 @@ COOKIE = {"Cookie": "wa_at=valid-session-token"}
 
 
 class TestCambioPassword:
+    async def test_disabled_account_cannot_change_password(self, client, fake_update_user):
+        client._transport.app.state.repo.get_auth_access_allowed.return_value = False
+        response = await client.post(
+            "/api/auth/password",
+            json={"password": "Nuova-Passw0rd!", "current_password": "Vecchia-Passw0rd!"},
+            headers=COOKIE,
+        )
+        assert response.status_code == 403
+        assert fake_update_user == []
+
     async def test_ok(self, client, fake_update_user):
         r = await client.post(
             "/api/auth/password",
@@ -155,6 +173,14 @@ class TestCambioPassword:
 
 
 class TestCambioEmail:
+    async def test_disabled_account_cannot_change_email(self, client, fake_update_user):
+        client._transport.app.state.repo.get_auth_access_allowed.return_value = False
+        response = await client.post(
+            "/api/auth/email", json={"email": "nuova@test.com"}, headers=COOKIE
+        )
+        assert response.status_code == 403
+        assert fake_update_user == []
+
     async def test_ok_con_conferma_richiesta(self, client, fake_update_user):
         r = await client.post(
             "/api/auth/email",

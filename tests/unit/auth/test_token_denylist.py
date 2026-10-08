@@ -7,6 +7,7 @@ import base64
 import json
 import time
 import uuid
+from types import SimpleNamespace
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -85,6 +86,7 @@ class TestLogoutAndRefreshRevocationEndToEnd:
     def test_logout_revokes_token(self, monkeypatch):
         app = FastAPI()
         app.include_router(auth_router)
+        app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
         client = TestClient(app)
 
         access_token = "valid-session-at-123"
@@ -105,6 +107,7 @@ class TestLogoutAndRefreshRevocationEndToEnd:
     def test_refresh_rejects_revoked_token(self, monkeypatch):
         app = FastAPI()
         app.include_router(auth_router)
+        app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
         client = TestClient(app)
 
         refresh_token = "stolen-or-revoked-rt"
@@ -129,6 +132,7 @@ class TestEndToEndLoginAccessLogoutReplayBlocked:
         monkeypatch.setenv("DEMO_MODE", "false")
         app = FastAPI()
         app.include_router(auth_router)
+        app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
 
         @app.get("/api/dashboard/secret-data")
         async def protected_endpoint(user: dict = Depends(get_current_user)):
@@ -192,6 +196,7 @@ class TestEndToEndLoginAccessLogoutReplayBlocked:
         monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
         app = FastAPI()
         app.include_router(auth_router)
+        app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
 
         @app.get("/api/dashboard/secret-data")
         async def protected_endpoint(user: dict = Depends(get_current_user)):

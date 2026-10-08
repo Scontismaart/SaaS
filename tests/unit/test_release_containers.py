@@ -173,6 +173,13 @@ def test_application_dockerfiles_are_architecture_neutral() -> None:
         assert "TARGETARCH=amd64" not in dockerfile
 
 
+def test_web_build_normalizes_windows_entrypoint_before_execution() -> None:
+    dockerfile = _read("web/Dockerfile")
+    normalize = "sed -i 's/\\r$//' /docker-entrypoint.d/50-render-legal-pages.sh"
+    assert normalize in dockerfile
+    assert dockerfile.index(normalize) < dockerfile.index("chmod 0755 /docker-entrypoint.d/50-render-legal-pages.sh")
+
+
 def test_api_build_context_excludes_local_runtime_and_agent_artifacts() -> None:
     ignored = {
         line.strip()

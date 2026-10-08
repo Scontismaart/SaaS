@@ -406,6 +406,12 @@ class CoreRepository(TenantScopedRepository):
 
     # ── Registrazione (system scope: l'org non esiste ancora) ──
 
+    async def get_auth_access_allowed(self, auth_user_id: str) -> bool:
+        return await self._org_repo.get_auth_access_allowed(auth_user_id)
+
+    async def disable_auth_access(self, auth_user_id: str) -> bool:
+        return await self._org_repo.disable_auth_access(auth_user_id)
+
     async def create_organization_with_owner(
         self,
         auth_user_id: str,

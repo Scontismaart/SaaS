@@ -227,6 +227,14 @@ class TestAuditExtended:
         org_id, user_id, auth_user_id, email = await _create_org_and_owner(pg_pool)
         _override_auth(app, org_id, user_id, auth_user_id, email)
 
+        from unittest.mock import AsyncMock
+
+        monkeypatch.setattr(
+            "src.core.auth.dependencies.verify_supabase_jwt",
+            AsyncMock(return_value={"sub": str(auth_user_id), "email": email}),
+        )
+        monkeypatch.setattr(repo, "get_auth_access_allowed", AsyncMock(return_value=True))
+
         from src.core.auth import routes
 
         async def _fake_update_user(token, payload):

@@ -22,7 +22,7 @@ from src.core.auth import bff, throttle
 from src.core.auth.audit import audit_log
 from src.core.auth.csrf import clear_csrf_token, issue_csrf_token
 from src.core.auth.denylist import is_token_revoked, revoke_token
-from src.core.auth.dependencies import get_organization_context, get_repo, require_ruolo
+from src.core.auth.dependencies import get_current_user, get_organization_context, get_repo, require_ruolo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -172,6 +172,10 @@ async def login(body: LoginRequest, request: Request, response: Response):
     except HTTPException:
         await _record_login_failure(ip)
         raise
+    user = data.get("user") if isinstance(data, dict) else None
+    subject = user.get("id") if isinstance(user, dict) else None
+    if not subject or await get_repo(request).get_auth_access_allowed(subject) is not True:
+        raise HTTPException(403, "Accesso account non consentito")
     await _record_login_success(ip)
     _set_session_cookies(response, data)
     csrf_token = issue_csrf_token(response)
@@ -196,6 +200,8 @@ async def refresh(request: Request, response: Response):
     previous_user_id = previous_claims.get("sub")
     if not previous_user_id:
         raise HTTPException(status_code=401, detail="Sessione scaduta")
+    if await get_repo(request).get_auth_access_allowed(previous_user_id) is not True:
+        raise HTTPException(403, "Accesso account non consentito")
 
     # user_key anonimo: digest del token, mai il token grezzo in memoria
     user_key = hashlib.sha256(rt.encode()).hexdigest()
@@ -314,15 +320,12 @@ async def google_callback(request: Request):
         # Idempotente: se ha gia' una org non fa nulla.
         user = data.get("user") if isinstance(data.get("user"), dict) else {}
         auth_user_id = user.get("id")
-        if auth_user_id:
-            repo = get_repo(request)
-            memberships = await repo.get_memberships_by_auth(str(auth_user_id))
-            if not memberships:
-                await repo.get_or_create_organization_with_owner(
-                    str(auth_user_id),
-                    _nome_attivita_da_utente(user),
-                    TRIAL_DAYS,
-                )
+        if not auth_user_id:
+            return _google_error_redirect()
+        # The repository checks durable access even when memberships exist.
+        await get_repo(request).get_or_create_organization_with_owner(
+            str(auth_user_id), _nome_attivita_da_utente(user), TRIAL_DAYS,
+        )
     except HTTPException:
         return _google_error_redirect()
     except RuntimeError:
@@ -410,6 +413,8 @@ async def _mfa_session(request: Request) -> tuple[str, dict]:
     claims = await verify_supabase_jwt(token)
     if not isinstance(claims.get("sub"), str) or not claims["sub"]:
         raise HTTPException(401, "Sessione non valida")
+    if await get_repo(request).get_auth_access_allowed(claims["sub"]) is not True:
+        raise HTTPException(403, "Accesso account non consentito")
     return token, claims
 
 
@@ -739,10 +744,11 @@ async def _check_account_throttle(ip: str) -> None:
         )
 
 
-def _require_access_token(request: Request) -> str:
+async def _require_access_token(request: Request) -> str:
     token = request.cookies.get(bff.access_cookie_name())
     if not token:
         raise HTTPException(401, "Sessione scaduta: effettua di nuovo il login")
+    await get_current_user(request, token=token)
     return token
 
 
@@ -812,7 +818,7 @@ async def change_password(body: PasswordChange, request: Request):
     if not body.current_password or not body.current_password.strip():
         raise HTTPException(400, "Inserisci la password attuale per confermare la modifica")
 
-    token = _require_access_token(request)
+    token = await _require_access_token(request)
 
     # Re-autenticazione: verifichiamo crittograficamente la password attuale su Supabase
     user_info = await _supabase_get_user(token)
@@ -853,7 +859,7 @@ async def send_password_reset(request: Request):
     await _check_account_throttle(ip)
     await throttle.record_event(_account_throttle_key(ip), _ACCOUNT_CHANGE_WINDOW)
 
-    token = _require_access_token(request)
+    token = await _require_access_token(request)
     user = await _supabase_get_user(token)
     email = user.get("email") if isinstance(user, dict) else None
     if not email:
@@ -898,7 +904,7 @@ async def change_email(body: EmailChange, request: Request):
     email = body.email.strip().lower()
     if not _EMAIL_RE.match(email):
         raise HTTPException(422, "Email non valida")
-    token = _require_access_token(request)
+    token = await _require_access_token(request)
     user = await _supabase_update_user(token, {"email": email})
     # Con "Confirm email" attivo Supabase compila new_email e invia il link:
     # la vecchia email resta attiva fino alla conferma.
@@ -1001,5 +1007,6 @@ async def reset_password(body: ResetPassword, request: Request):
             f"La password deve avere almeno {_PASSWORD_MIN} caratteri "
             "e includere almeno un carattere speciale (es. ! @ # $ %)",
         )
+    await get_current_user(request, token=body.access_token)
     await _supabase_update_user(body.access_token, {"password": pwd})
     return {"ok": True, "message": "Password aggiornata, ora puoi accedere"}

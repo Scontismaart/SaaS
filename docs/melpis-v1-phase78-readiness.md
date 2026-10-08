@@ -76,6 +76,17 @@ secret gates and CI on the exact integrated code remain required after all fixes
 and available provider QA. Earlier green runs are not proof for new commits.
 No final readiness or merge approval is claimed at this checkpoint.
 
+Post-fix targeted verification: **60/60 Python tests passed** for pricing,
+credential boundaries, actual PostgreSQL window scope and Reviews status.
+Updated combined code: **149/149 passed**, including six real PostgreSQL/JWT
+cases denying disabled or membership-revoked principals on Meta configuration,
+Calendar OAuth and Reviews OAuth. Targeted frontend **8/8 passed**, Ruff CI,
+frontend lint, i18n consistency, referenced assets and diff checks passed.
+A frontend source assertion initially failed because it counted an unrelated
+booking key; scoped assertion was corrected and its tests passed. These runs
+are targeted checkpoints, not the final full suites or CI for new commits.
+Phase 7 local checkpoint commit: `5c898f2`; remote PRs are not yet updated.
+
 Next operational phase, not started: server, domain, DNS, public HTTPS, SMTP
 and sender/SPF/DKIM/DMARC, encrypted off-host backup and restore drill, production
 monitoring, reviewed production migrations/secrets, Stripe Live and legal/ops.

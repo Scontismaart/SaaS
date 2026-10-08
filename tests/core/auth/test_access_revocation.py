@@ -115,6 +115,39 @@ async def lifecycle_row(pg_pool, auth_user_id):
         )
 
 
+@pytest.mark.parametrize("revocation", ["disabled", "membership_removed"])
+@pytest.mark.parametrize("method,path", [
+    ("POST", "/api/whatsapp/connect"),
+    ("GET", "/api/calendar/auth"),
+    ("GET", "/api/reviews/google/auth"),
+])
+async def test_phase7_integrations_deny_revoked_phase8_principal(
+    pg_pool, repo, sample_org, signing_key, revocation, method, path,
+):
+    from src.whatsapp.routes import router as whatsapp_router
+    from src.core.calendar.routes import router as calendar_router
+    from src.core.reviews.google_routes import router as reviews_router
+
+    auth_user_id, profile_id = await create_auth_user(pg_pool)
+    await add_membership(pg_pool, sample_org["id"], profile_id)
+    old_token = signed_access_token(signing_key, auth_user_id)
+    if revocation == "disabled":
+        await repo.disable_auth_access(str(auth_user_id))
+    else:
+        await pg_pool.execute("DELETE FROM organization_memberships WHERE user_id=$1", profile_id)
+    app = FastAPI()
+    for integration_router in (whatsapp_router, calendar_router, reviews_router):
+        app.include_router(integration_router)
+    app.state.repo = repo
+    app.state.pool = pg_pool
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://phase78.test") as client:
+        response = await client.request(method, path, headers={
+            "Authorization": f"Bearer {old_token}", "X-Organization-Id": str(sample_org["id"]),
+        }, json={"phone_number_id": "123", "waba_id": "456", "access_token": "synthetic-invalid"} if method == "POST" else None)
+    assert response.status_code == 403
+    assert "synthetic-invalid" not in response.text
+
+
 async def test_new_user_is_provisioned_on_first_me_request(
     pg_pool, auth_client, signing_key
 ):

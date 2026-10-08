@@ -6,9 +6,11 @@ nel codice.
 
 ## Contratti di prodotto confermati
 
-- [x] Essenziale: 500 messaggi/mese, €29 mensile o €24/mese annuale.
-- [x] Crescita: 2.000 messaggi/mese, €69 o €59/mese annuale.
-- [x] Scala: 10.000 messaggi/mese, €149 o €129/mese annuale.
+- [x] Essenziale: 500 messaggi/mese, €29 mensile.
+- [x] Crescita: 2.000 messaggi/mese, €69 mensile.
+- [x] Scala: 10.000 messaggi/mese, €149 mensile.
+- [ ] Prezzi annuali configurati (€288/€708/€1.548) da confermare come offerta
+  commerciale prima di pubblicare equivalenti mensili o promesse di sconto.
 - [x] Nessun cliente/dato reale nel progetto pre-lancio.
 - [x] Budget LLM €0; nessun fallback a pagamento.
 - [x] Stripe Live per monetizzare dal Day 1; Groq resta `free_only` senza

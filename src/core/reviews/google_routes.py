@@ -217,6 +217,8 @@ async def google_reviews_status(
         return {"connected": False}
     return {
         "connected": True,
+        # OAuth credentials alone do not prove Account/Location/Reviews access.
+        "operational": bool(row["account_name"] and row["location_name"] and row["last_sync_at"]),
         "account_name": row["account_name"],
         "location_name": row["location_name"],
         "last_sync_at": row["last_sync_at"],

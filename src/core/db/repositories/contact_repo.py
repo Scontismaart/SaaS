@@ -29,6 +29,29 @@ class ContactRepository(TenantScopedRepository):
             """, org_id, phone)
             return dict(row) if row else None
 
+    async def has_recent_whatsapp_inbound(self, org_id, phone: str) -> bool:
+        """Only an actual inbound WhatsApp message opens the 24-hour test window."""
+        async with self.scoped_conn(org_id) as conn:
+            return bool(await conn.fetchval("""
+                SELECT EXISTS (
+                    SELECT 1 FROM messages AS m
+                    JOIN conversations AS cv
+                      ON cv.id = m.conversation_id
+                     AND cv.organization_id = $1::uuid
+                    JOIN contacts AS ct
+                      ON ct.id = cv.contact_id
+                     AND ct.organization_id = $1::uuid
+                    WHERE m.organization_id = $1::uuid
+                      AND ct.phone_number = $2
+                      AND cv.canale = 'whatsapp'
+                      AND m.direction = 'inbound'
+                      AND m.created_at BETWEEN NOW() - INTERVAL '24 hours' AND NOW()
+                      AND m.deleted_at IS NULL
+                      AND cv.deleted_at IS NULL
+                      AND ct.deleted_at IS NULL
+                )
+            """, org_id, phone))
+
     async def record_consent_event(self, contact_id, event_type, method,
                                      triggering_message_id=None, matched_text=None, *,
                                      organization_id):

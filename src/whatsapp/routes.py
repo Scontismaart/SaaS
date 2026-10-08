@@ -1,16 +1,38 @@
 import logging
 import os
 import httpx
+from uuid import UUID
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field
 
 from src.core.auth.dependencies import require_mfa, require_ruolo
 from src.core.channels.sandbox_policy import assert_recipient_allowed
+from src.whatsapp.config import AppConfig, TenantConfig
 from src.whatsapp.repository import Repository as WhatsAppRepository
+from src.whatsapp.service import WhatsAppService
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp-settings"])
+
+
+class CredentialSafeRoute(APIRoute):
+    """FastAPI validation errors must never echo submitted Meta credentials."""
+
+    def get_route_handler(self):
+        original = super().get_route_handler()
+
+        async def handler(request: Request):
+            try:
+                return await original(request)
+            except RequestValidationError:
+                raise HTTPException(422, "Dati WhatsApp non validi. Controlla i campi richiesti.")
+
+        return handler
+
+
+router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp-settings"], route_class=CredentialSafeRoute)
 
 
 def _get_wrepo(request: Request) -> WhatsAppRepository:
@@ -29,6 +51,7 @@ class WhatsAppAccountRequest(BaseModel):
 
 class WhatsAppTestMessageRequest(BaseModel):
     to_phone: Optional[str] = Field(default=None, max_length=32, description="Numero di telefono destinatario del test (es. +393401234567)")
+    idempotency_key: Optional[UUID] = None
 
 
 @router.get("/settings")
@@ -65,7 +88,7 @@ async def get_whatsapp_settings(
         "waba_id": cfg.get("waba_id"),
         "display_phone_number": cfg["phone_number_id"],
         "webhook_active": webhook_active,
-        "message": "Canale WhatsApp Business operativo.",
+        "message": "Credenziali WhatsApp collegate. Webhook e consegna da verificare.",
     }
 
 
@@ -108,7 +131,12 @@ async def connect_whatsapp_account(
                 )
                 if ownership.status_code != 200:
                     raise HTTPException(503, "Verifica dell'account Meta non disponibile. Configurazione non salvata.")
-                numbers = ownership.json().get("data", [])
+                ownership_data = ownership.json()
+                if not isinstance(ownership_data, dict) or not isinstance(ownership_data.get("data"), list):
+                    raise HTTPException(503, "Risposta Meta non valida. Configurazione non salvata.")
+                numbers = ownership_data["data"]
+                if any(not isinstance(number, dict) or not isinstance(number.get("id"), (str, int)) for number in numbers):
+                    raise HTTPException(503, "Risposta Meta non valida. Configurazione non salvata.")
                 if not any(str(number.get("id")) == phone_number_id for number in numbers if isinstance(number, dict)):
                     raise HTTPException(400, "Il numero non appartiene all'account WhatsApp indicato.")
             elif res.status_code in (400, 401, 403):
@@ -129,12 +157,19 @@ async def connect_whatsapp_account(
         raise HTTPException(status_code=500, detail="Impossibile salvare la configurazione WhatsApp.")
 
     # Tentativo di sottoscrizione automatica WABA al webhook dell'app
+    webhook_subscription_active = False
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
-            await client.post(
+            subscription = await client.post(
                 f"https://graph.facebook.com/v21.0/{waba_id}/subscribed_apps",
                 headers={"Authorization": f"Bearer {access_token}"},
             )
+            if subscription.status_code == 200:
+                subscription_data = subscription.json()
+                webhook_subscription_active = (
+                    isinstance(subscription_data, dict)
+                    and subscription_data.get("success") is True
+                )
     except Exception:
         logger.warning("waba_subscribed_apps_warning org_id=%s", org_id)
 
@@ -146,6 +181,8 @@ async def connect_whatsapp_account(
         "waba_id": waba_id,
         "verified_name": verified_name,
         "display_phone_number": display_phone_number or phone_number_id,
+        "webhook_subscription_active": webhook_subscription_active,
+        "webhook_subscription_warning": None if webhook_subscription_active else "Sottoscrizione webhook non confermata su Meta.",
     }
 
 
@@ -178,14 +215,14 @@ async def send_test_message(
     if not cfg:
         raise HTTPException(status_code=404, detail="Nessun account WhatsApp collegato.")
 
-    raw_token = cfg["access_token"]
     try:
-        token = wrepo.decrypt_token(raw_token)
+        token = wrepo.decrypt_token(cfg["access_token"])
     except Exception:
-        token = raw_token
+        logger.warning("whatsapp_test_token_unavailable org_id=%s", org_id)
+        raise HTTPException(status_code=503, detail="Credenziali WhatsApp non disponibili.")
 
     phone_number_id = cfg["phone_number_id"]
-    to_phone = (body.to_phone or "").strip().replace(" ", "").replace("-", "")
+    to_phone = (body.to_phone or "").strip().replace(" ", "").replace("-", "").removeprefix("+")
 
     if to_phone:
         try:
@@ -195,61 +232,85 @@ async def send_test_message(
                 status_code=403,
                 detail="Destinatario non autorizzato per il messaggio di test.",
             )
-        # Invio messaggio reale tramite Cloud API
+        if body.idempotency_key is None:
+            raise HTTPException(status_code=422, detail="idempotency_key UUID obbligatorio per l'invio.")
+        if not await wrepo.has_recent_whatsapp_inbound(org_id, to_phone):
+            raise HTTPException(status_code=403, detail="Nessun messaggio WhatsApp recente da questo destinatario.")
+        prefs = await wrepo.get_contact_prefs(org_id, to_phone)
+        if not prefs or prefs.get("marketing_opt_out") or prefs.get("consent_status") == "withdrawn":
+            raise HTTPException(status_code=403, detail="Destinatario non autorizzato per il messaggio di test.")
+        app_config = AppConfig(
+            app_secret=os.environ.get("META_APP_SECRET", ""),
+            encryption_key=os.environ.get("ENCRYPTION_KEY", ""),
+            postgres_dsn="",
+            verify_token=os.environ.get("META_VERIFY_TOKEN", ""),
+        )
+        tenant_config = TenantConfig(
+            organization_id=UUID(str(org_id)),
+            phone_number_id=phone_number_id,
+            waba_id=cfg.get("waba_id") or "",
+            access_token=token,
+        )
+        payload = {
+            "type": "text",
+            "text": {"body": "👋 Ciao! Questo è un messaggio di prova inviato da Melpis AI. Il tuo canale WhatsApp Business è configurato e operativo!"},
+        }
         try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(6.0)) as client:
-                res = await client.post(
-                    f"https://graph.facebook.com/v21.0/{phone_number_id}/messages",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={
-                        "messaging_product": "whatsapp",
-                        "recipient_type": "individual",
-                        "to": to_phone,
-                        "type": "text",
-                        "text": {
-                            "body": "👋 Ciao! Questo è un messaggio di prova inviato da Melpis AI. Il tuo canale WhatsApp Business è configurato e operativo!"
-                        },
-                    },
-                )
-                if res.status_code == 200:
-                    data = res.json()
-                    msg_id = data.get("messages", [{}])[0].get("id", "ok")
-                    return {
-                        "success": True,
-                        "status": "sent",
-                        "message": f"Messaggio di test inviato con successo a {to_phone}!",
-                        "message_id": msg_id,
-                    }
-                else:
-                    err_info = res.json().get("error", {})
-                    err_msg = err_info.get("message", f"Errore Meta HTTP {res.status_code}")
-                    return {
-                        "success": False,
-                        "status": "error",
-                        "message": f"Meta ha risposto: {err_msg}",
-                        "details": err_info,
-                    }
-        except httpx.RequestError as e:
+            result = await WhatsAppService(app_config, wrepo).send_whatsapp_message(
+                org_id=tenant_config.organization_id,
+                to_number=to_phone,
+                payload=payload,
+                category="marketing",
+                meta_client=None,
+                tenant_config=tenant_config,
+                idempotency_key=f"manual-test:{body.idempotency_key}",
+                handling_type="manual_test",
+            )
+        except WhatsAppService.MessageBlockedByOptOut:
+            raise HTTPException(status_code=403, detail="Destinatario non autorizzato per il messaggio di test.")
+        except WhatsAppService.MessageUsageExceeded:
+            raise HTTPException(status_code=429, detail="Limite messaggi raggiunto.")
+        except ValueError:
+            raise HTTPException(status_code=409, detail="Chiave di invio già usata con un messaggio diverso.")
+        except Exception:
+            logger.warning("whatsapp_test_delivery_unconfirmed org_id=%s", org_id)
             return {
                 "success": False,
-                "status": "timeout",
-                "message": f"Timeout durante l'invio a Meta: {e}",
+                "status": "pending",
+                "message": "Consegna non confermata. Riprova con la stessa chiave di invio.",
+                "message_id": None,
             }
+        wam_id = result.get("wam_id") if isinstance(result, dict) else None
+        if wam_id and result.get("status") in {"sent", "delivered", "read"}:
+            return {
+                "success": True,
+                "status": "sent",
+                "message": "Messaggio di test inviato con successo.",
+                "message_id": wam_id,
+            }
+        return {
+            "success": False,
+            "status": "pending",
+            "message": "Consegna non confermata. Riprova con la stessa chiave di invio.",
+            "message_id": None,
+        }
     else:
         # Verifica di raggiungibilità Graph API
         try:
             async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
                 res = await client.get(
                     f"https://graph.facebook.com/v21.0/{phone_number_id}",
-                    params={"fields": "display_phone_number,verified_name", "access_token": token},
+                    params={"fields": "display_phone_number,verified_name"},
+                    headers={"Authorization": f"Bearer {token}"},
                 )
                 if res.status_code == 200:
                     d = res.json()
-                    name = d.get("verified_name") or d.get("display_phone_number") or phone_number_id
+                    if not isinstance(d, dict) or str(d.get("id", "")) != phone_number_id:
+                        return {"success": False, "status": "error", "message": "Risposta Meta non valida."}
                     return {
                         "success": True,
                         "status": "connected",
-                        "message": f"Canale WhatsApp verificato e pronto ({name}).",
+                        "message": "Credenziali WhatsApp verificate.",
                     }
                 else:
                     return {
@@ -257,7 +318,7 @@ async def send_test_message(
                         "status": "error",
                         "message": f"Verifica Meta non riuscita (HTTP {res.status_code}).",
                     }
-        except httpx.RequestError:
+        except (httpx.RequestError, ValueError, TypeError):
             return {
                 "success": False,
                 "status": "timeout",

@@ -474,7 +474,7 @@ const ACCOUNT_PLANS = [
     nome: "Essenziale",
     prezzo: "€29",
     cadenza: "/mese",
-    limite: "500 conversazioni / mese",
+    limite: "500 messaggi / mese",
     features: [
       "1 numero WhatsApp Business",
       "1 utente staff (operatore)",
@@ -488,11 +488,11 @@ const ACCOUNT_PLANS = [
     nome: "Crescita",
     prezzo: "€69",
     cadenza: "/mese",
-    limite: "2.000 conversazioni / mese",
+    limite: "2.000 messaggi / mese",
     features: [
       "WhatsApp + Instagram Direct",
       "Fino a 3 utenti staff (operatori)",
-      "Gestione e risposta recensioni Google",
+      "Recensioni Google, previa verifica di disponibilità dell'account",
       "Sincronizzazione Google Calendar",
       "Supporto prioritario"
     ],
@@ -503,11 +503,11 @@ const ACCOUNT_PLANS = [
     nome: "Scala",
     prezzo: "€149",
     cadenza: "/mese",
-    limite: "10.000 conversazioni / mese",
+    limite: "10.000 messaggi / mese",
     features: [
-      "Knowledge Base AI illimitata (RAG)",
-      "Utenti e numeri illimitati",
-      "Multi-canale e multi-sede",
+      "Conoscenza AI con documenti",
+      "Operatori configurabili",
+      "Canali disponibili in base alle integrazioni verificate",
       "Supporto dedicato 1-to-1"
     ],
     popolare: false,
@@ -7273,6 +7273,26 @@ async function caricaIntegrazioni() {
 }
 
 // WhatsApp Wizard Event Listeners
+const whatsappTestIdempotencyKeys = new Map();
+
+function _getWhatsAppTestIdempotencyKey(recipient) {
+  if (!recipient || !String(recipient).trim()) return null;
+  const value = String(recipient).trim();
+  const normalizedRecipient = value.replace(/\D/g, "") || value.toLowerCase();
+  if (!whatsappTestIdempotencyKeys.has(normalizedRecipient)) {
+    whatsappTestIdempotencyKeys.set(normalizedRecipient, crypto.randomUUID());
+  }
+  return whatsappTestIdempotencyKeys.get(normalizedRecipient);
+}
+
+function _completeWhatsAppTestIntent(recipient, key, delivered) {
+  if (!recipient || !key || delivered !== true) return;
+  const value = String(recipient).trim();
+  const normalizedRecipient = value.replace(/\D/g, "") || value.toLowerCase();
+  if (whatsappTestIdempotencyKeys.get(normalizedRecipient) === key) {
+    whatsappTestIdempotencyKeys.delete(normalizedRecipient);
+  }
+}
 document.getElementById("wa-wz-goto-step2")?.addEventListener("click", () => {
   _setWaWizardStep(2);
 });
@@ -7314,8 +7334,9 @@ document.getElementById("wa-connect-form")?.addEventListener("submit", async (e)
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      if (statusEl) statusEl.textContent = "";
-      toast(data.message || "WhatsApp collegato con successo!", "success");
+      const warning = data.webhook_subscription_warning;
+      if (statusEl) statusEl.textContent = warning || "";
+      toast(warning || data.message || "Credenziali WhatsApp salvate.", warning ? "info" : "success");
       _setWaWizardStep(3);
     } else {
       const errMsg = _estraiMessaggioErroreApi(res, data, "Errore durante la connessione con Meta.");
@@ -7341,6 +7362,7 @@ document.getElementById("wa-connect-form")?.addEventListener("submit", async (e)
 
 document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async () => {
   const testPhone = document.getElementById("wa-wz-test-phone")?.value.trim();
+  const idempotencyKey = _getWhatsAppTestIdempotencyKey(testPhone);
   const statusEl = document.getElementById("wa-wz-test-status");
   const btn = document.getElementById("wa-wz-send-test-btn");
 
@@ -7357,10 +7379,14 @@ document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async 
     const res = await apiFetch(`${API_BASE}/api/whatsapp/send-test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to_phone: testPhone || null }),
+      body: JSON.stringify({
+        to_phone: testPhone || null,
+        ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok && data.success) {
+      _completeWhatsAppTestIntent(testPhone, idempotencyKey, true);
       if (statusEl) {
         statusEl.textContent = data.message || "Messaggio di test inviato con successo!";
         statusEl.className = "security-status ok";
@@ -7389,7 +7415,7 @@ document.getElementById("wa-wz-send-test-btn")?.addEventListener("click", async 
 
 document.getElementById("wa-wz-finish-btn")?.addEventListener("click", async () => {
   await caricaStatoWhatsApp();
-  toast("WhatsApp configurato e operativo!", "success");
+  toast("Configurazione salvata; verifica lo stato del collegamento.", "info");
 });
 
 // WhatsApp Connected Card Handlers
@@ -7411,6 +7437,7 @@ document.getElementById("integ-wa-send-test-submit")?.addEventListener("click", 
     }
     return;
   }
+  const idempotencyKey = _getWhatsAppTestIdempotencyKey(phone);
 
   if (btn) {
     btn.disabled = true;
@@ -7421,10 +7448,11 @@ document.getElementById("integ-wa-send-test-submit")?.addEventListener("click", 
     const res = await apiFetch(`${API_BASE}/api/whatsapp/send-test`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to_phone: phone }),
+      body: JSON.stringify({ to_phone: phone, idempotency_key: idempotencyKey }),
     });
     const d = await res.json().catch(() => ({}));
     if (res.ok && d.success) {
+      _completeWhatsAppTestIntent(phone, idempotencyKey, true);
       if (feedback) {
         feedback.hidden = false;
         feedback.className = "integ-test-feedback success";
@@ -7737,17 +7765,18 @@ async function caricaStatoReviews() {
     }
     const d = await res.json();
     if (d.connected) {
-      setSummaryStatus(true);
-      _aggiornaBadgeStato(stato, "connected");
+      const operational = d.operational === true;
+      setSummaryStatus(operational ? true : null);
+      _aggiornaBadgeStato(stato, operational ? "connected" : "pending", operational ? "Attiva" : "OAuth collegato; integrazione non attiva");
       const acc = d.account_name || "Account Google collegato";
       const loc = d.location_name || "Sede predefinita";
-      sub.textContent = `${loc} · Connesso`;
+      sub.textContent = operational ? `${loc} · Attiva` : "Accesso alle recensioni non ancora verificato dal provider";
       if (accountMeta) accountMeta.textContent = acc;
       if (locationMeta) locationMeta.textContent = loc;
       if (help) {
         help.textContent = d.last_sync_at
           ? `Ultima sincronizzazione: ${new Date(d.last_sync_at).toLocaleString(localeCorrente())}`
-          : "Account collegato: pronto alla sincronizzazione delle recensioni.";
+          : "Consenso OAuth salvato. Disponibilità Account/Location/Reviews da verificare; quota Google zero richiede approvazione del progetto.";
       }
       if (btnConnect) btnConnect.hidden = true;
       if (btnSync) btnSync.hidden = false;
@@ -7759,7 +7788,7 @@ async function caricaStatoReviews() {
       if (accountMeta) accountMeta.textContent = "Nessun account";
       if (locationMeta) locationMeta.textContent = "—";
       if (help) {
-        help.textContent = "Collega Google Business Profile per importare le recensioni dei clienti e generare risposte AI automatiche.";
+        help.textContent = "Collega Google Business Profile: importazione e funzioni sulle recensioni dipendono dalla disponibilità e dai permessi verificati del provider.";
       }
       if (btnConnect) btnConnect.hidden = false;
       if (btnSync) btnSync.hidden = true;

@@ -152,6 +152,9 @@ class Repository(TenantScopedRepository):
     async def get_contact_prefs(self, org_id, phone):
         return await self._contact_repo.get_contact_prefs(org_id, phone)
 
+    async def has_recent_whatsapp_inbound(self, org_id, phone: str) -> bool:
+        return await self._contact_repo.has_recent_whatsapp_inbound(org_id, phone)
+
     async def record_consent_event(self, contact_id, event_type, method,
                                   triggering_message_id=None, matched_text=None, *,
                                   organization_id):

@@ -34,6 +34,7 @@ async def bff_client():
 
     app = FastAPI()
     app.include_router(auth_router)
+    app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
@@ -107,6 +108,22 @@ async def _seed_membership(pg_pool, sample_org, auth_user_id, ruolo="owner"):
 
 
 class TestLogin:
+    async def test_login_rejects_disabled_account_without_setting_cookies(self, bff_client, monkeypatch):
+        app = bff_client._transport.app
+        app.state.repo.get_auth_access_allowed.return_value = False
+
+        async def fake_login(email, password):
+            return _fake_token_response()
+
+        monkeypatch.setattr(bff_module, "login", fake_login)
+        response = await bff_client.post(
+            "/api/auth/login",
+            json={"email": "owner@test.com", "password": "correct-password"},
+        )
+        assert response.status_code == 403
+        assert "set-cookie" not in response.headers
+        app.state.repo.get_auth_access_allowed.assert_awaited_once_with("u1")
+
     async def test_login_success_sets_cookies(self, bff_client, monkeypatch):
         async def fake_login(email, password):
             return _fake_token_response()
@@ -217,6 +234,27 @@ class TestMe:
 
 
 class TestRefresh:
+    async def test_refresh_rejects_disabled_account_before_refreshing(self, bff_client, monkeypatch):
+        app = bff_client._transport.app
+        app.state.repo.get_auth_access_allowed.return_value = False
+        refresh = AsyncMock(return_value=_fake_token_response(access="new-at", refresh="new-rt"))
+        monkeypatch.setattr(bff_module, "refresh", refresh)
+
+        async def fake_verify(token, *, allow_expired=False):
+            assert token == "blocked-access-token"
+            assert allow_expired is True
+            return {"sub": "blocked-user"}
+
+        monkeypatch.setattr("src.core.auth.dependencies.verify_supabase_jwt", fake_verify)
+        response = await bff_client.post(
+            "/api/auth/refresh",
+            headers={"Cookie": "wa_at=blocked-access-token; wa_rt=blocked-refresh-token; wa_csrf=csrf", "Origin": "http://test", "X-CSRF-Token": "csrf"},
+        )
+        assert response.status_code == 403
+        assert "set-cookie" not in response.headers
+        refresh.assert_not_awaited()
+        app.state.repo.get_auth_access_allowed.assert_awaited_once_with("blocked-user")
+
     async def test_refresh_rotates_cookie(self, bff_client, monkeypatch):
         calls = []
 

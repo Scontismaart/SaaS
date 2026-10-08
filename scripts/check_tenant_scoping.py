@@ -120,11 +120,11 @@ SYSTEM_SCOPE_SQL_FINGERPRINTS: dict[tuple[str, str], str] = {
     ("src/core/db/repositories/message_repo.py::purge_simulation_requests", "344f2b7345d48ff8602807867ac5f921e171089c5f169b4a46e171e204b39c80"): "scheduled retention worker purges expired simulation requests across tenants",
     ("src/core/db/repositories/billing_repo.py::drain_governance_outbox", "6e7739b56f19833341fa065f30ac955c665065930ccac86fb0610141a9bd9f1c"): "trusted governance worker enumerates its durable organization queue",
     ("src/instagram/repository.py::get_org_by_instagram_user_id", "cde7bca5abefaa42d6944ad8df14ff31708bdae92ff87826e5ca62bf169c14e2"): "pre-auth tenant resolution by provider Instagram identity",
-    ("src/core/scheduler.py::_calendar_sync_job", "6cf1f615f40699fa868aec96fdc455be0b3b2678b9a93da85b0821b7c9ed67ad"): "trusted scheduler enumerates organizations with calendar sync enabled",
+    ("src/core/scheduler.py::_calendar_sync_job", "5e19f185ac041a63375f34617ac2d54a90b71987c48020e75637aaa948657ffc"): "trusted scheduler enumerates organization_id keys with calendar sync enabled; bookings remain tenant-bound",
     ("src/core/scheduler.py::_nonce_cleanup_job", "e670664a98b194f0df4daeee9a8962afedfc25153f0a5bd56e00f90ea2a47b1c"): "trusted scheduler removes expired OAuth nonce rows platform-wide",
     ("src/core/db/repositories/external_booking_repo.py::get_pending_syncs", "9b988cf8f99ec81ab4e543af18360472580a62649a13a6091c609782c42d3369"): "trusted reconciliation worker claims pending syncs across organizations",
     ("src/integrations/airtable/repository.py::get_subscription_by_webhook_id", "9fac9734a127f4f89d521c91c873754428a637b920dadc9d6a31b1e80088593f"): "pre-auth webhook resolution by provider-unique webhook id",
-    ("src/integrations/airtable/repository.py::reap_stale_processing", "073fa8e79116c31d8eff3d19363a239ff36b295f420bd0cf70e963509c65d234"): "trusted Airtable worker reclaims stale event claims across organizations",
+    ("src/integrations/airtable/repository.py::reap_stale_processing", "265bbdcffdcb619cfce2a4e967685582dc50fd8f46e197af27173912d1d6da71"): "trusted Airtable worker locks bounded stale claims; UPDATE correlates selected id and organization_id",
     ("src/core/db/repositories/webhook_inbox_repo.py::claim", "a72d6bfaa56e4423b4aa169cae408e790ae480c58dc5c0d1128e28908faeb2b1"): "trusted worker claims the durable Meta inbox globally with SKIP LOCKED",
     ("src/core/db/repositories/webhook_inbox_repo.py::purge_completed", "da0121e8a54d90132082510cf95a4bb1dde88485d3e3a1ec7909b7e26308ff86"): "trusted retention worker purges completed webhook payloads after seven days",
 }

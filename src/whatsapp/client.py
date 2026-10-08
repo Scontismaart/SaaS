@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 
 def _is_retryable_error(exception):
     if isinstance(exception, httpx.HTTPStatusError):
-        return exception.response.status_code in (429,) or 500 <= exception.response.status_code < 600
-    return isinstance(exception, (httpx.TimeoutException, httpx.ConnectError))
+        return exception.response.status_code == 429
+    # Ambiguous read/write timeouts and 5xx may follow an accepted POST.
+    # Retrying those here bypasses the application's outbound claim.
+    return isinstance(exception, (httpx.ConnectTimeout, httpx.ConnectError))
 
 
 class MetaClient:
@@ -43,13 +45,21 @@ class MetaClient:
         try:
             response = await self._client.post(url, headers=headers, json=data)
             response.raise_for_status()
-            return SendResponse.model_validate(response.json())
+            result = SendResponse.model_validate(response.json())
+            if not result.messages or not result.messages[0].id:
+                raise ValueError("Missing provider message ID")
+            return result
         except httpx.HTTPStatusError as exc:
             logger.warning(
-                "Meta API error: status=%d body=%s",
-                exc.response.status_code, exc.response.text,
+                "Meta API error: status=%d",
+                exc.response.status_code,
             )
-            raise
+            raise httpx.HTTPStatusError(
+                f"Meta API returned HTTP {exc.response.status_code}",
+                request=exc.request, response=exc.response,
+            ) from None
         except (httpx.TimeoutException, httpx.ConnectError) as exc:
-            logger.warning("Meta API error: %s", exc)
-            raise
+            logger.warning("Meta API transport error: type=%s", type(exc).__name__)
+            raise type(exc)("Meta API transport failure") from None
+        except ValueError:
+            raise ValueError("Meta API returned an invalid response") from None

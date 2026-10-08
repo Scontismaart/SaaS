@@ -16,6 +16,7 @@ def gdpr_app(monkeypatch):
     app = FastAPI()
     app.include_router(routes.router)
     app.state.repo = AsyncMock()
+    app.state.repo.get_auth_access_allowed.return_value = True
     app.state.repo.get_memberships_by_auth.return_value = [
         {"organization_id": "tenant-owned", "user_id": "owner-1", "ruolo": "owner"},
     ]

@@ -2,6 +2,8 @@
 
 import json
 import time
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -42,6 +44,7 @@ def env(monkeypatch):
 async def client(monkeypatch):
     app = FastAPI()
     app.include_router(auth_router)
+    app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
 
     @app.middleware("http")
     async def mfa_no_store(request, call_next):
@@ -146,7 +149,21 @@ async def test_mfa_routes_reject_authorization_and_api_key_overrides(client, mon
             assert response.status_code == 400
     finally:
         await auth_client.aclose()
-    assert not requests
+
+
+async def test_mfa_rejects_disabled_account_before_auth_provider_call(client, monkeypatch):
+    _fake_jwt(monkeypatch)
+    repo = client._transport.app.state.repo
+    repo.get_auth_access_allowed.return_value = False
+    auth_client, requests = _mock_auth_client(monkeypatch, lambda _req: (200, _user()))
+    try:
+        response = await client.get("/api/auth/mfa", headers=_session_headers(csrf=False))
+    finally:
+        await auth_client.aclose()
+
+    assert response.status_code == 403
+    repo.get_auth_access_allowed.assert_awaited_once_with(USER_ID)
+    assert requests == []
 
 
 async def test_enrollment_returns_qr_and_secret_no_store_without_logging(client, monkeypatch, caplog):

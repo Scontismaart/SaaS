@@ -7,7 +7,7 @@
     "subtitle": "Activa tu asistente de WhatsApp con IA en pocos minutos. Prueba gratis durante 7 días, sin tarjeta y sin permanencia.",
     "monthly_toggle": "Mensual",
     "annual_toggle": "Anual",
-    "annual_discount": "2 meses gratis"
+    "annual_discount": "Facturación anual"
   },
   "plans": {
     "essential": {
@@ -38,7 +38,7 @@
       "features": [
         "Todo lo incluido en Esencial",
         "Hasta 2.000 mensajes con IA/mes",
-        "Sincronización bidireccional con Google Calendar",
+        "Sincronización con Google Calendar",
         "Gestión de reservas y recordatorios anti-ausencias",
         "Hasta 3 operadores simultáneos en la bandeja",
         "Entrenamiento con documentos PDF y listas de precios",
@@ -48,7 +48,7 @@
     "scale": {
       "name": "Escala",
       "badge": "Máxima potencia",
-      "tagline": "Para hoteles, clínicas con múltiples sedes y negocios con alto volumen de consultas.",
+      "tagline": "Para negocios con un alto volumen de consultas.",
       "price_monthly": 149,
       "price_annual": 129,
       "period": "/mes",
@@ -57,8 +57,8 @@
         "Todo lo incluido en Crecimiento",
         "Hasta 10.000 mensajes con IA/mes",
         "Operadores ilimitados con permisos dedicados",
-        "Integración con Instagram Direct incluida",
-        "Webhooks personalizados e integración PMS/Airtable",
+        "Instagram Direct, previa verificación del proveedor",
+        "Configuración de IA y gestión del equipo",
         "Registro de auditoría de seguridad y acuerdo de tratamiento (DPA)",
         "Gestor de cuenta dedicado y bienvenida guiada"
       ]

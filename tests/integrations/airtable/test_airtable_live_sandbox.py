@@ -4,9 +4,10 @@ SICUREZZA & ISOLAMENTO DI PRODUZIONE:
 1. Non legge mai credenziali dal database di produzione (airtable_connections)
    né accede a dati o tabelle di clienti reali.
 2. Le credenziali vengono lette ESCLUSIVAMENTE da variabili d'ambiente dedicate:
-   - AIRTABLE_SANDBOX_TOKEN (oppure AIRTABLE_PAT)
-   - AIRTABLE_SANDBOX_BASE_ID (oppure AIRTABLE_BASE_ID)
-   - AIRTABLE_SANDBOX_TABLE_NAME (oppure AIRTABLE_TABLE_NAME, opzionale con auto-discovery)
+   - AIRTABLE_SANDBOX_TOKEN
+   - AIRTABLE_SANDBOX_BASE_ID
+   - AIRTABLE_SANDBOX_TABLE_NAME (opzionale con auto-discovery)
+   - AIRTABLE_SANDBOX_CONFIRMED=true (opt-in esplicito non-production)
 3. In assenza di queste variabili, l'intera suite viene saltata (skip) fail-closed
    senza errori né chiamate di rete.
 4. Ogni record creato nell'ambiente sandbox utilizza prefissi sintetici sentinella univoci:
@@ -28,13 +29,17 @@ from src.integrations.airtable.models import (
     UpdateRecordRequest,
 )
 
-SANDBOX_TOKEN = os.getenv("AIRTABLE_SANDBOX_TOKEN") or os.getenv("AIRTABLE_PAT") or os.getenv("AIRTABLE_TOKEN")
-SANDBOX_BASE_ID = os.getenv("AIRTABLE_SANDBOX_BASE_ID") or os.getenv("AIRTABLE_BASE_ID")
-SANDBOX_TABLE_NAME = os.getenv("AIRTABLE_SANDBOX_TABLE_NAME") or os.getenv("AIRTABLE_TABLE_NAME")
+SANDBOX_TOKEN = os.getenv("AIRTABLE_SANDBOX_TOKEN")
+SANDBOX_BASE_ID = os.getenv("AIRTABLE_SANDBOX_BASE_ID")
+SANDBOX_TABLE_NAME = os.getenv("AIRTABLE_SANDBOX_TABLE_NAME")
+
+
+def sandbox_confirmed():
+    return os.getenv("AIRTABLE_SANDBOX_CONFIRMED") == "true" and bool(SANDBOX_TOKEN and SANDBOX_BASE_ID)
 
 pytestmark = pytest.mark.skipif(
-    not (SANDBOX_TOKEN and SANDBOX_BASE_ID),
-    reason="Test LIVE Sandbox Airtable: richiede AIRTABLE_SANDBOX_TOKEN e AIRTABLE_SANDBOX_BASE_ID nell'ambiente",
+    not sandbox_confirmed(),
+    reason="Test LIVE Airtable: richiede opt-in AIRTABLE_SANDBOX_CONFIRMED e credenziali dedicate sandbox",
 )
 
 

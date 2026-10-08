@@ -807,15 +807,25 @@ class AirtableWebhookRepository(TenantScopedRepository):
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
                 """
-                UPDATE airtable_webhook_events
+                WITH stale_events AS (
+                    SELECT id, organization_id
+                    FROM airtable_webhook_events
+                    WHERE status = 'processing'
+                      AND created_at < NOW() - make_interval(secs => $1)
+                    ORDER BY created_at ASC, id ASC
+                    LIMIT $2
+                    FOR UPDATE SKIP LOCKED
+                )
+                UPDATE airtable_webhook_events AS events
                 SET status = 'pending',
                     error_message = 'reaped: processing oltre soglia, rimesso in coda',
                     processed_at = NOW()
-                WHERE status = 'processing'
-                  AND created_at < NOW() - make_interval(secs => $1)
-                ORDER BY created_at ASC
-                LIMIT $2
-                RETURNING id, organization_id, base_id, webhook_id, external_event_id
+                FROM stale_events
+                WHERE events.id = stale_events.id
+                  AND events.organization_id = stale_events.organization_id
+                  AND events.status = 'processing'
+                RETURNING events.id, events.organization_id, events.base_id,
+                          events.webhook_id, events.external_event_id
                 """,
                 int(older_than_seconds),
                 int(limit),

@@ -2,7 +2,9 @@
 Mock httpx con respx, nessuna rete reale."""
 import pytest
 import respx
+import httpx
 from httpx import Response
+from tenacity import wait_none
 
 from src.instagram.client import InstagramClient
 from src.instagram.models import IgSendTextRequest
@@ -43,6 +45,38 @@ class TestInstagramClient:
                 IgSendTextRequest(recipient={"id": "x"}, message={"text": "y"})
             )
         assert route.call_count == 1  # 4xx non e' retryable
+
+    @pytest.mark.parametrize(
+        ("failure", "expected_calls"),
+        [("timeout", 1), (500, 1), (401, 1), (403, 1), (429, 3)],
+    )
+    @respx.mock
+    async def test_send_message_retry_policy_and_sanitized_logs(
+        self, client, failure, expected_calls, caplog, monkeypatch
+    ):
+        monkeypatch.setattr(InstagramClient.send_message.retry, "wait", wait_none())
+        caplog.set_level("WARNING")
+        route = respx.post(
+            "https://graph.facebook.com/v20.0/17841400000000099/messages"
+        )
+        if failure == "timeout":
+            route.mock(side_effect=httpx.ReadTimeout("private-token-and-body"))
+            expected_exception = httpx.ReadTimeout
+        else:
+            route.respond(
+                failure,
+                json={"error": {"message": "private-token-and-body"}},
+            )
+            expected_exception = httpx.HTTPStatusError
+
+        with pytest.raises(expected_exception):
+            await client.send_message(
+                IgSendTextRequest(recipient={"id": "x"}, message={"text": "y"})
+            )
+
+        assert route.call_count == expected_calls
+        assert all("private-token-and-body" not in record.message for record in caplog.records)
+        await client.close()
 
     async def test_close(self, client):
         await client.close()

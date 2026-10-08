@@ -138,6 +138,35 @@ class OrganizationRepository(TenantScopedRepository):
 
     # ── Auth & Memberships ────────────────────────────────────────
 
+    async def get_auth_access_allowed(self, auth_user_id: str) -> bool:
+        """Check durable principal policy on every authenticated request."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT provisioned_at, disabled_at FROM auth_access_lifecycle WHERE auth_user_id = $1",
+                uuid.UUID(auth_user_id),
+            )
+        if row is None or row["disabled_at"] is not None:
+            return False
+        # No memberships are normal only BEFORE the first successful grant.
+        # Once provisioned, account access needs a remaining legitimate grant.
+        return row["provisioned_at"] is None or bool(
+            await self.get_memberships_by_auth(auth_user_id)
+        )
+
+    async def disable_auth_access(self, auth_user_id: str) -> bool:
+        """Trusted operator-only capability, not exposed as a client route/RPC.
+
+        UPDATE locks the same durable row as provisioning. Once committed,
+        subsequent requests using ANY already-issued JWT are denied.
+        """
+        async with self.pool.acquire() as conn:
+            result = await conn.execute(
+                "UPDATE auth_access_lifecycle SET disabled_at = COALESCE(disabled_at, NOW()) "
+                "WHERE auth_user_id = $1",
+                uuid.UUID(auth_user_id),
+            )
+        return result == "UPDATE 1"
+
     async def get_membership_by_auth(self, auth_user_id: str, organization_id: str) -> dict | None:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
@@ -193,29 +222,10 @@ class OrganizationRepository(TenantScopedRepository):
         nome_attivita: str,
         trial_days: int = 7,
     ) -> dict:
-        """Crea organizzazione + membership owner in un'unica transazione."""
-        org_id = uuid.uuid4()
-        async with self.pool.acquire() as conn, conn.transaction():
-            row = await conn.fetchrow("""
-                WITH new_org AS (
-                    INSERT INTO organizations
-                        (id, name, subscription_status, trial_start, trial_end, messages_limit, users_limit)
-                    VALUES ($1, $2, 'trialing', NOW(),
-                            NOW() + make_interval(days => $3), $4, 3)
-                    RETURNING id
-                )
-                INSERT INTO organization_memberships
-                    (organization_id, user_id, ruolo, joined_at)
-                SELECT o.id, up.id, 'owner', NOW()
-                FROM new_org o
-                JOIN user_profiles up ON up.auth_user_id = $5::uuid
-                RETURNING organization_id, user_id
-            """, org_id, nome_attivita, trial_days, TRIAL_MESSAGES_LIMIT, uuid.UUID(auth_user_id))
-            if not row:
-                raise RuntimeError(
-                    "user_profiles non trovato per l'utente appena registrato"
-                )
-        return {"organization_id": str(org_id)}
+        """Compatibility wrapper: never bypass the first-provisioning policy."""
+        return await self.get_or_create_organization_with_owner(
+            auth_user_id, nome_attivita, trial_days
+        )
 
     @system_scope("provisioning JIT org al primo accesso OAuth")
     async def get_or_create_organization_with_owner(
@@ -224,14 +234,20 @@ class OrganizationRepository(TenantScopedRepository):
         nome_attivita: str,
         trial_days: int = 7,
     ) -> dict:
-        """Restituisce l'org dell'utente se ne ha gia' una, altrimenti crea
-        organizzazione + membership owner con trial attivo."""
+        """Allow existing access or one first provisioning, never re-provision."""
         uid = uuid.UUID(auth_user_id)
         async with self.pool.acquire() as conn, conn.transaction():
             await conn.execute(
                 "SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
                 str(uid),
             )
+            access = await conn.fetchrow(
+                "SELECT provisioned_at, disabled_at FROM auth_access_lifecycle "
+                "WHERE auth_user_id = $1 FOR UPDATE",
+                uid,
+            )
+            if access is None or access["disabled_at"] is not None:
+                raise PermissionError("Account access denied")
             existing = await conn.fetchrow("""
                 SELECT om.organization_id::text AS organization_id
                 FROM organization_memberships om
@@ -241,6 +257,8 @@ class OrganizationRepository(TenantScopedRepository):
             """, uid)
             if existing:
                 return dict(existing)
+            if access["provisioned_at"] is not None:
+                raise PermissionError("Previously provisioned account has no membership")
             org_id = uuid.uuid4()
             row = await conn.fetchrow("""
                 WITH new_org AS (

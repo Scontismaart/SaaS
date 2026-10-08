@@ -301,7 +301,18 @@ class AirtableAdapter(AirtablePort):
         except Exception:
             err_msg = resp.text[:200]
 
-        message = err_msg or f"Errore Airtable HTTP {status}"
+        # Provider text is untrusted and may echo credentials or record data.
+        quota_exhausted = any(k in str(err_msg).lower() for k in (
+            "monthly", "quota", "plan limit", "limit reached", "billing",
+        ))
+        message = f"Errore Airtable HTTP {status}"
+        details = {"status_code": status}
+        if not isinstance(err_type, str) or err_type not in {
+            "AUTHENTICATION_REQUIRED", "INVALID_PERMISSIONS_OR_MODEL_NOT_FOUND",
+            "NOT_FOUND", "INVALID_REQUEST", "INVALID_VALUE_FOR_COLUMN",
+            "UNKNOWN_FIELD_NAME", "INVALID_RECORDS", "INVALID_MULTIPLE_CHOICE_OPTIONS",
+        }:
+            err_type = None
 
         if status in (401, 403):
             raise AirtableAuthError(
@@ -326,8 +337,7 @@ class AirtableAdapter(AirtablePort):
             )
         elif status == 429:
             # Distinzione tra rate limit istantaneo (5 req/s) ed esaurimento quota mensile workspace
-            err_lower = (message or "").lower()
-            if any(k in err_lower for k in ("monthly", "quota", "plan limit", "limit reached", "billing")):
+            if quota_exhausted:
                 logger.error("airtable_monthly_quota_exhausted: %s (Invariante 11: Escalation Umana)", message)
                 raise AirtableQuotaExhaustedError(
                     message=f"Quota mensile chiamate API Airtable esaurita: {message}. Richiesto upgrade del piano o intervento umano.",
@@ -383,6 +393,7 @@ class AirtableAdapter(AirtablePort):
         headers = self._get_headers()
         timeout = httpx.Timeout(self._timeout_seconds)
         attempt = 0
+        safe_to_repeat = method.upper() in {"GET", "HEAD", "OPTIONS"}
 
         while True:
             # Rate limit ufficiale: 5 request/sec per base — le richieste concorrenti
@@ -410,22 +421,22 @@ class AirtableAdapter(AirtablePort):
                             headers=headers,
                         )
             except httpx.TimeoutException as exc:
-                if attempt < self._max_retries:
+                if (safe_to_repeat or isinstance(exc, httpx.ConnectTimeout)) and attempt < self._max_retries:
                     await self._sleep(self._backoff_delay(attempt))
                     attempt += 1
                     continue
-                raise AirtableNetworkError(f"Timeout durante la richiesta ad Airtable ({method} {url})") from exc
+                raise AirtableNetworkError("Timeout durante la richiesta ad Airtable") from None
             except httpx.RequestError as exc:
-                if attempt < self._max_retries:
+                if (safe_to_repeat or isinstance(exc, httpx.ConnectError)) and attempt < self._max_retries:
                     await self._sleep(self._backoff_delay(attempt))
                     attempt += 1
                     continue
-                raise AirtableNetworkError(f"Errore di rete durante la richiesta ad Airtable: {exc}") from exc
+                raise AirtableNetworkError("Errore di rete durante la richiesta ad Airtable") from None
 
             if not resp.is_success:
-                # Retry SOLO per 429 e 5xx secondo policy ufficiale; ogni altro status
-                # (400/401/403/404/422/validation) fallisce immediatamente, senza retry.
-                if is_retryable_status(resp.status_code) and attempt < self._max_retries:
+                # Retry writes only after explicit 429 rejection. An ambiguous
+                # 5xx may follow an accepted mutation; repeat only safe reads.
+                if (resp.status_code == 429 or (safe_to_repeat and is_retryable_status(resp.status_code))) and attempt < self._max_retries:
                     await self._sleep(compute_retry_delay(resp, wait_seconds_on_429=self._wait_seconds_on_429))
                     attempt += 1
                     continue
@@ -446,9 +457,9 @@ class AirtableAdapter(AirtablePort):
                 if isinstance(exc, AirtableMalformedResponseError):
                     raise
                 raise AirtableMalformedResponseError(
-                    f"Risposta Airtable non decodificabile come JSON valido: {exc}",
+                    "Risposta Airtable non decodificabile come JSON valido",
                     details={"status_code": resp.status_code},
-                ) from exc
+                ) from None
 
     # ── Implementazione AirtablePort ──────────────────────────────────────────
 

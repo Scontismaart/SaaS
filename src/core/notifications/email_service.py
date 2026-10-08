@@ -5,7 +5,7 @@ import smtplib
 from dataclasses import dataclass
 from email.message import EmailMessage
 
-from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
+from tenacity import RetryError, retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from src.core.db.repositories.organization_repo import OrganizationRepository
 
@@ -49,8 +49,17 @@ def _get_smtp_config() -> dict | None:
     }
 
 
+def _retryable_smtp_error(error):
+    # A disconnect/timeout after DATA may mean acceptance: never resend blindly.
+    return (
+        isinstance(error, (smtplib.SMTPConnectError, smtplib.SMTPSenderRefused, smtplib.SMTPDataError))
+        and 400 <= error.smtp_code < 500
+    )
+
+
 @retry(
     stop=stop_after_attempt(3),
+    retry=retry_if_exception(_retryable_smtp_error),
     wait=wait_exponential(multiplier=5, min=5, max=120),
     reraise=True,
 )
@@ -104,7 +113,6 @@ async def _worker():
                 "Email permanently failed after all retries",
                 extra={
                     "org_id": event.org_id,
-                    "subject": event.subject,
                 },
             )
         except Exception as e:
@@ -112,8 +120,7 @@ async def _worker():
                 "Email failed with unexpected error",
                 extra={
                     "org_id": event.org_id,
-                    "subject": event.subject,
-                    "error": str(e),
+                    "error_type": type(e).__name__,
                 },
             )
         finally:

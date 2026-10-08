@@ -1,6 +1,7 @@
 import asyncio
 import os
 import logging
+import hashlib
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -9,6 +10,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleAuthRequest
 from googleapiclient.discovery import build
 from google.auth.exceptions import RefreshError
+from googleapiclient.errors import HttpError
 
 from src.core.google_feature_flags import google_calendar_enabled
 
@@ -141,8 +143,24 @@ class GoogleCalendarService:
             return None
         return await asyncio.to_thread(build, "calendar", "v3", credentials=creds)
 
+    async def _booking_in_scope(self, booking, org_id):
+        if not booking.get("id") or not org_id:
+            return False
+        if (
+            booking.get("organization_id") is not None
+            and str(booking["organization_id"]) != str(org_id)
+        ):
+            return False
+        async with self.repo.pool.acquire() as conn:
+            return bool(await conn.fetchval(
+                "SELECT EXISTS(SELECT 1 FROM bookings WHERE id = $1 AND organization_id = $2)",
+                booking["id"], org_id,
+            ))
+
     async def create_event(self, booking, org_id):
         if not google_calendar_enabled():
+            return None
+        if not await self._booking_in_scope(booking, org_id):
             return None
         service = await self._build_service(org_id)
         if not service:
@@ -158,7 +176,12 @@ class GoogleCalendarService:
         start_dt = datetime.fromisoformat(f"{data_str}T{ora_str}")
         end_dt = start_dt + timedelta(minutes=DEFAULT_SLOT_MINUTES)
 
+        # Stable across timeout, worker retry and a failed local persistence.
+        event_id = hashlib.sha256(f"melpis-calendar-v1:{org_id}:{booking['id']}".encode()).hexdigest()
+        ownership = {"organization_id": str(org_id), "booking_id": str(booking["id"])}
         event_body = {
+            "id": event_id,
+            "extendedProperties": {"private": ownership},
             "summary": f"{booking['nome_cliente']} \u2014 {booking['coperti']} coperti",
             "description": (
                 f"Booking ID: {booking['id']}\n"
@@ -173,10 +196,25 @@ class GoogleCalendarService:
             "end": {"dateTime": end_dt.isoformat(), "timeZone": tz},
         }
 
-        created = await asyncio.to_thread(
-            service.events().insert(calendarId=calendar_id, body=event_body).execute
-        )
-        event_id = created["id"]
+        try:
+            created = await asyncio.to_thread(
+                service.events().insert(calendarId=calendar_id, body=event_body).execute
+            )
+        except HttpError as exc:
+            if exc.resp.status != 409:
+                raise
+            created = await asyncio.to_thread(
+                service.events().get(calendarId=calendar_id, eventId=event_id).execute
+            )
+            if (
+                created.get("status") == "cancelled"
+                or created.get("extendedProperties", {}).get("private") != ownership
+            ):
+                logger.warning("calendar=event_conflict_denied org_id=%s", org_id)
+                return None
+        if created.get("id") != event_id:
+            logger.warning("calendar=unexpected_event_id org_id=%s", org_id)
+            return None
         try:
             async with self.repo.pool.acquire() as conn:
                 await conn.execute(
@@ -187,14 +225,17 @@ class GoogleCalendarService:
                     org_id,
                 )
         except Exception:
-            logger.exception(
+            logger.error(
                 "calendar=event_created_db_fail booking_id=%s org_id=%s event_id=%s",
                 booking["id"], org_id, event_id,
             )
+            return None
         return event_id
 
     async def update_event(self, booking, org_id):
         if not google_calendar_enabled():
+            return None
+        if not await self._booking_in_scope(booking, org_id):
             return None
         event_id = booking.get("google_event_id")
         if not event_id:
@@ -214,6 +255,9 @@ class GoogleCalendarService:
         end_dt = start_dt + timedelta(minutes=DEFAULT_SLOT_MINUTES)
 
         body = {
+            "extendedProperties": {"private": {
+                "organization_id": str(org_id), "booking_id": str(booking["id"]),
+            }},
             "summary": f"{booking['nome_cliente']} \u2014 {booking['coperti']} coperti",
             "description": (
                 f"Booking ID: {booking['id']}\n"
@@ -232,14 +276,17 @@ class GoogleCalendarService:
                 service.events().update(calendarId=calendar_id, eventId=event_id, body=body).execute
             )
         except Exception:
-            logger.exception(
+            logger.error(
                 "calendar=event_update_fail booking_id=%s org_id=%s event_id=%s",
                 booking["id"], org_id, event_id,
             )
+            return None
         return event_id
 
     async def delete_event(self, booking, org_id):
         if not google_calendar_enabled():
+            return None
+        if not await self._booking_in_scope(booking, org_id):
             return None
         event_id = booking.get("google_event_id")
         if not event_id:
@@ -252,11 +299,16 @@ class GoogleCalendarService:
             await asyncio.to_thread(
                 service.events().delete(calendarId=calendar_id, eventId=event_id).execute
             )
+        except HttpError as exc:
+            if exc.resp.status not in (404, 410):
+                logger.error("calendar=event_delete_fail org_id=%s", org_id)
+                return None
         except Exception:
-            logger.exception(
+            logger.error(
                 "calendar=event_delete_fail booking_id=%s org_id=%s event_id=%s",
                 booking["id"], org_id, event_id,
             )
+            return None
         async with self.repo.pool.acquire() as conn:
             await conn.execute(
                 "UPDATE bookings SET google_event_id = NULL, updated_at = NOW() "
@@ -295,7 +347,7 @@ class GoogleCalendarService:
                 service.freebusy().query(body=body).execute
             )
         except Exception:
-            logger.exception("calendar=freebusy_fail org_id=%s data=%s", org_id, data)
+            logger.error("calendar=freebusy_fail org_id=%s data=%s", org_id, data)
             return []
         intervals = []
         for cal in (resp.get("calendars") or {}).values():
@@ -329,7 +381,7 @@ class GoogleCalendarService:
                 if google_event_id:
                     await self.delete_event(booking, org_id)
         except Exception:
-            logger.exception(
+            logger.error(
                 "calendar=sync_fail booking_id=%s org_id=%s stato=%s",
                 booking.get("id"), org_id, stato,
             )

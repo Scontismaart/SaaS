@@ -1,5 +1,11 @@
 # Billing & Stripe Integration — Design Document
 
+> **SUPERSEDED — historical proposal, not current pricing.** The current monthly
+> prices are Essenziale €29, Crescita €69, and Scala €149. See
+> [`src/core/billing/plans.py`](../../../../src/core/billing/plans.py) and
+> [`docs/CHECKLIST-LANCIO-DEFINITIVA.md`](../../../CHECKLIST-LANCIO-DEFINITIVA.md).
+> The €49/€99/€199 figures below are retained only as historical evidence.
+
 ## Stato attuale
 
 - `usage_events` table exists with `billing_month` generated column — tested, unused

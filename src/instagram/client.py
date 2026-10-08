@@ -42,13 +42,21 @@ class InstagramClient:
         try:
             response = await self._client.post(url, headers=headers, json=data)
             response.raise_for_status()
-            return IgSendResponse.model_validate(response.json())
+            result = IgSendResponse.model_validate(response.json())
+            if not result.message_id:
+                raise ValueError("Missing provider message ID")
+            return result
         except httpx.HTTPStatusError as exc:
             logger.warning(
-                "Instagram API error: status=%d body=%s",
-                exc.response.status_code, exc.response.text,
+                "Instagram API error: status=%d",
+                exc.response.status_code,
             )
-            raise
+            raise httpx.HTTPStatusError(
+                f"Instagram API returned HTTP {exc.response.status_code}",
+                request=exc.request, response=exc.response,
+            ) from None
         except (httpx.TimeoutException, httpx.ConnectError) as exc:
-            logger.warning("Instagram API error: %s", exc)
-            raise
+            logger.warning("Instagram API transport error: type=%s", type(exc).__name__)
+            raise type(exc)("Instagram API transport failure") from None
+        except ValueError:
+            raise ValueError("Instagram API returned an invalid response") from None

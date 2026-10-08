@@ -5,12 +5,14 @@ Passing this check is not evidence that a cloud account or free quota exists.
 """
 
 import argparse
-import ipaddress
 import re
+import sys
 from pathlib import Path
-from urllib.parse import urlparse
 
 from dotenv import dotenv_values
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.core.release_config import network_config_errors
 
 
 COMMERCIAL_BOOTSTRAP_PROFILE = "commercial_bootstrap"
@@ -221,12 +223,7 @@ def validate(config):
         if any(not allowed(model.strip()) for model in models if model.strip()):
             errors.append(f"{name}: model outside free allowlist")
 
-    for name in ("PUBLIC_APP_URL", "SUPABASE_URL"):
-        parsed = urlparse(config.get(name) or "")
-        if parsed.scheme != "https" or not parsed.hostname:
-            errors.append(f"{name}: HTTPS required")
-    if "sslmode=require" not in (config.get("DATABASE_URL") or ""):
-        errors.append("DATABASE_URL: TLS required")
+    errors.extend(network_config_errors(config))
 
     try:
         from cryptography.fernet import Fernet
@@ -235,16 +232,6 @@ def validate(config):
     except (ValueError, TypeError):
         errors.append("ENCRYPTION_KEY: invalid Fernet key")
 
-    try:
-        networks = [
-            ipaddress.ip_network(value.strip())
-            for value in (config.get("TRUSTED_PROXY_CIDRS") or "").split(",")
-            if value.strip()
-        ]
-        if not networks or any(network.prefixlen == 0 for network in networks):
-            raise ValueError()
-    except ValueError:
-        errors.append("TRUSTED_PROXY_CIDRS: explicit bounded proxy networks required")
     return errors
 
 

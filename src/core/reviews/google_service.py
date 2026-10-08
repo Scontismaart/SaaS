@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import time
 from datetime import timezone
 
@@ -146,7 +147,8 @@ class GoogleBusinessService:
         # fetch remoto del discovery doc. My Business API v4: le review
         # vivono in accounts/{account}/locations/{location}/reviews.
         return await asyncio.to_thread(
-            build, "mybusiness", "v4", credentials=creds, static_discovery=False
+            build, "mybusiness", "v4", credentials=creds, static_discovery=False,
+            discoveryServiceUrl="https://mybusiness.googleapis.com/$discovery/rest?version=v4",
         )
 
     async def _list_reviews(self, service, account_name, location_name, page_size=50,
@@ -161,13 +163,22 @@ class GoogleBusinessService:
         """
         if not google_business_enabled():
             return []
+        if not isinstance(account_name, str) or not re.fullmatch(r"accounts/[A-Za-z0-9_-]+", account_name):
+            raise ValueError("Invalid Google Business account resource")
+        if not isinstance(location_name, str):
+            raise ValueError("Invalid Google Business location resource")
+        if re.fullmatch(r"locations/[A-Za-z0-9_-]+", location_name):
+            parent = f"{account_name}/{location_name}"
+        elif re.fullmatch(re.escape(account_name) + r"/locations/[A-Za-z0-9_-]+", location_name):
+            parent = location_name
+        else:
+            raise ValueError("Google Business location does not belong to selected account")
         reviews = []
         start_token = page_token
         seen_tokens = set()
         for _ in range(max_pages):
             kwargs = {
-                "accountsId": account_name,
-                "locationsId": location_name,
+                "parent": parent,
                 "pageSize": page_size,
             }
             if page_token:

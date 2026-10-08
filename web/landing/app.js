@@ -726,7 +726,7 @@
         });
     })();
 
-    /* ---------- Billing Toggle (Mensile / Annuale -20%) ---------- */
+    /* ---------- Billing Toggle (Mensile / Annuale) ---------- */
     function setBilling(period) {
         var btnMonthly = document.getElementById('btnMonthly');
         var btnAnnual = document.getElementById('btnAnnual');

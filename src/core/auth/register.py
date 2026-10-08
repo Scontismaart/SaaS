@@ -1433,6 +1433,10 @@ async def _signup_callback_post_claimed(request: Request):
         await _cleanup_completed_signup(pending_id, capsule_id, trace_id)
         return _callback_redirect(_ERROR_LOCATION, clear_flow=True)
 
+    if await get_repo(request).get_auth_access_allowed(auth_user_id) is not True:
+        await _cleanup_completed_signup(pending_id, capsule_id, trace_id)
+        return _callback_redirect(_ERROR_LOCATION, clear_flow=True)
+
     try:
         await _set_supabase_password(session["access_token"], capsule["password"])
     except Exception as exc:  # noqa: BLE001 — Supabase may have applied the idempotent PUT
@@ -1449,6 +1453,10 @@ async def _signup_callback_post_claimed(request: Request):
         await get_repo(request).get_or_create_organization_with_owner(
             auth_user_id, _organization_name(user, email), TRIAL_DAYS
         )
+    except PermissionError:
+        # Durable denial is not a transient provisioning failure/retry loop.
+        await _cleanup_completed_signup(pending_id, capsule_id, trace_id)
+        return _callback_redirect(_ERROR_LOCATION, clear_flow=True)
     except Exception as exc:  # noqa: BLE001 — provisioning retries use retained signup state
         _LOGGER.warning(
             "signup_provisioning_deferred trace_id=%s error_type=%s",

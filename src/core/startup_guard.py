@@ -180,3 +180,9 @@ def assert_production_safe() -> None:
         raise RuntimeError(
             "AVVIO BLOCCATO: ENCRYPTION_KEY non e' una chiave Fernet valida (B4)."
         ) from exc
+
+    from src.core.release_config import network_config_errors
+
+    findings = network_config_errors(os.environ)
+    if findings:
+        raise RuntimeError("AVVIO BLOCCATO: " + "; ".join(findings))

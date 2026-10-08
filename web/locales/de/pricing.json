@@ -7,7 +7,7 @@
     "subtitle": "Aktivieren Sie Ihren KI-WhatsApp-Assistenten in wenigen Minuten. 7 Tage kostenlos testen, ohne Kreditkarte und ohne Vertragslaufzeit.",
     "monthly_toggle": "Monatlich",
     "annual_toggle": "Jährlich",
-    "annual_discount": "2 Monate geschenkt"
+    "annual_discount": "Jährliche Abrechnung"
   },
   "plans": {
     "essential": {
@@ -38,7 +38,7 @@
       "features": [
         "Alle Funktionen aus dem Basis-Tarif",
         "Bis zu 2.000 KI-Nachrichten/Monat",
-        "Zweiseitige Google Calendar Synchronisierung",
+        "Google Calendar Synchronisierung",
         "Terminverwaltung & automatische No-Show-Erinnerungen",
         "Bis zu 3 parallele Mitarbeiter im Posteingang",
         "KI-Training mit eigenen PDF-Dokumenten und Preislisten",
@@ -48,7 +48,7 @@
     "scale": {
       "name": "Skalierung",
       "badge": "Maximale Leistung",
-      "tagline": "Für Hotels, Praxiskliniken und Unternehmen mit hohem Anfragevolumen und mehreren Standorten.",
+      "tagline": "Für Unternehmen mit hohem Anfragevolumen.",
       "price_monthly": 149,
       "price_annual": 129,
       "period": "/Monat",
@@ -57,8 +57,8 @@
         "Alle Funktionen aus dem Wachstum-Tarif",
         "Bis zu 10.000 KI-Nachrichten/Monat",
         "Unbegrenzte Teammitglieder mit differenzierten Rechten",
-        "Instagram Direct Anbindung inklusive",
-        "Individuelle Webhooks und PMS/Airtable-Schnittstellen",
+        "Instagram Direct, vorbehaltlich Anbieterprüfung",
+        "KI-Konfiguration und Teamverwaltung",
         "Sicherheits-Auditprotokoll & Auftragsverarbeitungsvertrag (AVV/DPA)",
         "Persönlicher Account Manager & betreutes Onboarding"
       ]

@@ -167,6 +167,8 @@ async def get_current_user(
     if await is_token_revoked(token):
         raise HTTPException(status_code=401, detail="Sessione revocata: effettua di nuovo il login")
     payload = await verify_supabase_jwt(token)
+    if await get_repo(request).get_auth_access_allowed(payload["sub"]) is not True:
+        raise HTTPException(status_code=403, detail="Accesso account non consentito")
     return {
         "auth_user_id": payload["sub"],
         "email": payload.get("email"),

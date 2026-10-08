@@ -304,7 +304,10 @@ async def test_adapter_error_normalization_401():
     with pytest.raises(AirtableAuthError) as exc_info:
         await adapter.get_record("app1", "Tbl", "rec1")
     assert exc_info.value.status_code == 401
-    assert "Invalid token" in str(exc_info.value)
+    assert "HTTP 401" in str(exc_info.value)
+    assert exc_info.value.error_type == "AUTHENTICATION_REQUIRED"
+    assert "Invalid token" not in str(exc_info.value)
+    assert exc_info.value.details == {"status_code": 401}
 
 
 @pytest.mark.asyncio

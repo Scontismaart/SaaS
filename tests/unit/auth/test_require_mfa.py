@@ -15,6 +15,7 @@ e jose.jwt.decode per controllare claim e signature separatamente.
 """
 import uuid
 import pytest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -37,6 +38,7 @@ def _build_test_app_real() -> FastAPI:
     """App minimale che monta /api/gdpr/export protetto da require_mfa(),
     per testare la dipendenza in isolamento senza repository o Stripe."""
     app = FastAPI()
+    app.state.repo = SimpleNamespace(get_auth_access_allowed=AsyncMock(return_value=True))
 
     @app.get("/api/gdpr/export")
     async def _export(

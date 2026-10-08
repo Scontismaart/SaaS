@@ -1,6 +1,13 @@
 """B5: griglia prezzi Essenziale/Crescita/Scala + supporto annuale."""
+import json
+import re
+from pathlib import Path
+
 import pytest
 from src.core.billing.plans import PLANS
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_prezzi_canonici():
@@ -9,10 +16,41 @@ def test_prezzi_canonici():
     assert PLANS["business"].price_monthly_eur == 149
 
 
-def test_prezzi_annuali_25_percento():
+def test_prezzi_annuali_configurati():
     assert PLANS["starter"].price_yearly_eur == 288   # 24*12
     assert PLANS["pro"].price_yearly_eur == 708       # 59*12
     assert PLANS["business"].price_yearly_eur == 1548 # 129*12
+
+
+def test_prezzi_mensili_coerenti_tra_api_dashboard_e_locali():
+    expected = {"starter": 29, "pro": 69, "business": 149}
+    for slug, price in expected.items():
+        assert PLANS[slug].price_monthly_eur == price
+
+    dashboard = (REPO_ROOT / "web" / "app.js").read_text(encoding="utf-8")
+    account_plans = dashboard.split("const ACCOUNT_PLANS = [", 1)[1].split("\n];", 1)[0]
+    dashboard_prices = {
+        slug: int(price)
+        for slug, price in re.findall(r'slug: "(starter|pro|business)"[\s\S]*?prezzo: "€(\d+)"', account_plans)
+    }
+    assert dashboard_prices == expected
+
+    for locale_root in ("locales", "web/landing/locales", "web/locales"):
+        for locale in ("it", "en", "es", "fr", "de"):
+            pricing = json.loads(
+                (REPO_ROOT / locale_root / locale / "pricing.json").read_text(encoding="utf-8")
+            )
+            assert {
+                "starter": pricing["plans"]["essential"]["price_monthly"],
+                "pro": pricing["plans"]["growth"]["price_monthly"],
+                "business": pricing["plans"]["scale"]["price_monthly"],
+            } == expected
+
+    from src.core.billing.routes import CheckoutSessionRequest
+
+    assert CheckoutSessionRequest(
+        plan="pro", success_url="https://qa.invalid/app/billing", cancel_url="https://qa.invalid/app/billing",
+    ).interval == "monthly"
 
 
 def test_nomi_commerciali():
@@ -32,11 +70,11 @@ def test_limiti_invariati():
     assert PLANS["business"].has_rag is True
 
 
-def test_resolve_price_id():
+def test_resolve_price_id(monkeypatch):
     from src.core.billing.routes import _resolve_price_id
     p = PLANS["pro"]
-    p.stripe_price_id = "price_m"
-    p.stripe_price_id_yearly = "price_y"
+    monkeypatch.setattr(p, "stripe_price_id", "price_m")
+    monkeypatch.setattr(p, "stripe_price_id_yearly", "price_y")
     assert _resolve_price_id(p, "monthly") == "price_m"
     assert _resolve_price_id(p, "yearly") == "price_y"
 

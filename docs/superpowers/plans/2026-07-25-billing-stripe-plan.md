@@ -1,5 +1,11 @@
 # Billing & Stripe Integration Implementation Plan
 
+> **SUPERSEDED — historical proposal, not current pricing.** The current monthly
+> prices are Essenziale €29, Crescita €69, and Scala €149. See
+> [`src/core/billing/plans.py`](../../../../src/core/billing/plans.py) and
+> [`docs/CHECKLIST-LANCIO-DEFINITIVA.md`](../../../CHECKLIST-LANCIO-DEFINITIVA.md).
+> The €49/€99/€199 figures below are retained only as historical evidence.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Integrate Stripe billing with 3 SaaS plans (Starter 49€, Pro 99€, Business 199€), usage counting, plan limits enforcement, trial management.

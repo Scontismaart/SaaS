@@ -67,9 +67,42 @@ Account/location IDs and review evidence remain pending Google approval.
 
 ## Remaining gates
 
-Next human action: enter test Phone Number ID, WABA ID and System User token
-only in the Owner's local Melpis form; never chat, report or logs. Then verify
-the remaining real Meta workflow against an explicitly authorized QA number.
+Meta credentials have now been entered by the QA Owner through the local form.
+Saved account status returned HTTP 200, connected=true. A read-only Meta probe
+through the authenticated application returned HTTP 200, success=true; no
+message was sent. The QA Owner subsequently saved the Meta App Secret through
+a temporary loopback-only form outside Git and logs. That listener is closed.
+Effective local runtime now has both App Secret and verify token configured;
+sandbox-only remains true and background jobs remain disabled. Local HTTP probes
+passed: correct challenge 200, incorrect challenge 403, missing/invalid signature
+403, correctly signed empty payload 200, stale timestamp 403. These were synthetic
+local probes, not incoming Meta events. Meta's read-only subscribed-apps request
+returned 200 and confirmed the expected app subscription. No authorized
+test-recipient allowlist is configured. Localhost is not a
+publicly reachable Meta callback. Real webhook/inbound/outbound/delivery remain
+blocked, not certified. No public exposure or production infrastructure started.
+
+Browser QA found that the connected card incorrectly claimed ready-to-respond
+and real-time reception from saved credentials alone. The card now distinguishes
+credentials from webhook configuration and still requires real-message evidence
+even when webhook configuration exists. Three new regression tests plus the two
+existing retry-key tests passed (5/5) in both worktrees; frontend lint and diff
+checks passed. The refreshed real browser shows incomplete webhook configuration.
+Real Meta QA now requires a reachable callback and an explicitly authorized QA
+recipient. Public exposure/infrastructure was not authorized by this mission,
+so this is an external gate rather than a certified WhatsApp E2E result.
+
+Final frontend checkpoint: **143/143 passed**, including conservative readiness,
+auth/router/MFA/BFCache and retry keys. Frontend lint, i18n build/consistency, CSP,
+assets/links/SEO/images/hardcoded checks and npm audit passed. A stale Reviews
+source assertion was updated to require actual operational status instead of
+OAuth alone; regenerated FullCalendar artifacts fixed Windows-line-ending drift.
+Ruff CI, compilation, tenant guard, release-bootstrap static tests and diff checks
+passed. Gitleaks reviewed 308 commits with no leaks, then checked the six new
+integration commits with no leaks. The Python dependency gate audited 201 packages
+and passed against the existing documented exception policy; it is not a claim of
+zero advisories. At this checkpoint the single final isolated full Python suite
+is still in progress; its completed result must be recorded in the integration PR.
 
 One final combined full Python regression, complete frontend/static/dependency/
 secret gates and CI on the exact integrated code remain required after all fixes

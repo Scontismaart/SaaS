@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "baseline_set": "dashboard-01",
+  "source_commit": "4f915578edfdb4b0224dd0566aaa5a17d7825c86",
+  "image_sha256": {
+    "desktop-bookings.jpg": "b317225e505fe6e2ad8f0e6bd028d0f528e5f863e40a219b38d96a3fcb0f0fff",
+    "desktop-inbox.jpg": "4c9bc87a539bfa046ba0129507bd204765c96a83e33f059b535294e15ccc4316",
+    "desktop-overview.jpg": "d16cceba09411dbaa24c68511b49664b4298f0bbddf7b41ac3b672b5f85f4417",
+    "desktop-settings.jpg": "6c462f295682ed84027c2f8c3c3e1499487cff6f65f1ff4af523294b6a7c0e26",
+    "desktop-sidebar.jpg": "96d9b839e2c05e160184bca2e046903709063391b68b48843fa494361b02c63c",
+    "desktop-simulator.jpg": "320145f55553a77d10694666c6042f05097f033733f0ea4101dfea78d292ab27",
+    "mobile-bookings.jpg": "76f35e85efcdbc57790db78bcdaecd7360a55d3b1ca70d58e82577e0129ede0f",
+    "mobile-inbox.jpg": "17d53e4ff6eb8b488fefdfafe4c488406d72d0136a66bd35437ce118ba8ebdf1",
+    "mobile-overview.jpg": "7bbd26ab59fa5d54232994cd90f1dca3c1d48d5efceac5713a079a8fffc6be02",
+    "mobile-settings.jpg": "4217f1a323a0b8890d2cb8c22978e755e357f994e48244cb1daf7d593f64f14e",
+    "mobile-sidebar.jpg": "25aefd19559fae3169987dce6615b065b4fc95832a23a179063828c4a2d90201",
+    "mobile-simulator.jpg": "866c3d4e1a233e9f8462f79ae45ad8ae6f2476c75141cdc95d4961edbc95ade3"
+  },
+  "capture": {
+    "locale": "it",
+    "theme": "dark",
+    "fixed_time": "2026-10-08T10:00:00.000Z",
+    "identity": {
+      "role": "owner",
+      "email": "owner@dashboard-qa.invalid",
+      "organization": "QA A"
+    },
+    "dataset_profile": "empty",
+    "viewports": {
+      "desktop": { "width": 1440, "height": 900 },
+      "mobile": { "width": 375, "height": 812 }
+    }
+  },
+  "cases": [
+    {
+      "id": "overview",
+      "route": "/app/overview",
+      "state": "Overview with synthetic empty activity and booking datasets.",
+      "images": {
+        "desktop": "desktop-overview.jpg",
+        "mobile": "mobile-overview.jpg"
+      }
+    },
+    {
+      "id": "inbox",
+      "route": "/app/inbox",
+      "state": "Inbox with no conversations.",
+      "images": {
+        "desktop": "desktop-inbox.jpg",
+        "mobile": "mobile-inbox.jpg"
+      }
+    },
+    {
+      "id": "bookings",
+      "route": "/app/bookings",
+      "state": "Bookings calendar and list with no bookings.",
+      "images": {
+        "desktop": "desktop-bookings.jpg",
+        "mobile": "mobile-bookings.jpg"
+      }
+    },
+    {
+      "id": "settings",
+      "route": "/app/settings?tab=generale",
+      "state": "General settings with the synthetic organization profile.",
+      "images": {
+        "desktop": "desktop-settings.jpg",
+        "mobile": "mobile-settings.jpg"
+      }
+    },
+    {
+      "id": "simulator",
+      "route": "/app/ai-simulator",
+      "state": "AI simulator with an empty synthetic conversation.",
+      "images": {
+        "desktop": "desktop-simulator.jpg",
+        "mobile": "mobile-simulator.jpg"
+      }
+    },
+    {
+      "id": "sidebar",
+      "route": "/app/overview",
+      "state": "Desktop account dropdown open; mobile primary navigation drawer open.",
+      "images": {
+        "desktop": "desktop-sidebar.jpg",
+        "mobile": "mobile-sidebar.jpg"
+      }
+    }
+  ]
+}

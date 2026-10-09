@@ -52,6 +52,8 @@ function createIntegratedApp(url) {
     navItems: window.document.querySelectorAll(".nav-item"),
     views: window.document.querySelectorAll(".view"),
     topbarTitle: window.document.getElementById("topbar-title"),
+    dashboardOverviewModule: null,
+    dashboardReviewsModule: null,
     t: (key) => key,
     segnaNotificheViste() {},
     chiudiMenuMobile() {},

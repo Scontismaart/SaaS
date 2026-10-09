@@ -14,17 +14,20 @@ function fixture(pathname = "/app/overview") {
   const classes = new Set(["authenticated"]);
   let reloads = 0;
   let redirects = 0;
+  let viewExits = 0;
   const body = { classList: { remove: (name) => classes.delete(name) }, dataset: {} };
   vm.runInNewContext(app.slice(start, end), {
     document: { body }, console: { debug() {} },
     invalidaSessione: () => classes.delete("authenticated"),
+    dashboardOverviewModule: { onExit: () => { viewExits += 1; } },
+    dashboardReviewsModule: { onExit: () => { viewExits += 1; } },
     vaiAdAccesso: () => { redirects += 1; },
     window: {
       addEventListener: (event, handler) => { handlers[event] = handler; },
       location: { pathname, reload: () => { reloads += 1; } },
     },
   });
-  return { handlers, classes, body, reloads: () => reloads, redirects: () => redirects };
+  return { handlers, classes, body, reloads: () => reloads, redirects: () => redirects, viewExits: () => viewExits };
 }
 
 test("successful logout in another tab hides private UI and returns to login", () => {
@@ -53,6 +56,7 @@ test("pagehide removes private visibility before a document can be cached", () =
   const f = fixture();
   f.handlers.pagehide({ persisted: true });
   assert.equal(f.classes.has("authenticated"), false);
+  assert.equal(f.viewExits(), 2, "both extracted views release their pending work");
 });
 
 test("real persisted pageshow handler keeps private content hidden and reloads", () => {

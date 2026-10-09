@@ -31,6 +31,9 @@ function setup(fetchImpl) {
   win.eval(`
     const API_BASE = "";
     let sessione = { user_id: "disposable-user" };
+    let dashboardSessionEpoch = 0;
+    const dashboardOverviewModule = { invalidate() { window.overviewInvalidations = (window.overviewInvalidations || 0) + 1; } };
+    const dashboardReviewsModule = { invalidate() { window.reviewsInvalidations = (window.reviewsInvalidations || 0) + 1; } };
     ${functionSource("leggiCookie")}
     ${functionSource("csrfToken")}
     ${functionSource("tentaRefresh")}
@@ -183,5 +186,7 @@ test("successful logout removes private content before navigating", async (t) =>
   t.after(() => dom.window.close());
   assert.equal(await win.eval("faiLogout()"), true);
   assert.equal(win.document.body.classList.contains("authenticated"), false);
+  assert.equal(win.overviewInvalidations, 1);
+  assert.equal(win.reviewsInvalidations, 1);
   assert.match(win.localStorage.getItem("melpis_auth_logout"), /^\d+:/);
 });

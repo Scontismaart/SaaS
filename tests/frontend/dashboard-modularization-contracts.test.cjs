@@ -40,11 +40,15 @@ test("full dashboard script order and authenticated startup are single-instance"
   const index = (path) => harness.scriptOrder.indexOf(path);
   assert.ok(index("/app/dialog-focus.js") < index("/app/dashboard-router.js"));
   assert.ok(index("/app/dashboard-router.js") < index("/app/dashboard-shared.js"));
-  assert.ok(index("/app/dashboard-shared.js") < index("/app/app.js"));
+  assert.ok(index("/app/dashboard-shared.js") < index("/app/dashboard-overview.js"));
+  assert.ok(index("/app/dashboard-overview.js") < index("/app/dashboard-reviews.js"));
+  assert.ok(index("/app/dashboard-reviews.js") < index("/app/app.js"));
   assert.ok(index("/app/dashboard-router.js") < index("/app/app.js"));
   assert.ok(index("/app/app.js") < index("/app/mfa.js"));
   assert.equal(harness.scriptOrder.filter((path) => path === "/app/dashboard-router.js").length, 1);
   assert.equal(harness.scriptOrder.filter((path) => path === "/app/dashboard-shared.js").length, 1);
+  assert.equal(harness.scriptOrder.filter((path) => path === "/app/dashboard-overview.js").length, 1);
+  assert.equal(harness.scriptOrder.filter((path) => path === "/app/dashboard-reviews.js").length, 1);
   assert.equal(harness.scriptOrder.filter((path) => path === "/app/app.js").length, 1);
   assert.equal(harness.scriptOrder.filter((path) => path === "/app/mfa.js").length, 1);
   assert.equal(harness.requests.filter((request) => request.pathname === "/api/auth/me").length, 1);

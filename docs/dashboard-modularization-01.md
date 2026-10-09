@@ -1,0 +1,66 @@
+# Dashboard modularization inventory (Block 1)
+
+Read-only inventory of the current dashboard frontend in this worktree. No runtime files were changed for this inventory. The files are large classic-script artifacts: `web/app.js` 9,332 lines, `web/index.html` 2,821, `web/style.css` 13,707, and `web/dashboard-router.js` 208. There is no `web/components/` directory or framework-based dashboard component tree.
+
+## Runtime boundaries
+
+| Boundary | Current concrete owner and contract |
+| --- | --- |
+| Bootstrap and auth | `web/app.js` defines `API_BASE`, `sessione`, `caricaSessione()`, `invalidaSessione()`, `faiLogout()`, `vaiAdAccesso()`, then invokes async IIFE `avvia()`. `avvia()` handles invite tokens, authenticates before revealing `.app-shell`, constructs/starts `dashboardRouter`, handles OAuth returns, then starts notifications. `storage`, `pagehide`, and persisted `pageshow` handlers invalidate or hide private UI across logout/BFCache. |
+| Shared API/CSRF | `csrfToken()`, `tentaRefresh()`, and `apiFetch(url, options)` own cookie-derived CSRF headers, one auth refresh/retry, MFA-required response handling, and the `window.MelpisAPI.fetch/base` bridge. Many feature functions call `apiFetch`; avoid creating feature-local auth/CSRF behavior. There are also direct `fetch()` calls (notably auth-me/organization bootstrap and feature OAuth/provider flows), so a move must account for each actual call site. |
+| Shared session/UI state | Top-level lexical bindings include `sessione`, `reteInErrore`, `navItems`, `views`, `activeDashboardView`, `dashboardViewTransition`, request generations (`overviewSummaryRequest`, `overviewPriorityRequest`, `overviewReportRequest`, `inboxListRequest`, `inboxDetailRequest`, `bookingListRequest`, `bookingAvailabilityRequest`), `dashboardRouter`, notification state, `onboardingState`, booking/review/inbox caches, and polling timers. They are not exported modules; functions share these bindings directly. |
+| Routing | `web/dashboard-router.js` exposes frozen `ROUTES`, `SETTINGS_TABS`, `normalizeAppPath()`, `resolveRoute()`, `pathForView()`, settings query helpers, and `createDashboardRouter()`. It attaches as both CommonJS `module.exports` and `window.MelpisDashboardRouter`. Router owns canonical URL/history and click/popstate interpretation; `renderDashboardView(viewName)` owns view DOM activation/data loading. `apriView(key)`, `navigaTabImpostazioni(cat)`, and `attivaTabImpostazioni(tab)` bridge app actions to the router. Settings query is the source of truth for the active settings tab. |
+| DOM ownership | `web/index.html` is the shell and all primary view/form/modal markup (`data-view-panel` for overview, onboarding, simulator, bookings, reviews, team, knowledge, AI settings, inbox, settings, account). `app.js` captures many element references at top level with `document.getElementById()` and uses direct DOM mutation plus inline per-element listeners. It also creates dynamic content with `createElement()` and `innerHTML`; rendered HTML must preserve existing IDs, `data-*` hooks, labels, and ARIA contracts. Most app code assumes the full dashboard DOM exists before `app.js` is evaluated. |
+| Event listeners/init | Most listeners are registered during classic-script evaluation using optional-chained element references; `inizializzaEventiInbox()` is the notable `DOMContentLoaded` registration. `avvia()` is the authenticated bootstrap and runs independently of `DOMContentLoaded`. Global listeners include network online/offline, storage, pagehide/pageshow, visibilitychange, document click/keydown, and language events. `inizializzaRicercaGlobale()` self-initializes immediately. A split must retain script order and prevent duplicate listeners/initializers. |
+| Polling/async lifetimes | `avviaPanoramicaPolling()` / `fermaPanoramicaPolling()`, `avviaInboxPolling()` / `fermaInboxPolling()`, and `sincronizzaPollingPrenotazioni()` own view-scoped timers. Per-view request counters and transition IDs prevent stale async responses from committing after selection/view changes. `renderDashboardView()` starts/stops relevant loaders and polling. |
+| CSS coupling | `web/style.css` is one global stylesheet with shared shell/navigation, tokens, feature selectors, responsive rules, and legacy/late overrides. It styles IDs and classes present in `index.html` and dynamic DOM created by `app.js`; view feature selectors include `.view`, `.inbox-*`, `.booking-*`, `.review-*`, `.settings-*`, `.kb-*`, `.report-*`, and `.security-*`. Existing `web/landing/style.css` is separate and outside this dashboard inventory. |
+| Auth/MFA/dialog | `apiFetch()` delegates step-up UI to `window.MelpisMfa.openForStepUp()`. `confermaDestructiva()` uses `window.MelpisDialogFocus.open/close`; `web/dialog-focus.js` is loaded before `app.js`. `web/mfa.js` is loaded after `app.js` and exposes `window.MelpisMfa`. `web/auth.js`, `login.js`, and `register.js` serve separate auth pages; they are not dashboard modules. |
+| i18n | `localeCorrente()` reads `window.MelpisI18n.getLocale()`, `_tDash(key, fallback, options)` wraps global `t()`, while much visible static markup uses `data-i18n*` attributes processed by `web/i18n-client.js`. Dashboard language selector code listens for `melpis:lang-changed`, syncs `#sidebar-lang-select` and `#settings-lang-select`, refreshes topbar date and calls `aggiornaInboxPerLingua()`. That function re-renders loaded ticket rows and selected thread without refreshing ticket data (`refreshMessages: false`). `i18n-client.js` and i18next load before `app.js`. |
+| Vendor/script order | `web/index.html` loads `/config.js`, FullCalendar CSS/JS, DOMPurify, i18next, `/i18n-client.js`, `/app/dialog-focus.js`, `/app/dashboard-router.js`, `/app/app.js`, then `/app/mfa.js`. `theme-init.js` runs in the head and dashboard CSS is linked there. These are classic scripts, not ES modules. |
+
+## Feature ownership inside `app.js`
+
+| Approximate line region | Main concrete symbols / feature |
+| --- | --- |
+| 1–670 | `localeCorrente`, `_escapeHtml`, `_sanitize`, `toast`, `confermaDestructiva`, `csrfToken`, `tentaRefresh`, `apiFetch`, `caricaSessione`, `faiLogout`, `caricaAccount`, `cambiaPiano`, `apriPortaleBilling` |
+| 677–1,070 | `renderDashboardView`, `apriVistaImpostazioni`, `apriView`, `attivaCategoriaImpostazioni`, `navigaTabImpostazioni`, `attivaTabImpostazioni`, notification badge/storage helpers |
+| 1,084–1,817 | `onboardingState`, onboarding profile/draft functions, security password/email handlers, `_tDash`, simulator functions `aggiungiBollaChat`, `inviaMessaggio` |
+| 1,821–2,584 | booking state and `bookingCalendar`, `eseguiAzionePrenotazione`, `inizializzaCalendarioPrenotazioni`, `aggiornaPrenotazioni`, `aggiornaSemaforo`, `aggiornaImpostazioniPrenotazioni`, `sincronizzaPollingPrenotazioni` |
+| 2,588–3,221 | review DOM/state and `inviaRecensione`, `approvaRecensioneDaId`, `renderStoricoRecensioni`, `aggiornaRecensioni`, `aggiornaTrends` |
+| 3,225–3,897 | report and overview: `scaricaCsvPrenotazioni`, `aggiornaReport`, `aggiornaPrioritari`, `avviaPanoramicaPolling`, `fermaPanoramicaPolling`, `aggiornaRiepilogo` |
+| 3,901–4,926 | knowledge base: `impostaTabConoscenza`, `caricaKBSummary`, `caricaFAQ`, `eseguiUploadFile`, `caricaDocumenti`, `caricaPagineWeb`, `caricaDatiStruttura`, `aggiornaConoscenzaCompleta` |
+| 4,926–6,008 | inbox state and rendering: `avviaInboxPolling`, `fermaInboxPolling`, `caricaInbox`, `renderInboxConversazioni`, `selezionaTicket`, `caricaDettaglioTicket`, `inviaRispostaInbox`, `inizializzaEventiInbox` |
+| 6,015–7,150 | mobile navigation, notifications, cross-tab auth lifecycle, `avvia()`, global search, settings timezone and dashboard language selector |
+| 7,151–8,403 | WhatsApp and Instagram connection/setup, Calendar and Google Reviews OAuth/status, booking provider integration |
+| 8,404–9,332 | Airtable connection/webhook flows, team and organization/invite management (`caricaTeam`, `aggiungiMembroTeam`, `gestisciAzioniTeam`, `accettaInvitoDaLink`) |
+
+## Existing suite contract
+
+`package.json` defines `lint:web` (`eslint web/*.js web/landing/app.js`) and `test:web` (`node --test tests/frontend/*.test.cjs`). The 18 frontend test files establish these contracts:
+
+| Test file | Contract that a module split must preserve |
+| --- | --- |
+| `api-fetch-csrf-refresh.test.cjs` | CSRF cookie rotation and retry behavior, safe requests without CSRF, no mutation retry after failed refresh, protected 401/network failures hiding private UI and redirecting once, and accurate logout completion. |
+| `auth-next.test.cjs` | Safe internal `next` paths, Settings tab query preservation through Google sign-in, rejection of unsafe paths, raw fragment precedence, legacy query fallback only when appropriate. |
+| `auth-page-lifecycle.test.cjs` | Cross-tab logout and BFCache handlers hide private UI, do not affect public pages, and avoid ordinary pageshow reload loops. |
+| `dashboard-async-races.test.cjs` | Newest request wins; leaving/re-entering invalidates stale success and failure for overview, Inbox, report, and bookings; stale detail/reply/action/save completions cannot overwrite current selection; polling remains single-instance and stops. |
+| `dashboard-baseline-manifest.test.cjs` | Every visual baseline manifest mapping resolves to a JPEG with the declared desktop/mobile dimensions. |
+| `dashboard-modularization-contracts.test.cjs` | Full-script startup/auth/router/listener, nine routes, settings state, form retention, organization/CSRF headers, polling, and MFA bridge contracts. |
+| `dashboard-router.test.cjs` | Canonical routes and query/hash/history behavior; allowlisted settings tabs; ordinary same-origin link interception; deep links and Back/Forward sync actual tab/panel DOM; canonical HTML hrefs and OAuth return routing. |
+| `design-contract.test.cjs` | Existing theme/design contracts including actual booking date input, overview composition, theme controls, live Google Reviews wording, pricing/signup copy, and theme prepaint behavior. |
+| `dialog-focus.test.cjs` | Dialog initial focus, keyboard loop, Escape/focus return; booking/confirmation focus manager usage; translated accessible names; knowledge tab keyboard navigation. |
+| `dashboard-visual-fixture.test.cjs` | Synthetic API reads/writes fail closed, fixture identity contains no real credentials, and QA-only files are excluded from the dashboard Docker image. |
+| `google-oauth-start.test.cjs` | Google provider OAuth preflight retains selected organization and blocks navigation on denied or failed owner preflight. |
+| `i18n.test.cjs` | Dashboard bundles and namespaces, client adapter formatters, persisted settings language, translated visible/dynamic Inbox copy in all five locales, Inbox language refresh without ticket fetch, `_tDash` coverage, canonical links, CSP/FullCalendar asset requirements, selected landing copy. |
+| `mfa.test.cjs` | Safe enrollment errors, transient QR/secret lifecycle and session promotion, AAL2 Security challenge flow, safe OTP errors, visible stale-auth re-login state. |
+| `overview-report-route.test.cjs` | Report loads only on Overview activation; simulator send still refreshes report. |
+| `register-next.test.cjs` | Signup `next` parsing/forwarding, password validation and BFF-only password submission, served signup page copy. |
+| `security.test.cjs` | Unique HTML IDs, no inline style attributes on static pages, names rendered as text rather than executable markup. |
+| `whatsapp-readiness.test.cjs` | Saved credentials alone do not imply active reception; initial markup avoids unverified connected claims. |
+| `whatsapp-send-test-idempotency.test.cjs` | Both WhatsApp test-send handlers reuse a stable recipient idempotency key until delivery is confirmed. |
+
+`test:i18n`, `build:i18n`, and `check:fullcalendar-css` are additional package scripts relevant to locale bundle parity and the deployed same-origin calendar stylesheet. The final frontend suite comprises 160 tests, including 13 new app integration contracts, three fixture contracts and one baseline manifest contract. Lint, CSP, i18n (3,148 keys), assets, links and FullCalendar stylesheet checks pass. No production runtime, landing, backend or pricing files changed.
+
+Real-browser synthetic smoke covered all nine canonical desktop routes, Back/Forward and reload, plus the mobile drawer, Overview/Inbox/Bookings/Settings/Simulator and simulator submission. Twelve desktop/mobile captures have fixed viewports, fonts, clock and synthetic data; repeated decoded RGB comparisons have zero changed pixels. See `tests/frontend/baselines/dashboard-01/README.md` and its manifest for reproduction and immutable image hashes.
+
+The JSDOM harness executes actual app.js/router/MFA/i18n adapter code but substitutes FullCalendar, DOMPurify and i18next. It is an app integration contract, not vendor rendering or sanitizer security proof; real-browser smoke uses the actual same-origin vendor assets. Lifecycle events are dispatched in JSDOM to freeze existing BFCache handlers, not to recertify browser BFCache eligibility. The synthetic API does not prove backend authorization, deployed tenant isolation or provider E2E behavior. Existing focused auth/CSRF/MFA/async-race/i18n suites remain part of the complete gate.

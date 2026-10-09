@@ -61,6 +61,7 @@ services:
       - ./web/index.html:/usr/share/nginx/html/app/index.html:ro
       - ./web/style.css:/usr/share/nginx/html/app/style.css:ro
       - ./web/app.js:/usr/share/nginx/html/app/app.js:ro
+      - ./web/dashboard-shared.js:/usr/share/nginx/html/app/dashboard-shared.js:ro
       - ./web/dashboard-router.js:/usr/share/nginx/html/app/dashboard-router.js:ro
       - ./web/mfa.js:/usr/share/nginx/html/app/mfa.js:ro
       - ./web/config.js:/usr/share/nginx/html/config.js:ro

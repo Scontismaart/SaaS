@@ -7,6 +7,7 @@ if (typeof window !== "undefined" && window.MELPIS_API_BASE === undefined) {
   console.warn("[App] window.MELPIS_API_BASE non definita, fallback sicuro su same-origin ('')");
 }
 const PROFILO_ID = "trattoria_da_mario";
+const { escapeHtml: _escapeHtml, sanitize: _sanitize, toast, confirmDestructive: confermaDestructiva, toDateKey: _toDateKey } = window.MelpisDashboardShared;
 
 function localeCorrente() {
   return window.MelpisI18n?.getLocale?.() || "it-IT";
@@ -25,121 +26,6 @@ function localeCorrente() {
    ============================================================ */
 
 let sessione = null; // { email, organization_id, ruolo } | null
-
-function _escapeHtml(str) {
-  return String(str == null ? "" : str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function _sanitize(v) {
-  if (typeof DOMPurify !== "undefined" && typeof DOMPurify.sanitize === "function") {
-    return DOMPurify.sanitize(v == null ? "" : String(v));
-  }
-  return _escapeHtml(v);
-}
-
-/* ============================================================
-   TOAST — notifiche non bloccanti al posto di alert()
-   ============================================================ */
-
-function toast(messaggio, tipo = "info", durata = 4200, azione = null) {
-  let container = document.getElementById("toast-container");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "toast-container";
-    container.setAttribute("role", "status");
-    container.setAttribute("aria-live", "polite");
-    document.body.appendChild(container);
-  }
-  const el = document.createElement("div");
-  el.className = `toast toast-${tipo}`;
-  
-  const textSpan = document.createElement("span");
-  textSpan.textContent = messaggio;
-  el.appendChild(textSpan);
-
-  if (azione && azione.testo && typeof azione.onClick === "function") {
-    const actionBtn = document.createElement("button");
-    actionBtn.type = "button";
-    actionBtn.className = "toast-action-btn";
-    actionBtn.textContent = azione.testo;
-    actionBtn.style.marginLeft = "8px";
-    actionBtn.style.textDecoration = "underline";
-    actionBtn.style.fontWeight = "600";
-    actionBtn.style.cursor = "pointer";
-    actionBtn.style.background = "transparent";
-    actionBtn.style.border = "none";
-    actionBtn.style.color = "inherit";
-    actionBtn.style.font = "inherit";
-    actionBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      azione.onClick();
-      el.remove();
-    });
-    el.appendChild(actionBtn);
-  }
-
-  container.appendChild(el);
-  requestAnimationFrame(() => el.classList.add("toast-in"));
-  setTimeout(() => {
-    el.classList.remove("toast-in");
-    setTimeout(() => el.remove(), 320);
-  }, durata);
-}
-
-/* ============================================================
-   CONFERMA AZIONI DISTRUTTIVE — modal riusabile al posto di confirm()
-   ============================================================ */
-
-function confermaDestructiva({ titolo = "Conferma azione", descrizione = "", label = "Conferma" } = {}) {
-  return new Promise((resolve) => {
-    const modal = document.getElementById("confirm-modal");
-    const titleEl = document.getElementById("confirm-title");
-    const descEl = document.getElementById("confirm-desc");
-    const okBtn = document.getElementById("confirm-ok-btn");
-    const cancelBtn = document.getElementById("confirm-cancel-btn");
-    if (!modal || !okBtn || !cancelBtn) {
-      resolve(window.confirm(descrizione || titolo));
-      return;
-    }
-    titleEl.textContent = titolo;
-    descEl.textContent = descrizione;
-    okBtn.textContent = label;
-    if (window.MelpisDialogFocus) {
-      window.MelpisDialogFocus.open(modal, { initialFocus: okBtn });
-    } else {
-      modal.hidden = false;
-      okBtn.focus();
-    }
-
-    const chiudi = (esito) => {
-      if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal);
-      else modal.hidden = true;
-      okBtn.removeEventListener("click", onOk);
-      cancelBtn.removeEventListener("click", onCancel);
-      modal.removeEventListener("keydown", onKey);
-      resolve(esito);
-    };
-    function onOk() { chiudi(true); }
-    function onCancel() { chiudi(false); }
-    function onKey(e) {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        chiudi(false);
-      } else if (e.key === "Tab") {
-        e.preventDefault();
-        (document.activeElement === okBtn ? cancelBtn : okBtn).focus();
-      }
-    }
-    okBtn.addEventListener("click", onOk);
-    cancelBtn.addEventListener("click", onCancel);
-    modal.addEventListener("keydown", onKey);
-  });
-}
 
 function leggiCookie(nome) {
   return document.cookie
@@ -3665,16 +3551,6 @@ function applicaBadgeTrend(elId, trendObj) {
     <span class="trend-icon">${trendObj.icona}</span>
     <span class="trend-text">${_sanitize(trendObj.testo)}</span>
   `;
-}
-
-function _toDateKey(d) {
-  if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  const date = d instanceof Date ? d : new Date(d);
-  if (isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 let isPanoramicaPollingActive = false;

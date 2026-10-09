@@ -24,8 +24,10 @@ function response(data) { return { ok: true, json: () => Promise.resolve(data) }
 function harness(view) {
   const dom = new JSDOM(fs.readFileSync(path.join(root, "web/index.html"), "utf8"), {
     url: "https://melpis.test/app/overview", pretendToBeVisual: true,
+    runScripts: "outside-only",
   });
   const document = dom.window.document;
+  dom.window.eval(fs.readFileSync(path.join(root, "web/dashboard-shared.js"), "utf8"));
   const requests = [], callbacks = [], errors = [], toasts = [], intervals = new Map(), gotoDates = [];
   let intervalId = 0;
   const inboxState = { tickets: [], team: [], pendingClaims: new Set(), selectedTicketId: null };
@@ -38,6 +40,7 @@ function harness(view) {
   const context = vm.createContext({
     document, window: dom.window, console: { error: (...args) => errors.push(args) },
     API_BASE: "", inboxState, bookingCalendar, Date, Map, Set,
+    _toDateKey: dom.window.MelpisDashboardShared.toDateKey,
     crypto: { randomUUID: () => "test-idempotency-key" },
     apiFetch(url, options = {}) { const pending = deferred(); requests.push({ url, options, ...pending }); return pending.promise; },
     _skeletonList: () => "<div class='skeleton'>loading</div>",
@@ -97,7 +100,7 @@ function harness(view) {
     let prenotazioniInAttesaCount = 0, bookingPendingOnly = false;
     globalThis.navigate = (view) => { activeDashboardView = view; dashboardViewTransition++; };
     globalThis.currentBooking = () => prenotazioneCorrente;
-    ${["_toDateKey", "aggiornaRiepilogo", "aggiornaPrioritari", "caricaInbox", "caricaDettaglioTicket", "inviaRispostaInbox", "aggiornaPrenotazioni", "aggiornaSemaforo", "aggiornaReport", "avviaPanoramicaPolling", "fermaPanoramicaPolling", "avviaInboxPolling", "fermaInboxPolling", "apriBookingModal", "chiudiBookingModal", "apriFormPrenotazione", "aggiornaAzioniPrenotazione", "apriDettaglioPrenotazione", "chiudiDettaglioPrenotazione", "eseguiAzionePrenotazione"].map(source).join("\n")}
+    ${["aggiornaRiepilogo", "aggiornaPrioritari", "caricaInbox", "caricaDettaglioTicket", "inviaRispostaInbox", "aggiornaPrenotazioni", "aggiornaSemaforo", "aggiornaReport", "avviaPanoramicaPolling", "fermaPanoramicaPolling", "avviaInboxPolling", "fermaInboxPolling", "apriBookingModal", "chiudiBookingModal", "apriFormPrenotazione", "aggiornaAzioniPrenotazione", "apriDettaglioPrenotazione", "chiudiDettaglioPrenotazione", "eseguiAzionePrenotazione"].map(source).join("\n")}
   `, context);
   const form = document.getElementById("booking-form");
   const addListener = form.addEventListener.bind(form);

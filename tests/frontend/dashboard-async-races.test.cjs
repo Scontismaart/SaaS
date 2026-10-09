@@ -86,6 +86,7 @@ function harness(view) {
     ])),
     reportRefreshHtml: document.getElementById("report-refresh").innerHTML,
   });
+  vm.runInContext(fs.readFileSync(path.join(root, "web/dashboard-overview.js"), "utf8"), context);
   vm.runInContext(`
     let activeDashboardView = ${JSON.stringify(view)};
     let dashboardViewTransition = 1;
@@ -100,7 +101,19 @@ function harness(view) {
     let prenotazioniInAttesaCount = 0, bookingPendingOnly = false;
     globalThis.navigate = (view) => { activeDashboardView = view; dashboardViewTransition++; };
     globalThis.currentBooking = () => prenotazioneCorrente;
-    ${["aggiornaRiepilogo", "aggiornaPrioritari", "caricaInbox", "caricaDettaglioTicket", "inviaRispostaInbox", "aggiornaPrenotazioni", "aggiornaSemaforo", "aggiornaReport", "avviaPanoramicaPolling", "fermaPanoramicaPolling", "avviaInboxPolling", "fermaInboxPolling", "apriBookingModal", "chiudiBookingModal", "apriFormPrenotazione", "aggiornaAzioniPrenotazione", "apriDettaglioPrenotazione", "chiudiDettaglioPrenotazione", "eseguiAzionePrenotazione"].map(source).join("\n")}
+    ${["caricaInbox", "caricaDettaglioTicket", "inviaRispostaInbox", "aggiornaPrenotazioni", "aggiornaSemaforo", "aggiornaReport", "avviaInboxPolling", "fermaInboxPolling", "apriBookingModal", "chiudiBookingModal", "apriFormPrenotazione", "aggiornaAzioniPrenotazione", "apriDettaglioPrenotazione", "chiudiDettaglioPrenotazione", "eseguiAzionePrenotazione"].map(source).join("\n")}
+    const overviewModule = window.MelpisDashboardOverview.create({
+      API_BASE, apiFetch, _sanitize, toast, _tDash, t, localeCorrente, _toDateKey,
+      _emptyState, _errorState, _skeletonList, ICONS,
+      getContext: () => ({ userId: "user-1", sessionOrganizationId: "org-1", selectedOrganizationId: "org-1", view: activeDashboardView, transition: dashboardViewTransition, epoch: 0 }),
+      apriView: (view) => navigate(view), apriBookingModal, getReviewsApi: () => null,
+      loadOnboarding: () => caricaStatoOnboarding(),
+    });
+    globalThis.aggiornaRiepilogo = overviewModule.aggiornaRiepilogo;
+    globalThis.aggiornaPrioritari = overviewModule.aggiornaPrioritari;
+    globalThis.avviaPanoramicaPolling = overviewModule.avviaPanoramicaPolling;
+    globalThis.fermaPanoramicaPolling = overviewModule.fermaPanoramicaPolling;
+    overviewModule.onEnter();
   `, context);
   const form = document.getElementById("booking-form");
   const addListener = form.addEventListener.bind(form);

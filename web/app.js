@@ -26,6 +26,9 @@ function localeCorrente() {
    ============================================================ */
 
 let sessione = null; // { email, organization_id, ruolo } | null
+let dashboardSessionEpoch = 0;
+let dashboardOverviewModule = null;
+let dashboardReviewsModule = null;
 
 function leggiCookie(nome) {
   return document.cookie
@@ -322,6 +325,9 @@ async function caricaSessione() {
 }
 
 function invalidaSessione() {
+  dashboardSessionEpoch += 1;
+  dashboardOverviewModule?.invalidate();
+  dashboardReviewsModule?.invalidate();
   sessione = null;
   document.body.classList.remove("authenticated");
   aggiornaBottoneAccesso();
@@ -566,14 +572,17 @@ const topbarDate = document.getElementById("topbar-date");
 const views = document.querySelectorAll(".view");
 let activeDashboardView = null;
 let dashboardViewTransition = 0;
-let overviewSummaryRequest = 0;
-let overviewPriorityRequest = 0;
 let overviewReportRequest = 0;
 let inboxListRequest = 0;
 let inboxDetailRequest = 0;
 let bookingListRequest = 0;
 let bookingAvailabilityRequest = 0;
 let dashboardRouter = null;
+let aggiornaRiepilogo;
+let aggiornaPrioritari;
+let avviaPanoramicaPolling;
+let fermaPanoramicaPolling;
+let aggiornaRecensioni;
 function resetDashboardScroll() {
   const scrollingElement = document.scrollingElement || document.documentElement;
   scrollingElement.scrollTop = 0;
@@ -656,6 +665,8 @@ function segnaNotificheViste(viewName) {
 }
 
 async function renderDashboardView(viewName) {
+  if (activeDashboardView === "panoramica") dashboardOverviewModule?.onExit();
+  if (activeDashboardView === "recensioni") dashboardReviewsModule?.onExit();
   const transition = ++dashboardViewTransition;
   activeDashboardView = viewName;
   segnaNotificheViste(viewName);
@@ -706,6 +717,7 @@ async function renderDashboardView(viewName) {
   if (viewName === "account") caricaAccount();
 
   if (viewName === "panoramica") {
+    dashboardOverviewModule?.onEnter();
     avviaPanoramicaPolling();
     aggiornaRiepilogo();
     aggiornaPrioritari();
@@ -714,7 +726,10 @@ async function renderDashboardView(viewName) {
     fermaPanoramicaPolling();
   }
   if (viewName === "team") caricaTeam();
-  if (viewName === "recensioni") aggiornaRecensioni();
+  if (viewName === "recensioni") {
+    dashboardReviewsModule?.onEnter();
+    aggiornaRecensioni();
+  }
   if (viewName === "documenti" || viewName === "conoscenza") aggiornaConoscenzaCompleta();
   if (viewName === "configurazione-ai" && typeof caricaConfigurazioneAI === "function") {
     caricaConfigurazioneAI();
@@ -2468,643 +2483,6 @@ function sincronizzaPollingPrenotazioni() {
 document.addEventListener("visibilitychange", sincronizzaPollingPrenotazioni);
 
 /* ============================================================
-   RECENSIONI
-   ============================================================ */
-
-const reviewText = document.getElementById("review-text");
-const reviewAuthor = document.getElementById("review-author");
-const reviewStars = document.getElementById("review-stars");
-const reviewSource = document.getElementById("review-source");
-const reviewAnalyze = document.getElementById("review-analyze");
-const reviewDraft = document.getElementById("review-draft");
-const reviewDraftText = document.getElementById("review-draft-text");
-const reviewOriginalBox = document.getElementById("review-original-box");
-const reviewOriginalText = document.getElementById("review-original-text");
-const reviewDraftSentiment = document.getElementById("review-draft-sentiment");
-const reviewDraftCat = document.getElementById("review-draft-cat");
-const draftPanelTitle = document.getElementById("draft-panel-title");
-const draftStatusBadge = document.getElementById("draft-status-badge");
-const draftMetaInfo = document.getElementById("draft-meta-info");
-const draftFeedbackText = document.getElementById("draft-feedback-text");
-const btnCloseDraft = document.getElementById("btn-close-draft");
-const reviewCopy = document.getElementById("review-copy");
-const reviewApprove = document.getElementById("review-approve");
-
-const reviewHistoryCard = document.getElementById("review-history-card");
-const reviewHistoryList = document.getElementById("review-history-list");
-const reviewFilterTabs = document.getElementById("review-filter-tabs");
-const reviewSearchInput = document.getElementById("review-search-input");
-const reviewFilterSource = document.getElementById("review-filter-source");
-const btnRefreshReviews = document.getElementById("btn-refresh-reviews");
-
-const countAll = document.getElementById("count-all");
-const countPending = document.getElementById("count-pending");
-const countApproved = document.getElementById("count-approved");
-const countUrgent = document.getElementById("count-urgent");
-
-const reviewStatCount = document.getElementById("review-stat-count");
-const reviewStatRating = document.getElementById("review-stat-rating");
-const sidebarRatingNum = document.getElementById("sidebar-rating-num");
-const sidebarRatingStars = document.getElementById("sidebar-rating-stars");
-const sidebarRatingTotal = document.getElementById("sidebar-rating-total");
-const pctPosVal = document.getElementById("pct-pos-val");
-const pctNeutVal = document.getElementById("pct-neut-val");
-const pctNegVal = document.getElementById("pct-neg-val");
-const barPosFill = document.getElementById("bar-pos-fill");
-const barNeutFill = document.getElementById("bar-neut-fill");
-const barNegFill = document.getElementById("bar-neg-fill");
-
-const trendList = document.getElementById("trend-list");
-
-let reviewAttualeId = null;
-let reviewAttualeData = null;
-let recensioniPrimoCaricamento = true;
-let recensioniFiltroCorrente = "tutte";
-let recensioniListaDati = [];
-
-function _formatDataRecensione(iso) {
-  if (!iso) return "Data recente";
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "Data non valida";
-  const oggi = new Date();
-  const isOggi = d.toDateString() === oggi.toDateString();
-  const timeStr = d.toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
-  if (isOggi) return `Oggi alle ${timeStr}`;
-  return d.toLocaleDateString(localeCorrente(), { day: "numeric", month: "short", year: "numeric" }) + `, ${timeStr}`;
-}
-
-function _fonteLabel(fonte) {
-  const f = (fonte || "").toLowerCase();
-  if (f === "google") return { label: "Google Business", icon: "G", classe: "channel-google" };
-  if (f === "tripadvisor") return { label: "TripAdvisor", icon: "TA", classe: "channel-tripadvisor" };
-  return { label: "Manuale", icon: "M", classe: "channel-manuale" };
-}
-
-function _stelleVisual(n) {
-  const num = Math.max(0, Math.min(5, Number(n) || 0));
-  return "★".repeat(num) + "☆".repeat(5 - num);
-}
-
-function apriDettaglioRecensione(recId) {
-  const item = recensioniListaDati.find((r) => String(r.id) === String(recId));
-  if (!item) return;
-
-  reviewAttualeId = String(item.id);
-  reviewAttualeData = item;
-
-  if (reviewOriginalText) reviewOriginalText.textContent = item.testo || "";
-  if (reviewDraftText) reviewDraftText.value = item.bozza_risposta || "";
-  
-  const isApprovata = item.stato === "approvata" || item.stato === "pubblicata";
-  const isUrgente = item.richiede_revisione_urgente || item.sentiment === "negativa" || (item.valutazione_stelle && item.valutazione_stelle <= 2);
-
-  if (draftPanelTitle) {
-    draftPanelTitle.textContent = isApprovata ? "Risposta approvata" : "Bozza di risposta generata";
-  }
-
-  if (draftStatusBadge) {
-    if (isApprovata) {
-      draftStatusBadge.textContent = "Approvata";
-      draftStatusBadge.className = "review-status-badge status-approvata";
-    } else if (isUrgente) {
-      draftStatusBadge.textContent = "Richiede attenzione";
-      draftStatusBadge.className = "review-status-badge status-urgente";
-    } else {
-      draftStatusBadge.textContent = "Bozza pronta";
-      draftStatusBadge.className = "review-status-badge";
-    }
-  }
-
-  const fonteInfo = _fonteLabel(item.fonte);
-  if (draftMetaInfo) {
-    const autoreStr = item.autore ? `Autore: ${item.autore}` : "Autore non specificato";
-    const stelleStr = item.valutazione_stelle ? ` • ★ ${item.valutazione_stelle}/5` : "";
-    const dataStr = item.created_at ? ` • ${_formatDataRecensione(item.created_at)}` : "";
-    draftMetaInfo.textContent = `${autoreStr} • Canale: ${fonteInfo.label}${stelleStr}${dataStr}`;
-  }
-
-  if (reviewDraftSentiment) {
-    const s = (item.sentiment || "neutro").toLowerCase();
-    reviewDraftSentiment.textContent = s.charAt(0).toUpperCase() + s.slice(1);
-    reviewDraftSentiment.className = `review-sentiment-badge sentiment-${s}`;
-  }
-
-  if (reviewDraftCat) {
-    const cat = item.categoria || "generico";
-    reviewDraftCat.textContent = cat.replace(/_/g, " ");
-    reviewDraftCat.hidden = false;
-  }
-
-  if (draftFeedbackText) draftFeedbackText.textContent = "";
-
-  if (reviewApprove) {
-    reviewApprove.disabled = isApprovata;
-    reviewApprove.innerHTML = isApprovata
-      ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approvata'
-      : '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approva risposta';
-  }
-
-  if (reviewDraft) {
-    reviewDraft.hidden = false;
-    reviewDraft.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }
-}
-
-function chiudiDettaglioRecensione() {
-  if (reviewDraft) reviewDraft.hidden = true;
-  reviewAttualeId = null;
-  reviewAttualeData = null;
-}
-
-async function inviaRecensione() {
-  const testo = reviewText ? reviewText.value.trim() : "";
-  if (!testo) {
-    toast("Inserisci il testo della recensione da analizzare.", "warning");
-    reviewText?.focus();
-    return;
-  }
-
-  reviewAnalyze.disabled = true;
-  reviewAnalyze.innerHTML = `
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-    Analisi in corso…
-  `;
-
-  try {
-    const res = await apiFetch(`${API_BASE}/api/recensione`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        testo,
-        valutazione_stelle: reviewStars?.value ? parseInt(reviewStars.value) : null,
-        autore: reviewAuthor?.value ? reviewAuthor.value.trim() : "",
-        fonte: reviewSource?.value || "manuale",
-      }),
-    });
-
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => null);
-      throw new Error(errBody?.detail || `Errore HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    reviewAttualeId = data.id;
-
-    // Crea record locale e apri bozza
-    const nuovoRecord = {
-      id: data.id,
-      testo,
-      valutazione_stelle: reviewStars?.value ? parseInt(reviewStars.value) : null,
-      autore: reviewAuthor?.value ? reviewAuthor.value.trim() : "",
-      fonte: reviewSource?.value || "manuale",
-      bozza_risposta: data.bozza_risposta,
-      sentiment: data.sentiment,
-      categoria: data.categoria,
-      richiede_revisione_urgente: data.richiede_revisione_urgente,
-      stato: data.stato || "bozza_generata",
-      created_at: new Date().toISOString(),
-    };
-
-    // Aggiungi in testa alla lista locale
-    recensioniListaDati = [nuovoRecord, ...recensioniListaDati.filter(r => String(r.id) !== String(data.id))];
-
-    apriDettaglioRecensione(data.id);
-    toast("Analisi completata: bozza di risposta generata!", "info");
-
-    await aggiornaRecensioni(true);
-    await aggiornaRiepilogo(true);
-    await aggiornaPrioritari(true);
-    await aggiornaNotifiche();
-  } catch (err) {
-    toast("Errore: " + err.message, "error");
-  } finally {
-    if (reviewAnalyze) {
-      reviewAnalyze.disabled = false;
-      reviewAnalyze.innerHTML = `
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-        Analizza e genera bozza
-      `;
-    }
-  }
-}
-
-async function approvaRecensioneDaId(recId) {
-  if (!recId) return;
-  try {
-    const res = await apiFetch(`${API_BASE}/api/recensioni/${recId}/approva`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => null);
-      throw new Error(errBody?.detail || `Errore HTTP ${res.status}`);
-    }
-    const data = await res.json();
-    
-    // Aggiorna stato locale
-    recensioniListaDati = recensioniListaDati.map((r) => {
-      if (String(r.id) === String(recId)) {
-        return { ...r, stato: data.stato || "approvata" };
-      }
-      return r;
-    });
-
-    if (String(reviewAttualeId) === String(recId)) {
-      if (draftStatusBadge) {
-        draftStatusBadge.textContent = "Approvata";
-        draftStatusBadge.className = "review-status-badge status-approvata";
-      }
-      if (reviewApprove) {
-        reviewApprove.disabled = true;
-        reviewApprove.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Approvata';
-      }
-      if (draftFeedbackText) {
-        draftFeedbackText.textContent = "Risposta approvata con successo!";
-      }
-    }
-
-    toast("Risposta approvata con successo!", "info");
-    renderStoricoRecensioni();
-    aggiornaConteggiRecensioni();
-    aggiornaRiepilogo(true);
-    aggiornaPrioritari(true);
-  } catch (err) {
-    toast("Errore durante l'approvazione: " + err.message, "error");
-  }
-}
-
-async function approvaRecensione() {
-  if (!reviewAttualeId) return;
-  if (reviewApprove) {
-    reviewApprove.disabled = true;
-    reviewApprove.textContent = "Approvazione…";
-  }
-  await approvaRecensioneDaId(reviewAttualeId);
-}
-
-function renderStoricoRecensioni() {
-  if (!reviewHistoryList) return;
-
-  const searchQuery = (reviewSearchInput?.value || "").toLowerCase().trim();
-  const fonteFilter = (reviewFilterSource?.value || "").toLowerCase();
-
-  let filtrate = recensioniListaDati.filter((r) => {
-    // Filtro Tab
-    if (recensioniFiltroCorrente === "bozza" && !(r.stato === "bozza_generata" || r.stato === "nuova")) {
-      return false;
-    }
-    if (recensioniFiltroCorrente === "approvata" && !(r.stato === "approvata" || r.stato === "pubblicata")) {
-      return false;
-    }
-    if (recensioniFiltroCorrente === "negativa") {
-      const isNeg = r.sentiment === "negativa" || r.richiede_revisione_urgente || (r.valutazione_stelle && r.valutazione_stelle <= 2);
-      if (!isNeg) return false;
-    }
-
-    // Filtro Canale
-    if (fonteFilter && (r.fonte || "manuale").toLowerCase() !== fonteFilter) {
-      return false;
-    }
-
-    // Ricerca testo/autore
-    if (searchQuery) {
-      const autore = (r.autore || "").toLowerCase();
-      const testo = (r.testo || "").toLowerCase();
-      const bozza = (r.bozza_risposta || "").toLowerCase();
-      if (!autore.includes(searchQuery) && !testo.includes(searchQuery) && !bozza.includes(searchQuery)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  reviewHistoryList.innerHTML = "";
-
-  if (filtrate.length === 0) {
-    if (recensioniListaDati.length === 0) {
-      reviewHistoryList.appendChild(_emptyState(
-        ICONS.chat,
-        _tDash("reviews.runtime.empty_title", "Nessuna recensione registrata"),
-        _tDash("reviews.runtime.empty_desc", "Incolla una recensione nel modulo in alto: l'AI valuterà il sentiment e preparerà una bozza di risposta professionale."),
-        _tDash("reviews.runtime.empty_cta", "Incolla una recensione"),
-        () => {
-          reviewText?.focus();
-          reviewText?.scrollIntoView({ behavior: "smooth" });
-        }
-      ));
-    } else {
-      reviewHistoryList.appendChild(_emptyState(
-        ICONS.alert,
-        _tDash("reviews.runtime.filtered_title", "Nessun risultato con i filtri attuali"),
-        _tDash("reviews.runtime.filtered_desc", "Nessuna recensione corrisponde ai criteri di filtro o ricerca selezionati."),
-        _tDash("reviews.runtime.reset_filters", "Reimposta filtri"),
-        () => {
-          recensioniFiltroCorrente = "tutte";
-          if (reviewFilterTabs) {
-            reviewFilterTabs.querySelectorAll(".review-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "tutte"));
-          }
-          if (reviewSearchInput) reviewSearchInput.value = "";
-          if (reviewFilterSource) reviewFilterSource.value = "";
-          renderStoricoRecensioni();
-        }
-      ));
-    }
-    return;
-  }
-
-  filtrate.forEach((r) => {
-    const item = document.createElement("div");
-    const isApprovata = r.stato === "approvata" || r.stato === "pubblicata";
-    const isUrgente = r.richiede_revisione_urgente || r.sentiment === "negativa" || (r.valutazione_stelle && r.valutazione_stelle <= 2);
-
-    item.className = "review-history-item" + (isUrgente ? " item-urgente" : "") + (isApprovata ? " item-approvata" : "");
-
-    const fonteInfo = _fonteLabel(r.fonte);
-    const autoreDisplay = r.autore ? _sanitize(r.autore) : "Cliente";
-    const stelleHtml = _stelleVisual(r.valutazione_stelle);
-    const dataDisplay = _formatDataRecensione(r.created_at || r.published_at);
-    const sentimentStr = (r.sentiment || "neutro").toLowerCase();
-
-    let statusPill = "";
-    if (isApprovata) {
-      statusPill = `<span class="review-status-badge status-approvata">${_escapeHtml(_tDash("reviews.runtime.status_approved", "Approvata"))}</span>`;
-    } else if (isUrgente) {
-      statusPill = `<span class="review-status-badge status-urgente">${_escapeHtml(_tDash("reviews.runtime.status_urgent", "Richiede attenzione"))}</span>`;
-    } else {
-      statusPill = `<span class="review-status-badge">${_escapeHtml(_tDash("reviews.runtime.status_draft", "Bozza pronta"))}</span>`;
-    }
-
-    const sentimentBadge = `<span class="review-sentiment-badge sentiment-${sentimentStr}">${sentimentStr.charAt(0).toUpperCase() + sentimentStr.slice(1)}</span>`;
-    const catBadge = r.categoria ? `<span class="review-cat-badge">${_sanitize(r.categoria.replace(/_/g, " "))}</span>` : "";
-
-    let aiBox = "";
-    if (r.bozza_risposta) {
-      aiBox = `
-        <div class="history-ai-reply-box">
-          <span class="ai-reply-label">${_escapeHtml(_tDash("reviews.runtime.ai_reply_label", "Bozza di risposta suggerita:"))}</span>
-          <p class="ai-reply-text">${_sanitize(r.bozza_risposta)}</p>
-        </div>
-      `;
-    }
-
-    item.innerHTML = `
-      <div class="history-item-top">
-        <div class="history-item-meta">
-          <span class="channel-pill ${fonteInfo.classe}">${fonteInfo.icon} ${fonteInfo.label}</span>
-          <span class="history-stars" title="${r.valutazione_stelle || 0} su 5 stelle">${stelleHtml}</span>
-          <span class="history-author">${autoreDisplay}</span>
-          <span class="history-date">${dataDisplay}</span>
-        </div>
-        <div>
-          ${statusPill}
-        </div>
-      </div>
-      <div class="history-item-body">
-        <p class="history-review-text">"${_sanitize(r.testo || "")}"</p>
-        ${aiBox}
-      </div>
-      <div class="history-item-footer">
-        <div class="history-tags">
-          ${sentimentBadge}
-          ${catBadge}
-        </div>
-        <div class="history-actions">
-          ${!isApprovata ? `<button type="button" class="btn-history-action btn-action-primary" data-action="approve" data-id="${r.id}">${_escapeHtml(_tDash("reviews.approve_reply", "Approva risposta"))}</button>` : ""}
-          <button type="button" class="btn-history-action" data-action="open" data-id="${r.id}">${_escapeHtml(_tDash("reviews.runtime.review_draft", "Rivedi bozza"))}</button>
-          ${r.bozza_risposta ? `<button type="button" class="btn-history-action" data-action="copy" data-id="${r.id}">${_escapeHtml(_tDash("reviews.copy_text", "Copia testo"))}</button>` : ""}
-        </div>
-      </div>
-    `;
-
-    item.querySelector('[data-action="open"]')?.addEventListener("click", () => apriDettaglioRecensione(r.id));
-    item.querySelector('[data-action="approve"]')?.addEventListener("click", () => approvaRecensioneDaId(r.id));
-    item.querySelector('[data-action="copy"]')?.addEventListener("click", () => {
-      if (r.bozza_risposta) {
-        navigator.clipboard.writeText(r.bozza_risposta).catch(() => {});
-        toast(_tDash("reviews.runtime.copied_toast", "Testo della bozza copiato negli appunti!"), "info");
-      }
-    });
-
-    reviewHistoryList.appendChild(item);
-  });
-}
-
-function aggiornaConteggiRecensioni() {
-  const totale = recensioniListaDati.length;
-  const pending = recensioniListaDati.filter(r => r.stato === "bozza_generata" || r.stato === "nuova").length;
-  const approved = recensioniListaDati.filter(r => r.stato === "approvata" || r.stato === "pubblicata").length;
-  const urgent = recensioniListaDati.filter(r => r.richiede_revisione_urgente || r.sentiment === "negativa" || (r.valutazione_stelle && r.valutazione_stelle <= 2)).length;
-
-  if (countAll) countAll.textContent = totale;
-  if (countPending) countPending.textContent = pending;
-  if (countApproved) countApproved.textContent = approved;
-  if (countUrgent) countUrgent.textContent = urgent;
-
-  // Calcolo media stelle
-  const conStelle = recensioniListaDati.filter(r => r.valutazione_stelle != null && r.valutazione_stelle > 0);
-  const mediaStelle = conStelle.length > 0
-    ? (conStelle.reduce((acc, r) => acc + Number(r.valutazione_stelle), 0) / conStelle.length)
-    : 0;
-
-  if (reviewStatCount) reviewStatCount.textContent = _tDash("reviews.runtime.review_count", "{{count}} recensioni", { count: totale });
-  if (reviewStatRating) {
-    reviewStatRating.innerHTML = `<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> <span>${mediaStelle ? mediaStelle.toFixed(1) : "0.0"}</span>`;
-  }
-
-  // Sidebar rating & sentiment
-  if (sidebarRatingNum) sidebarRatingNum.textContent = mediaStelle ? mediaStelle.toFixed(1) : "--";
-  if (sidebarRatingStars) sidebarRatingStars.textContent = _stelleVisual(Math.round(mediaStelle));
-  if (sidebarRatingTotal) sidebarRatingTotal.textContent = _tDash("reviews.runtime.rating_total", "Basato su {{count}} recensioni", { count: totale });
-
-  // Distribuzione sentiment
-  const pos = recensioniListaDati.filter(r => r.sentiment === "positiva" || r.sentiment === "positivo" || (r.valutazione_stelle && r.valutazione_stelle >= 4)).length;
-  const neg = recensioniListaDati.filter(r => r.sentiment === "negativa" || r.sentiment === "negativo" || (r.valutazione_stelle && r.valutazione_stelle <= 2)).length;
-  const neut = totale - pos - neg;
-
-  const pctPos = totale > 0 ? Math.round((pos / totale) * 100) : 0;
-  const pctNeg = totale > 0 ? Math.round((neg / totale) * 100) : 0;
-  const pctNeut = totale > 0 ? Math.max(0, 100 - pctPos - pctNeg) : 0;
-
-  if (pctPosVal) pctPosVal.textContent = `${pctPos}%`;
-  if (pctNeutVal) pctNeutVal.textContent = `${pctNeut}%`;
-  if (pctNegVal) pctNegVal.textContent = `${pctNeg}%`;
-
-  if (barPosFill) barPosFill.style.width = `${pctPos}%`;
-  if (barNeutFill) barNeutFill.style.width = `${pctNeut}%`;
-  if (barNegFill) barNegFill.style.width = `${pctNeg}%`;
-}
-
-function _paroleChiave(testi, max = 3) {
-  const stop = ["di", "il", "la", "le", "gli", "un", "una", "che", "per", "con", "non", "ho", "ha", "è", "e", "a", "o", "si", "in", "da", "lo", "sono", "mi", "ma", "ci", "ti", "al", "del", "della", "dei", "delle", "allo", "alla", "ai", "agli", "alle", "dal", "dalla", "dai", "dagli", "dalle", "nel", "nella", "nei", "negli", "nelle", "sul", "sulla", "sui", "sugli", "sulle", "molto", "tanto", "più", "meno", "era", "stato", "stata", "stati", "state", "essere", "questo", "quella", "quello", "conto", "fare", "fatto"];
-  const words = testi.join(" ").toLowerCase().replace(/[^a-zàèéìòù\s]/g, "").split(/\s+/).filter(w => w.length > 3 && !stop.includes(w));
-  const freq = {};
-  words.forEach(w => { freq[w] = (freq[w] || 0) + 1; });
-  return Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, max).map(e => e[0]);
-}
-
-async function aggiornaRecensioni(silent = false) {
-  if (!silent && recensioniPrimoCaricamento && reviewHistoryList) {
-    reviewHistoryList.innerHTML = _skeletonList(3);
-    recensioniPrimoCaricamento = false;
-  }
-
-  try {
-    // 1. Chiamata ad endpoint dedicato /api/recensioni
-    const res = await apiFetch(`${API_BASE}/api/recensioni?limit=50`);
-    if (res.ok) {
-      const data = await res.json().catch(() => ({ recensioni: [] }));
-      recensioniListaDati = Array.isArray(data.recensioni) ? data.recensioni : [];
-    } else {
-      // Fallback a /api/dashboard se /api/recensioni non è raggiungibile
-      const dashRes = await apiFetch(`${API_BASE}/api/dashboard`);
-      if (dashRes.ok) {
-        const eventi = await dashRes.json().catch(() => []);
-        recensioniListaDati = (Array.isArray(eventi) ? eventi : [])
-          .filter(e => e.tipo_evento === "recensione")
-          .map(e => ({
-            id: e.id,
-            testo: e.testo_originale,
-            valutazione_stelle: e.dettagli?.stelle || e.dettagli?.valutazione_stelle || null,
-            fonte: e.dettagli?.fonte || "manuale",
-            autore: e.dettagli?.autore || "",
-            bozza_risposta: e.risposta_ai || "",
-            sentiment: e.dettagli?.sentiment || (e.priorita === "alta" ? "negativa" : "positiva"),
-            categoria: e.dettagli?.categoria || "generico",
-            richiede_revisione_urgente: Boolean(e.dettagli?.richiede_revisione_urgente || e.priorita === "alta"),
-            stato: e.gestito_da_ai ? "approvata" : "bozza_generata",
-            created_at: e.timestamp,
-          }));
-      }
-    }
-
-    aggiornaConteggiRecensioni();
-    renderStoricoRecensioni();
-    aggiornaTrends(recensioniListaDati);
-  } catch (err) {
-    console.error("Impossibile aggiornare le recensioni:", err);
-    if (!silent && reviewHistoryList) {
-      reviewHistoryList.innerHTML = "";
-      reviewHistoryList.appendChild(_errorState("Impossibile caricare lo storico delle recensioni.", () => aggiornaRecensioni()));
-    }
-  }
-}
-
-async function aggiornaTrends(datiParam) {
-  if (!trendList) return;
-  try {
-    let recensioni = datiParam;
-    if (!Array.isArray(recensioni)) {
-      const res = await apiFetch(`${API_BASE}/api/dashboard`);
-      const eventi = res.ok ? await res.json().catch(() => []) : [];
-      recensioni = (Array.isArray(eventi) ? eventi : []).filter(e => e.tipo_evento === "recensione");
-    }
-
-    const totale = recensioni.length;
-    if (totale === 0) {
-      trendList.innerHTML = "";
-      const li = document.createElement("li");
-      li.appendChild(_emptyState(
-        ICONS.trend,
-        "Nessun trend rilevato",
-        "I temi ricorrenti e i trend di gradimento appariranno automaticamente analizzando le recensioni.",
-        null
-      ));
-      trendList.appendChild(li);
-      return;
-    }
-
-    const pos = recensioni.filter(e => (e.sentiment === "positiva" || e.sentiment === "positivo" || e.dettagli?.sentiment === "positiva" || (e.valutazione_stelle && e.valutazione_stelle >= 4))).length;
-    const neg = recensioni.filter(e => (e.sentiment === "negativa" || e.sentiment === "negativo" || e.dettagli?.sentiment === "negativa" || (e.valutazione_stelle && e.valutazione_stelle <= 2))).length;
-    const pctPos = Math.round((pos / totale) * 100);
-    const pctNeg = Math.round((neg / totale) * 100);
-
-    const catCount = {};
-    recensioni.forEach(e => {
-      const c = e.categoria || e.dettagli?.categoria || "generico";
-      catCount[c] = (catCount[c] || 0) + 1;
-    });
-    const topCat = Object.entries(catCount).sort((a, b) => b[1] - a[1]).slice(0, 2);
-
-    const testi = recensioni.map(e => e.testo || e.testo_originale || "");
-    const keywords = _paroleChiave(testi, 2);
-
-    const items = [];
-
-    if (pos > 0) {
-      items.push(`
-        <li class="trend-item">
-          <span class="trend-icon trend-pos">▲</span>
-          <div class="trend-body">
-            <span class="trend-label">Gradimento positivo (${pctPos}%)</span>
-            <div class="trend-bar-track"><div class="trend-bar-fill fill-pos" style="width:${pctPos}%"></div></div>
-          </div>
-        </li>`);
-    }
-
-    if (neg > 0) {
-      items.push(`
-        <li class="trend-item">
-          <span class="trend-icon trend-neg">▼</span>
-          <div class="trend-body">
-            <span class="trend-label">Criticità segnalate (${pctNeg}%)</span>
-            <div class="trend-bar-track"><div class="trend-bar-fill fill-neg" style="width:${pctNeg}%"></div></div>
-          </div>
-        </li>`);
-    }
-
-    topCat.forEach(([cat]) => {
-      items.push(`
-        <li class="trend-item">
-          <span class="trend-icon trend-topic">↗</span>
-          <div class="trend-body"><span class="trend-label">Tema ricorrente: ${_sanitize(cat.replace(/_/g, " "))}</span></div>
-        </li>`);
-    });
-
-    keywords.forEach(kw => {
-      items.push(`
-        <li class="trend-item">
-          <span class="trend-icon trend-new">✦</span>
-          <div class="trend-body"><span class="trend-label">Parola chiave: "${_sanitize(kw)}"</span></div>
-        </li>`);
-    });
-
-    trendList.innerHTML = items.join("");
-  } catch (err) {
-    console.error("Impossibile aggiornare i trend:", err);
-  }
-}
-
-// Event Listeners Recensioni
-reviewCopy?.addEventListener("click", () => {
-  const testoBozza = reviewDraftText ? reviewDraftText.value : "";
-  if (!testoBozza) return;
-  navigator.clipboard.writeText(testoBozza).catch(() => {});
-  if (draftFeedbackText) draftFeedbackText.textContent = "Testo copiato negli appunti!";
-  toast("Bozza di risposta copiata negli appunti!", "info");
-});
-
-reviewApprove?.addEventListener("click", approvaRecensione);
-reviewAnalyze?.addEventListener("click", inviaRecensione);
-btnCloseDraft?.addEventListener("click", chiudiDettaglioRecensione);
-btnRefreshReviews?.addEventListener("click", () => {
-  btnRefreshReviews.classList.add("spin");
-  aggiornaRecensioni().finally(() => setTimeout(() => btnRefreshReviews.classList.remove("spin"), 500));
-});
-
-reviewFilterTabs?.querySelectorAll(".review-tab").forEach((tabBtn) => {
-  tabBtn.addEventListener("click", () => {
-    reviewFilterTabs.querySelectorAll(".review-tab").forEach(t => t.classList.remove("active"));
-    tabBtn.classList.add("active");
-    recensioniFiltroCorrente = tabBtn.dataset.tab || "tutte";
-    renderStoricoRecensioni();
-  });
-});
-
-reviewSearchInput?.addEventListener("input", () => renderStoricoRecensioni());
-reviewFilterSource?.addEventListener("change", () => renderStoricoRecensioni());
-
-/* ============================================================
    REPORT
    ============================================================ */
 
@@ -3234,13 +2612,6 @@ reportRefresh.addEventListener("click", () => aggiornaReport(true));
    PANORAMICA — KPI + priorità + attività
    ============================================================ */
 
-const prioritySection = document.getElementById("priority-section");
-const priorityList = document.getElementById("priority-list");
-const ticketList = document.getElementById("ticket-list");
-const statTotale = document.getElementById("stat-totale");
-const statAi = document.getElementById("stat-ai");
-const statUmano = document.getElementById("stat-umano");
-
 function _skeletonList(n = 3) {
   return (
     '<div class="skeleton-list">' +
@@ -3296,479 +2667,37 @@ function _errorState(messaggio, retryFn) {
   return wrap;
 }
 
-async function caricaStatoOnboarding() {
-  try {
-    const [resDoc, resBook, resWa] = await Promise.allSettled([
-      apiFetch(`${API_BASE}/api/documenti/conteggio`),
-      apiFetch(`${API_BASE}/api/bookings/settings`),
-      apiFetch(`${API_BASE}/api/whatsapp/settings`)
-    ]);
-
-    let hasDocs = false;
-    if (resDoc.status === "fulfilled" && resDoc.value?.ok) {
-      const d = await resDoc.value.json().catch(() => ({}));
-      hasDocs = Number(d.chunk_indicizzati || 0) > 0;
-    }
-
-    let hasBookingHours = false;
-    if (resBook.status === "fulfilled" && resBook.value?.ok) {
-      const b = await resBook.value.json().catch(() => ({}));
-      const capienze = b.capienze_orarie || {};
-      hasBookingHours = Object.values(capienze).some((v) => Number(v) > 0);
-    }
-
-    let hasWa = false;
-    if (resWa.status === "fulfilled" && resWa.value?.ok) {
-      const w = await resWa.value.json().catch(() => ({}));
-      hasWa = Boolean(w.phone_number_id || w.status === "connected" || w.configured);
-    }
-
-    return {
-      hasDocs,
-      hasBookingHours,
-      hasWa,
-      isFullyConfigured: hasDocs && hasBookingHours && hasWa,
-    };
-  } catch {
-    return { hasDocs: true, hasBookingHours: true, hasWa: true, isFullyConfigured: true };
-  }
+function dashboardContextSnapshot() {
+  return {
+    userId: sessione?.user_id || null,
+    sessionOrganizationId: sessione?.organization_id || null,
+    selectedOrganizationId: localStorage.getItem("melpis_selected_organization") || null,
+    view: activeDashboardView,
+    transition: dashboardViewTransition,
+    epoch: dashboardSessionEpoch,
+  };
 }
 
-async function aggiornaPrioritari(silent = false) {
-  if (activeDashboardView !== "panoramica") return;
-  const transition = dashboardViewTransition;
-  const request = ++overviewPriorityRequest;
-  const isCurrent = () => request === overviewPriorityRequest && transition === dashboardViewTransition && activeDashboardView === "panoramica";
-  if (!silent && !priorityList.children.length) {
-    priorityList.innerHTML = _skeletonList(3);
-  }
-  try {
-    const res = await apiFetch(`${API_BASE}/api/dashboard/prioritari`);
-    if (!isCurrent()) return;
-    if (!res.ok) {
-      if (!silent) {
-        priorityList.innerHTML = "";
-        priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), () => aggiornaPrioritari()));
-      }
-      return;
-    }
-    const rawEventi = await res.json().catch(() => []);
-    if (!isCurrent()) return;
-    const eventi = Array.isArray(rawEventi) ? rawEventi : [];
-    const cfg = eventi.length === 0 ? await caricaStatoOnboarding() : null;
-    if (!isCurrent()) return;
-    const countBadge = document.getElementById("priority-count-badge");
-    if (countBadge) {
-      countBadge.textContent = eventi.length ? _tDash("overview.runtime.priority_count", "{{count}} elementi", { count: eventi.length }) : "";
-      countBadge.hidden = !eventi.length;
-    }
-    priorityList.innerHTML = "";
-    if (eventi.length === 0) {
-      const li = document.createElement("li");
-      if (!cfg.isFullyConfigured) {
-        li.className = "onboarding-checklist-item";
-        li.innerHTML = `
-          <div class="onboarding-checklist-card">
-            <div class="onboarding-checklist-header">
-              <div class="onboarding-checklist-icon-wrap" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="22" height="22"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </div>
-              <div>
-                <h3 class="onboarding-checklist-title">Completa la configurazione iniziale</h3>
-                <p class="onboarding-checklist-sub">Segui questi 3 passaggi per attivare l'assistente con i tuoi clienti.</p>
-              </div>
-            </div>
-            <div class="onboarding-checklist-steps">
-              <div class="onboarding-step-row">
-                <div class="onboarding-step-left">
-                  <span class="onboarding-step-indicator ${cfg.hasWa ? "done" : "todo"}">${cfg.hasWa ? "✓" : "1"}</span>
-                  <span class="onboarding-step-text ${cfg.hasWa ? "done" : ""}">Collega il numero WhatsApp Business</span>
-                </div>
-                ${cfg.hasWa
-                  ? '<span class="onboarding-step-done-badge">Completato</span>'
-                  : '<button type="button" class="onboarding-step-btn" data-action="setup-wa">Collega →</button>'}
-              </div>
-              <div class="onboarding-step-row">
-                <div class="onboarding-step-left">
-                  <span class="onboarding-step-indicator ${cfg.hasDocs ? "done" : "todo"}">${cfg.hasDocs ? "✓" : "2"}</span>
-                  <span class="onboarding-step-text ${cfg.hasDocs ? "done" : ""}">Carica menu o listino (Knowledge Base)</span>
-                </div>
-                ${cfg.hasDocs
-                  ? '<span class="onboarding-step-done-badge">Completato</span>'
-                  : '<button type="button" class="onboarding-step-btn" data-action="setup-docs">Carica PDF →</button>'}
-              </div>
-              <div class="onboarding-step-row">
-                <div class="onboarding-step-left">
-                  <span class="onboarding-step-indicator ${cfg.hasBookingHours ? "done" : "todo"}">${cfg.hasBookingHours ? "✓" : "3"}</span>
-                  <span class="onboarding-step-text ${cfg.hasBookingHours ? "done" : ""}">Configura orari e capienza tavoli</span>
-                </div>
-                ${cfg.hasBookingHours
-                  ? '<span class="onboarding-step-done-badge">Completato</span>'
-                  : '<button type="button" class="onboarding-step-btn" data-action="setup-booking">Configura →</button>'}
-              </div>
-            </div>
-          </div>
-        `;
-        li.querySelector('[data-action="setup-wa"]')?.addEventListener("click", () => {
-          apriVistaImpostazioni("whatsapp");
-        });
-        li.querySelector('[data-action="setup-docs"]')?.addEventListener("click", () => {
-          apriView("conoscenza");
-        });
-        li.querySelector('[data-action="setup-booking"]')?.addEventListener("click", () => {
-          apriView("prenotazioni");
-          setTimeout(() => apriBookingModal("booking-availability-modal"), 100);
-        });
-      } else {
-        li.appendChild(_emptyState(
-          ICONS.check,
-          _tDash("overview.runtime.no_messages_title", "Nessun messaggio oggi"),
-          _tDash("overview.runtime.no_messages_desc", "L'assistente è configurato e pronto a rispondere automaticamente ai tuoi clienti.")
-        ));
-      }
-      priorityList.appendChild(li);
-      return;
-    }
-    eventi.forEach((e) => {
-      const li = document.createElement("li");
-      li.classList.add("priority-item", `prio-${e.priorita}`);
-      const badge = document.createElement("span");
-      badge.classList.add("priority-item-badge", `badge-${e.tipo_evento}`);
-      badge.textContent = e.tipo_evento === "recensione" ? "REC" : "MSG";
-      const msg = document.createElement("span");
-      msg.classList.add("priority-item-msg");
-      msg.textContent = e.testo_originale;
-      const cat = document.createElement("span");
-      cat.classList.add("priority-item-cat");
-      cat.textContent = (e.dettagli?.categoria || e.dettagli?.sentiment || "generico");
-      li.appendChild(badge);
-      li.appendChild(msg);
-      li.appendChild(cat);
+dashboardOverviewModule = window.MelpisDashboardOverview.create({
+  API_BASE, apiFetch, _sanitize, toast, _tDash, t, localeCorrente,
+  _toDateKey, _emptyState, _errorState, _skeletonList, ICONS,
+  getContext: dashboardContextSnapshot,
+  apriView, apriVistaImpostazioni, apriBookingModal,
+  getReviewsApi: () => dashboardReviewsModule,
+});
+({
+  aggiornaRiepilogo, aggiornaPrioritari, avviaPanoramicaPolling,
+  fermaPanoramicaPolling,
+} = dashboardOverviewModule);
 
-      if (e.tipo_evento === "recensione") {
-        li.style.cursor = "pointer";
-        li.title = "Clicca per aprire e gestire questa recensione";
-        li.addEventListener("click", () => {
-          apriView("recensioni");
-          setTimeout(() => {
-            if (e.id && typeof apriDettaglioRecensione === "function") {
-              apriDettaglioRecensione(e.id);
-            }
-          }, 80);
-        });
-      }
-
-      priorityList.appendChild(li);
-    });
-  } catch (err) {
-    if (!isCurrent()) return;
-    console.error("Impossibile aggiornare gli eventi prioritari:", err);
-    priorityList.innerHTML = "";
-    priorityList.appendChild(_errorState(_tDash("overview.runtime.priority_error", "Impossibile caricare le richieste urgenti."), aggiornaPrioritari));
-  }
-}
-
-/* ============================================================
-   KPI & SPARKLINE 7 GIORNI (PANORAMICA)
-   ============================================================ */
-
-function generaSparklineSvg(dataPoints, strokeColor, gradientId) {
-  const pts = Array.isArray(dataPoints) && dataPoints.length === 7 ? dataPoints : [0, 0, 0, 0, 0, 0, 0];
-  const maxVal = Math.max(...pts, 1);
-  const width = 84;
-  const height = 24;
-  const barWidth = 3;
-  const gap = 5;
-  const allZero = pts.every((v) => v === 0);
-
-  let barsHtml = "";
-  pts.forEach((val, i) => {
-    const x = i * (barWidth + gap) + 4;
-    const h = allZero ? (3 + (i % 3) * 4) : Math.max(3, (val / maxVal) * (height - 4));
-    const y = height - h;
-    const opacity = allZero ? (0.22 + (i / 7) * 0.32) : (0.4 + (val / maxVal) * 0.6);
-    barsHtml += `<rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="1.5" fill="${strokeColor}" fill-opacity="${opacity.toFixed(2)}" />`;
-  });
-
-  return `
-    <svg viewBox="0 0 ${width} ${height}" class="kpi-sparkline-bars" style="width:100%;height:100%;">
-      ${barsHtml}
-    </svg>
-  `;
-}
-
-function calcolaTrendKpi(oggi, ieri, tipoMetrica) {
-  // tipoMetrica: 'totale' | 'ai' | 'umano'
-  if (ieri === 0 && oggi === 0) {
-    return {
-      testo: tipoMetrica === "umano" ? "Nessuna escalation" : "In linea con ieri",
-      icona: "—",
-      classe: "trend-neutral",
-    };
-  }
-  if (ieri === 0 && oggi > 0) {
-    const isGood = tipoMetrica !== "umano";
-    return {
-      testo: `+${oggi} rispetto a ieri`,
-      icona: "↑",
-      classe: isGood ? "trend-positive" : "trend-warning",
-    };
-  }
-  const diff = oggi - ieri;
-  const pct = Math.round((diff / ieri) * 100);
-  if (pct === 0) {
-    return {
-      testo: "In linea con ieri",
-      icona: "—",
-      classe: "trend-neutral",
-    };
-  }
-  if (pct > 0) {
-    if (tipoMetrica === "ai") {
-      return { testo: `+${pct}% rispetto a ieri`, icona: "↑", classe: "trend-positive" };
-    } else if (tipoMetrica === "umano") {
-      return { testo: `+${pct}% rispetto a ieri`, icona: "↑", classe: "trend-warning" };
-    } else {
-      return { testo: `+${pct}% rispetto a ieri`, icona: "↑", classe: "trend-info" };
-    }
-  } else {
-    // Calo
-    if (tipoMetrica === "ai") {
-      return { testo: `${pct}% rispetto a ieri`, icona: "↓", classe: "trend-neutral" };
-    } else if (tipoMetrica === "umano") {
-      return { testo: `${pct}% rispetto a ieri`, icona: "↓", classe: "trend-positive" };
-    } else {
-      return { testo: `${pct}% rispetto a ieri`, icona: "↓", classe: "trend-neutral" };
-    }
-  }
-}
-
-function applicaBadgeTrend(elId, trendObj) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  el.className = `kpi-trend-badge ${trendObj.classe}`;
-  el.innerHTML = `
-    <span class="trend-icon">${trendObj.icona}</span>
-    <span class="trend-text">${_sanitize(trendObj.testo)}</span>
-  `;
-}
-
-let isPanoramicaPollingActive = false;
-let panoramicaPollingTimer = null;
-
-function avviaPanoramicaPolling() {
-  if (isPanoramicaPollingActive) return;
-  isPanoramicaPollingActive = true;
-  panoramicaPollingTimer = setInterval(async () => {
-    if (!isPanoramicaPollingActive) return;
-    if (document.hidden) return;
-    const currentView = document.querySelector(".nav-item.active")?.dataset?.view || "panoramica";
-    if (currentView !== "panoramica") {
-      fermaPanoramicaPolling();
-      return;
-    }
-    await Promise.all([
-      aggiornaRiepilogo(true),
-      aggiornaPrioritari(true),
-    ]);
-  }, 5000);
-}
-
-function fermaPanoramicaPolling() {
-  isPanoramicaPollingActive = false;
-  if (panoramicaPollingTimer) {
-    clearInterval(panoramicaPollingTimer);
-    panoramicaPollingTimer = null;
-  }
-}
-
-async function aggiornaRiepilogo(silent = false) {
-  if (activeDashboardView !== "panoramica") return;
-  const transition = dashboardViewTransition;
-  const request = ++overviewSummaryRequest;
-  const isCurrent = () => request === overviewSummaryRequest && transition === dashboardViewTransition && activeDashboardView === "panoramica";
-  if (!silent && !ticketList.children.length) {
-    ticketList.innerHTML = _skeletonList(3);
-  }
-  try {
-    const res = await apiFetch(`${API_BASE}/api/dashboard`);
-    if (!isCurrent()) return;
-    if (!res.ok) {
-      if (!silent) {
-        ticketList.innerHTML = "";
-        ticketList.appendChild(_errorState(_tDash("overview.runtime.activity_error", "Impossibile caricare l'attività recente."), () => aggiornaRiepilogo()));
-      }
-      return;
-    }
-    const rawStorico = await res.json().catch(() => []);
-    if (!isCurrent()) return;
-    const storico = Array.isArray(rawStorico) ? rawStorico : [];
-
-    // Calcolo 7 giorni storici
-    const oggiDate = new Date();
-    const giorni7 = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(oggiDate);
-      d.setDate(d.getDate() - i);
-      const key = _toDateKey(d);
-      giorni7.push({ dateKey: key, totale: 0, ai: 0, umano: 0 });
-    }
-
-    const oggiKey = _toDateKey(oggiDate);
-    const eventiOggi = [];
-
-    storico.forEach((e) => {
-      if (!e.timestamp) return;
-      const evDate = _toDateKey(e.timestamp);
-      if (evDate === oggiKey) {
-        eventiOggi.push(e);
-      }
-      const giornoObj = giorni7.find((g) => g.dateKey === evDate);
-      if (giornoObj) {
-        giornoObj.totale++;
-        if (e.gestito_da_ai) giornoObj.ai++;
-        else giornoObj.umano++;
-      }
-    });
-
-    const totaleOggi = eventiOggi.length;
-    const gestitiAiOggi = eventiOggi.filter((e) => e.gestito_da_ai).length;
-    const giratiOggi = totaleOggi - gestitiAiOggi;
-
-    if (statTotale) statTotale.textContent = totaleOggi;
-    if (statAi) statAi.textContent = gestitiAiOggi;
-    if (statUmano) statUmano.textContent = giratiOggi;
-
-    // Calcolo trend e sparklines
-    const totalePts = giorni7.map((g) => g.totale);
-    const aiPts = giorni7.map((g) => g.ai);
-    const umanoPts = giorni7.map((g) => g.umano);
-
-    const ieriTotale = totalePts[5] || 0;
-    const ieriAi = aiPts[5] || 0;
-    const ieriUmano = umanoPts[5] || 0;
-
-    // Badges
-    const trendTotale = calcolaTrendKpi(totaleOggi, ieriTotale, "totale");
-    const trendAi = calcolaTrendKpi(gestitiAiOggi, ieriAi, "ai");
-    const trendUmano = calcolaTrendKpi(giratiOggi, ieriUmano, "umano");
-
-    applicaBadgeTrend("trend-totale", trendTotale);
-    applicaBadgeTrend("trend-ai", trendAi);
-    applicaBadgeTrend("trend-umano", trendUmano);
-
-    // Sparklines SVG
-    const sparkTotaleEl = document.getElementById("sparkline-totale");
-    const sparkAiEl = document.getElementById("sparkline-ai");
-    const sparkUmanoEl = document.getElementById("sparkline-umano");
-
-    if (sparkTotaleEl) {
-      sparkTotaleEl.innerHTML = generaSparklineSvg(totalePts, "var(--accent)", "grad-kpi-totale");
-    }
-    if (sparkAiEl) {
-      sparkAiEl.innerHTML = generaSparklineSvg(aiPts, "var(--sage)", "grad-kpi-ai");
-    }
-    if (sparkUmanoEl) {
-      sparkUmanoEl.innerHTML = generaSparklineSvg(umanoPts, "var(--amber)", "grad-kpi-umano");
-    }
-
-    const totSettimana = totalePts.reduce((a, b) => a + b, 0);
-    const aiSettimana = aiPts.reduce((a, b) => a + b, 0);
-    const umanoSettimana = umanoPts.reduce((a, b) => a + b, 0);
-
-    const valTotEl = document.getElementById("sparkline-totale-val");
-    const valAiEl = document.getElementById("sparkline-ai-val");
-    const valUmanoEl = document.getElementById("sparkline-umano-val");
-
-    const sparklineUnit = t("dashboard:kpi.sparkline_unit");
-    if (valTotEl) valTotEl.textContent = `${totSettimana} ${sparklineUnit}`;
-    if (valAiEl) valAiEl.textContent = `${aiSettimana} ${sparklineUnit}`;
-    if (valUmanoEl) valUmanoEl.textContent = `${umanoSettimana} ${sparklineUnit}`;
-
-    ticketList.innerHTML = "";
-    const eventiDaMostrare = eventiOggi.length > 0 ? eventiOggi.slice().reverse() : storico.slice(0, 15);
-
-    if (eventiDaMostrare.length === 0) {
-      ticketList.appendChild(_emptyState(
-        ICONS.chat,
-        _tDash("overview.runtime.waiting_title", "In attesa di conversazioni"),
-        _tDash("overview.runtime.waiting_desc", "I messaggi dei clienti e le risposte dell'assistente compariranno qui in tempo reale."),
-        _tDash("overview.runtime.try_simulator", "Prova nel simulatore"),
-        () => apriView("assistente")
-      ));
-      return;
-    }
-
-    eventiDaMostrare.forEach((e) => {
-      const li = document.createElement("li");
-      li.classList.add("ticket-item", `prio-${e.priorita}`);
-      const isPositive = (e.gestito_da_ai === true) || (e.tipo_evento === "recensione" && Number(e.dettagli?.stelle) >= 4);
-      if (isPositive) {
-        li.classList.add("item-positive");
-      }
-      const testoWrap = document.createElement("div");
-      testoWrap.classList.add("ticket-item-text");
-      const msg = document.createElement("p");
-      msg.classList.add("ticket-item-msg");
-      msg.textContent = e.testo_originale;
-      const time = document.createElement("span");
-      time.classList.add("ticket-item-time");
-      const isOggi = _toDateKey(e.timestamp) === oggiKey;
-      time.textContent = isOggi
-        ? new Date(e.timestamp).toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" })
-        : new Date(e.timestamp).toLocaleDateString(localeCorrente(), { day: "2-digit", month: "2-digit" }) + " " + new Date(e.timestamp).toLocaleTimeString(localeCorrente(), { hour: "2-digit", minute: "2-digit" });
-      testoWrap.appendChild(msg);
-      testoWrap.appendChild(time);
-      const tags = document.createElement("div");
-      tags.classList.add("ticket-item-tags");
-      const tipoBadge = document.createElement("span");
-      tipoBadge.classList.add("ticket-tag", `ticket-tag-${e.tipo_evento}`);
-      tipoBadge.textContent = e.tipo_evento === "recensione"
-        ? _tDash("overview.runtime.review_kind", "Recensione")
-        : _tDash("overview.runtime.message_kind", "Messaggio");
-      tags.appendChild(tipoBadge);
-      if (e.tipo_evento === "recensione" && e.dettagli?.stelle) {
-        const stelleTag = document.createElement("span");
-        stelleTag.classList.add("ticket-tag", "ticket-tag-stelle");
-        if (Number(e.dettagli.stelle) >= 4) {
-          stelleTag.classList.add("tag-positive");
-        }
-        stelleTag.textContent = "\u2605".repeat(e.dettagli.stelle) + "\u2606".repeat(5 - e.dettagli.stelle);
-        tags.appendChild(stelleTag);
-      }
-      if (e.tipo_evento === "recensione") {
-        const viewBtn = document.createElement("button");
-        viewBtn.classList.add("ticket-copy-btn");
-        viewBtn.textContent = _tDash("overview.runtime.open_review", "Visualizza");
-        viewBtn.addEventListener("click", () => {
-          apriView("recensioni");
-          setTimeout(() => {
-            if (e.id && typeof apriDettaglioRecensione === "function") {
-              apriDettaglioRecensione(e.id);
-            }
-          }, 80);
-        });
-        tags.appendChild(viewBtn);
-      } else {
-        const statusTag = document.createElement("span");
-        statusTag.classList.add("ticket-tag");
-        statusTag.classList.add(e.gestito_da_ai ? "ticket-tag-ai" : "ticket-tag-umano");
-        statusTag.textContent = e.gestito_da_ai ? "Assistente" : "Umano";
-        tags.appendChild(statusTag);
-      }
-      li.appendChild(testoWrap);
-      li.appendChild(tags);
-      ticketList.appendChild(li);
-    });
-  } catch (err) {
-    if (!isCurrent()) return;
-    console.error("Impossibile aggiornare il riepilogo:", err);
-    if (!silent) {
-      ticketList.innerHTML = "";
-      ticketList.appendChild(_errorState("Impossibile caricare l'attività recente.", () => aggiornaRiepilogo()));
-    }
-  }
-}
+dashboardReviewsModule = window.MelpisDashboardReviews.create({
+  API_BASE, apiFetch, _escapeHtml, _sanitize, toast, _tDash, localeCorrente,
+  _emptyState, _errorState, _skeletonList, ICONS,
+  getContext: dashboardContextSnapshot,
+  getOverviewApi: () => dashboardOverviewModule,
+  aggiornaNotifiche,
+});
+({ aggiornaRecensioni } = dashboardReviewsModule);
 
 /* ============================================================
    KNOWLEDGE BASE RISTRUTTURATA (4 CATEGORIE)
@@ -6059,6 +4988,8 @@ window.addEventListener("storage", (event) => {
   }
 });
 window.addEventListener("pagehide", () => {
+  dashboardOverviewModule?.onExit();
+  dashboardReviewsModule?.onExit();
   document.body.classList.remove("authenticated");
 });
 window.addEventListener("pageshow", (event) => {

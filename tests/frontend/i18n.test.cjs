@@ -11,7 +11,9 @@ const { ROUTE_MAP, SUPPORTED_LANGS, generateHreflangs, generateLanguageSelector 
 test("dashboard overview omits the topbar account avatar and decorative KPI controls", () => {
   const root = path.resolve(__dirname, "../..");
   const html = fs.readFileSync(path.join(root, "web/index.html"), "utf8");
-  const appCode = fs.readFileSync(path.join(root, "web/app.js"), "utf8");
+  const appCode = ["app.js", "dashboard-overview.js", "dashboard-reviews.js"]
+    .map((file) => fs.readFileSync(path.join(root, "web", file), "utf8"))
+    .join("\n");
   const css = fs.readFileSync(path.join(root, "web/style.css"), "utf8");
 
   assert.doesNotMatch(html, /topbar-avatar-(?:btn|initial)/);
@@ -398,13 +400,16 @@ test("Inbox claim loading state survives a language-driven action rerender", () 
 
 test("i18n: every dashboard runtime _tDash key is translated in all dashboard bundles", () => {
   const root = path.resolve(__dirname, "../..");
-  const appCode = fs.readFileSync(path.join(root, "web/app.js"), "utf8");
+  const appCode = ["app.js", "dashboard-overview.js", "dashboard-reviews.js"]
+    .map((file) => fs.readFileSync(path.join(root, "web", file), "utf8")).join("\n");
   const runtimeKeys = new Set(
     Array.from(appCode.matchAll(/_tDash\(\s*["']([^"']+\.runtime\.[^"']+)/gs), (match) => match[1]),
   );
   const resolveKey = (bundle, key) => key.split(".").reduce((value, part) => value && value[part], bundle);
 
   assert.ok(runtimeKeys.size > 0, "dashboard must expose runtime translation keys");
+  assert.ok([...runtimeKeys].some((key) => key.startsWith("overview.runtime.")));
+  assert.ok([...runtimeKeys].some((key) => key.startsWith("reviews.runtime.")));
   for (const lang of SUPPORTED_LANGS) {
     const source = JSON.parse(fs.readFileSync(path.join(root, "locales", lang, "dashboard.json"), "utf8"));
     const served = JSON.parse(fs.readFileSync(path.join(root, "web/locales", lang, "dashboard.json"), "utf8"));

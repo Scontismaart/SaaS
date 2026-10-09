@@ -6,6 +6,7 @@ const { JSDOM } = require("jsdom");
 
 const focusSource = fs.readFileSync("web/dialog-focus.js", "utf8");
 const appSource = fs.readFileSync("web/app.js", "utf8");
+const sharedSource = fs.readFileSync("web/dashboard-shared.js", "utf8");
 const pageSource = fs.readFileSync("web/index.html", "utf8");
 
 test("dashboard dialogs manage initial focus, keyboard loop, Escape, and focus return", () => {
@@ -60,7 +61,7 @@ test("dashboard booking and confirmation dialogs use the focus manager", () => {
   assert.match(appSource, /MelpisDialogFocus\.handleKeydown\(modal, event/);
   assert.match(appSource, /MelpisDialogFocus\.open\(bookingModal\)/);
   assert.match(appSource, /MelpisDialogFocus\.close\(bookingModal\)/);
-  assert.match(appSource, /MelpisDialogFocus\.open\(modal, \{ initialFocus: okBtn \}\)/);
+  assert.match(sharedSource, /MelpisDialogFocus\.open\(modal, \{ initialFocus: okBtn \}\)/);
 });
 
 test("dashboard text controls expose translated accessible names", () => {

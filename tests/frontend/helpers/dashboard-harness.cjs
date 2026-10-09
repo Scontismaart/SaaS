@@ -8,6 +8,7 @@ const scriptFiles = [
   "web/i18n-client.js",
   "web/dialog-focus.js",
   "web/dashboard-router.js",
+  "web/dashboard-shared.js",
   "web/app.js",
   "web/mfa.js",
 ];

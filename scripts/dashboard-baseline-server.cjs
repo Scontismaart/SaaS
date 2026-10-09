@@ -7,6 +7,21 @@ const root = path.resolve(__dirname, "..", "web");
 const port = Number(process.env.DASHBOARD_QA_PORT || 4190);
 const csp = fs.readFileSync(path.join(root, "security-headers.conf"), "utf8").match(/Content-Security-Policy "([^"]+)"/)[1];
 const requests = [];
+// Explicit opt-in for synthetic interaction smoke; baseline mode stays identical.
+const interactions = process.env.DASHBOARD_QA_INTERACTIONS === "1";
+function interactionReply(method, pathname, cookie = "", enabled = interactions) {
+  if (!enabled) return reply(method, pathname);
+  if (/(?:^|;\s*)dashboard_qa_signed_out=1(?:;|$)/.test(cookie)) {
+    return { status: 401, body: { detail: "Sessione QA terminata" } };
+  }
+  if (method === "POST" && pathname === "/api/auth/logout") {
+    return { status: 200, body: { ok: true }, signedOut: true };
+  }
+  if (method === "GET" && pathname === "/api/documenti/elenco") {
+    return { status: 200, body: { documenti: [{ id: "synthetic-document-only", nome: "Documento QA sintetico", tipo: "documento", stato: "pronto", is_active: true, chunk: 1, caricato_il: FIXED_TIME }] } };
+  }
+  return reply(method, pathname);
+}
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".png": "image/png", ".webp": "image/webp", ".webmanifest": "application/manifest+json" };
 const server = http.createServer((req, res) => {
   if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host)) { res.writeHead(403).end(); return; }
@@ -16,7 +31,8 @@ const server = http.createServer((req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   if (url.pathname.startsWith("/api/")) {
-    const result = reply(req.method, url.pathname);
+    const result = interactionReply(req.method, url.pathname, req.headers.cookie);
+    if (result.signedOut) res.setHeader("Set-Cookie", "dashboard_qa_signed_out=1; Path=/; HttpOnly; SameSite=Strict");
     // Deliberately record no headers, cookies, query values or request bodies.
     requests.push({ method: req.method, path: url.pathname, status: result.status });
     req.resume();
@@ -68,6 +84,8 @@ const server = http.createServer((req, res) => {
   if (url.pathname === "/app" || /^\/app\/(overview|inbox|bookings|reviews|team|ai-simulator|knowledge|ai-settings|settings)\/?$/.test(url.pathname)) {
     relative = "index.html"; dashboard = true;
   } else if (url.pathname.startsWith("/app/")) { relative = url.pathname.slice(5); }
+  else if (interactions && url.pathname === "/accedi/") { relative = "accedi/index.html"; }
+  else if (interactions && ["/auth.css", "/auth.js", "/login.js"].includes(url.pathname)) { relative = url.pathname.slice(1); }
   else if (/^\/(brand|fonts|locales)\//.test(url.pathname) || url.pathname === "/i18n-client.js") { relative = url.pathname.slice(1); }
   else { res.writeHead(404).end(); return; }
   const target = path.resolve(root, relative);
@@ -78,4 +96,4 @@ const server = http.createServer((req, res) => {
   res.end(req.method === "HEAD" ? undefined : content);
 });
 if (require.main === module) server.listen(port, "127.0.0.1", () => console.log(`Synthetic dashboard QA: http://127.0.0.1:${port}/app/overview`));
-module.exports = { server };
+module.exports = { server, interactionReply };

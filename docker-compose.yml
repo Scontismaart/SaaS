@@ -65,6 +65,9 @@ services:
       - ./web/dashboard-router.js:/usr/share/nginx/html/app/dashboard-router.js:ro
       - ./web/dashboard-overview.js:/usr/share/nginx/html/app/dashboard-overview.js:ro
       - ./web/dashboard-reviews.js:/usr/share/nginx/html/app/dashboard-reviews.js:ro
+      - ./web/dashboard-knowledge.js:/usr/share/nginx/html/app/dashboard-knowledge.js:ro
+      - ./web/dashboard-team.js:/usr/share/nginx/html/app/dashboard-team.js:ro
+      - ./web/dashboard-ai-simulator.js:/usr/share/nginx/html/app/dashboard-ai-simulator.js:ro
       - ./web/mfa.js:/usr/share/nginx/html/app/mfa.js:ro
       - ./web/config.js:/usr/share/nginx/html/config.js:ro
       - ./web/auth.js:/usr/share/nginx/html/auth.js:ro

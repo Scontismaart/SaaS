@@ -16,7 +16,8 @@ test("report initially loads only when Overview is activated", () => {
 });
 
 test("simulator still refreshes the report after sending a message", () => {
-  const simulator = source.match(/async function inviaMessaggio\(testo\) \{([\s\S]*?)\n\}/);
+  const simulatorSource = fs.readFileSync(path.resolve(__dirname, "../../web/dashboard-ai-simulator.js"), "utf8");
+  const simulator = simulatorSource.match(/async function inviaMessaggio\(testo\) \{([\s\S]*?)\n {6}\}/);
   assert.ok(simulator, "simulator send handler exists");
   assert.match(simulator[1], /await aggiornaReport\(\)/);
 });

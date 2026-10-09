@@ -21,6 +21,9 @@ function fixture(pathname = "/app/overview") {
     invalidaSessione: () => classes.delete("authenticated"),
     dashboardOverviewModule: { onExit: () => { viewExits += 1; } },
     dashboardReviewsModule: { onExit: () => { viewExits += 1; } },
+    dashboardKnowledgeModule: { onExit: () => { viewExits += 1; } },
+    dashboardTeamModule: { onExit: () => { viewExits += 1; } },
+    dashboardAiSimulatorModule: { onExit: () => { viewExits += 1; } },
     vaiAdAccesso: () => { redirects += 1; },
     window: {
       addEventListener: (event, handler) => { handlers[event] = handler; },
@@ -56,7 +59,7 @@ test("pagehide removes private visibility before a document can be cached", () =
   const f = fixture();
   f.handlers.pagehide({ persisted: true });
   assert.equal(f.classes.has("authenticated"), false);
-  assert.equal(f.viewExits(), 2, "both extracted views release their pending work");
+  assert.equal(f.viewExits(), 5, "all extracted views release their pending work");
 });
 
 test("real persisted pageshow handler keeps private content hidden and reloads", () => {

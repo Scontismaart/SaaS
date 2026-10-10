@@ -18,3 +18,70 @@ test("view QA supplies observable loading, empty, error, denied and non-operatio
   assert.equal(viewReply("GET", "/api/recensioni", "denied").status, 403);
   assert.deepEqual(viewReply("GET", "/api/reviews/google/status", "populated").body.operational, false);
 });
+
+test("Knowledge view reads are synthetic, organization-scoped, and only fixed actions are accepted", () => {
+  const summary = viewReply("GET", "/api/conoscenza/summary", "populated");
+  assert.equal(summary.body.faq.totale, 1);
+  assert.equal(summary.body.documenti.totale, 1);
+  assert.match(viewReply("GET", "/api/documenti/elenco?tipo=faq", "populated", ORG_A).body.documenti[0].id, /^synthetic-/);
+  assert.match(viewReply("GET", "/api/documenti/elenco?tipo=web", "populated", ORG_B).body.documenti[0].nome, /B/);
+  assert.equal(viewReply("POST", "/api/conoscenza/faq", "populated").status, 201);
+  assert.equal(viewReply("POST", "/api/documenti/carica", "populated").body.id, "synthetic-document-qa");
+  assert.equal(viewReply("POST", "/api/documenti/carica-file", "populated").status, 201);
+  assert.equal(viewReply("POST", "/api/conoscenza/web", "populated").body.id, "synthetic-web-qa");
+  const answer = viewReply("POST", "/api/documenti/chiedi", "populated");
+  assert.equal(answer.status, 200);
+  assert.deepEqual(Object.keys(answer.body.fonti[0]).sort(), ["documento", "priorita", "score", "stato", "tipo"]);
+  assert.equal(viewReply("PUT", "/api/conoscenza/dati-struttura", "populated").status, 200);
+  assert.equal(viewReply("POST", "/api/conoscenza/dati-struttura", "populated"), null);
+  assert.equal(viewReply("DELETE", "/api/conoscenza/faq/arbitrary-id", "populated"), null);
+  assert.equal(viewReply("PATCH", "/api/documenti/arbitrary-id/toggle", "populated"), null);
+  assert.equal(viewReply("POST", "/api/arbitrary-write", "populated"), null);
+  assert.equal(viewReply("POST", "/api/conoscenza/faq", "staff").status, 403);
+  assert.equal(viewReply("POST", "/api/conoscenza/faq", "mfa-required").body.code, "mfa_required");
+  assert.deepEqual(viewReply("GET", "/api/documenti/elenco", "empty").body.documenti, []);
+  assert.equal(viewReply("GET", "/api/conoscenza/summary", "loading").delayMs, 3000);
+  assert.equal(viewReply("GET", "/api/conoscenza/summary", "error").status, 500);
+  assert.equal(viewReply("GET", "/api/conoscenza/summary", "denied").status, 403);
+});
+
+test("Team view has capacity metadata and fixed synthetic member/invitation actions", () => {
+  const team = viewReply("GET", "/api/team/members", "populated").body;
+  assert.equal(team.total, 2);
+  assert.equal(team.users_limit, 3);
+  assert.equal(team.can_add_more, true);
+  assert.ok(team.members.every((member) => member.user_id.startsWith("synthetic-")));
+  assert.match(viewReply("GET", "/api/team/invitations", "populated").body.invitations[0].email, /\.invalid$/);
+  const invite = viewReply("POST", "/api/team/members", "populated");
+  assert.equal(invite.body.id, "synthetic-invitation-qa");
+  assert.match(invite.body.email, /\.invalid$/);
+  assert.equal(viewReply("POST", "/api/team/invitations/synthetic-invitation-qa/resend", "populated").status, 200);
+  assert.equal(viewReply("DELETE", "/api/team/invitations/synthetic-invitation-qa", "populated").status, 200);
+  assert.equal(viewReply("PATCH", "/api/team/members/synthetic-member-qa", "populated").status, 200);
+  assert.equal(viewReply("DELETE", "/api/team/members/synthetic-member-qa", "populated").status, 200);
+  assert.equal(viewReply("DELETE", "/api/team/members/arbitrary-user", "populated"), null);
+  for (const scenario of ["staff", "mfa-required"]) {
+    assert.equal(viewReply("POST", "/api/team/members", scenario).status, 403);
+    assert.equal(viewReply("DELETE", "/api/team/invitations/synthetic-invitation-qa", scenario).status, 403);
+  }
+  assert.equal(viewReply("GET", "/api/auth/me", "staff").body.ruolo, "staff");
+  assert.equal(viewReply("GET", "/api/auth/me", "mfa-required").body.aal, "aal1");
+  assert.equal(viewReply("GET", "/api/team/members", "empty").body.total, 0);
+  assert.equal(viewReply("GET", "/api/team/members", "loading").delayMs, 3000);
+  assert.equal(viewReply("GET", "/api/team/members", "error").status, 500);
+});
+
+test("simulator returns canned normal, hostile, error and timeout outcomes without a provider", () => {
+  const normal = viewReply("POST", "/api/messaggio", "populated");
+  assert.match(normal.body.risposta, /nessun modello o servizio esterno/);
+  const hostile = viewReply("POST", "/api/messaggio", "simulator-hostile");
+  assert.equal(hostile.body.richiede_umano, true);
+  assert.equal(hostile.body.risposta, "<img src=x onerror=alert(1)><script>QA_HOSTILE</script>");
+  assert.equal(viewReply("POST", "/api/messaggio", "simulator-error").status, 503);
+  const timeout = viewReply("POST", "/api/messaggio", "simulator-timeout");
+  assert.equal(timeout.status, 504);
+  assert.equal(timeout.delayMs, 3000);
+  assert.match(timeout.body.detail, /Timeout/);
+  assert.equal(viewReply("POST", "/api/messaggio", "loading").delayMs, 3000);
+  assert.equal(viewReply("POST", "/api/messaggio/other", "populated"), null);
+});

@@ -79,7 +79,8 @@ test("dashboard text controls expose translated accessible names", () => {
 });
 
 test("knowledge tabs support arrow, Home, and End keyboard navigation", () => {
-  const source = appSource.match(/function gestisciNavigazioneTabConoscenza\(event\) \{[\s\S]*?\n\}/)?.[0];
+  const knowledgeSource = fs.readFileSync("web/dashboard-knowledge.js", "utf8");
+  const source = knowledgeSource.match(/function gestisciNavigazioneTabConoscenza\(event\) \{[\s\S]*?\n {6}\}/)?.[0];
   assert.ok(source, "the dashboard must provide keyboard navigation for knowledge tabs");
   const dom = new JSDOM(`
     <div role="tablist">

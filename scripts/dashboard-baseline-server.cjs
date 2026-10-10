@@ -34,9 +34,9 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${port}`);
   if (url.pathname.startsWith("/api/")) {
     const cookie = req.headers.cookie || "";
-    const scenario = cookie.match(/(?:^|;\s*)dashboard_qa_case=([a-z]+)(?:;|$)/)?.[1];
+    const scenario = cookie.match(/(?:^|;\s*)dashboard_qa_case=([a-z-]+)(?:;|$)/)?.[1];
     const loggedOut = /(?:^|;\s*)dashboard_qa_signed_out=1(?:;|$)/.test(cookie);
-    const result = !loggedOut && viewStates && viewReply(req.method, url.pathname, scenario, req.headers["x-organization-id"] || undefined)
+    const result = !loggedOut && viewStates && viewReply(req.method, url.pathname + url.search, scenario, req.headers["x-organization-id"] || undefined)
       || interactionReply(req.method, url.pathname, cookie);
     if (result.signedOut) res.setHeader("Set-Cookie", "dashboard_qa_signed_out=1; Path=/; HttpOnly; SameSite=Strict");
     // Deliberately record no headers, cookies, query values or request bodies.
@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
   if (viewStates && url.pathname === "/__qa/start") {
     const scenario = url.searchParams.get("case");
     const view = url.searchParams.get("view");
-    if (!SCENARIOS.has(scenario) || !["overview", "reviews"].includes(view)) { res.writeHead(400).end(); return; }
+    if (!SCENARIOS.has(scenario) || !["overview", "reviews", "knowledge", "team", "ai-simulator"].includes(view)) { res.writeHead(400).end(); return; }
     res.setHeader("Set-Cookie", [`dashboard_qa_case=${scenario}; Path=/; HttpOnly; SameSite=Strict`, "dashboard_qa_signed_out=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict"]);
     res.writeHead(302, { Location: `/app/${view}` }).end(); return;
   }

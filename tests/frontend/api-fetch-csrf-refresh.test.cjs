@@ -34,6 +34,9 @@ function setup(fetchImpl) {
     let dashboardSessionEpoch = 0;
     const dashboardOverviewModule = { invalidate() { window.overviewInvalidations = (window.overviewInvalidations || 0) + 1; } };
     const dashboardReviewsModule = { invalidate() { window.reviewsInvalidations = (window.reviewsInvalidations || 0) + 1; } };
+    const dashboardKnowledgeModule = { invalidate() {} };
+    const dashboardTeamModule = { invalidate() {} };
+    const dashboardAiSimulatorModule = { invalidate() {} };
     ${functionSource("leggiCookie")}
     ${functionSource("csrfToken")}
     ${functionSource("tentaRefresh")}

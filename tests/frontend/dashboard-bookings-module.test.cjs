@@ -509,3 +509,74 @@ test("Simulator success retains the wired Bookings callbacks and completes notif
   assert.ok(requests(h, "GET", "/api/ui/summary").length > before);
   assert.equal(h.windowErrors.length, 0);
 });
+
+for (const settings of [null, {}, { fasce_orarie: [], capienze_orarie: {} }]) {
+  test(`Unconfigured capacity settings ${JSON.stringify(settings)} expose all 24 editable hours`, async (t) => {
+    const h = fixture({ settings }); t.after(() => h.dispose()); await openBookings(h);
+    const inputs = [...h.document.querySelectorAll('[data-capacity-hour]')];
+    assert.equal(inputs.length, 24);
+    assert.equal(inputs[0].dataset.capacityHour, "00:00");
+    assert.equal(inputs.at(-1).dataset.capacityHour, "23:00");
+    assert.ok(inputs.every(input => input.value === "40"));
+    assert.equal(h.document.getElementById("booking-standard-capacity").value, "40");
+  });
+}
+
+test("Capacity editor includes saved hours missing from the list and preserves explicit zero", async (t) => {
+  const h = fixture({ settings: { fasce_orarie: ["20:00"], capienze_orarie: { "20:00": 10, "21:00": 0, "21:30": 5 } } });
+  t.after(() => h.dispose()); await openBookings(h);
+  assert.equal(h.document.querySelector('[data-capacity-hour="21:00"]').value, "0");
+  assert.equal(h.document.querySelector('[data-capacity-hour="21:30"]').value, "5");
+  assert.equal(h.document.querySelectorAll('[data-capacity-hour]').length, 3);
+});
+
+test("Zero capacity is saved per hour and survives reload, standard changes preserve closed slots", async (t) => {
+  let settings = null; let submitted;
+  const h = fixture({ overrides: {
+    "/api/bookings/settings": () => json(settings),
+    "PUT /api/bookings/settings": request => {
+      submitted = JSON.parse(request.options.body);
+      settings = { fasce_orarie: Object.keys(submitted.capienze_orarie), ...submitted };
+      return json(settings);
+    },
+  } });
+  t.after(() => h.dispose()); await openBookings(h);
+  const standard = h.document.getElementById("booking-standard-capacity");
+  standard.value = "30"; standard.dispatchEvent(new h.window.Event("change"));
+  h.document.querySelector('[data-capacity-hour="20:00"]').value = "12";
+  h.document.querySelector('[data-capacity-hour="21:00"]').value = "0";
+  h.document.getElementById("capacity-save").click(); await settleRequests(h);
+  assert.equal(Object.keys(submitted.capienze_orarie).length, 24);
+  assert.equal(submitted.capienze_orarie["19:00"], 30);
+  assert.equal(submitted.capienze_orarie["20:00"], 12);
+  assert.equal(submitted.capienze_orarie["21:00"], 0);
+  h.bookings.invalidate(); await h.navigate("panoramica"); await h.navigate("prenotazioni"); await h.settle();
+  assert.equal(h.document.querySelector('[data-capacity-hour="20:00"]').value, "12");
+  assert.equal(h.document.querySelector('[data-capacity-hour="21:00"]').value, "0");
+  standard.value = "25"; standard.dispatchEvent(new h.window.Event("change"));
+  assert.equal(h.document.querySelector('[data-capacity-hour="20:00"]').value, "25");
+  assert.equal(h.document.querySelector('[data-capacity-hour="21:00"]').value, "0");
+});
+
+test("All closed capacity hours display standard zero without reopening them", async (t) => {
+  const h = fixture({ settings: { fasce_orarie: ["20:00", "21:00"], capienze_orarie: { "20:00": 0, "21:00": 0 } } });
+  t.after(() => h.dispose()); await openBookings(h);
+  assert.equal(h.document.getElementById("booking-standard-capacity").value, "0");
+});
+
+for (const value of ["", "-1", "501", "1.5"]) {
+  test(`Invalid hourly capacity ${JSON.stringify(value)} cannot issue a settings write`, async (t) => {
+    const h = fixture(); t.after(() => h.dispose()); await openBookings(h);
+    h.document.querySelector('[data-capacity-hour="20:00"]').value = value;
+    h.document.getElementById("capacity-save").click(); await h.settle();
+    assert.equal(requests(h, "PUT", "/api/bookings/settings").length, 0);
+  });
+}
+
+test("Failed capacity settings load cannot save an empty map or invent editable defaults", async (t) => {
+  const h = fixture({ overrides: { "/api/bookings/settings": () => json({ detail: "Forbidden" }, 403) } });
+  t.after(() => h.dispose()); await openBookings(h);
+  assert.equal(h.document.querySelectorAll('[data-capacity-hour]').length, 0);
+  h.document.getElementById("capacity-save").click(); await h.settle();
+  assert.equal(requests(h, "PUT", "/api/bookings/settings").length, 0);
+});

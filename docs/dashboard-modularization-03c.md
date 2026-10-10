@@ -30,3 +30,9 @@ All 12 immutable Block 1 images compared as decoded RGB: zero changed pixels, id
 ESLint, CSP, i18n (3148 keys), FullCalendar stylesheet, assets, links, dependency audit, diff check and staged secret scan are delivery gates. Graphify update completed; optional SQL parser warnings are non-blocking for this frontend-only extraction.
 
 Leave Block 3C PR open. No merge, deploy, Block 3D or provider changes.
+
+## Hourly capacity follow-up
+
+Real browser reproduction found an empty hourly grid when settings were null or omitted `fasce_orarie`; Save could then send an empty map and trigger the backend default. The editor now normalizes successful null settings, falls back to all 24 hourly slots when the configured list is absent/empty, and includes valid saved capacity keys missing from that list. Explicit zero capacities survive rendering, save and reload; a standard-capacity change still preserves closed slots. Empty grids and invalid integer/range inputs cannot issue a settings mutation. Failed settings reads do not invent defaults.
+
+Eleven added regression tests first failed against the old implementation, then passed with the fix. Bookings 52/52 and the complete frontend suite 290/290 passed; ESLint, CSP, i18n, assets, links and diff check passed. Read-only security review confirmed unchanged organization/role/session/CSRF boundaries. Real Chromium desktop 1440x900 and mobile 375x812 verified per-hour changes, zero, Save and hard reload with an isolated synthetic in-memory API; warning/error console logs were empty. Captures stay ignored under `scratch/`. No backend, HTML, CSS or production/staging changes.

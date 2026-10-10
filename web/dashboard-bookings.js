@@ -699,17 +699,23 @@
           const res = await apiFetch(`${API_BASE}/api/bookings/settings`);
           if (!current(token) || transition !== getContext()?.transition) return;
           if (!res.ok) return;
-          const data = await res.json();
+          const data = await res.json() || {};
           if (!current(token) || transition !== getContext()?.transition) return;
           const capienze = data.capienze_orarie || {};
+          const validHour = (hour) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(hour);
+          const configuredHours = Array.isArray(data.fasce_orarie) ? data.fasce_orarie.filter(validHour) : [];
+          const hours = [...new Set([
+            ...(configuredHours.length ? configuredHours : Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`)),
+            ...Object.keys(capienze).filter(validHour),
+          ])].sort();
           bookingOpenHours = capienze;
           const standard = document.getElementById("booking-standard-capacity");
           if (standard) {
             const valori = Object.values(capienze).filter((value) => Number(value) > 0);
-            standard.value = valori.length ? Math.max(...valori) : "";
+            standard.value = valori.length ? Math.max(...valori) : Object.keys(capienze).length ? 0 : 40;
           }
-          bookingSettingsGrid.innerHTML = (data.fasce_orarie || []).map((ora) => `
-            <label class="booking-setting"><span>${_escapeHtml(ora)}</span><input type="number" min="0" max="500" data-capacity-hour="${_escapeHtml(ora)}" value="${_escapeHtml(capienze[ora] ?? 40)}"></label>
+          bookingSettingsGrid.innerHTML = hours.map((ora) => `
+            <label class="booking-setting"><span>${_escapeHtml(ora)}</span><input type="number" min="0" max="500" required data-capacity-hour="${_escapeHtml(ora)}" value="${_escapeHtml(capienze[ora] ?? 40)}"></label>
           `).join("");
         } catch {
           // Staff settings denial must not prevent authorized booking reads.
@@ -782,11 +788,18 @@
         if (!token) return;
         capacityStatus.textContent = "";
         try {
+          const inputs = [...bookingSettingsGrid.querySelectorAll("[data-capacity-hour]")];
+          if (!inputs.length) throw new Error("Impostazioni capienza non disponibili. Ricarica e riprova.");
+          const invalid = inputs.find((input) => !input.checkValidity() || !Number.isInteger(Number(input.value)));
+          if (invalid) {
+            invalid.reportValidity();
+            throw new Error("Inserisci una capienza intera da 0 a 500 per ogni fascia.");
+          }
           const res = await apiFetch(`${API_BASE}/api/bookings/settings`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              capienze_orarie: Object.fromEntries([...document.querySelectorAll("[data-capacity-hour]")].map((input) => [input.dataset.capacityHour, parseInt(input.value, 10) || 0])),
+              capienze_orarie: Object.fromEntries(inputs.map((input) => [input.dataset.capacityHour, Number(input.value)])),
             }),
           });
           if (!current(token)) return;
@@ -816,8 +829,9 @@
       });
 
       document.getElementById("booking-standard-capacity")?.addEventListener("change", (event) => {
-        const value = Math.max(0, parseInt(event.target.value, 10) || 0);
-        document.querySelectorAll("[data-capacity-hour]").forEach((input) => {
+        if (!event.target.value || !event.target.checkValidity()) return;
+        const value = Number(event.target.value);
+        bookingSettingsGrid.querySelectorAll("[data-capacity-hour]").forEach((input) => {
           if (parseInt(input.value, 10) > 0) input.value = value;
         });
       });

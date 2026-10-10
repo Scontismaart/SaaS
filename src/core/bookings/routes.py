@@ -136,8 +136,12 @@ async def confirm_booking(booking_id: str, request: Request,
     service = _get_booking_service(request)
     try:
         b = await service.confirm(user["organization_id"], booking_id)
-    except ValueError as e:
+    except SlotPienoError as e:
+        raise HTTPException(status_code=409, detail={"messaggio": str(e), "alternative": e.alternative})
+    except BookingNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     await _audit_booking(request, user, "prenotazione.confermata", b)
     return b
 
@@ -181,7 +185,14 @@ async def mark_no_show(booking_id: str, request: Request,
 async def mark_completed(booking_id: str, request: Request,
                          user: dict = Depends(require_ruolo("owner", "manager"))):
     service = _get_booking_service(request)
-    b = await service.mark_completed(user["organization_id"], booking_id)
+    try:
+        b = await service.mark_completed(user["organization_id"], booking_id)
+    except SlotPienoError as e:
+        raise HTTPException(status_code=409, detail={"messaggio": str(e), "alternative": e.alternative})
+    except BookingNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
     await _audit_booking(request, user, "prenotazione.completata", b)

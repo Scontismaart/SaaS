@@ -481,3 +481,31 @@ for (const stale of [false, true]) {
     else assert.match(h.document.getElementById("toast-container").textContent, /Export scaricato/);
   });
 }
+
+test("Overview booking setup opens the existing availability dialog through shell wiring", async (t) => {
+  const h = fixture({ settings: { capienze_orarie: {}, fasce_orarie: [] } });
+  t.after(() => h.dispose()); await h.ready();
+  const setup = h.document.querySelector('[data-action="setup-booking"]');
+  assert.ok(setup);
+  setup.click(); await h.settle();
+  for (const timer of [...h.timeouts.values()]) {
+    if (timer.delay === 100) timer.callback();
+  }
+  await h.settle();
+  assert.equal(h.document.getElementById("booking-availability-modal").hidden, false);
+  assert.equal(h.windowErrors.length, 0);
+});
+
+test("Simulator success retains the wired Bookings callbacks and completes notification refresh", async (t) => {
+  const h = fixture({ overrides: { "POST /api/messaggio": () => json({ risposta: "Risposta QA", richiede_umano: false }) } });
+  t.after(() => h.dispose()); await h.ready(); await h.navigate("assistente");
+  const before = requests(h, "GET", "/api/ui/summary").length;
+  h.document.getElementById("chat-input").value = "Messaggio sintetico";
+  h.document.getElementById("chat-form").dispatchEvent(new h.window.Event("submit", { bubbles: true, cancelable: true }));
+  await h.waitFor(() => requests(h, "POST", "/api/messaggio").length === 1);
+  await h.settle();
+  assert.match(h.document.getElementById("chat-body").textContent, /Risposta QA/);
+  assert.doesNotMatch(h.document.getElementById("chat-body").textContent, /Non riesco a contattare/);
+  assert.ok(requests(h, "GET", "/api/ui/summary").length > before);
+  assert.equal(h.windowErrors.length, 0);
+});

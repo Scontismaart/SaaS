@@ -1643,6 +1643,7 @@ dashboardBookingsModule = window.MelpisDashboardBookings.create({
     aggiornaCampana();
   },
 });
+({ aggiornaPrenotazioni, aggiornaSemaforo, apriBookingModal } = dashboardBookingsModule);
 
 
 /* ============================================================

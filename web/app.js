@@ -34,6 +34,10 @@ let aggiornaConoscenzaCompleta;
 let dashboardTeamModule = null;
 let caricaTeam;
 let dashboardAiSimulatorModule = null;
+let dashboardBookingsModule = null;
+let aggiornaPrenotazioni;
+let aggiornaSemaforo;
+let apriBookingModal;
 
 function leggiCookie(nome) {
   return document.cookie
@@ -336,6 +340,7 @@ function invalidaSessione() {
   dashboardKnowledgeModule?.invalidate();
   dashboardTeamModule?.invalidate();
   dashboardAiSimulatorModule?.invalidate();
+  dashboardBookingsModule?.invalidate();
   sessione = null;
   document.body.classList.remove("authenticated");
   aggiornaBottoneAccesso();
@@ -583,8 +588,6 @@ let dashboardViewTransition = 0;
 let overviewReportRequest = 0;
 let inboxListRequest = 0;
 let inboxDetailRequest = 0;
-let bookingListRequest = 0;
-let bookingAvailabilityRequest = 0;
 let dashboardRouter = null;
 let aggiornaRiepilogo;
 let aggiornaPrioritari;
@@ -678,6 +681,7 @@ async function renderDashboardView(viewName) {
   if (activeDashboardView === "conoscenza" || activeDashboardView === "documenti") dashboardKnowledgeModule?.onExit();
   if (activeDashboardView === "team") dashboardTeamModule?.onExit();
   if (activeDashboardView === "assistente") dashboardAiSimulatorModule?.onExit();
+  if (activeDashboardView === "prenotazioni") dashboardBookingsModule?.onExit();
   const transition = ++dashboardViewTransition;
   activeDashboardView = viewName;
   segnaNotificheViste(viewName);
@@ -760,21 +764,9 @@ async function renderDashboardView(viewName) {
     fermaInboxPolling();
   }
 
-  sincronizzaPollingPrenotazioni();
   if (viewName !== "prenotazioni") return;
-
-  await aggiornaImpostazioniPrenotazioni();
-  if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
-  inizializzaCalendarioPrenotazioni();
-  await aggiornaPrenotazioni();
-  if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
-  await aggiornaSemaforo();
-  if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
-  if (bookingCalendar) {
-    bookingCalendar.updateSize();
-    bookingCalendar.render();
-  }
-  renderTabellaPrenotazioniGiorno();
+  dashboardBookingsModule?.onEnter();
+  await dashboardBookingsModule?.load();
 }
 
 /* Destinazioni di fallback per chiavi di viste non più presenti nella nav
@@ -963,7 +955,8 @@ async function aggiornaNotifiche() {
       if (bRes.ok) {
         const list = await bRes.json();
         prenotazioniInAttesaCount = list.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa").length;
-        if (bookingPendingValue) bookingPendingValue.textContent = String(prenotazioniInAttesaCount);
+        const pendingValue = document.getElementById("booking-pending-value");
+        if (pendingValue) pendingValue.textContent = String(prenotazioniInAttesaCount);
       }
     } catch { /* ignora errore fetch secondario */ }
     const stato = leggiStatoNotifiche();
@@ -1635,768 +1628,22 @@ onboardingEls.uploadDoc?.addEventListener("click", async () => {
    PRENOTAZIONI
    ============================================================ */
 
-const bookingCalendarEl = document.getElementById("booking-calendar");
-const bookingCount = document.getElementById("booking-count");
-const availabilityList = document.getElementById("availability-list");
-const availabilityDate = document.getElementById("availability-date");
-const bookingForm = document.getElementById("booking-form");
-const bookingStatusText = document.getElementById("booking-status-text");
-const bookingSettingsGrid = document.getElementById("booking-settings-grid");
-const capacitySave = document.getElementById("capacity-save");
-const capacityStatus = document.getElementById("capacity-status");
-let bookingCalendar = null;
-let bookingOpenHours = {};
-let bookingAvailability = new Map();
-let bookingRecords = [];
-let bookingPendingOnly = false;
-let bookingEditingId = null;
-let bookingFormTransition = 0;
-let bookingDetailTransition = 0;
-let bookingPollTimer = null;
-let bookingSnapshot = new Map();
-const bookingModal = document.getElementById("booking-modal");
-const bookingSummary = document.getElementById("booking-summary");
-const bookingPendingValue = document.getElementById("booking-pending-value");
-const bookingDetail = {
-  title: document.getElementById("booking-modal-title"),
-  date: document.getElementById("booking-detail-date"),
-  time: document.getElementById("booking-detail-time"),
-  seats: document.getElementById("booking-detail-seats"),
-  status: document.getElementById("booking-detail-status"),
-  phone: document.getElementById("booking-detail-phone"),
-  origin: document.getElementById("booking-detail-origin"),
-  note: document.getElementById("booking-detail-note"),
-};
-
-function oggiIso() {
-  return _toDateKey(new Date());
-}
-
-function colorePrenotazione(stato) {
-  const normalized = (stato || "").toLowerCase();
-  if (normalized.includes("intervento")) return "#C63F52";
-  if (normalized.includes("attesa")) return "#C68A2E";
-  return "#1F9D74";
-}
-
-const STATI_FINALI_PRENOTAZIONE = ["cancellata", "cancellato", "rifiutata", "no_show", "completata"];
-let prenotazioneCorrente = null;
-
 function statoNormalizzatoPrenotazione(p) {
   return String(p?.stato || "").toLowerCase().trim().replace(/\s+/g, "_");
 }
 
-function aggiornaAzioniPrenotazione(p) {
-  const wrap = document.getElementById("booking-detail-actions");
-  if (!wrap || !p) {
-    if (wrap) wrap.hidden = true;
-    return;
-  }
-  const staff = Boolean(sessione && sessione.ruolo === "staff");
-  const confermaBtn = document.getElementById("booking-confirm-btn");
-  const rifiutaBtn = document.getElementById("booking-reject-btn");
-  const annullaBtn = document.getElementById("booking-cancel-btn");
-  const noShowBtn = document.getElementById("booking-no-show-btn");
-  const completedBtn = document.getElementById("booking-completed-btn");
-  const editBtn = document.getElementById("booking-edit-btn");
-  if (!confermaBtn || !rifiutaBtn || !annullaBtn || !noShowBtn || !completedBtn || !editBtn) return;
-  [confermaBtn, rifiutaBtn, annullaBtn, noShowBtn, completedBtn, editBtn].forEach((button) => { button.disabled = false; });
-  const stato = statoNormalizzatoPrenotazione(p);
-  const finale = STATI_FINALI_PRENOTAZIONE.includes(stato);
-  confermaBtn.hidden = staff || finale || stato === "confermata";
-  rifiutaBtn.hidden = staff || finale || stato === "rifiutata";
-  annullaBtn.hidden = staff || finale;
-  noShowBtn.hidden = staff || finale || stato !== "confermata";
-  completedBtn.hidden = staff || finale || stato !== "confermata";
-  editBtn.hidden = staff || finale;
-  wrap.hidden = [confermaBtn, rifiutaBtn, annullaBtn, noShowBtn, completedBtn, editBtn].every((button) => button.hidden);
-}
-
-async function eseguiAzionePrenotazione(azione, { chiediConferma = false, titolo = "", descrizione = "", label = "Conferma" } = {}) {
-  const p = prenotazioneCorrente;
-  if (!p?.id) return;
-  const transition = dashboardViewTransition;
-  const formTransition = bookingFormTransition;
-  let detailTransition = ++bookingDetailTransition;
-  const selectedDate = bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
-  const isCurrent = () => transition === dashboardViewTransition && activeDashboardView === "prenotazioni" && formTransition === bookingFormTransition && detailTransition === bookingDetailTransition && prenotazioneCorrente?.id === p.id && selectedDate === (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
-  if (chiediConferma) {
-    const ok = await confermaDestructiva({ titolo, descrizione, label });
-    if (!ok) return;
-  }
-  const bottoni = ["booking-confirm-btn", "booking-reject-btn", "booking-cancel-btn", "booking-no-show-btn", "booking-completed-btn", "booking-edit-btn"]
-    .map((id) => document.getElementById(id))
-    .filter(Boolean);
-  if (isCurrent()) bottoni.forEach((b) => { b.disabled = true; });
-  try {
-    const res = await apiFetch(`${API_BASE}/api/bookings/${encodeURIComponent(p.id)}/${azione}`, { method: "POST" });
-    if (!isCurrent()) return;
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      if (!isCurrent()) return;
-      throw new Error(errData.detail || "Operazione non riuscita.");
-    }
-    const updated = await res.json();
-    if (!isCurrent()) return;
-    prenotazioneCorrente = updated;
-    chiudiDettaglioPrenotazione();
-    detailTransition = bookingDetailTransition;
-    toast(
-      azione === "confirm" ? "Prenotazione confermata."
-        : azione === "reject" ? "Prenotazione rifiutata."
-          : azione === "mark-no-show" ? "Prenotazione segnata come no-show."
-            : azione === "mark-completed" ? "Prenotazione completata."
-              : "Prenotazione annullata.",
-      azione === "confirm" ? "success" : "info",
-    );
-    await Promise.all([
-      aggiornaPrenotazioni(),
-      p.data ? aggiornaSemaforo(p.data) : Promise.resolve(),
-    ]);
-  } catch (err) {
-    if (!isCurrent()) return;
-    toast(err.message || "Errore di connessione.", "error");
-  } finally {
-    if (isCurrent()) bottoni.forEach((b) => { b.disabled = false; });
-  }
-}
-
-document.getElementById("booking-confirm-btn")?.addEventListener("click", () => {
-  eseguiAzionePrenotazione("confirm");
-});
-
-document.getElementById("booking-reject-btn")?.addEventListener("click", () => {
-  eseguiAzionePrenotazione("reject", {
-    chiediConferma: true,
-    titolo: "Rifiutare la prenotazione?",
-    descrizione: `La richiesta di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà contrassegnata come rifiutata e il cliente non avrà il tavolo riservato.`,
-    label: "Rifiuta",
-  });
-});
-
-document.getElementById("booking-cancel-btn")?.addEventListener("click", () => {
-  eseguiAzionePrenotazione("cancel", {
-    chiediConferma: true,
-    titolo: "Annullare la prenotazione?",
-    descrizione: `La prenotazione di ${prenotazioneCorrente?.nome_cliente || "questo cliente"} verrà annullata e i posti torneranno disponibili.`,
-    label: "Annulla prenotazione",
-  });
-});
-
-document.getElementById("booking-no-show-btn")?.addEventListener("click", () => {
-  eseguiAzionePrenotazione("mark-no-show", {
-    chiediConferma: true,
-    titolo: "Segnare come no-show?",
-    descrizione: "La prenotazione verrà chiusa come no-show.",
-    label: "Segna no-show",
-  });
-});
-
-document.getElementById("booking-completed-btn")?.addEventListener("click", () => {
-  eseguiAzionePrenotazione("mark-completed", {
-    chiediConferma: true,
-    titolo: "Segnare come completata?",
-    descrizione: "La prenotazione verrà registrata come completata.",
-    label: "Completa",
-  });
-});
-
-function formattaUnitaVerticale(num, singolare = false) {
-  const v = (typeof dbProfileRecord !== "undefined" && dbProfileRecord?.verticale)
-    || (typeof onboardingState !== "undefined" && onboardingState?.selectedVertical)
-    || "ristorante";
-  const n = Number(num) || 0;
-  if (v === "parrucchiere" || v === "centro_estetico") {
-    return singolare || n === 1 ? `${n} persona` : `${n} persone`;
-  }
-  if (v === "studio_medico_dentista") {
-    return singolare || n === 1 ? `${n} paziente` : `${n} pazienti`;
-  }
-  if (v === "hotel_bnb") {
-    return singolare || n === 1 ? `${n} ospite` : `${n} ospiti`;
-  }
-  return singolare || n === 1 ? `${n} coperto` : `${n} coperti`;
-}
-
-function apriDettaglioPrenotazione(prenotazione) {
-  if (!bookingModal || !prenotazione) return;
-  bookingDetailTransition++;
-  const valore = (dato, fallback = "Non indicato") => dato || fallback;
-  const data = prenotazione.data
-    ? new Date(`${prenotazione.data}T12:00:00`).toLocaleDateString(localeCorrente(), {
-      weekday: "long", day: "2-digit", month: "long", year: "numeric",
-    })
-    : "Non indicata";
-  prenotazioneCorrente = prenotazione;
-  bookingDetail.title.textContent = valore(prenotazione.nome_cliente, "Cliente");
-  bookingDetail.date.textContent = data;
-  bookingDetail.time.textContent = valore(prenotazione.ora);
-  bookingDetail.seats.textContent = prenotazione.coperti ? formattaUnitaVerticale(prenotazione.coperti) : "Non indicati";
-  bookingDetail.status.textContent = valore(prenotazione.stato);
-  bookingDetail.phone.textContent = valore(prenotazione.telefono);
-  bookingDetail.origin.textContent = valore(prenotazione.origine);
-  bookingDetail.note.textContent = valore(prenotazione.note, "Nessuna nota");
-  aggiornaAzioniPrenotazione(prenotazione);
-  if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(bookingModal);
-  else bookingModal.hidden = false;
-  document.body.classList.add("booking-modal-open");
-}
-
-function chiudiDettaglioPrenotazione() {
-  if (!bookingModal) return;
-  bookingDetailTransition++;
-  if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(bookingModal);
-  else bookingModal.hidden = true;
-  document.body.classList.remove("booking-modal-open");
-}
-
-function apriBookingModal(id, options = {}) {
-  const modal = document.getElementById(id);
-  if (!modal) return;
-  if (id === "booking-create-modal") bookingFormTransition++;
-  if (window.MelpisDialogFocus) window.MelpisDialogFocus.open(modal, options);
-  else modal.hidden = false;
-  document.body.classList.add("booking-modal-open");
-}
-
-function chiudiBookingModal(id, options = {}) {
-  const modal = document.getElementById(id);
-  if (!modal) return;
-  if (id === "booking-create-modal") bookingFormTransition++;
-  if (window.MelpisDialogFocus) window.MelpisDialogFocus.close(modal, options);
-  else modal.hidden = true;
-  if (![...document.querySelectorAll(".booking-modal")].some((element) => !element.hidden)) {
-    document.body.classList.remove("booking-modal-open");
-  }
-}
-
-function apriFormPrenotazione(prenotazione = null) {
-  bookingEditingId = prenotazione?.id || null;
-  bookingForm?.reset();
-  document.getElementById("booking-name").value = prenotazione?.nome_cliente || "";
-  document.getElementById("booking-phone").value = prenotazione?.telefono || "";
-  document.getElementById("booking-date").value = prenotazione?.data || (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : "") || oggiIso();
-  document.getElementById("booking-time").value = String(prenotazione?.ora || "20:00").slice(0, 5);
-  document.getElementById("booking-seats").value = prenotazione?.coperti || "";
-  document.getElementById("booking-note").value = prenotazione?.note || "";
-  bookingStatusText.textContent = "";
-  document.getElementById("booking-create-title").textContent = bookingEditingId ? "Modifica prenotazione" : "Nuova prenotazione";
-  apriBookingModal("booking-create-modal");
-}
-
-document.querySelectorAll("[data-booking-close]").forEach((element) => {
-  element.addEventListener("click", chiudiDettaglioPrenotazione);
-});
-[
-  ["[data-booking-create-close]", "booking-create-modal"],
-  ["[data-booking-availability-close]", "booking-availability-modal"],
-  ["[data-booking-export-close]", "booking-export-modal"],
-  ["[data-booking-actions-close]", "booking-actions-modal"],
-].forEach(([selector, id]) => {
-  document.querySelectorAll(selector).forEach((element) => element.addEventListener("click", () => chiudiBookingModal(id)));
-});
-document.addEventListener("keydown", (event) => {
-  const modal = [...document.querySelectorAll(".booking-modal")].reverse().find((element) => !element.hidden);
-  if (!modal || !window.MelpisDialogFocus) return;
-  window.MelpisDialogFocus.handleKeydown(modal, event, () => {
-    if (modal === bookingModal) chiudiDettaglioPrenotazione();
-    else chiudiBookingModal(modal.id);
-  });
-});
-
-document.getElementById("booking-new-trigger")?.addEventListener("click", () => apriFormPrenotazione());
-document.getElementById("booking-new-fab")?.addEventListener("click", () => apriFormPrenotazione());
-document.getElementById("booking-edit-btn")?.addEventListener("click", () => {
-  if (!prenotazioneCorrente) return;
-  chiudiDettaglioPrenotazione();
-  apriFormPrenotazione(prenotazioneCorrente);
-});
-document.getElementById("booking-actions-trigger")?.addEventListener("click", () => apriBookingModal("booking-actions-modal"));
-document.getElementById("booking-open-availability")?.addEventListener("click", () => {
-  chiudiBookingModal("booking-actions-modal", { restoreFocus: false });
-  apriBookingModal("booking-availability-modal", { restoreTarget: document.getElementById("booking-actions-trigger") });
-});
-document.getElementById("booking-open-export")?.addEventListener("click", () => {
-  chiudiBookingModal("booking-actions-modal", { restoreFocus: false });
-  apriBookingModal("booking-export-modal", { restoreTarget: document.getElementById("booking-actions-trigger") });
-});
-
-function inizializzaCalendarioPrenotazioni() {
-  if (!bookingCalendarEl || !window.FullCalendar) return;
-  const slotRange = intervalloSlotPrenotazioni();
-  if (bookingCalendar) {
-    bookingCalendar.setOption("slotMinTime", slotRange.min);
-    bookingCalendar.setOption("slotMaxTime", slotRange.max);
-    bookingCalendar.updateSize();
-    return;
-  }
-  bookingCalendar = new FullCalendar.Calendar(bookingCalendarEl, {
-    initialView: "timeGridDay",
-    timeZone: "local",
-    locale: "it",
-    height: "auto",
-    allDaySlot: false,
-    nowIndicator: true,
-    slotDuration: "00:15:00",
-    snapDuration: "00:15:00",
-    slotLabelInterval: "01:00:00",
-    slotMinTime: slotRange.min,
-    slotMaxTime: slotRange.max,
-    slotLabelContent(info) {
-      const ora = `${String(info.date.getHours()).padStart(2, "0")}:${String(info.date.getMinutes()).padStart(2, "0")}`;
-      const slot = bookingAvailability.get(ora.slice(0, 5));
-      const liberi = slot ? `${slot.coperti_liberi} liberi` : "Disponibile";
-      const stato = slot?.stato || "verde";
-      return { html: `<span class="booking-slot-label booking-slot-${_sanitize(stato)}"><span class="booking-slot-dot"></span>${_sanitize(ora)}</span>` };
-    },
-    eventClick(info) { apriDettaglioPrenotazione(info.event.extendedProps); },
-    selectable: true,
-    headerToolbar: false,
-    select(info) {
-      apriFormPrenotazione({
-        data: _toDateKey(info.start),
-        ora: `${String(info.start.getHours()).padStart(2, "0")}:${String(info.start.getMinutes()).padStart(2, "0")}`,
-      });
-      bookingCalendar.unselect();
-    },
-    datesSet() {
-      const dateKey = _toDateKey(bookingCalendar.getDate());
-      aggiornaSemaforo(dateKey);
-      renderTabellaPrenotazioniGiorno(dateKey);
-      aggiornaToolbarCalendario();
-    },
-  });
-  bookingCalendar.render();
-  aggiornaToolbarCalendario();
-}
-
-function renderTabellaPrenotazioniGiorno(data = null) {
-  const tableBody = document.getElementById("booking-table-body");
-  const countEl = document.getElementById("booking-table-day-count");
-  const titleEl = document.getElementById("booking-table-day-title");
-  if (!tableBody) return;
-
-  const targetDate = data ? _toDateKey(data) : (bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso());
-  
-  if (titleEl) {
-    try {
-      const dObj = new Date(`${targetDate}T12:00:00`);
-      const dateLabel = typeof MelpisI18n !== "undefined"
-        ? MelpisI18n.formatDate(dObj, { weekday: "long", day: "numeric", month: "long" })
-        : dObj.toLocaleDateString(localeCorrente(), { weekday: "long", day: "numeric", month: "long" });
-      titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: dateLabel });
-    } catch {
-      titleEl.textContent = _tDash("bookings.runtime.day_title", "Prenotazioni di {{date}}", { date: targetDate });
-    }
-  }
-
-  const prenotazioniGiorno = (bookingRecords || [])
-    .filter((p) => _toDateKey(p.data) === targetDate)
-    .sort((a, b) => String(a.ora || "").localeCompare(String(b.ora || "")));
-
-  if (countEl) {
-    countEl.textContent = _tDash("bookings.runtime.count", "{{count}} prenotazioni", { count: prenotazioniGiorno.length });
-  }
-
-  if (!prenotazioniGiorno.length) {
-    const emptyRow = document.createElement("tr");
-    const emptyCell = document.createElement("td");
-    emptyCell.colSpan = 8;
-    emptyCell.className = "booking-table-empty";
-    emptyCell.textContent = _tDash(
-      "bookings.runtime.empty_day",
-      'Nessuna prenotazione per {{date}}. Clicca "+ Nuova prenotazione" per aggiungerne una.',
-      { date: targetDate }
-    );
-    emptyRow.appendChild(emptyCell);
-    tableBody.replaceChildren(emptyRow);
-    return;
-  }
-
-  tableBody.innerHTML = prenotazioniGiorno.map((p) => {
-    const ora = String(p.ora || "").slice(0, 5);
-    const stato = statoNormalizzatoPrenotazione(p);
-    let badgeClass = "booking-badge-confermata";
-    if (stato.includes("attesa")) badgeClass = "booking-badge-in_attesa";
-    else if (stato.includes("intervento")) badgeClass = "booking-badge-richiede_intervento";
-    else if (stato.includes("cancell") || stato.includes("rifiut")) badgeClass = "booking-badge-cancellata";
-
-    return `
-      <tr data-booking-id="${_sanitize(p.id)}">
-        <td class="booking-row-time">${_sanitize(ora)}</td>
-        <td class="booking-row-client">${_sanitize(p.nome_cliente || "Cliente")}</td>
-        <td>${_sanitize(p.telefono || "—")}</td>
-        <td>${_sanitize(formattaUnitaVerticale(p.coperti || 1))}</td>
-        <td><span class="booking-origin-tag">${_sanitize(p.origine || "WhatsApp")}</span></td>
-        <td>${_sanitize(p.note || "—")}</td>
-        <td><span class="booking-badge ${badgeClass}">${_sanitize(p.stato || "confermata")}</span></td>
-        <td style="text-align: right;">
-          <button type="button" class="report-refresh" data-open-booking-id="${_sanitize(p.id)}" style="padding: 4px 10px; font-size: 0.75rem;">
-            ${_escapeHtml(_tDash("bookings.runtime.details", "Dettagli"))}
-          </button>
-        </td>
-      </tr>
-    `;
-  }).join("");
-
-  tableBody.querySelectorAll("[data-open-booking-id]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const bId = btn.dataset.openBookingId;
-      const item = bookingRecords.find((b) => String(b.id) === String(bId));
-      if (item) apriDettaglioPrenotazione(item);
-    });
-  });
-
-  tableBody.querySelectorAll("tr[data-booking-id]").forEach((tr) => {
-    tr.style.cursor = "pointer";
-    tr.addEventListener("click", () => {
-      const bId = tr.dataset.bookingId;
-      const item = bookingRecords.find((b) => String(b.id) === String(bId));
-      if (item) apriDettaglioPrenotazione(item);
-    });
-  });
-}
-
-async function aggiornaPrenotazioni() {
-  if (!bookingCalendarEl || activeDashboardView !== "prenotazioni") return;
-  const transition = dashboardViewTransition;
-  const request = ++bookingListRequest;
-  const isCurrent = () => request === bookingListRequest && transition === dashboardViewTransition && activeDashboardView === "prenotazioni";
-  try {
-    const res = await apiFetch(`${API_BASE}/api/bookings`);
-    if (!isCurrent()) return;
-    if (!res.ok) return;
-    const raw = await res.json().catch(() => []);
-    if (!isCurrent()) return;
-    const prenotazioni = Array.isArray(raw) ? raw : [];
-    bookingRecords = prenotazioni;
-    const pending = prenotazioni.filter((p) => statoNormalizzatoPrenotazione(p) === "in_attesa");
-    prenotazioniInAttesaCount = pending.length;
-    bookingCount.textContent = _tDash("bookings.runtime.count", "{{count}} prenotazioni", { count: prenotazioni.length });
-    if (bookingPendingValue) bookingPendingValue.textContent = pending.length;
-    const statoNotif = leggiStatoNotifiche();
-    aggiornaBadgeNotifiche(statoNotif);
+dashboardBookingsModule = window.MelpisDashboardBookings.create({
+  API_BASE, apiFetch, _sanitize, _escapeHtml, _toDateKey, _tDash, localeCorrente,
+  toast, confermaDestructiva, getContext: dashboardContextSnapshot, getSession: () => sessione,
+  getVertical: () => dbProfileRecord?.verticale || onboardingState?.selectedVertical || "ristorante",
+  statoNormalizzatoPrenotazione, exportCsv: scaricaCsvPrenotazioni,
+  updatePending: (count) => {
+    prenotazioniInAttesaCount = count;
+    aggiornaBadgeNotifiche(leggiStatoNotifiche());
     aggiornaCampana();
-    if (!bookingCalendar) inizializzaCalendarioPrenotazioni();
-    if (!bookingCalendar) return;
-    bookingCalendar.removeAllEvents();
-    const mostrabili = bookingPendingOnly ? pending : prenotazioni;
-    mostrabili.forEach((p) => {
-      if (!p.data || !p.ora) return;
-      const dKey = _toDateKey(p.data);
-      const ora = String(p.ora).slice(0, 5);
-      const [h, m] = ora.split(":").map(Number);
-      const totalEndMinutes = (isNaN(m) ? 0 : m) + 15;
-      const endH = totalEndMinutes >= 60 ? (h + 1) : h;
-      const endM = totalEndMinutes >= 60 ? (totalEndMinutes - 60) : totalEndMinutes;
-      const oraFine = `${String(endH).padStart(2, "0")}:${String(endM).padStart(2, "0")}`;
-      bookingCalendar.addEvent({
-        id: p.id,
-        title: `${ora} · ${p.nome_cliente || "Cliente"} · ${formattaUnitaVerticale(p.coperti || 1)}`,
-        start: `${dKey}T${ora}:00`,
-        end: `${dKey}T${oraFine}:00`,
-        backgroundColor: colorePrenotazione(p.stato),
-        borderColor: colorePrenotazione(p.stato),
-        classNames: statoNormalizzatoPrenotazione(p) === "in_attesa" ? ["booking-event-pending"] : [],
-        extendedProps: p,
-      });
-    });
-    const slotRange = intervalloSlotPrenotazioni();
-    bookingCalendar.setOption("slotMinTime", slotRange.min);
-    bookingCalendar.setOption("slotMaxTime", slotRange.max);
-    bookingCalendar.updateSize();
-    bookingCalendar.render();
-    
-    const currentDate = bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
-    renderTabellaPrenotazioniGiorno(currentDate);
-
-    verificaPrenotazioneAggiornata(prenotazioni);
-    bookingSnapshot = new Map(prenotazioni.map((p) => [String(p.id), JSON.stringify(p)]));
-  } catch (err) {
-    if (!isCurrent()) return;
-    console.error("Impossibile caricare le prenotazioni:", err);
-  }
-}
-
-function intervalloSlotPrenotazioni() {
-  const aperte = Object.entries(bookingOpenHours || {})
-    .filter(([, capienza]) => Number(capienza) > 0)
-    .map(([ora]) => Number(ora.slice(0, 2)));
-
-  const orePrenotazioni = (bookingRecords || [])
-    .filter((p) => p.ora)
-    .map((p) => Number(String(p.ora).slice(0, 2)));
-
-  const tutte = [...aperte, ...orePrenotazioni].filter((h) => !isNaN(h));
-  if (!tutte.length) return { min: "06:00:00", max: "24:00:00" };
-
-  const minH = Math.min(...tutte);
-  const maxH = Math.max(...tutte);
-  const min = `${String(Math.max(0, Math.min(minH, 6))).padStart(2, "0")}:00:00`;
-  const max = maxH >= 23 ? "24:00:00" : `${String(Math.max(maxH + 1, 23)).padStart(2, "0")}:00:00`;
-  return { min, max };
-}
-
-function aggiornaToolbarCalendario() {
-  if (!bookingCalendar) return;
-  const vista = bookingCalendar.view.type;
-  document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.bookingCalendarView === vista));
-  });
-  const dateKey = _toDateKey(bookingCalendar.getDate());
-  const picker = document.getElementById("booking-date-picker");
-  const label = document.getElementById("booking-selected-date-label");
-  const trigger = document.getElementById("booking-date-picker-trigger");
-  if (picker) picker.value = dateKey;
-  if (label) label.textContent = bookingCalendar.getDate().toLocaleDateString(localeCorrente(), { day: "numeric", month: "short", year: "numeric" });
-  if (trigger) {
-    trigger.classList.toggle("is-selected", dateKey !== oggiIso());
-    trigger.setAttribute("aria-label", `Seleziona la data delle prenotazioni. Giorno selezionato: ${label?.textContent || dateKey}`);
-  }
-}
-
-function verificaPrenotazioneAggiornata(prenotazioni) {
-  if (!prenotazioneCorrente?.id || bookingModal?.hidden) return;
-  const next = prenotazioni.find((p) => String(p.id) === String(prenotazioneCorrente.id));
-  const warning = document.getElementById("booking-detail-stale-warning");
-  if (!next || bookingSnapshot.get(String(next.id)) !== JSON.stringify(next)) {
-    warning.textContent = next
-      ? "Questa prenotazione è stata modificata. Ricarica per vedere lo stato aggiornato."
-      : "Questa prenotazione è stata cancellata. Ricarica per vedere lo stato aggiornato.";
-    warning.hidden = false;
-  }
-}
-
-async function aggiornaSemaforo(data = null) {
-  if (!availabilityList || activeDashboardView !== "prenotazioni") return;
-  const transition = dashboardViewTransition;
-  const selectedDate = () => bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
-  const targetDate = data ? _toDateKey(data) : selectedDate();
-  // Mutation refreshes can reference a day that is no longer selected.
-  if (targetDate !== selectedDate()) return;
-  const request = ++bookingAvailabilityRequest;
-  const isCurrent = () => request === bookingAvailabilityRequest && transition === dashboardViewTransition && activeDashboardView === "prenotazioni" && targetDate === selectedDate();
-  availabilityDate.textContent = new Date(`${targetDate}T12:00:00`).toLocaleDateString(localeCorrente(), {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-  });
-  try {
-    const res = await apiFetch(`${API_BASE}/api/bookings/semaforo?data=${targetDate}`);
-    if (!isCurrent()) return;
-    if (!res.ok) return;
-    const raw = await res.json().catch(() => []);
-    if (!isCurrent()) return;
-    const slots = Array.isArray(raw) ? raw : [];
-    bookingAvailability = new Map(slots.map((slot) => [String(slot.ora).slice(0, 5), slot]));
-    availabilityList.innerHTML = "";
-    slots.forEach((slot) => {
-      const item = document.createElement("div");
-      item.classList.add("availability-item", `availability-${slot.stato}`);
-      item.innerHTML = `
-        <span class="availability-dot"></span>
-        <span class="availability-hour">${_sanitize(slot.ora)}</span>
-        <span class="availability-seats">${_sanitize(slot.coperti_liberi)}/${_sanitize(slot.coperti_massimi)} liberi</span>
-      `;
-      availabilityList.appendChild(item);
-    });
-    aggiornaRiepilogoPrenotazioni(targetDate, slots);
-    renderTabellaPrenotazioniGiorno(targetDate);
-    bookingCalendar?.render();
-  } catch (err) {
-    if (!isCurrent()) return;
-    console.error("Impossibile caricare il semaforo:", err);
-  }
-}
-
-function aggiornaRiepilogoPrenotazioni(data, slots) {
-  const prenotazioniGiorno = (bookingRecords || []).filter((p) => p.data === data && !STATI_FINALI_PRENOTAZIONE.includes(statoNormalizzatoPrenotazione(p)));
-  const coperti = prenotazioniGiorno.reduce((totale, p) => totale + (Number(p.coperti) || 0), 0);
-  const liberi = (slots || []).reduce((totale, slot) => totale + (Number(slot.coperti_liberi) || 0), 0);
-  if (bookingSummary) bookingSummary.textContent = `${prenotazioniGiorno.length} prenotazioni · ${formattaUnitaVerticale(coperti)} · ${liberi} posti liberi`;
-
-  const emptyNotice = document.getElementById("booking-day-empty");
-  if (emptyNotice) {
-    emptyNotice.hidden = prenotazioniGiorno.length > 0;
-    const emptyBtn = document.getElementById("booking-empty-new-btn");
-    if (emptyBtn) {
-      emptyBtn.onclick = () => {
-        apriFormPrenotazione({ data: data ? _toDateKey(data) : oggiIso(), ora: "20:00" });
-      };
-    }
-  }
-}
-
-async function aggiornaImpostazioniPrenotazioni() {
-  if (!bookingSettingsGrid || bookingSettingsGrid.children.length || activeDashboardView !== "prenotazioni") return;
-  const transition = dashboardViewTransition;
-  try {
-    const res = await apiFetch(`${API_BASE}/api/bookings/settings`);
-    if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
-    if (!res.ok) return;
-    const data = await res.json();
-    if (transition !== dashboardViewTransition || activeDashboardView !== "prenotazioni") return;
-    const capienze = data.capienze_orarie || {};
-    bookingOpenHours = capienze;
-    const standard = document.getElementById("booking-standard-capacity");
-    if (standard) {
-      const valori = Object.values(capienze).filter((value) => Number(value) > 0);
-      standard.value = valori.length ? Math.max(...valori) : "";
-    }
-    bookingSettingsGrid.innerHTML = (data.fasce_orarie || []).map((ora) => `
-      <label class="booking-setting"><span>${_sanitize(ora)}</span><input type="number" min="0" max="500" data-capacity-hour="${_sanitize(ora)}" value="${_sanitize(capienze[ora] ?? 40)}"></label>
-    `).join("");
-  } catch (err) {
-    console.error("Impossibile caricare le impostazioni prenotazioni:", err);
-  }
-}
-
-bookingForm?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  bookingStatusText.textContent = "";
-  const transition = dashboardViewTransition;
-  const submittedEditingId = bookingEditingId;
-  let expectedEditingId = submittedEditingId;
-  let formTransition = ++bookingFormTransition;
-  const selectedDate = () => bookingCalendar ? _toDateKey(bookingCalendar.getDate()) : oggiIso();
-  let expectedDate = selectedDate();
-  const isCurrent = () => transition === dashboardViewTransition && activeDashboardView === "prenotazioni" && formTransition === bookingFormTransition && expectedEditingId === bookingEditingId && expectedDate === selectedDate();
-  const payload = {
-    nome_cliente: document.getElementById("booking-name").value.trim(),
-    telefono: document.getElementById("booking-phone").value.trim(),
-    data: document.getElementById("booking-date").value,
-    ora: document.getElementById("booking-time").value,
-    coperti: parseInt(document.getElementById("booking-seats").value, 10),
-    note: document.getElementById("booking-note").value.trim(),
-  };
-  try {
-    const res = await apiFetch(`${API_BASE}/api/bookings${submittedEditingId ? `/${encodeURIComponent(submittedEditingId)}` : ""}`, {
-      method: submittedEditingId ? "PUT" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!isCurrent()) return;
-    if (!res.ok) {
-      const err = await res.json().catch(() => null);
-      if (!isCurrent()) return;
-      throw new Error(err?.detail?.messaggio || err?.detail || "Errore salvataggio");
-    }
-    const wasEditing = Boolean(submittedEditingId);
-    bookingForm.reset();
-    document.getElementById("booking-date").value = payload.data;
-    bookingStatusText.textContent = wasEditing ? "Modifica salvata." : "Prenotazione aggiunta.";
-    bookingStatusText.style.color = "var(--sage)";
-    bookingEditingId = null;
-    chiudiBookingModal("booking-create-modal");
-    if (bookingCalendar) {
-      bookingCalendar.gotoDate(payload.data);
-    }
-    // The successful save closed its own form and selected its saved day.
-    // Subsequent refreshes still belong to this exact UI context.
-    formTransition = bookingFormTransition;
-    expectedEditingId = bookingEditingId;
-    expectedDate = selectedDate();
-    await aggiornaPrenotazioni();
-    if (!isCurrent()) return;
-    await aggiornaSemaforo(payload.data);
-    if (!isCurrent()) return;
-    renderTabellaPrenotazioniGiorno(payload.data);
-  } catch (err) {
-    if (!isCurrent()) return;
-    bookingStatusText.textContent = submittedEditingId ? "Modifica non salvata, riprova." : err.message;
-    bookingStatusText.style.color = "var(--red)";
-  }
+  },
 });
 
-capacitySave?.addEventListener("click", async () => {
-  capacityStatus.textContent = "";
-  try {
-    const res = await apiFetch(`${API_BASE}/api/bookings/settings`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        capienze_orarie: Object.fromEntries([...document.querySelectorAll("[data-capacity-hour]")].map((input) => [input.dataset.capacityHour, parseInt(input.value, 10) || 0])),
-      }),
-    });
-    if (!res.ok) throw new Error("Errore salvataggio capienza");
-    const savedSettings = await res.json();
-    bookingOpenHours = savedSettings.capienze_orarie || {};
-    if (bookingCalendar) {
-      bookingCalendar.destroy();
-      bookingCalendar = null;
-      inizializzaCalendarioPrenotazioni();
-    }
-    capacityStatus.textContent = "Capienza aggiornata.";
-    capacityStatus.style.color = "var(--sage)";
-    await aggiornaSemaforo();
-    await aggiornaPrenotazioni();
-    capacityStatus.textContent += " Le modifiche sono attive subito.";
-  } catch (err) {
-    capacityStatus.textContent = err.message;
-    capacityStatus.style.color = "var(--red)";
-  }
-});
-
-document.getElementById("booking-standard-capacity")?.addEventListener("change", (event) => {
-  const value = Math.max(0, parseInt(event.target.value, 10) || 0);
-  document.querySelectorAll("[data-capacity-hour]").forEach((input) => {
-    if (parseInt(input.value, 10) > 0) input.value = value;
-  });
-});
-
-document.getElementById("booking-pending-count")?.addEventListener("click", () => {
-  bookingPendingOnly = !bookingPendingOnly;
-  document.getElementById("booking-pending-count").setAttribute("aria-pressed", String(bookingPendingOnly));
-  aggiornaPrenotazioni();
-});
-
-document.querySelectorAll("[data-booking-calendar-command]").forEach((button) => {
-  button.addEventListener("click", () => {
-    if (!bookingCalendar) return;
-    const command = button.dataset.bookingCalendarCommand;
-    if (command === "prev") bookingCalendar.prev();
-    if (command === "next") bookingCalendar.next();
-    if (command === "today") bookingCalendar.today();
-  });
-});
-
-const bookingDatePicker = document.getElementById("booking-date-picker");
-document.getElementById("booking-date-picker-trigger")?.addEventListener("click", () => {
-  if (!bookingDatePicker) return;
-  try {
-    bookingDatePicker.showPicker();
-  } catch {
-    bookingDatePicker.classList.add("booking-date-picker-input--fallback");
-    bookingDatePicker.tabIndex = 0;
-    bookingDatePicker.focus();
-  }
-});
-bookingDatePicker?.addEventListener("change", () => {
-  if (!bookingCalendar || !/^\d{4}-\d{2}-\d{2}$/.test(bookingDatePicker.value)) return;
-  bookingCalendar.gotoDate(bookingDatePicker.value);
-});
-
-document.querySelectorAll("[data-booking-calendar-view]").forEach((button) => {
-  button.addEventListener("click", () => bookingCalendar?.changeView(button.dataset.bookingCalendarView));
-});
-
-function prenotazioniVisibili() {
-  const panel = document.querySelector('[data-view-panel="prenotazioni"]');
-  return Boolean(panel && !panel.classList.contains("view-hidden") && !document.hidden);
-}
-
-function sincronizzaPollingPrenotazioni() {
-  window.clearInterval(bookingPollTimer);
-  bookingPollTimer = null;
-  if (!prenotazioniVisibili()) return;
-  bookingPollTimer = window.setInterval(() => {
-    aggiornaPrenotazioni();
-    aggiornaSemaforo();
-  }, 30000);
-}
-
-document.addEventListener("visibilitychange", sincronizzaPollingPrenotazioni);
 
 /* ============================================================
    REPORT
@@ -2417,7 +1664,7 @@ const reportEmptyHint = document.getElementById("report-empty-hint");
 
 /* Export CSV prenotazioni (endpoint /api/report/csv) */
 
-async function scaricaCsvPrenotazioni(da, a) {
+async function scaricaCsvPrenotazioni(da, a, isCurrent = () => true) {
   const params = new URLSearchParams();
   if (da) params.set("da", da);
   if (a) params.set("a", a);
@@ -2425,9 +1672,11 @@ async function scaricaCsvPrenotazioni(da, a) {
   try {
     res = await apiFetch(`${API_BASE}/api/report/csv?${params.toString()}`);
   } catch {
+    if (!isCurrent()) return;
     toast("Errore di connessione durante l'export.", "error");
     return;
   }
+  if (!isCurrent()) return;
   if (res.status === 403) {
     toast("Export disponibile per proprietario e manager.", "error");
     return;
@@ -2437,6 +1686,7 @@ async function scaricaCsvPrenotazioni(da, a) {
     return;
   }
   const blob = await res.blob();
+  if (!isCurrent()) return;
   const dispo = res.headers.get("Content-Disposition") || "";
   const match = dispo.match(/filename="?([^"]+)"?/);
   const link = document.createElement("a");
@@ -2450,16 +1700,6 @@ async function scaricaCsvPrenotazioni(da, a) {
 }
 
 document.getElementById("report-export-csv")?.addEventListener("click", () => scaricaCsvPrenotazioni());
-
-document.getElementById("booking-export-csv")?.addEventListener("click", () => {
-  const da = document.getElementById("booking-export-da")?.value || "";
-  const a = document.getElementById("booking-export-a")?.value || "";
-  if (da && a && da > a) {
-    toast("La data inizio è dopo la data fine.", "error");
-    return;
-  }
-  scaricaCsvPrenotazioni(da, a);
-});
 
 async function aggiornaReport(forza = false) {
   const transition = dashboardViewTransition;
@@ -3915,6 +3155,7 @@ window.addEventListener("pagehide", () => {
   dashboardKnowledgeModule?.onExit();
   dashboardTeamModule?.onExit();
   dashboardAiSimulatorModule?.onExit();
+  dashboardBookingsModule?.onExit();
   document.body.classList.remove("authenticated");
 });
 window.addEventListener("pageshow", (event) => {
@@ -3954,9 +3195,6 @@ window.addEventListener("pageshow", (event) => {
   }
   if (await accettaInvitoDaLink()) return;
 
-  if (document.getElementById("booking-date")) {
-    document.getElementById("booking-date").value = oggiIso();
-  }
   dashboardRouter = window.MelpisDashboardRouter.createDashboardRouter({
     window,
     render: renderDashboardView,

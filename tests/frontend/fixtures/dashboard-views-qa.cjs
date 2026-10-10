@@ -3,6 +3,7 @@ const { ORG_A, ORG_B, FIXED_TIME, readFixtures } = require("./dashboard-visual-a
 const SCENARIOS = new Set([
   "populated", "empty", "error", "loading", "denied",
   "staff", "mfa-required", "simulator-hostile", "simulator-error", "simulator-timeout",
+  "booking-error", "booking-timeout",
 ]);
 const FAQ_ID = "synthetic-faq-qa";
 const DOCUMENT_ID = "synthetic-document-qa";
@@ -10,6 +11,19 @@ const WEB_ID = "synthetic-web-qa";
 const MEMBER_ID = "synthetic-member-qa";
 const INVITATION_ID = "synthetic-invitation-qa";
 const TEAM_EMAIL = "collaboratore@dashboard-qa.invalid";
+const BOOKING_DATE = "2026-10-08";
+const BOOKING_IDS = { pending: "synthetic-booking-pending", confirmed: "synthetic-booking-confirmed" };
+const booking = (label, kind, stato = kind === "pending" ? "in_attesa" : "confermata") => ({
+  id: `${BOOKING_IDS[kind]}-${label}`,
+  organization_id: `synthetic-org-${label}`,
+  nome_cliente: `Cliente QA ${label} ${kind === "pending" ? "in attesa" : "confermato"}`,
+  telefono: `+39000000000${label === "A" ? "1" : "2"}`,
+  data: BOOKING_DATE,
+  ora: "20:00",
+  coperti: 2,
+  note: "Prenotazione sintetica QA",
+  stato,
+});
 const KNOWLEDGE_PATHS = new Set([
   "/api/conoscenza/summary", "/api/conoscenza/conflitti", "/api/conoscenza/dati-struttura",
   "/api/documenti/elenco", "/api/documenti/conteggio",
@@ -36,6 +50,40 @@ function viewReply(method, pathname, scenario, organization = ORG_A) {
     const auth = { ...readFixtures[pathname], organization_id: organization, ruolo: scenario === "staff" ? "staff" : "owner" };
     if (mfaRequired) auth.aal = "aal1";
     return { status: 200, body: auth };
+  }
+  if (pathname === "/api/bookings" || pathname.startsWith("/api/bookings/")) {
+    if (scenario === "denied") return forbidden("Accesso prenotazioni QA negato");
+    if (scenario === "staff" && method !== "GET") return forbidden("Le azioni prenotazioni QA richiedono ruolo owner o manager");
+    if (scenario === "staff" && method === "GET" && pathname === "/api/bookings/settings") return forbidden("Impostazioni prenotazioni QA riservate a owner o manager");
+    if (scenario === "mfa-required" && method !== "GET") return forbidden("MFA richiesta per questa azione QA", true);
+    if (scenario === "booking-error" || scenario === "error") return { status: 500, body: { detail: "Errore prenotazioni QA sintetico" } };
+    if (scenario === "booking-timeout") return { status: 504, delayMs: 3000, body: { detail: "Timeout prenotazioni QA sintetico" } };
+    const bookings = [booking(label, "pending"), booking(label, "confirmed")];
+    if (method === "GET" && pathname === "/api/bookings") {
+      return { status: 200, body: scenario === "empty" ? [] : bookings, delayMs: scenario === "loading" ? 3000 : 0 };
+    }
+    if (method === "GET" && pathname === "/api/bookings/settings") {
+      return { status: 200, body: { capienze_orarie: { "20:00": 12 }, fasce_orarie: ["20:00"] } };
+    }
+    if (method === "GET" && pathname === "/api/bookings/semaforo") {
+      const requestedDate = new URLSearchParams(query).get("data");
+      if (requestedDate !== BOOKING_DATE) return { status: 200, body: [] };
+      return { status: 200, body: scenario === "empty" ? [] : [{ ora: "20:00", coperti_liberi: 8, coperti_massimi: 12, stato: "verde" }] };
+    }
+    if (method === "PUT" && pathname === "/api/bookings/settings") {
+      return { status: 200, body: { capienze_orarie: { "20:00": 12 }, fasce_orarie: ["20:00"] } };
+    }
+    const actionMatch = pathname.match(/^\/api\/bookings\/(synthetic-booking-(?:pending|confirmed)-[AB])\/(confirm|reject|cancel|mark-no-show|mark-completed)$/);
+    if (method === "POST" && actionMatch) {
+      const current = bookings.find((item) => item.id === actionMatch[1]);
+      if (!current) return null;
+      const nextStatus = { confirm: "confermata", reject: "rifiutata", cancel: "cancellata", "mark-no-show": "no_show", "mark-completed": "completata" }[actionMatch[2]];
+      return { status: 200, body: { ...current, stato: nextStatus } };
+    }
+    if ((method === "POST" && pathname === "/api/bookings") || (method === "PUT" && bookings.some((item) => pathname === `/api/bookings/${item.id}`))) {
+      return { status: method === "POST" ? 201 : 200, body: { ...bookings[0], nome_cliente: `Cliente QA ${label} salvato` } };
+    }
+    return null;
   }
   if (method === "GET" && pathname === "/api/reviews/google/status") return { status: 200, body: { connected: true, operational: false, account_name: "Google QA sintetico", location_name: "Sede QA sintetica" } };
   if (method === "GET" && ["/api/dashboard", "/api/dashboard/prioritari", "/api/recensioni"].includes(pathname)) {

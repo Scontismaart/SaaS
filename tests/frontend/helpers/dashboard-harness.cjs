@@ -14,6 +14,7 @@ const scriptFiles = [
   "web/dashboard-knowledge.js",
   "web/dashboard-team.js",
   "web/dashboard-ai-simulator.js",
+  "web/dashboard-bookings.js",
   "web/app.js",
   "web/mfa.js",
 ];
@@ -86,6 +87,8 @@ function createDashboardHarness({
   const windowErrors = [];
   let routerConstructions = 0;
   let routerInstance = null;
+  let bookingsInstance = null;
+  const calendars = [];
   let domContentLoadedEvents = 0;
   let intervalId = 0;
   let timeoutId = 0;
@@ -160,21 +163,46 @@ function createDashboardHarness({
   win.FullCalendar = {
     Calendar: class Calendar {
       constructor(element, options) {
+        calendars.push(this);
         this.el = element;
         this.options = options;
         this.currentDate = new Date("2026-10-08T12:00:00");
         this.view = { type: options.initialView };
         this.events = [];
+        this.hasRendered = false;
       }
-      render() {}
       updateSize() {}
       removeAllEvents() { this.events = []; }
       addEvent(event) { this.events.push(event); }
       getDate() { return this.currentDate; }
-      gotoDate(value) { this.currentDate = new Date(`${value}T12:00:00`); }
-      changeView() {}
-      setOption() {}
+      _notifyDatesSet() {
+        this.options.datesSet?.({ start: this.currentDate, end: this.currentDate, view: this.view });
+      }
+      render() {
+        if (!this.hasRendered) {
+          this.hasRendered = true;
+          this._notifyDatesSet();
+        }
+      }
+      gotoDate(value) {
+        const nextDate = new Date(`${value}T12:00:00`);
+        if (nextDate.getTime() === this.currentDate.getTime()) return;
+        this.currentDate = nextDate;
+        this._notifyDatesSet();
+      }
+      prev() {
+        this.currentDate.setDate(this.currentDate.getDate() - (this.view.type === "timeGridDay" ? 1 : 7));
+        this._notifyDatesSet();
+      }
+      next() {
+        this.currentDate.setDate(this.currentDate.getDate() + (this.view.type === "timeGridDay" ? 1 : 7));
+        this._notifyDatesSet();
+      }
+      today() { this.currentDate = new Date("2026-10-08T12:00:00"); this._notifyDatesSet(); }
+      changeView(type) { this.view.type = type; this._notifyDatesSet(); }
+      setOption(name, value) { this.options[name] = value; }
       unselect() {}
+      destroy() { this.events = []; }
     },
   };
   win.DOMPurify = { sanitize: (value) => String(value ?? "") };
@@ -182,11 +210,18 @@ function createDashboardHarness({
     isInitialized: false,
     addResourceBundle() {},
     async init() { this.isInitialized = true; },
-    t(key, options = {}) { return options.defaultValue || String(key).split(":").pop(); },
+    t(key, options = {}) {
+      return (options.defaultValue || String(key).split(":").pop())
+        .replace(/{{(\w+)}}/g, (match, name) => options[name] ?? match);
+    },
   };
 
   for (const file of scriptFiles) {
     if (file === "web/app.js") {
+      const bookingsApi = win.MelpisDashboardBookings;
+      win.MelpisDashboardBookings = Object.freeze({
+        create(deps) { bookingsInstance = bookingsApi.create(deps); return bookingsInstance; },
+      });
       const routerApi = win.MelpisDashboardRouter;
       win.MelpisDashboardRouter = Object.freeze({
         ...routerApi,
@@ -266,6 +301,8 @@ function createDashboardHarness({
     get domContentLoadedEvents() { return domContentLoadedEvents; },
     get routerConstructions() { return routerConstructions; },
     get router() { return routerInstance; },
+    get bookings() { return bookingsInstance; },
+    calendars,
     scriptOrder,
     settle,
     waitFor,

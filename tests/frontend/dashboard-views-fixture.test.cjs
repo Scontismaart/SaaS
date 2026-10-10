@@ -2,10 +2,12 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const { viewReply } = require("./fixtures/dashboard-views-qa.cjs");
 const { ORG_A, ORG_B } = require("./fixtures/dashboard-visual-api.cjs");
+const { reply } = require("./fixtures/dashboard-visual-api.cjs");
+const { interactionReply } = require("../../scripts/dashboard-baseline-server.cjs");
 
 test("view QA cases are explicit, synthetic and scoped; unknown cases/writes have no reply", () => {
   assert.equal(viewReply("GET", "/api/dashboard", "unknown"), null);
-  assert.equal(viewReply("POST", "/api/bookings", "populated"), null);
+  assert.equal(viewReply("POST", "/api/arbitrary-write", "populated"), null);
   assert.equal(viewReply("POST", "/api/recensioni/real-record/approva", "populated"), null);
   assert.equal(viewReply("GET", "/api/dashboard", "populated", "foreign").status, 403);
   assert.match(viewReply("GET", "/api/dashboard", "populated", ORG_A).body[0].testo_originale, /QA A/);
@@ -84,4 +86,60 @@ test("simulator returns canned normal, hostile, error and timeout outcomes witho
   assert.match(timeout.body.detail, /Timeout/);
   assert.equal(viewReply("POST", "/api/messaggio", "loading").delayMs, 3000);
   assert.equal(viewReply("POST", "/api/messaggio/other", "populated"), null);
+});
+
+test("bookings QA is opt-in and keeps the ordinary baseline booking fixture unchanged", () => {
+  assert.deepEqual(interactionReply("GET", "/api/bookings", "", false), reply("GET", "/api/bookings"));
+  assert.equal(viewReply("GET", "/api/bookings", undefined), null);
+  const populated = viewReply("GET", "/api/bookings", "populated", ORG_A);
+  assert.equal(populated.status, 200);
+  assert.equal(populated.body.length, 2);
+  assert.deepEqual(populated.body.map((item) => [item.data, item.ora, item.coperti, item.stato]), [
+    ["2026-10-08", "20:00", 2, "in_attesa"],
+    ["2026-10-08", "20:00", 2, "confermata"],
+  ]);
+  assert.notEqual(populated.body[0].id, viewReply("GET", "/api/bookings", "populated", ORG_B).body[0].id);
+  assert.match(populated.body[0].nome_cliente, /QA A/);
+  assert.match(viewReply("GET", "/api/bookings", "populated", ORG_B).body[0].nome_cliente, /QA B/);
+  assert.deepEqual(viewReply("GET", "/api/bookings", "empty").body, []);
+  assert.equal(viewReply("GET", "/api/bookings", "loading").delayMs, 3000);
+  assert.equal(viewReply("GET", "/api/bookings", "error").status, 500);
+  assert.equal(viewReply("GET", "/api/bookings", "booking-timeout").status, 504);
+  assert.equal(viewReply("GET", "/api/bookings/settings", "populated").body.capienze_orarie["20:00"], 12);
+  assert.equal(viewReply("GET", "/api/bookings/semaforo?data=2026-10-08", "populated").body[0].coperti_liberi, 8);
+  assert.deepEqual(viewReply("GET", "/api/bookings/semaforo?data=2026-10-09", "populated").body, []);
+});
+
+test("booking QA only accepts fixed synthetic create/update, capacity and status actions", () => {
+  const prefix = "/api/bookings/synthetic-booking-pending-A/";
+  for (const [action, status] of Object.entries({
+    confirm: "confermata", reject: "rifiutata", cancel: "cancellata",
+    "mark-no-show": "no_show", "mark-completed": "completata",
+  })) {
+    const result = viewReply("POST", `${prefix}${action}`, "populated", ORG_A);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.stato, status);
+    assert.match(result.body.id, /^synthetic-booking-/);
+  }
+  assert.equal(viewReply("POST", "/api/bookings", "populated").status, 201);
+  assert.equal(viewReply("PUT", "/api/bookings/synthetic-booking-pending-A", "populated").status, 200);
+  assert.equal(viewReply("PUT", "/api/bookings/settings", "populated").status, 200);
+  assert.equal(viewReply("POST", "/api/bookings/settings", "populated"), null);
+  assert.equal(viewReply("POST", "/api/bookings/synthetic-booking-pending-A/erase", "populated"), null);
+  assert.equal(viewReply("POST", "/api/bookings/real-id/confirm", "populated"), null);
+  assert.equal(viewReply("PATCH", "/api/bookings/synthetic-booking-pending-A", "populated"), null);
+  assert.equal(viewReply("POST", "/api/bookings/synthetic-booking-pending-B/confirm", "populated", ORG_A), null);
+  assert.equal(viewReply("POST", `${prefix}confirm`, "staff").status, 403);
+  assert.equal(viewReply("GET", "/api/bookings", "staff").status, 200);
+  assert.equal(viewReply("GET", "/api/bookings/semaforo?data=2026-10-08", "staff").status, 200);
+  assert.equal(viewReply("GET", "/api/bookings/settings", "staff").status, 403);
+  assert.equal(viewReply("PUT", "/api/bookings/settings", "staff").status, 403);
+  assert.equal(viewReply("GET", "/api/auth/me", "staff").body.ruolo, "staff");
+  assert.equal(viewReply("POST", "/api/bookings", "staff").status, 403);
+  assert.equal(viewReply("PUT", "/api/bookings/synthetic-booking-pending-A", "staff").status, 403);
+  assert.equal(viewReply("POST", `${prefix}confirm`, "mfa-required").body.code, "mfa_required");
+  assert.equal(viewReply("GET", "/api/bookings", "mfa-required").status, 200);
+  assert.equal(viewReply("GET", "/api/bookings/settings", "mfa-required").status, 200);
+  assert.equal(viewReply("PUT", "/api/bookings/settings", "mfa-required").body.code, "mfa_required");
+  assert.equal(viewReply("GET", "/api/bookings/synthetic-booking-pending-A", "populated"), null);
 });

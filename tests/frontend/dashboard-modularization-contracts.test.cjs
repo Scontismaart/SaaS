@@ -43,7 +43,7 @@ test("full dashboard script order and authenticated startup are single-instance"
   assert.ok(index("/app/dashboard-shared.js") < index("/app/dashboard-overview.js"));
   assert.ok(index("/app/dashboard-overview.js") < index("/app/dashboard-reviews.js"));
   assert.ok(index("/app/dashboard-reviews.js") < index("/app/app.js"));
-  const extracted = ["knowledge", "team", "ai-simulator"];
+  const extracted = ["bookings", "knowledge", "team", "ai-simulator"];
   for (const name of extracted) {
     const file = `/app/dashboard-${name}.js`;
     assert.ok(index("/app/dashboard-reviews.js") < index(file));

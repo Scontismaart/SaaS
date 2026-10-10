@@ -1,28 +1,45 @@
 import json
 import uuid
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from datetime import date, time
+import asyncio
 
 import asyncpg
 
 from src.core.db.scoping import TenantScopedRepository
-
 
 class BookingRepository(TenantScopedRepository):
     """Repository specializzato per Prenotazioni, Lock di Slot (P0) e Capienze."""
 
     def __init__(self, pool):
         self.pool = pool
+        self._locked_connection = ContextVar("booking_locked_connection", default=None)
+
+    @asynccontextmanager
+    async def _connection(self):
+        owned = self._locked_connection.get()
+        if owned is not None and owned[0] is asyncio.current_task():
+            yield owned[1]
+        else:
+            async with self.pool.acquire() as conn:
+                yield conn
 
     @asynccontextmanager
     async def slot_lock(self, organization_id, data, ora):
         """Lock consultivo transazionale su una fascia oraria (anti double-booking)."""
         fascia = int(ora[:2]) if isinstance(ora, str) else ora.hour
-        chiave = f"{organization_id}|{data}|{fascia}"
+        canonical_date = date.fromisoformat(data).isoformat() if isinstance(data, str) else data.isoformat()
+        chiave = f"{organization_id}|{canonical_date}|{fascia}"
         async with self.pool.acquire() as conn:
             async with conn.transaction():
+                await conn.fetchval("SELECT pg_advisory_xact_lock_shared(hashtext($1))", f"booking-capacity|{organization_id}")
                 await conn.fetchval("SELECT pg_advisory_xact_lock(hashtext($1))", chiave)
-                yield
+                token = self._locked_connection.set((asyncio.current_task(), conn))
+                try:
+                    yield
+                finally:
+                    self._locked_connection.reset(token)
 
     async def create_booking(self, organization_id, nome_cliente, data, ora, coperti,
                              telefono="", note="", stato="in_attesa", origine="Dashboard",
@@ -34,7 +51,7 @@ class BookingRepository(TenantScopedRepository):
         if isinstance(ora, str):
             ore, minuti = ora.split(":")
             ora = time(int(ore), int(minuti))
-        async with self.pool.acquire() as conn:
+        async with self._connection() as conn:
             if source_message_id:
                 try:
                     row = await conn.fetchrow("""
@@ -74,7 +91,7 @@ class BookingRepository(TenantScopedRepository):
                 return dict(row)
 
     async def get_booking(self, organization_id, booking_id):
-        async with self.pool.acquire() as conn:
+        async with self._connection() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM bookings WHERE organization_id = $1 AND id = $2",
                 organization_id, booking_id,
@@ -84,7 +101,7 @@ class BookingRepository(TenantScopedRepository):
     async def list_bookings(self, organization_id, data=None):
         if data is not None and isinstance(data, str):
             data = date.fromisoformat(data)
-        async with self.pool.acquire() as conn:
+        async with self._connection() as conn:
             if data is not None:
                 rows = await conn.fetch(
                     "SELECT * FROM bookings WHERE organization_id = $1 AND data = $2 ORDER BY ora",
@@ -97,32 +114,63 @@ class BookingRepository(TenantScopedRepository):
                 )
             return [dict(r) for r in rows]
 
-    async def update_booking_status(self, organization_id, booking_id, stato):
-        async with self.pool.acquire() as conn:
+    async def update_booking_status(self, organization_id, booking_id, stato, expected_status=None, expected=None):
+        async with self._connection() as conn:
             row = await conn.fetchrow("""
                 UPDATE bookings SET stato = $3, updated_at = NOW()
                 WHERE organization_id = $1 AND id = $2
+                  AND ($4::text IS NULL OR stato = $4)
+                  AND ($5::timestamptz IS NULL OR updated_at = $5)
+                  AND ($6::date IS NULL OR data = $6)
+                  AND ($7::time IS NULL OR ora = $7)
+                  AND ($8::integer IS NULL OR coperti = $8)
                 RETURNING *
-            """, organization_id, booking_id, stato)
+            """, organization_id, booking_id, stato, expected_status,
+                expected.get("updated_at") if expected else None,
+                expected.get("data") if expected else None,
+                expected.get("ora") if expected else None,
+                expected.get("coperti") if expected else None)
+            return dict(row) if row else None
+
+    async def mark_booking_completed(self, organization_id, booking_id, expected):
+        async with self._connection() as conn:
+            row = await conn.fetchrow("""
+                UPDATE bookings SET stato = 'completata', completata_at = NOW(), updated_at = NOW()
+                WHERE organization_id = $1 AND id = $2
+                  AND stato = $3 AND updated_at = $4
+                  AND data = $5 AND ora = $6 AND coperti = $7
+                RETURNING *
+            """, organization_id, booking_id, expected["stato"], expected["updated_at"],
+                expected["data"], expected["ora"], expected["coperti"])
             return dict(row) if row else None
 
     async def update_booking_details(self, organization_id, booking_id,
                                      nome_cliente, telefono, data, ora,
-                                     coperti, note, stato):
+                                     coperti, note, stato, expected=None):
         if isinstance(data, str):
             data = date.fromisoformat(data)
         if isinstance(ora, str):
             ore, minuti = ora.split(":")
             ora = time(int(ore), int(minuti))
-        async with self.pool.acquire() as conn:
+        async with self._connection() as conn:
             row = await conn.fetchrow("""
                 UPDATE bookings SET nome_cliente = $3, telefono = $4,
                     data = $5, ora = $6, coperti = $7, note = $8,
                     stato = $9, updated_at = NOW()
                 WHERE organization_id = $1 AND id = $2
+                  AND ($10::timestamptz IS NULL OR updated_at = $10)
+                  AND ($11::text IS NULL OR stato = $11)
+                  AND ($12::date IS NULL OR data = $12)
+                  AND ($13::time IS NULL OR ora = $13)
+                  AND ($14::integer IS NULL OR coperti = $14)
                 RETURNING *
             """, organization_id, booking_id, nome_cliente, telefono,
-                data, ora, coperti, note, stato)
+                data, ora, coperti, note, stato,
+                expected.get("updated_at") if expected else None,
+                expected.get("stato") if expected else None,
+                expected.get("data") if expected else None,
+                expected.get("ora") if expected else None,
+                expected.get("coperti") if expected else None)
             return dict(row) if row else None
 
     async def update_booking_payment(self, organization_id, booking_id,
@@ -226,7 +274,7 @@ class BookingRepository(TenantScopedRepository):
             return result
 
     async def get_booking_settings(self, organization_id):
-        async with self.pool.acquire() as conn:
+        async with self._connection() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM booking_settings WHERE organization_id = $1",
                 organization_id,
@@ -245,7 +293,9 @@ class BookingRepository(TenantScopedRepository):
     async def upsert_booking_settings(self, organization_id, fasce_orarie,
                                        capienze_orarie, slot_minutes=60):
         async with self.pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            async with conn.transaction():
+                await conn.fetchval("SELECT pg_advisory_xact_lock(hashtext($1))", f"booking-capacity|{organization_id}")
+                row = await conn.fetchrow("""
                 INSERT INTO booking_settings (id, organization_id, slot_minutes,
                                               fasce_orarie, capienze_orarie)
                 VALUES ($1, $2, $3, $4::jsonb, $5::jsonb)
@@ -255,8 +305,8 @@ class BookingRepository(TenantScopedRepository):
                         capienze_orarie = $5::jsonb,
                         updated_at = NOW()
                 RETURNING *
-            """, uuid.uuid4(), organization_id, slot_minutes,
-            json.dumps(fasce_orarie), json.dumps(capienze_orarie))
+                """, uuid.uuid4(), organization_id, slot_minutes,
+                json.dumps(fasce_orarie), json.dumps(capienze_orarie))
             result = dict(row)
             if isinstance(result.get("fasce_orarie"), str):
                 result["fasce_orarie"] = json.loads(result["fasce_orarie"])
@@ -273,16 +323,18 @@ class BookingRepository(TenantScopedRepository):
             return bool(row)
 
     async def get_booking_for_message(self, organization_id, source_message_id):
-        async with self.pool.acquire() as conn:
+        async with self._connection() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM bookings WHERE organization_id = $1 AND source_message_id = $2",
                 organization_id, str(source_message_id),
             )
             return dict(row) if row else None
 
-    async def mark_booking_requires_intervention(self, organization_id, booking_id):
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE bookings SET richiede_intervento = TRUE, updated_at = NOW() WHERE organization_id = $1 AND id = $2",
-                organization_id, booking_id,
-            )
+    async def mark_booking_requires_intervention(self, organization_id, booking_id, expected=None):
+        async with self._connection() as conn:
+            await conn.execute("""
+                UPDATE bookings SET richiede_intervento = TRUE, updated_at = NOW()
+                WHERE organization_id = $1 AND id = $2
+                  AND ($3::timestamptz IS NULL OR updated_at = $3)
+            """, organization_id, booking_id,
+                expected.get("updated_at") if expected else None)

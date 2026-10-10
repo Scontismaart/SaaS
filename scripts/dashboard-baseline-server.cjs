@@ -51,7 +51,7 @@ const server = http.createServer((req, res) => {
   if (viewStates && url.pathname === "/__qa/start") {
     const scenario = url.searchParams.get("case");
     const view = url.searchParams.get("view");
-    if (!SCENARIOS.has(scenario) || !["overview", "reviews", "knowledge", "team", "ai-simulator"].includes(view)) { res.writeHead(400).end(); return; }
+    if (!SCENARIOS.has(scenario) || !["overview", "reviews", "knowledge", "team", "ai-simulator", "bookings"].includes(view)) { res.writeHead(400).end(); return; }
     res.setHeader("Set-Cookie", [`dashboard_qa_case=${scenario}; Path=/; HttpOnly; SameSite=Strict`, "dashboard_qa_signed_out=; Max-Age=0; Path=/; HttpOnly; SameSite=Strict"]);
     res.writeHead(302, { Location: `/app/${view}` }).end(); return;
   }

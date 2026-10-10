@@ -5,7 +5,7 @@ const vm = require("node:vm");
 const { JSDOM } = require("jsdom");
 
 const focusSource = fs.readFileSync("web/dialog-focus.js", "utf8");
-const appSource = fs.readFileSync("web/app.js", "utf8");
+const bookingsSource = fs.readFileSync("web/dashboard-bookings.js", "utf8");
 const sharedSource = fs.readFileSync("web/dashboard-shared.js", "utf8");
 const pageSource = fs.readFileSync("web/index.html", "utf8");
 
@@ -58,9 +58,9 @@ test("dashboard dialogs manage initial focus, keyboard loop, Escape, and focus r
 
 test("dashboard booking and confirmation dialogs use the focus manager", () => {
   assert.match(pageSource, /<script src="\/app\/dialog-focus\.js"><\/script>[\s\S]*?<script src="\/app\/app\.js/);
-  assert.match(appSource, /MelpisDialogFocus\.handleKeydown\(modal, event/);
-  assert.match(appSource, /MelpisDialogFocus\.open\(bookingModal\)/);
-  assert.match(appSource, /MelpisDialogFocus\.close\(bookingModal\)/);
+  assert.match(bookingsSource, /MelpisDialogFocus\.handleKeydown\(modal, event/);
+  assert.match(bookingsSource, /MelpisDialogFocus\.open\(bookingModal\)/);
+  assert.match(bookingsSource, /MelpisDialogFocus\.close\(bookingModal\)/);
   assert.match(sharedSource, /MelpisDialogFocus\.open\(modal, \{ initialFocus: okBtn \}\)/);
 });
 

@@ -11,7 +11,7 @@ e non sono coperti qui — non fanno parte del percorso frontend demo.
 
 import uuid
 from contextlib import nullcontext
-from datetime import date, time
+from datetime import date, datetime, time, timezone
 from copy import deepcopy
 
 
@@ -94,16 +94,20 @@ class InMemoryBookingRepo:
         rows.sort(key=lambda b: (b["data"], b["ora"]))
         return [deepcopy(b) for b in rows]
 
-    async def update_booking_status(self, organization_id, booking_id, stato):
+    async def update_booking_status(self, organization_id, booking_id, stato, expected_status=None, expected=None):
         for b in self._bookings:
             if b["organization_id"] == organization_id and str(b["id"]) == str(booking_id):
+                if expected_status is not None and b["stato"] != expected_status:
+                    return None
+                if expected and any(b.get(key) != expected.get(key) for key in ("stato", "data", "ora", "coperti") if key in expected):
+                    return None
                 b["stato"] = stato
                 return deepcopy(b)
         return None
 
     async def update_booking_details(self, organization_id, booking_id,
                                      nome_cliente, telefono, data, ora,
-                                     coperti, note, stato):
+                                     coperti, note, stato, expected=None):
         if isinstance(data, str):
             data = date.fromisoformat(data)
         if isinstance(ora, str):
@@ -111,6 +115,8 @@ class InMemoryBookingRepo:
             ora = time(int(ore), int(minuti))
         for b in self._bookings:
             if b["organization_id"] == organization_id and str(b["id"]) == str(booking_id):
+                if expected and any(b.get(key) != expected.get(key) for key in ("stato", "data", "ora", "coperti") if key in expected):
+                    return None
                 b.update({
                     "nome_cliente": nome_cliente,
                     "telefono": telefono,
@@ -122,6 +128,25 @@ class InMemoryBookingRepo:
                 })
                 return deepcopy(b)
         return None
+
+    async def mark_booking_completed(self, organization_id, booking_id, expected):
+        updated = await self.update_booking_status(
+            organization_id, booking_id, "completata", expected=expected,
+        )
+        if updated:
+            for booking in self._bookings:
+                if booking["organization_id"] == organization_id and str(booking["id"]) == str(booking_id):
+                    booking["completata_at"] = datetime.now(timezone.utc)
+                    return deepcopy(booking)
+        return None
+
+    async def mark_booking_requires_intervention(self, organization_id, booking_id, expected=None):
+        for booking in self._bookings:
+            if booking["organization_id"] == organization_id and str(booking["id"]) == str(booking_id):
+                if expected and any(booking.get(key) != expected.get(key) for key in ("stato", "data", "ora", "coperti") if key in expected):
+                    return
+                booking["richiede_intervento"] = True
+                return
 
     async def update_booking_reminder_status(self, organization_id, booking_id,
                                              reminder_status, responded_at=None):

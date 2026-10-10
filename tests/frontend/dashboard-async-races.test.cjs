@@ -28,6 +28,11 @@ function harness(view) {
   });
   const document = dom.window.document;
   dom.window.eval(fs.readFileSync(path.join(root, "web/dashboard-shared.js"), "utf8"));
+  // Test-only observation seam: execute the production factory, expose no
+  // additional API in the shipped script and copy no implementations.
+  dom.window.eval(fs.readFileSync(path.join(root, "web/dashboard-bookings.js"), "utf8")
+    .replace("let bookingCalendar = null;", "let bookingCalendar = deps.testCalendar;")
+    .replace("onEnter, onExit, invalidate, load,", "onEnter, onExit, invalidate, load, apriFormPrenotazione, apriDettaglioPrenotazione, eseguiAzionePrenotazione, currentBooking: () => prenotazioneCorrente,"));
   const requests = [], callbacks = [], errors = [], toasts = [], intervals = new Map(), gotoDates = [];
   let intervalId = 0;
   const inboxState = { tickets: [], team: [], pendingClaims: new Set(), selectedTicketId: null };
@@ -35,8 +40,9 @@ function harness(view) {
   const bookingCalendar = {
     getDate: () => new Date(`${date}T12:00:00`), removeAllEvents() {}, addEvent() {},
     gotoDate(value) { gotoDates.push(value); date = value; },
-    setOption() {}, updateSize() {}, render() {},
+    view: { type: "timeGridDay" }, setOption() {}, updateSize() {}, render() {}, destroy() {}, unselect() {},
   };
+  dom.window.FullCalendar = { Calendar: function () { return bookingCalendar; } };
   const context = vm.createContext({
     document, window: dom.window, console: { error: (...args) => errors.push(args) },
     API_BASE: "", inboxState, bookingCalendar, Date, Map, Set,
@@ -68,7 +74,7 @@ function harness(view) {
     bookingDetail: Object.fromEntries(["title", "date", "time", "seats", "status", "phone", "origin", "note"].map(key => [key,
       document.getElementById(key === "title" ? "booking-modal-title" : `booking-detail-${key}`),
     ])),
-    sessione: null, STATI_FINALI_PRENOTAZIONE: ["annullata", "rifiutata", "completata", "no_show"],
+    sessione: { user_id: "user-1", organization_id: "org-1", ruolo: "owner" }, STATI_FINALI_PRENOTAZIONE: ["annullata", "rifiutata", "completata", "no_show"],
     confermaDestructiva: () => Promise.resolve(true),
     bookingCount: document.getElementById("booking-count"), bookingPendingValue: document.getElementById("booking-pending-value"),
     availabilityList: document.getElementById("availability-list"), availabilityDate: document.getElementById("availability-date"),
@@ -87,6 +93,10 @@ function harness(view) {
     reportRefreshHtml: document.getElementById("report-refresh").innerHTML,
   });
   vm.runInContext(fs.readFileSync(path.join(root, "web/dashboard-overview.js"), "utf8"), context);
+  const form = document.getElementById("booking-form");
+  const addListener = form.addEventListener.bind(form);
+  let submission;
+  form.addEventListener = (name, listener) => addListener(name, event => { submission = listener(event); });
   vm.runInContext(`
     let activeDashboardView = ${JSON.stringify(view)};
     let dashboardViewTransition = 1;
@@ -99,9 +109,24 @@ function harness(view) {
     let isInboxPollingActive = false, inboxPollingTimer = null;
     let bookingRecords = [], bookingAvailability = new Map(), bookingSnapshot = new Map();
     let prenotazioniInAttesaCount = 0, bookingPendingOnly = false;
-    globalThis.navigate = (view) => { activeDashboardView = view; dashboardViewTransition++; };
-    globalThis.currentBooking = () => prenotazioneCorrente;
-    ${["caricaInbox", "caricaDettaglioTicket", "inviaRispostaInbox", "aggiornaPrenotazioni", "aggiornaSemaforo", "aggiornaReport", "avviaInboxPolling", "fermaInboxPolling", "apriBookingModal", "chiudiBookingModal", "apriFormPrenotazione", "aggiornaAzioniPrenotazione", "apriDettaglioPrenotazione", "chiudiDettaglioPrenotazione", "eseguiAzionePrenotazione"].map(source).join("\n")}
+    const bookingsModule = window.MelpisDashboardBookings.create({
+      testCalendar: bookingCalendar,
+      API_BASE, apiFetch: (...args) => apiFetch(...args),
+      _escapeHtml: window.MelpisDashboardShared.escapeHtml, _toDateKey, _tDash, localeCorrente, toast,
+      confermaDestructiva: (...args) => confermaDestructiva(...args),
+      getContext: () => ({ userId: sessione?.user_id, sessionOrganizationId: sessione?.organization_id, selectedOrganizationId: sessione?.organization_id, view: activeDashboardView, transition: dashboardViewTransition }),
+      getSession: () => sessione, getVertical: () => "ristorante", statoNormalizzatoPrenotazione,
+      exportCsv() {}, updatePending() {},
+    });
+    if (activeDashboardView === "prenotazioni") bookingsModule.onEnter();
+    globalThis.navigate = (view) => {
+      if (activeDashboardView === "prenotazioni") bookingsModule.onExit();
+      activeDashboardView = view; dashboardViewTransition++;
+      if (view === "prenotazioni") bookingsModule.onEnter();
+    };
+    for (const name of ["aggiornaPrenotazioni", "aggiornaSemaforo", "apriFormPrenotazione", "apriDettaglioPrenotazione", "eseguiAzionePrenotazione", "currentBooking"]) globalThis[name] = bookingsModule[name];
+    globalThis.apriBookingModal = bookingsModule.apriBookingModal;
+    ${["caricaInbox", "caricaDettaglioTicket", "inviaRispostaInbox", "aggiornaReport", "avviaInboxPolling", "fermaInboxPolling"].map(source).join("\n")}
     const overviewModule = window.MelpisDashboardOverview.create({
       API_BASE, apiFetch, _sanitize, toast, _tDash, t, localeCorrente, _toDateKey,
       _emptyState, _errorState, _skeletonList, ICONS,
@@ -115,13 +140,6 @@ function harness(view) {
     globalThis.fermaPanoramicaPolling = overviewModule.fermaPanoramicaPolling;
     overviewModule.onEnter();
   `, context);
-  const form = document.getElementById("booking-form");
-  const addListener = form.addEventListener.bind(form);
-  let submission;
-  form.addEventListener = (name, listener) => addListener(name, event => { submission = listener(event); });
-  const submitStart = app.indexOf('bookingForm?.addEventListener("submit"');
-  assert.notEqual(submitStart, -1);
-  vm.runInContext(app.slice(submitStart, app.indexOf("\ncapacitySave?", submitStart)), context);
   return { dom, document, context, requests, callbacks, errors, toasts, intervals, inboxState, gotoDates,
     setDate(value) { date = value; }, getDate() { return date; },
     submitBooking() { form.dispatchEvent(new dom.window.Event("submit", { cancelable: true })); return submission; },
@@ -229,8 +247,8 @@ test("Bookings availability selected date B survives late A including delayed JS
   const a = h.context.aggiornaSemaforo(); h.requests[0].resolve({ ok: true, json: () => oldJson.promise }); await Promise.resolve();
   h.setDate("2026-10-03"); const b = h.context.aggiornaSemaforo(); h.requests[1].resolve(response([slot(8)])); await b;
   oldJson.resolve([slot(1)]); await a;
-  assert.equal(h.document.getElementById("booking-summary").textContent, "8");
-  assert.equal(h.document.getElementById("booking-table-day-title").textContent, "2026-10-03");
+  assert.match(h.document.getElementById("booking-summary").textContent, /8 posti liberi/);
+  assert.match(h.document.getElementById("booking-table-day-title").textContent, /3 ottobre/);
 });
 
 test("Bookings explicit refresh for old mutation date cannot override current selection", async (t) => {
@@ -241,7 +259,7 @@ test("Bookings explicit refresh for old mutation date cannot override current se
   const a = h.context.aggiornaSemaforo("2026-10-02");
   if (h.requests[1]) h.requests[1].resolve(response([slot(1)])); await a;
   assert.equal(h.document.getElementById("availability-date").textContent, before);
-  assert.equal(h.document.getElementById("booking-summary").textContent, "8");
+  assert.match(h.document.getElementById("booking-summary").textContent, /8 posti liberi/);
 });
 
 test("Overview report newest JSON wins and old forced error cannot toast or reset newer button", async (t) => {
@@ -285,7 +303,7 @@ test("Bookings same-date availability overlapping refreshes preserve latest resp
   const a = h.context.aggiornaSemaforo(); const b = h.context.aggiornaSemaforo();
   h.requests[1].resolve(response([slot(8)])); await b;
   h.requests[0].resolve(response([slot(1)])); await a;
-  assert.equal(h.document.getElementById("booking-summary").textContent, "8");
+  assert.match(h.document.getElementById("booking-summary").textContent, /8 posti liberi/);
 });
 
 for (const loader of ["aggiornaPrenotazioni", "aggiornaSemaforo"]) {
@@ -340,7 +358,7 @@ for (const scenario of ["date B", "leave and return", "new form", "stale error"]
     h.context.apriFormPrenotazione({ id: "A", data: "2026-10-02", nome_cliente: "Customer A", coperti: 2 });
     const saving = h.submitBooking();
     if (scenario === "date B") h.setDate("2026-10-03");
-    else if (scenario === "leave and return") { h.context.navigate("inbox"); h.context.navigate("prenotazioni"); }
+    else if (scenario === "leave and return") { h.context.navigate("inbox"); h.context.navigate("prenotazioni"); h.context.apriFormPrenotazione({ id: "A", data: "2026-10-02", nome_cliente: "Customer A", coperti: 2 }); }
     else h.context.apriFormPrenotazione({ id: "B", data: "2026-10-03", nome_cliente: "Customer B", coperti: 3 });
     const name = h.document.getElementById("booking-name"), modal = h.document.getElementById("booking-create-modal");
     const expectedName = name.value, expectedDate = h.getDate();
@@ -363,12 +381,16 @@ test("Booking save cannot render date A after selected date changes during refre
   const h = harness("prenotazioni"); t.after(() => h.dom.window.close());
   h.context.apriFormPrenotazione({ data: "2026-10-02", nome_cliente: "Customer A", coperti: 2 });
   const refreshing = deferred(), refreshStarted = deferred();
-  h.context.aggiornaPrenotazioni = () => { refreshStarted.resolve(); return refreshing.promise; };
+  h.context.apiFetch = (url, options = {}) => {
+    if (url === "/api/bookings" && !options.method) { refreshStarted.resolve(); return refreshing.promise; }
+    const request = deferred(); h.requests.push({ url, ...request }); return request.promise;
+  };
   const saving = h.submitBooking(); h.requests[0].resolve(response({})); await refreshStarted.promise;
   h.setDate("2026-10-03");
   h.document.getElementById("booking-table-day-title").textContent = "2026-10-03";
-  refreshing.resolve(); await saving;
-  assert.equal(h.document.getElementById("booking-table-day-title").textContent, "2026-10-03");
+  refreshing.resolve(response([])); await saving;
+  assert.match(h.document.getElementById("booking-table-day-title").textContent, /3 ottobre/);
+  assert.doesNotMatch(h.document.getElementById("booking-table-day-title").textContent, /2 ottobre/);
 });
 
 test("Booking save in unchanged context closes its own form and refreshes the saved day", async (t) => {
@@ -386,7 +408,7 @@ test("Booking save in unchanged context closes its own form and refreshes the sa
   assert.equal(h.document.getElementById("booking-status-text").textContent, "Modifica salvata.");
   assert.equal(h.getDate(), "2026-10-03");
   assert.deepEqual(refreshes, ["/api/bookings", "/api/bookings/semaforo?data=2026-10-03"]);
-  assert.equal(h.document.getElementById("booking-table-day-title").textContent, "2026-10-03");
+  assert.match(h.document.getElementById("booking-table-day-title").textContent, /3 ottobre/);
 });
 
 test("Booking availability explicit date uses selected local calendar day", async (t) => {
@@ -403,7 +425,7 @@ test("Booking availability explicit date uses selected local calendar day", asyn
   assert.equal(h.requests.length, 1, "explicit local date must match the calendar day in negative UTC offsets");
   assert.match(h.requests[0].url, /data=2026-10-02$/);
   h.requests[0].resolve(response([slot(8)])); await availability;
-  assert.equal(h.document.getElementById("booking-summary").textContent, "8");
+  assert.match(h.document.getElementById("booking-summary").textContent, /8 posti liberi/);
 });
 
 for (const scenario of ["new detail", "leave and return", "stale error", "delayed JSON"]) {
@@ -416,7 +438,7 @@ for (const scenario of ["new detail", "leave and return", "stale error", "delaye
       h.requests[0].resolve({ ok: true, json: () => { jsonStarted.resolve(); return oldJson.promise; } });
       await jsonStarted.promise;
     }
-    if (scenario === "leave and return") { h.context.navigate("inbox"); h.context.navigate("prenotazioni"); }
+    if (scenario === "leave and return") { h.context.navigate("inbox"); h.context.navigate("prenotazioni"); h.context.apriDettaglioPrenotazione({ id: "A", data: "2026-10-02", nome_cliente: "Customer A", stato: "in_attesa" }); }
     else h.context.apriDettaglioPrenotazione({ id: "B", data: "2026-10-03", nome_cliente: "Customer B", stato: "in_attesa" });
     const button = h.document.getElementById("booking-confirm-btn");
     const unwanted = [];

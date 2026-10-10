@@ -108,14 +108,19 @@ class CoreRepository(TenantScopedRepository):
     async def list_bookings(self, organization_id, data=None):
         return await self._booking_repo.list_bookings(organization_id, data=data)
 
-    async def update_booking_status(self, organization_id, booking_id, stato):
-        return await self._booking_repo.update_booking_status(organization_id, booking_id, stato)
+    async def update_booking_status(self, organization_id, booking_id, stato, expected_status=None, expected=None):
+        return await self._booking_repo.update_booking_status(
+            organization_id, booking_id, stato, expected_status=expected_status, expected=expected)
+
+    async def mark_booking_completed(self, organization_id, booking_id, expected):
+        return await self._booking_repo.mark_booking_completed(organization_id, booking_id, expected)
 
     async def update_booking_details(self, organization_id, booking_id,
                                      nome_cliente, telefono, data, ora,
-                                     coperti, note, stato):
+                                     coperti, note, stato, expected=None):
         return await self._booking_repo.update_booking_details(
-            organization_id, booking_id, nome_cliente, telefono, data, ora, coperti, note, stato
+            organization_id, booking_id, nome_cliente, telefono, data, ora, coperti, note, stato,
+            expected=expected,
         )
 
     async def update_booking_payment(self, organization_id, booking_id,

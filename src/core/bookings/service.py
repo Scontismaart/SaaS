@@ -331,7 +331,7 @@ class BookingService:
         if not isinstance(data, str):
             raise ValueError("data non valida")
         try:
-            date.fromisoformat(data)
+            parsed_date = date.fromisoformat(data)
         except ValueError as exc:
             raise ValueError("data non valida: usare YYYY-MM-DD") from exc
         if not isinstance(ora, str):
@@ -348,7 +348,7 @@ class BookingService:
         return {
             "nome_cliente": nome_cliente.strip(),
             "telefono": telefono.strip(),
-            "data": data,
+            "data": parsed_date.isoformat(),
             "ora": f"{parsed_ora.hour:02d}:{parsed_ora.minute:02d}",
             "coperti": coperti,
             "note": note.strip(),
@@ -383,6 +383,9 @@ class BookingService:
         # l'UPDATE devono restare atomiche rispetto ad altre prenotazioni
         # concorrenti sulla fascia di destinazione.
         async with self._slot_lock(org_id, values["data"], values["ora"]):
+            latest = await self._get_booking_or_raise(org_id, booking_id)
+            if any(latest.get(key) != current.get(key) for key in ("stato", "data", "ora", "coperti", "updated_at")):
+                raise ValueError("prenotazione modificata durante l'aggiornamento")
             if schedule_changed:
                 disp = await self.verifica_disponibilita(
                     org_id, values["data"], values["ora"], values["coperti"],
@@ -394,7 +397,7 @@ class BookingService:
                         alternative=disp.alternative,
                     )
             updated = await self.repo.update_booking_details(
-                org_id, booking_id, stato=new_status, **values
+                org_id, booking_id, stato=new_status, expected=latest, **values
             )
         if not updated:
             raise ValueError(f"booking {booking_id} non trovato")
@@ -405,14 +408,27 @@ class BookingService:
                     raise RuntimeError("notifica WhatsApp di riconferma non inviata")
             except Exception:
                 logger.exception("booking=reconfirmation_failed id=%s", booking_id)
-                await self.repo.update_booking_details(
-                    org_id, booking_id, stato=current["stato"],
-                    nome_cliente=current.get("nome_cliente", ""),
-                    telefono=current.get("telefono", ""),
-                    data=self._format_date(current.get("data")),
-                    ora=self._format_time(current.get("ora")),
-                    coperti=current.get("coperti"), note=current.get("note", ""),
-                )
+                old_day = self._format_date(current.get("data"))
+                old_hour = self._format_time(current.get("ora"))
+                async with self._slot_lock(org_id, old_day, old_hour):
+                    still_current = await self.repo.get_booking(org_id, booking_id)
+                    if still_current and all(still_current.get(key) == updated.get(key) for key in ("stato", "data", "ora", "coperti", "updated_at")):
+                        available = True
+                        if current["stato"] not in STATI_LIBERI:
+                            disp = await self.verifica_disponibilita(
+                                org_id, old_day, old_hour, current["coperti"], exclude_booking_id=booking_id)
+                            available = current["coperti"] <= disp.coperti_liberi
+                        if available:
+                            await self.repo.update_booking_details(
+                                org_id, booking_id, stato=current["stato"],
+                                nome_cliente=current.get("nome_cliente", ""),
+                                telefono=current.get("telefono", ""),
+                                data=old_day, ora=old_hour,
+                                coperti=current.get("coperti"), note=current.get("note", ""),
+                                expected=still_current,
+                            )
+                        else:
+                            await self.repo.mark_booking_requires_intervention(org_id, booking_id, expected=still_current)
                 raise
         if self.calendar_service:
             try:
@@ -489,9 +505,30 @@ class BookingService:
 
     # ── Lifecycle ──────────────────────────────────────────────
 
-    async def confirm(self, org_id, booking_id):
+    async def _transition_to_occupied(self, org_id, booking_id, stato):
+        """Atomically admit a reactivated reservation without charging it twice."""
         b = await self._get_booking_or_raise(org_id, booking_id)
-        updated = await self.repo.update_booking_status(org_id, booking_id, "confermata")
+        async with self._slot_lock(org_id, self._format_date(b["data"]), self._format_time(b["ora"])):
+            latest = await self._get_booking_or_raise(org_id, booking_id)
+            if any(latest.get(key) != b.get(key) for key in ("stato", "data", "ora", "coperti", "updated_at")):
+                raise ValueError("prenotazione modificata durante l'operazione")
+            if latest["stato"] in STATI_LIBERI:
+                disp = await self.verifica_disponibilita(
+                    org_id, self._format_date(latest["data"]), self._format_time(latest["ora"]),
+                    latest["coperti"], exclude_booking_id=booking_id)
+                if latest["coperti"] > disp.coperti_liberi:
+                    raise SlotPienoError(f"slot pieno per {latest['coperti']} coperti alle {latest['ora']}", disp.alternative)
+            if stato == "completata":
+                updated = await self.repo.mark_booking_completed(org_id, booking_id, latest)
+            else:
+                updated = await self.repo.update_booking_status(
+                    org_id, booking_id, stato, expected_status=latest["stato"], expected=latest)
+            if not updated:
+                raise ValueError("prenotazione modificata durante l'operazione")
+        return latest, updated
+
+    async def confirm(self, org_id, booking_id):
+        b, updated = await self._transition_to_occupied(org_id, booking_id, "confermata")
         msg = f"La tua prenotazione del {b['data']} alle {b['ora']} per {b['coperti']} persone e' confermata!"
         await self._send_whatsapp(org_id, b["telefono"], msg)
         if b.get("richiede_deposito"):
@@ -570,13 +607,7 @@ class BookingService:
         return booking
 
     async def mark_completed(self, org_id, booking_id):
-        async with self.repo.pool.acquire() as conn:
-            row = await conn.fetchrow("""
-                UPDATE bookings SET stato = 'completata', completata_at = NOW(), updated_at = NOW()
-                WHERE organization_id = $1 AND id = $2
-                RETURNING *
-            """, org_id, booking_id)
-            booking = dict(row) if row else None
+        _, booking = await self._transition_to_occupied(org_id, booking_id, "completata")
         if booking and self.calendar_service:
             try:
                 await self.calendar_service.sync_booking_state(booking, org_id)

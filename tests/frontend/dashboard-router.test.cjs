@@ -54,6 +54,7 @@ function createIntegratedApp(url) {
     topbarTitle: window.document.getElementById("topbar-title"),
     dashboardOverviewModule: null,
     dashboardReviewsModule: null,
+    dashboardBookingsModule: null,
     dashboardKnowledgeModule: null,
     dashboardTeamModule: null,
     dashboardAiSimulatorModule: null,

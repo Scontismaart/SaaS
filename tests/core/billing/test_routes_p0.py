@@ -54,3 +54,25 @@ async def test_cancellation_downgrades_to_readonly(async_client, repo, sample_or
         })
         assert resp.status_code == 200
         assert resp.json()["url"] == "http://stripe/portal"
+
+
+async def test_pending_subscription_binding_returns_retryable_webhook_status(async_client, monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import stripe
+
+    from src.api.main import app
+
+    app.state.billing_config = SimpleNamespace(stripe_trial_days=7)
+    event = MagicMock()
+    event.to_dict_recursive.return_value = {"id": "evt_pending_binding"}
+    monkeypatch.setattr(stripe.Webhook, "construct_event", lambda *_args: event)
+    monkeypatch.setattr(
+        "src.core.billing.routes.handle_stripe_webhook",
+        AsyncMock(return_value={"action": "ignored", "retryable": True}),
+    )
+
+    response = await async_client.post("/api/billing/webhook", content=b"{}")
+
+    assert response.status_code == 503

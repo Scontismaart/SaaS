@@ -13,6 +13,13 @@ def configured_test_prices(monkeypatch):
         monkeypatch.setattr(PLANS[slug], "stripe_price_id", f"price_test_{slug}")
         monkeypatch.setattr(PLANS[slug], "stripe_price_id_yearly", f"price_test_{slug}_yearly")
     monkeypatch.setenv("STRIPE_ANNUAL_PRICING_ENABLED", "false")
+    monkeypatch.delenv("LAUNCH_PROFILE", raising=False)
+
+
+async def _bind_test_subscription(repo, org, customer="cus_test001", subscription="sub_test001"):
+    await repo.update_organization_billing(org["id"], {
+        "stripe_customer_id": customer, "subscription_id": subscription,
+    })
 
 
 async def _seed_checkout_intent(repo, org, event, *, price_id="price_test_starter", session_id=...):
@@ -61,13 +68,16 @@ def valid_invoice_paid_event():
                 "id": "in_test_001",
                 "customer": "cus_test001",
                 "subscription": "sub_test001",
+                "billing_reason": "subscription_cycle",
                 "status": "paid",
                 "period_start": datetime.now(timezone.utc).timestamp(),
                 "period_end": datetime.now(timezone.utc).timestamp() + 2592000,
                 "lines": {
+                    "has_more": False,
                     "data": [
                         {
                             "price": {"id": "price_test_starter"},
+                            "quantity": 1,
                             "plan": {"product": "prod_starter"},
                         }
                     ]
@@ -281,7 +291,7 @@ async def test_checkout_completed_with_mismatched_customer_cannot_start_trial(
 async def test_handle_invoice_paid_resets_usage(repo, sample_org, valid_invoice_paid_event):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
-        "stripe_customer_id": "cus_test001",
+        "stripe_customer_id": "cus_test001", "subscription_id": "sub_test001",
     })
     await repo.increment_message_usage(sample_org["id"])
     await repo.increment_message_usage(sample_org["id"])
@@ -297,6 +307,7 @@ async def test_invoice_paid_converts_exhausted_trial_to_paid_quota(repo, sample_
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test001",
+        "subscription_id": "sub_test001",
         "subscription_status": "trialing",
         "messages_limit": 150,
         "messages_used_this_period": 150,
@@ -314,6 +325,74 @@ async def test_invoice_paid_converts_exhausted_trial_to_paid_quota(repo, sample_
     assert billing["messages_limit"] == 500
     assert billing["messages_used_this_period"] == 0
 
+
+async def test_precheckout_invoice_is_not_consumed_and_can_replay_after_binding(repo, sample_org, valid_invoice_paid_event):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {"stripe_customer_id": "cus_test001"})
+    event = valid_invoice_paid_event
+    event["data"]["object"]["customer"] = "cus_test001"
+    result = await handle_stripe_webhook(event, repo, 7)
+    assert result["reason"] == "subscription_unbound"
+    assert result["retryable"] is True
+    assert await repo.pool.fetchval(
+        "SELECT 1 FROM processed_stripe_events WHERE event_id = $1", event["id"]
+    ) is None
+
+    await _bind_test_subscription(repo, sample_org)
+    result = await handle_stripe_webhook(event, repo, 7)
+    assert result["action"] == "subscription_activated"
+
+
+async def test_manual_invoice_does_not_change_entitlement_or_watermark(repo, sample_org, valid_invoice_paid_event):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    now = datetime.now(timezone.utc)
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_test001", "subscription_id": "sub_test001",
+        "subscription_status": "past_due", "messages_used_this_period": 17,
+        "current_period_start": now,
+    })
+    event = valid_invoice_paid_event
+    event["data"]["object"].update({"customer": "cus_test001", "billing_reason": "manual"})
+    result = await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert result["reason"] == "invoice_not_subscription_cycle"
+    assert billing["subscription_status"] == "past_due"
+    assert billing["messages_used_this_period"] == 17
+    assert billing["current_period_start"] == now
+
+
+async def test_invalid_current_invoice_restricts_at_equal_timestamp(repo, sample_org):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    now = datetime.now(timezone.utc)
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_invoice_tie", "subscription_id": "sub_invoice_tie",
+        "subscription_status": "active", "plan": "pro", "messages_limit": 2000,
+        "messages_used_this_period": 35, "current_period_start": now,
+    })
+    await repo.pool.execute(
+        "UPDATE organizations SET stripe_event_created = 510, stripe_event_id = 'evt_prior_invoice' WHERE id = $1::uuid",
+        str(sample_org["id"]),
+    )
+    event = {
+        "id": "evt_invalid_invoice_same_second", "created": 510, "type": "invoice.paid",
+        "data": {"object": {
+            "id": "in_invalid_tie", "customer": "cus_invoice_tie",
+            "subscription": "sub_invoice_tie", "billing_reason": "subscription_cycle",
+            "status": "paid", "period_start": (now + timedelta(days=40)).timestamp(),
+            "period_end": (now + timedelta(days=70)).timestamp(),
+            "lines": {"has_more": False, "data": [
+                {"price": {"id": "price_test_starter"}, "quantity": 1},
+                {"price": {"id": "price_unknown"}, "quantity": 1},
+            ]},
+        }},
+    }
+    result = await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert result["action"] == "invoice_ignored_unconfigured_price"
+    assert billing["subscription_status"] == "incomplete"
+    assert billing["plan"] == "pro"
+    assert billing["messages_used_this_period"] == 35
+    assert billing["current_period_start"] == now
 
 async def test_invoice_paid_with_unknown_price_does_not_activate_or_reset_quota(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
@@ -334,13 +413,14 @@ async def test_invoice_paid_with_unknown_price_does_not_activate_or_reset_quota(
             "customer": "cus_unknown_invoice", "subscription": "sub_unknown_invoice",
             "status": "paid", "period_start": (now + timedelta(days=40)).timestamp(),
             "period_end": (now + timedelta(days=70)).timestamp(),
-            "lines": {"data": [{"price": {"id": "price_not_configured"}, "plan": {"product": "prod_starter"}}]},
+            "billing_reason": "subscription_cycle",
+            "lines": {"has_more": False, "data": [{"price": {"id": "price_not_configured"}, "quantity": 1, "plan": {"product": "prod_starter"}}]},
         }},
     }
     result = await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
     assert result["action"] == "invoice_ignored_unconfigured_price"
-    assert billing["subscription_status"] == "past_due"
+    assert billing["subscription_status"] == "incomplete"
     assert billing["plan"] == "pro"
     assert billing["messages_used_this_period"] == 2000
     assert billing["current_period_start"] == now
@@ -358,23 +438,207 @@ async def test_subscription_updated_unknown_price_does_not_grant_or_reset(repo, 
         "id": "evt_sub_unknown_price", "created": 300, "type": "customer.subscription.updated",
         "data": {"object": {
             "id": "sub_unknown_sub", "customer": "cus_unknown_sub", "status": "active",
-            "items": {"data": [{"price": {"id": "price_not_configured", "product": "prod_pro"}}]},
+            "items": {"has_more": False, "data": [{"price": {"id": "price_not_configured", "product": "prod_pro"}, "quantity": 1}]},
             "current_period_start": (now + timedelta(days=40)).timestamp(),
             "current_period_end": (now + timedelta(days=70)).timestamp(),
         }},
     }
     result = await handle_stripe_webhook(event, repo, 7)
     billing = await repo.get_organization_billing(sample_org["id"])
-    assert result["action"] == "subscription_ignored_unconfigured_price"
-    assert billing["subscription_status"] == "past_due"
+    assert result["action"] == "subscription_updated"
+    assert billing["subscription_status"] == "incomplete"
     assert billing["plan"] == "starter"
     assert billing["messages_used_this_period"] == 23
     assert billing["current_period_start"] == now
 
 
+async def test_unknown_active_snapshot_restricts_on_equal_timestamp(repo, sample_org):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    now = datetime.now(timezone.utc)
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_tie", "subscription_id": "sub_tie",
+        "subscription_status": "active", "plan": "pro", "messages_limit": 2000,
+        "messages_used_this_period": 61, "current_period_start": now,
+    })
+    await repo.pool.execute(
+        "UPDATE organizations SET stripe_event_created = 500, stripe_event_id = 'evt_previous' WHERE id = $1::uuid",
+        str(sample_org["id"]),
+    )
+    event = {
+        "id": "evt_unknown_same_second", "created": 500, "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_tie", "customer": "cus_tie", "status": "active",
+            "items": {"has_more": False, "data": [{"price": {"id": "price_not_allowed"}, "quantity": 1}]},
+            "current_period_start": (now + timedelta(days=40)).timestamp(),
+            "current_period_end": (now + timedelta(days=70)).timestamp(),
+        }},
+    }
+    result = await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert result["action"] == "subscription_updated"
+    assert billing["subscription_status"] == "incomplete"
+    assert billing["plan"] == "pro"
+    assert billing["messages_used_this_period"] == 61
+    assert billing["current_period_start"] == now
+
+
+async def test_wrong_subscription_snapshot_is_ignored_without_watermark(repo, sample_org):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_bound", "subscription_id": "sub_current",
+        "subscription_status": "active", "plan": "starter",
+    })
+    event = {
+        "id": "evt_other_subscription", "created": 700, "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_other", "customer": "cus_bound", "status": "canceled",
+        }},
+    }
+    result = await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert result["reason"] == "subscription_mismatch"
+    assert billing["subscription_status"] == "active"
+    assert await repo.pool.fetchval(
+        "SELECT stripe_event_created FROM organizations WHERE id = $1::uuid",
+        str(sample_org["id"]),
+    ) == 0
+
+
+@pytest.mark.parametrize("initial_status", ["unpaid", "paused"])
+async def test_newer_valid_snapshot_recovers_unpaid_or_paused(repo, sample_org, initial_status):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    now = datetime.now(timezone.utc)
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_restrictive", "subscription_id": "sub_restrictive",
+        "subscription_status": initial_status, "plan": "starter", "messages_limit": 500,
+        "messages_used_this_period": 22, "current_period_start": now,
+    })
+    event = {
+        "id": f"evt_{initial_status}_active", "created": 701,
+        "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_restrictive", "customer": "cus_restrictive", "status": "active",
+            "items": {"has_more": False, "data": [{"price": {"id": "price_test_pro"}, "quantity": 1}]},
+        }},
+    }
+    await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == "active"
+    assert billing["plan"] == "pro"
+    assert billing["messages_used_this_period"] == 22
+    assert billing["current_period_start"] == now
+
+
+@pytest.mark.parametrize("initial_status", ["unpaid", "paused"])
+@pytest.mark.parametrize("same_timestamp", [False, True])
+async def test_invalid_snapshot_cannot_reopen_unpaid_or_paused(repo, sample_org, initial_status, same_timestamp):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    now = datetime.now(timezone.utc)
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_restrictive", "subscription_id": "sub_restrictive",
+        "subscription_status": initial_status, "plan": "starter", "messages_limit": 500,
+        "messages_used_this_period": 22, "current_period_start": now,
+    })
+    if same_timestamp:
+        await repo.pool.execute(
+            "UPDATE organizations SET stripe_event_created = 701, stripe_event_id = 'evt_previous' WHERE id = $1::uuid",
+            str(sample_org["id"]),
+        )
+    event = {
+        "id": f"evt_{initial_status}_invalid_{same_timestamp}",
+        "created": 701 if same_timestamp else 702,
+        "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_restrictive", "customer": "cus_restrictive", "status": "active",
+            "items": {"has_more": False, "data": [{"price": {"id": "price_unknown"}, "quantity": 1}]},
+            "current_period_start": (now + timedelta(days=40)).timestamp(),
+            "current_period_end": (now + timedelta(days=70)).timestamp(),
+        }},
+    }
+    await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == initial_status
+    assert billing["plan"] == "starter"
+    assert billing["messages_used_this_period"] == 22
+    assert billing["current_period_start"] == now
+
+
+@pytest.mark.parametrize("initial_status", ["unpaid", "paused"])
+async def test_paid_invoice_alone_cannot_reopen_unpaid_or_paused(repo, sample_org, valid_invoice_paid_event, initial_status):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_invoice_restrictive", "subscription_id": "sub_test001",
+        "subscription_status": initial_status, "messages_used_this_period": 22,
+    })
+    event = valid_invoice_paid_event
+    event["data"]["object"]["customer"] = "cus_invoice_restrictive"
+    result = await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert result["action"] == "invoice_ignored_restrictive_status"
+    assert billing["subscription_status"] == initial_status
+    assert billing["messages_used_this_period"] == 22
+
+
+@pytest.mark.parametrize("items", [
+    [{"price": {"id": "price_test_pro_yearly"}, "quantity": 1}],
+    [
+        {"price": {"id": "price_test_starter"}, "quantity": 1},
+        {"price": {"id": "price_unknown"}, "quantity": 1},
+    ],
+])
+async def test_annual_or_multiline_active_snapshot_is_restrictive(repo, sample_org, monkeypatch, items):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    now = datetime.now(timezone.utc)
+    monkeypatch.setenv("LAUNCH_PROFILE", "commercial_bootstrap")
+    monkeypatch.setenv("STRIPE_ANNUAL_PRICING_ENABLED", "true")
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_v1_invalid", "subscription_id": "sub_v1_invalid",
+        "subscription_status": "active", "plan": "pro", "messages_limit": 2000,
+        "messages_used_this_period": 43, "current_period_start": now,
+    })
+    event = {
+        "id": "evt_v1_invalid_snapshot", "created": 800,
+        "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_v1_invalid", "customer": "cus_v1_invalid", "status": "active",
+            "items": {"has_more": False, "data": items},
+            "current_period_start": (now + timedelta(days=40)).timestamp(),
+            "current_period_end": (now + timedelta(days=70)).timestamp(),
+        }},
+    }
+    await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == "incomplete"
+    assert billing["plan"] == "pro"
+    assert billing["messages_used_this_period"] == 43
+    assert billing["current_period_start"] == now
+
+
+async def test_new_valid_snapshot_recovers_incomplete_subscription(repo, sample_org):
+    from src.core.billing.webhook_handler import handle_stripe_webhook
+    await repo.update_organization_billing(sample_org["id"], {
+        "stripe_customer_id": "cus_recover", "subscription_id": "sub_recover",
+        "subscription_status": "incomplete", "plan": "starter", "messages_limit": 500,
+        "messages_used_this_period": 19,
+    })
+    event = {
+        "id": "evt_recover_valid", "created": 900,
+        "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_recover", "customer": "cus_recover", "status": "active",
+            "items": {"has_more": False, "data": [{"price": {"id": "price_test_starter"}, "quantity": 1}]},
+        }},
+    }
+    await handle_stripe_webhook(event, repo, 7)
+    billing = await repo.get_organization_billing(sample_org["id"])
+    assert billing["subscription_status"] == "active"
+    assert billing["messages_used_this_period"] == 19
+
+
 async def test_subscription_updated_accepts_configured_annual_price_when_enabled(repo, sample_org, monkeypatch):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     monkeypatch.setenv("STRIPE_ANNUAL_PRICING_ENABLED", "true")
+    monkeypatch.delenv("LAUNCH_PROFILE", raising=False)
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_annual", "subscription_id": "sub_annual",
         "subscription_status": "past_due", "plan": "starter", "messages_limit": 500,
@@ -385,7 +649,7 @@ async def test_subscription_updated_accepts_configured_annual_price_when_enabled
         "id": "evt_sub_annual_valid", "created": 300, "type": "customer.subscription.updated",
         "data": {"object": {
             "id": "sub_annual", "customer": "cus_annual", "status": "active",
-            "items": {"data": [{"price": {"id": "price_test_pro_yearly"}}]},
+            "items": {"has_more": False, "data": [{"price": {"id": "price_test_pro_yearly"}, "quantity": 1}]},
             "current_period_start": (now + timedelta(days=40)).timestamp(),
             "current_period_end": (now + timedelta(days=405)).timestamp(),
         }},
@@ -401,7 +665,7 @@ async def test_subscription_updated_accepts_configured_annual_price_when_enabled
 async def test_handle_invoice_paid_sets_period(repo, sample_org, valid_invoice_paid_event):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
-        "stripe_customer_id": "cus_test001",
+        "stripe_customer_id": "cus_test001", "subscription_id": "sub_test001",
     })
     event = valid_invoice_paid_event
     event["data"]["object"]["customer"] = "cus_test001"
@@ -415,6 +679,7 @@ async def test_handle_subscription_updated_changes_plan(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test001",
+        "subscription_id": "sub_test001",
         "plan": "starter",
         "messages_limit": 500,
     })
@@ -428,7 +693,8 @@ async def test_handle_subscription_updated_changes_plan(repo, sample_org):
                 "customer": "cus_test001",
                 "status": "active",
                 "items": {
-                    "data": [{"price": {"id": "price_test_pro"}}]
+                        "has_more": False,
+                    "data": [{"price": {"id": "price_test_pro"}, "quantity": 1}]
                 },
                 "current_period_start": datetime.now(timezone.utc).timestamp(),
                 "current_period_end": datetime.now(timezone.utc).timestamp() + 2592000,
@@ -445,6 +711,7 @@ async def test_handle_subscription_deleted_sets_canceled(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test001",
+        "subscription_id": "sub_test001",
         "subscription_status": "active",
     })
     event = {
@@ -471,6 +738,7 @@ async def test_handle_subscription_deleted_no_second_notice(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test001",
+        "subscription_id": "sub_test001",
         "subscription_status": "active",
     })
     event = {
@@ -493,6 +761,7 @@ async def test_reactivation_resets_notification_then_resuspend(repo, sample_org)
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test001",
+        "subscription_id": "sub_test001",
         "subscription_status": "active",
     })
     sub_del = {
@@ -528,10 +797,11 @@ async def test_reactivation_resets_notification_then_resuspend(repo, sample_org)
             "id": "in_reactivate_100",
             "customer": "cus_test001",
             "subscription": "sub_test002",
+            "billing_reason": "subscription_cycle",
             "status": "paid",
             "period_start": datetime.now(timezone.utc).timestamp(),
             "period_end": datetime.now(timezone.utc).timestamp() + 2592000,
-            "lines": {"data": [{"price": {"id": "price_test_starter"}}]},
+            "lines": {"has_more": False, "data": [{"price": {"id": "price_test_starter"}, "quantity": 1}]},
         }},
     }
     await handle_stripe_webhook(invoice_paid, repo, 7)
@@ -553,6 +823,7 @@ async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):
     from src.core.billing.webhook_handler import handle_stripe_webhook
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test001",
+        "subscription_id": "sub_test001",
         "subscription_status": "active",
     })
     event = {
@@ -564,6 +835,7 @@ async def test_handle_invoice_payment_failed_sets_past_due(repo, sample_org):
                 "id": "in_fail_001",
                 "customer": "cus_test001",
                 "subscription": "sub_test001",
+                "billing_reason": "subscription_cycle",
             }
         },
     }
@@ -590,6 +862,7 @@ async def test_subscription_updated_same_period_does_not_reset_usage(repo, sampl
 
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test_guard",
+        "subscription_id": "sub_guard_001",
         "plan": "starter",
         "messages_limit": 500,
         "current_period_start": fixed_start,
@@ -609,7 +882,7 @@ async def test_subscription_updated_same_period_does_not_reset_usage(repo, sampl
                     "id": "sub_guard_001",
                     "customer": "cus_test_guard",
                     "status": "active",
-                    "items": {"data": [{"price": {"id": "price_test_starter"}}]},
+                    "items": {"has_more": False, "data": [{"price": {"id": "price_test_starter"}, "quantity": 1}]},
                     "current_period_start": fixed_start.timestamp(),
                     "current_period_end": fixed_end.timestamp(),
                 }
@@ -635,6 +908,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
 
     await repo.update_organization_billing(sample_org["id"], {
         "stripe_customer_id": "cus_test_dedup",
+        "subscription_id": "sub_x",
         "subscription_status": "active",
     })
 
@@ -642,7 +916,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
         "id": "evt_dedup_AAA",
         "created": 100,
         "type": "invoice.payment_failed",
-        "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
+        "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x", "billing_reason": "subscription_cycle"}},
     }
     result1 = await handle_stripe_webhook(event1, repo, 7)
     assert result1["action"] == "payment_failed"
@@ -653,7 +927,7 @@ async def test_webhook_dedup_uses_real_event_id_not_object_id(repo, sample_org):
         "id": "evt_dedup_BBB",
         "created": 101,
         "type": "invoice.payment_failed",
-        "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x"}},
+        "data": {"object": {"id": "in_same_object", "customer": "cus_test_dedup", "subscription": "sub_x", "billing_reason": "subscription_cycle"}},
     }
     result2 = await handle_stripe_webhook(event2, repo, 7)
     assert result2["action"] == "payment_failed"  # non "duplicate"

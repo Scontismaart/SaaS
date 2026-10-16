@@ -222,6 +222,8 @@ async def billing_webhook(request: Request):
 
     trial_days = request.app.state.billing_config.stripe_trial_days
     result = await handle_stripe_webhook(event.to_dict_recursive(), repo, trial_days)
+    if result and result.get("retryable"):
+        raise HTTPException(status_code=503, detail="Stripe event is awaiting subscription binding")
     if result is None:
         return {"status": "ignored"}
     # Audit is committed atomically by the handler, not duplicated here.

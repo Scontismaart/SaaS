@@ -21,10 +21,11 @@ def _configured_price_to_plan() -> dict[str, str]:
     from src.core.billing.plans import PLANS
     mapping = {}
     annual_enabled = os.getenv("STRIPE_ANNUAL_PRICING_ENABLED", "").strip().lower() == "true"
+    v1_monthly_only = os.getenv("LAUNCH_PROFILE", "").strip().lower() == "commercial_bootstrap"
     for slug, plan in PLANS.items():
         if plan.stripe_price_id:
             mapping[plan.stripe_price_id] = slug
-        if annual_enabled and plan.stripe_price_id_yearly:
+        if annual_enabled and not v1_monthly_only and plan.stripe_price_id_yearly:
             mapping[plan.stripe_price_id_yearly] = slug
     return mapping
 
@@ -41,14 +42,39 @@ def _init_plan_maps() -> dict[str, str]:
 
 def _resolve_plan_from_subscription(subscription_data: dict) -> str | None:
     price_to_plan = _configured_price_to_plan()
-    for item in subscription_data.get("items", {}).get("data", []):
-        price = item.get("price") or {}
-        if not isinstance(price, dict):
-            continue
-        price_id = price.get("id", "")
-        if isinstance(price_id, str) and price_id in price_to_plan:
-            return price_to_plan[price_id]
-    return None
+    items_container = subscription_data.get("items")
+    if not isinstance(items_container, dict) or items_container.get("has_more") is not False:
+        return None
+    items = items_container.get("data")
+    if not isinstance(items, list) or len(items) != 1:
+        return None
+    item = items[0]
+    quantity = item.get("quantity") if isinstance(item, dict) else None
+    if not isinstance(quantity, int) or isinstance(quantity, bool) or quantity != 1:
+        return None
+    price = item.get("price") or {}
+    if not isinstance(price, dict):
+        return None
+    price_id = price.get("id", "")
+    return price_to_plan.get(price_id) if isinstance(price_id, str) else None
+
+
+def _effective_subscription_status(data: dict) -> str:
+    canonical = {"active", "trialing", "past_due", "unpaid", "incomplete", "incomplete_expired", "canceled", "paused"}
+    status = data.get("status")
+    if status not in canonical:
+        return "incomplete"
+    if status in {"active", "trialing", "past_due"} and not _resolve_plan_from_subscription(data):
+        return "incomplete"
+    return status
+
+
+def _effective_invoice_status(kind: str, data: dict) -> str:
+    if kind == "invoice.paid":
+        if data.get("status") == "paid" and not _resolve_plan_from_subscription({"items": data.get("lines") or {}}):
+            return "incomplete"
+        return "active"
+    return "past_due"
 
 
 async def handle_stripe_webhook(event: dict, repo, trial_days: int) -> dict | None:
@@ -70,7 +96,10 @@ async def handle_stripe_webhook(event: dict, repo, trial_days: int) -> dict | No
             if gate is None:
                 return None
             if gate.get("ignored"):
-                return {"action": "ignored", "reason": gate["ignored"], "organization_id": gate["id"]}
+                result = {"action": "ignored", "reason": gate["ignored"], "organization_id": gate["id"]}
+                if gate.get("retryable"):
+                    result["retryable"] = True
+                return result
             if event_type in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
                 result = await _handle_checkout_completed(
                     conn, repo, data_obj, event_id, trial_days, created
@@ -141,6 +170,12 @@ async def _lock_event_scope(conn, event, data):
     if not incoming_sub:
         return {**org, "ignored": "subscription_missing"}
     current_sub = org.get("subscription_id")
+    if kind.startswith("invoice.") and data.get("billing_reason") not in {"subscription_create", "subscription_cycle", "subscription_update"}:
+        return {**org, "ignored": "invoice_not_subscription_cycle"}
+    if not kind.startswith("checkout.") and current_sub is None:
+        if kind.startswith("invoice."):
+            return {**org, "ignored": "subscription_unbound", "retryable": True}
+        return {**org, "ignored": "subscription_unbound"}
     if data.get("customer") != org.get("stripe_customer_id") and org.get("stripe_customer_id"):
         return {**org, "ignored": "customer_mismatch"}
     if current_sub and current_sub != incoming_sub:
@@ -156,12 +191,17 @@ async def _lock_event_scope(conn, event, data):
     if created < previous:
         return {**org, "ignored": "stale_event"}
     if created == previous and event["id"] != org.get("stripe_event_id"):
-        status = data.get("status") if kind == "customer.subscription.updated" else {
-            "invoice.paid": "active", "invoice.payment_failed": "past_due",
-            "customer.subscription.deleted": "canceled", "subscription.deleted": "canceled",
-            "checkout.session.completed": "trialing",
-            "checkout.session.async_payment_succeeded": "trialing",
-        }.get(kind)
+        if kind == "customer.subscription.updated":
+            status = _effective_subscription_status(data)
+        elif kind.startswith("invoice."):
+            status = _effective_invoice_status(kind, data)
+        else:
+            status = {
+                "customer.subscription.deleted": "canceled",
+                "subscription.deleted": "canceled",
+                "checkout.session.completed": "trialing",
+                "checkout.session.async_payment_succeeded": "trialing",
+            }.get(kind)
         severity = {"active": 0, "trialing": 0, "past_due": 1, "incomplete": 2,
                     "incomplete_expired": 3, "unpaid": 3, "paused": 3, "canceled": 4}
         if severity.get(status, 5) <= severity.get(org.get("subscription_status"), 5):
@@ -305,7 +345,7 @@ async def _lookup_org_by_customer(customer_id: str, repo, conn) -> dict | None:
     if not customer_id:
         return None
     row = await conn.fetchrow(
-        "SELECT id, stripe_customer_id, subscription_status, plan, "
+        "SELECT id, stripe_customer_id, subscription_id, subscription_status, plan, "
         "current_period_start, messages_used_this_period "
         "FROM organizations WHERE stripe_customer_id = $1",
         customer_id,
@@ -316,26 +356,35 @@ async def _lookup_org_by_customer(customer_id: str, repo, conn) -> dict | None:
 async def _handle_invoice_paid(conn, repo, data, event_id):
     if data.get("status") != "paid":
         return None
+    if data.get("billing_reason") not in {"subscription_create", "subscription_cycle", "subscription_update"}:
+        return None
     customer_id = data.get("customer")
     org = await _lookup_org_by_customer(customer_id, repo, conn)
-    if not org:
+    if (not org or not data.get("subscription")
+            or org.get("subscription_id") != data.get("subscription")):
         return None
 
     if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
-    period_start = datetime.fromtimestamp(data.get("period_start", 0), tz=timezone.utc)
-    period_end = datetime.fromtimestamp(data.get("period_end", 0), tz=timezone.utc)
+    if org.get("subscription_status") in {"unpaid", "paused"}:
+        return {"action": "invoice_ignored_restrictive_status", "organization_id": org["id"]}
 
     plan_slug = _resolve_plan_from_subscription({"items": data.get("lines") or {}})
     if not plan_slug:
-        # Paid invoice without an allowlisted configured Price ID is audited
-        # below but cannot activate access, change plan, or reset quota.
+        if org.get("subscription_status") in {"active", "trialing", "past_due"}:
+            await conn.execute(
+                "UPDATE organizations SET subscription_status = 'incomplete' WHERE id = $1",
+                org["id"],
+            )
         return {"action": "invoice_ignored_unconfigured_price", "organization_id": org["id"]}
 
+    period_start = datetime.fromtimestamp(data.get("period_start", 0), tz=timezone.utc)
+    period_end = datetime.fromtimestamp(data.get("period_end", 0), tz=timezone.utc)
+
     await conn.execute(
-        "UPDATE organizations SET subscription_id = COALESCE(subscription_id, $2), subscription_status = 'active', suspension_notified_at = NULL WHERE id = $1",
-        org["id"], data.get("subscription"),
+        "UPDATE organizations SET subscription_status = 'active', suspension_notified_at = NULL WHERE id = $1",
+        org["id"],
     )
     if period_end > period_start and (org.get("current_period_start") is None or period_start > org["current_period_start"]):
         await conn.execute("""
@@ -360,13 +409,19 @@ async def _handle_invoice_paid(conn, repo, data, event_id):
 
 
 async def _handle_payment_failed(conn, repo, data, event_id):
+    if data.get("billing_reason") not in {"subscription_create", "subscription_cycle", "subscription_update"}:
+        return None
     customer_id = data.get("customer")
     org = await _lookup_org_by_customer(customer_id, repo, conn)
-    if not org:
+    if (not org or not data.get("subscription")
+            or org.get("subscription_id") != data.get("subscription")):
         return None
 
     if not await repo.process_stripe_event_in_tx(conn, event_id, org["id"]):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
+
+    if org.get("subscription_status") in {"unpaid", "paused"}:
+        return {"action": "invoice_ignored_restrictive_status", "organization_id": org["id"]}
 
     await conn.execute(
         "UPDATE organizations SET subscription_status = 'past_due' WHERE id = $1",
@@ -385,6 +440,21 @@ async def _handle_subscription_updated(conn, repo, data, event_id):
         return {"action": "duplicate", "status": "skipped", "organization_id": org["id"]}
 
     plan_slug = _resolve_plan_from_subscription(data)
+    status = _effective_subscription_status(data)
+    prior_status = org.get("subscription_status")
+    if prior_status in {"unpaid", "paused"}:
+        if status in {"active", "trialing"} and plan_slug:
+            # A strictly newer, complete allowlisted snapshot can recover a
+            # paused/unpaid subscription. Equal timestamps were rejected by
+            # the restrictive tie-break above.
+            pass
+        elif status == "canceled":
+            plan_slug = None
+        else:
+            status = prior_status
+            plan_slug = None
+    if status not in {"active", "trialing"}:
+        plan_slug = None
     if plan_slug:
         from src.core.billing.plans import get_plan
         plan = get_plan(plan_slug)
@@ -395,14 +465,8 @@ async def _handle_subscription_updated(conn, repo, data, event_id):
             WHERE id = $5
         """, plan_slug, plan.messages_limit, plan.users_limit, plan.whatsapp_numbers_limit, org["id"])
 
-    canonical = {"active", "trialing", "past_due", "unpaid", "incomplete", "incomplete_expired", "canceled", "paused"}
-    status = data.get("status")
-    if status not in canonical:
-        status = "incomplete"  # Unknown upstream state is never entitlement.
-    # An unknown/unconfigured Price ID can never grant access or reset quota.
-    # Restrictive lifecycle statuses are still applied immediately.
-    if not plan_slug and status in {"active", "trialing"}:
-        return {"action": "subscription_ignored_unconfigured_price", "organization_id": org["id"]}
+    # An authoritative but unrecognized current snapshot is recoverably
+    # restrictive. Plan, quota and billing period remain untouched.
     trial_end = data.get("trial_end")
     await conn.execute("""
         UPDATE organizations SET subscription_status = $1,

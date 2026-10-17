@@ -3,7 +3,7 @@ import secrets
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
 from src.core.auth.audit import audit_log
@@ -179,25 +179,50 @@ async def gdpr_export(
         await token_store.save_token(token, str(org_id), data)
     except token_store.TokenStoreUnavailable as exc:
         raise HTTPException(status_code=503, detail="Export temporaneamente non disponibile") from exc
-    download_url = str(request.base_url) + f"api/gdpr/download/{token}"
+    # Keep the API origin in the response for clients hosted separately while
+    # keeping the bearer token out of the URL, browser history, and access logs.
+    download_url = str(request.url_for("gdpr_download"))
 
     await audit_log(repo, organization_id=org_id, action="gdpr.export",
                     auth_user_id=user.get("auth_user_id"),
                     details={"expires_in_minutes": 15})
 
-    return {"download_url": download_url, "expires_in_minutes": 15}
+    response = JSONResponse({"download_url": download_url, "expires_in_minutes": 15})
+    response.set_cookie(
+        token_store.DOWNLOAD_COOKIE,
+        token,
+        max_age=token_store.TOKEN_TTL_SECONDS,
+        path="/api/gdpr/download",
+        secure=token_store._is_production(),
+        httponly=True,
+        samesite="strict",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
-@router.get("/download/{token}")
-async def gdpr_download(token: str):
+@router.get("/download")
+async def gdpr_download(request: Request):
+    token = request.cookies.get(token_store.DOWNLOAD_COOKIE, "")
     try:
-        meta = await token_store.pop_token(token)
+        meta = await token_store.pop_token(token) if token else None
     except token_store.TokenStoreUnavailable as exc:
         raise HTTPException(status_code=503, detail="Export temporaneamente non disponibile") from exc
     if meta is None:
-        raise HTTPException(status_code=404, detail="Link di export scaduto o non valido")
-    data = meta["data"]
-    return data
+        response = JSONResponse(status_code=404, content={"detail": "Link di export scaduto o non valido"})
+    else:
+        response = JSONResponse(content=meta["data"])
+    response.delete_cookie(
+        token_store.DOWNLOAD_COOKIE,
+        path="/api/gdpr/download",
+        secure=token_store._is_production(),
+        httponly=True,
+        samesite="strict",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 @router.post("/delete")

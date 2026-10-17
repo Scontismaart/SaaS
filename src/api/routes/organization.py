@@ -11,8 +11,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from src.api.dependencies import get_repo, require_ruolo
-from src.api.routes.common import audit_event, get_billing_snapshot, record_ai_usage
+from src.api.routes.common import audit_event, get_billing_snapshot
 from src.core.billing.suspension import AIGenerationBlocked, assert_ai_generation_allowed
+from src.core.ai_safety import record_ai_attempts
 from src.core.onboarding import (
     ProfileCacheInvalidationError,
     generate_preview,
@@ -177,13 +178,13 @@ async def onboarding_preview(
         assert_ai_generation_allowed(billing)
     except AIGenerationBlocked as exc:
         raise HTTPException(status_code=403, detail="Risposte AI non disponibili per questo piano o quota") from exc
-    output = await generate_preview(org_id, richiesta, repo, billing=billing)
-    await record_ai_usage(
-        repo,
-        org_id,
-        "onboarding_preview",
-        richiesta.messaggio,
-        billing,
-        {"verticale": richiesta.profilo.verticale},
-    )
+    usage = {"attempts": []}
+    try:
+        output = await generate_preview(
+            org_id, richiesta, repo, billing=billing, usage_sink=usage
+        )
+    finally:
+        await record_ai_attempts(
+            repo, org_id, usage, None, None, task_type="onboarding_preview"
+        )
     return output

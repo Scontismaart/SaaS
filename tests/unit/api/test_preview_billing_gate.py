@@ -47,8 +47,8 @@ def preview(monkeypatch):
     record = AsyncMock()
     monkeypatch.setattr(organization, "get_billing_snapshot", billing)
     monkeypatch.setattr(organization, "generate_preview", generate)
-    monkeypatch.setattr(organization, "record_ai_usage", record)
-    with TestClient(app) as client:
+    monkeypatch.setattr(organization, "record_ai_attempts", record)
+    with TestClient(app, raise_server_exceptions=False) as client:
         yield client, billing, generate, record
 
 
@@ -94,5 +94,30 @@ def test_preview_with_verified_remaining_quota_generates_and_records(preview, st
 
     assert response.status_code == 200
     assert response.json()["risposta"] == "Siamo aperti dalle 9 alle 18."
+    generate.assert_awaited_once()
+    assert "usage_sink" in generate.await_args.kwargs
+    record.assert_awaited_once()
+    assert record.await_args.kwargs["task_type"] == "onboarding_preview"
+    assert record.await_args.args[2] == {"attempts": []}
+
+
+def test_preview_records_attempts_when_generation_raises(preview):
+    client, _, generate, record = preview
+    generate.side_effect = TimeoutError("provider timed out")
+
+    response = client.post("/api/onboarding/preview", json=PAYLOAD)
+
+    assert response.status_code == 500
+    record.assert_awaited_once()
+    assert record.await_args.args[2] == {"attempts": []}
+
+
+def test_preview_accounting_failure_never_returns_success(preview):
+    client, _, generate, record = preview
+    record.side_effect = RuntimeError("ledger unavailable")
+
+    response = client.post("/api/onboarding/preview", json=PAYLOAD)
+
+    assert response.status_code == 500
     generate.assert_awaited_once()
     record.assert_awaited_once()
